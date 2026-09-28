@@ -9,9 +9,20 @@
 declare(strict_types=1);
 
 require __DIR__ . '/../bootstrap.php';
+require __DIR__ . '/helpers.php';
 
 final class TestFailure extends RuntimeException
 {
+}
+
+final class TestSkipped extends RuntimeException
+{
+}
+
+/** Ends a test that cannot run here (no node, no pcntl); counted, and named. */
+function skip(string $why): never
+{
+    throw new TestSkipped($why);
 }
 
 function same(mixed $expected, mixed $actual, string $what = ''): void
@@ -29,7 +40,7 @@ function truthy(bool $value, string $what): void
 }
 
 $filter = $argv[1] ?? '';
-$pass = $fail = 0;
+$pass = $fail = $skipped = 0;
 foreach (glob(__DIR__ . '/*Test.php') ?: [] as $file) {
     foreach (require $file as $name => $test) {
         $label = basename($file, '.php') . ' > ' . $name;
@@ -39,11 +50,14 @@ foreach (glob(__DIR__ . '/*Test.php') ?: [] as $file) {
         try {
             $test();
             $pass++;
+        } catch (TestSkipped $e) {
+            $skipped++;
+            printf("  SKIP  %s\n        %s\n", $label, $e->getMessage());
         } catch (Throwable $e) {
             $fail++;
             printf("  FAIL  %s\n        %s\n", $label, $e->getMessage());
         }
     }
 }
-printf("\n  %s - %d passed, %d failed (PHP %s)\n\n", $fail === 0 ? 'PASS' : 'FAIL', $pass, $fail, PHP_VERSION);
+printf("\n  %s - %d passed, %d failed, %d skipped (PHP %s)\n\n", $fail === 0 ? 'PASS' : 'FAIL', $pass, $fail, $skipped, PHP_VERSION);
 exit($fail === 0 ? 0 : 1);

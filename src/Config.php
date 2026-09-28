@@ -45,6 +45,25 @@ final class Config
             // auto: APCu when usable, else files in storeDir.
             'store' => 'auto',
             'storeDir' => rtrim(sys_get_temp_dir(), '/') . '/request-shield',
+            // The browser check for clients past a budget's challengeAt: a proof of
+            // work (ALTCHA-compatible) solved by a small script, then a signed pass
+            // cookie. secret: shared by every server of the site (null: one is made
+            // in storeDir). difficulty: maxnumber at the threshold and at the limit.
+            'challenge' => [
+                'secret' => null,
+                'passTtl' => 3600,
+                'solutionTtl' => 300,
+                'difficulty' => ['min' => 50000, 'max' => 500000],
+                'cookie' => 'rs_pass',
+                'solutionCookie' => 'rs_solution',
+                'bindUserAgent' => true,
+                // Verified crawlers are never challenged (the limit still applies).
+                // true: the engines in Challenge\SearchEngines::defaults(); false: none.
+                'searchEngines' => true,
+                // Paths no browser loads as a page (APIs, feeds): never challenged.
+                'exemptPaths' => [],
+                'texts' => [],
+            ],
             // X-Request-Shield: <action> <reason> on every response (for testing).
             'debugHeader' => false,
         ];

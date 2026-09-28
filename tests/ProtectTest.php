@@ -36,6 +36,7 @@ function withServer(array $config, callable $body): void
             $body = @file_get_contents("http://127.0.0.1:$port$uri", false, $ctx);
             $status = 0;
             $retry = null;
+            $cookies = [];
             foreach ($http_response_header ?? [] as $line) {
                 if (preg_match('#^HTTP/\S+ (\d+)#', $line, $m)) {
                     $status = (int) $m[1];
@@ -43,8 +44,11 @@ function withServer(array $config, callable $body): void
                 if (stripos($line, 'Retry-After:') === 0) {
                     $retry = (int) trim(substr($line, 12));
                 }
+                if (preg_match('#^Set-Cookie:\s*([^=]+)=([^;]*)#i', $line, $m)) {
+                    $cookies[$m[1]] = $m[2];
+                }
             }
-            return ['status' => $status, 'body' => (string) $body, 'json' => json_decode((string) $body, true), 'retry' => $retry];
+            return ['status' => $status, 'body' => (string) $body, 'json' => json_decode((string) $body, true), 'retry' => $retry, 'cookies' => $cookies];
         });
     } finally {
         proc_terminate($proc);
@@ -56,7 +60,7 @@ function withServer(array $config, callable $body): void
 return [
     'protect(): passes, marks, rejects, strips and throttles' => function (): void {
         if (!function_exists('proc_open')) {
-            return;
+            skip('no proc_open');
         }
         withServer([
             'trustedProxies' => ['10.9.9.9'],
@@ -84,6 +88,47 @@ return [
             }
             same(429, $last['status'], 'flood throttled');
             truthy(($last['retry'] ?? 0) >= 1, 'Retry-After sent');
+        });
+    },
+    'protect(): flood -> challenge page -> the script solves it -> pass cookie -> through' => function (): void {
+        if (!function_exists('proc_open')) {
+            skip('no proc_open');
+        }
+        if (nodeBinary() === null) {
+            skip('no node on this machine');
+        }
+        withServer([
+            'challenge' => ['secret' => str_repeat('e2e-secret', 5), 'searchEngines' => false, 'difficulty' => ['min' => 20000, 'max' => 20000]],
+            'budgets' => ['requests' => ['limit' => 1000, 'window' => 60, 'challengeAt' => 3]],
+            'exempt' => ['ips' => []],
+        ], function (callable $get): void {
+            $ua = ['User-Agent' => 'Mozilla/5.0 e2e'];
+            for ($i = 0; $i < 3; $i++) {
+                same(200, $get('GET', '/page', $ua)['status'], 'within the threshold');
+            }
+            $r = $get('GET', '/page', $ua);
+            same(429, $r['status'], 'past the threshold: challenged');
+            truthy(preg_match('/var RS=(\{.*?\});\(function/s', $r['body'], $m) === 1, 'the challenge page');
+            $rs = json_decode($m[1], true);
+            same(20000, $rs['c']['maxnumber']);
+
+            [$payload] = solveInNode($rs['c']);
+            truthy(is_string($payload), 'the script found the number');
+
+            $r = $get('GET', '/page', $ua + ['Cookie' => $rs['cookie'] . '=' . $payload]);
+            same(200, $r['status'], 'solved: the page itself');
+            same('allow-uncached', $r['json']['shield'] ?? null, 'this answer is not cached');
+            truthy(($r['cookies']['rs_pass'] ?? '') !== '', 'pass cookie set');
+            same('', $r['cookies']['rs_solution'] ?? null, 'solution cookie removed');
+
+            $pass = $r['cookies']['rs_pass'];
+            for ($i = 0; $i < 5; $i++) {
+                $r = $get('GET', '/page', $ua + ['Cookie' => 'rs_pass=' . $pass]);
+            }
+            same(200, $r['status'], 'with the pass cookie: through');
+            same('allow', $r['json']['shield'] ?? null);
+            same(429, $get('GET', '/page', ['User-Agent' => 'another browser', 'Cookie' => 'rs_pass=' . $pass])['status'], 'the pass is bound to the User-Agent');
+            same(429, $get('GET', '/page', $ua + ['Cookie' => $rs['cookie'] . '=' . $payload])['status'], 'the same solution again: a new challenge');
         });
     },
 ];

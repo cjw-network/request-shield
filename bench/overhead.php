@@ -57,3 +57,29 @@ for ($i = 0; $i < 20000; $i++) {
 }
 printf("  %-7s %6.2f µs per request (new Shield with this configuration)\n", 'setup', (hrtime(true) - $t) / 20000 / 1000);
 exec('rm -rf ' . escapeshellarg($dir));
+
+// ── The challenge paths (only for clients past a threshold) ──────────────────
+$secret = str_repeat('bench-secret', 4);
+$pow = new CjwNetwork\RequestShield\Challenge\ProofOfWork($secret);
+$pass = new CjwNetwork\RequestShield\Challenge\PassCookie($secret);
+$m = 5000;
+$t = hrtime(true);
+for ($i = 0; $i < $m; $i++) {
+    $c = $pow->create('203.0.113.7', 50000, 2000000000);
+    $page = CjwNetwork\RequestShield\Challenge\ChallengePage::render($c, 'rs_solution', true);
+}
+printf("  %-7s %6.2f µs per challenge page (%d bytes)\n", 'page', (hrtime(true) - $t) / $m / 1000, strlen($page));
+$c = $pow->create('203.0.113.7', 2000, 2000000000);
+for ($n = 0; hash('sha256', $c['salt'] . $n) !== $c['challenge']; $n++);
+$payload = rtrim(strtr(base64_encode(json_encode(['algorithm' => 'SHA-256', 'challenge' => $c['challenge'], 'number' => $n, 'salt' => $c['salt'], 'signature' => $c['signature']])), '+/', '-_'), '=');
+$t = hrtime(true);
+for ($i = 0; $i < $m; $i++) {
+    $ok = $pow->verify($payload, '203.0.113.7', 1000.0);
+}
+printf("  %-7s %6.2f µs per solution check (%s)\n", 'verify', (hrtime(true) - $t) / $m / 1000, $ok ? 'valid' : 'INVALID');
+$cookie = $pass->issue('203.0.113.7', 'Mozilla/5.0', 2000000000);
+$t = hrtime(true);
+for ($i = 0; $i < $n = 20000; $i++) {
+    $ok = $pass->valid($cookie, '203.0.113.7', 'Mozilla/5.0', 1000.0);
+}
+printf("  %-7s %6.2f µs per pass cookie check (%s)\n", 'pass', (hrtime(true) - $t) / 20000 / 1000, $ok ? 'valid' : 'INVALID');

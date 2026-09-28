@@ -21,7 +21,7 @@ class Responder
         414 => 'URI Too Long', 429 => 'Too Many Requests', 431 => 'Request Header Fields Too Large',
     ];
 
-    public function send(Decision $decision, Request $request, bool $debugHeader = false): void
+    public function send(Decision $decision, Request $request, bool $debugHeader = false, ?string $page = null): void
     {
         $text = self::TEXT[$decision->status] ?? 'Error';
         if (!headers_sent()) {
@@ -39,11 +39,16 @@ class Responder
                 header('X-Request-Shield: ' . $decision->action . ' ' . $decision->reason);
             }
         }
-        if ($request->method !== 'HEAD') {
-            echo '<!doctype html><title>', $decision->status, ' ', $text, '</title><h1>', $text, '</h1>';
-            if ($decision->retryAfter > 0) {
-                echo '<p>Please try again in ', $decision->retryAfter, ' seconds.</p>';
-            }
+        if ($request->method === 'HEAD') {
+            return;
+        }
+        if ($page !== null) {
+            echo $page;             // the challenge page
+            return;
+        }
+        echo '<!doctype html><title>', $decision->status, ' ', $text, '</title><h1>', $text, '</h1>';
+        if ($decision->retryAfter > 0) {
+            echo '<p>Please try again in ', $decision->retryAfter, ' seconds.</p>';
         }
     }
 }

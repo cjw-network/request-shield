@@ -31,7 +31,7 @@ return [
     },
     'file store: concurrent processes lose no count' => function (): void {
         if (!function_exists('pcntl_fork')) {
-            return;                         // nothing to prove without processes
+            skip('no pcntl');
         }
         $dir = sys_get_temp_dir() . '/rshield-test-' . getmypid() . '-' . mt_rand();
         $store = new FileStore($dir, 0.0);
@@ -67,7 +67,7 @@ return [
     },
     'apcu store: sliding window (when APCu is enabled here)' => function (): void {
         if (!ApcuStore::usable()) {
-            return;
+            skip('APCu not enabled (php -d apc.enable_cli=1)');
         }
         slidingWindowChecks(new ApcuStore('rshield-test-' . mt_rand() . ':'));
     },

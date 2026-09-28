@@ -111,6 +111,22 @@ final class Request
         );
     }
 
+    /** A cookie of the request, read from the Cookie header (not $_COOKIE). */
+    public function cookie(string $name): ?string
+    {
+        $header = $this->header('cookie');
+        if ($header === null || strpos($header, $name . '=') === false) {
+            return null;
+        }
+        foreach (explode(';', $header) as $pair) {
+            $eq = strpos($pair, '=');
+            if ($eq !== false && trim(substr($pair, 0, $eq)) === $name) {
+                return rawurldecode(trim(substr($pair, $eq + 1)));
+            }
+        }
+        return null;
+    }
+
     /** A request header ("User-Agent", "x-forwarded-for"). */
     public function header(string $name): ?string
     {

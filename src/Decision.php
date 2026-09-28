@@ -33,6 +33,7 @@ final class Decision
         public readonly int $status,
         public readonly string $reason,
         public readonly int $retryAfter = 0,
+        public readonly float $level = 0.0,
     ) {
     }
 
@@ -47,9 +48,10 @@ final class Decision
         return new self(self::ALLOW_UNCACHED, 200, $reason);
     }
 
-    public static function challenge(string $reason): self
+    /** @param float $level how far the client is past the threshold: 0 there, 1 at the limit */
+    public static function challenge(string $reason, float $level = 0.0): self
     {
-        return new self(self::CHALLENGE, 429, $reason);
+        return new self(self::CHALLENGE, 429, $reason, 0, max(0.0, min(1.0, $level)));
     }
 
     public static function throttle(string $reason, int $retryAfter): self

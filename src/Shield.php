@@ -10,6 +10,9 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield;
 
+use CjwNetwork\RequestShield\Challenge\Gate;
+use CjwNetwork\RequestShield\Challenge\SearchEngines;
+use CjwNetwork\RequestShield\Challenge\Secret;
 use CjwNetwork\RequestShield\Rule\BlockedPathRule;
 use CjwNetwork\RequestShield\Rule\BudgetRule;
 use CjwNetwork\RequestShield\Rule\CacheableRule;
@@ -44,6 +47,9 @@ final class Shield
     private Store $store;
 
     private static ?Decision $current = null;
+
+    /** What decide() found without the budgets: whether the answer may be cached. */
+    private Decision $base;
 
     /**
      * @param array<string, mixed> $config see Config::defaults()
@@ -92,8 +98,15 @@ final class Shield
     {
         $shield = new self($config, null, $known);
         $request = Request::fromServer($_SERVER, array_values((array) $shield->config['trustedProxies']));
-        $decision = $shield->decide($request, microtime(true));
+        $now = microtime(true);
+        $settled = $shield->settle($shield->decide($request, $now), $request, $now);
+        $decision = $settled['decision'];
         self::$current = $decision;
+        if (!headers_sent()) {
+            foreach ($settled['cookies'] as $cookie) {
+                header('Set-Cookie: ' . $cookie, false);
+            }
+        }
 
         if (!$request->viaTrustedProxy && !empty($shield->config['stripUntrustedForwarded'])) {
             foreach (array_keys($_SERVER) as $name) {
@@ -105,7 +118,7 @@ final class Shield
         }
 
         if (!$decision->passes()) {
-            (new Responder())->send($decision, $request, (bool) $shield->config['debugHeader']);
+            (new Responder())->send($decision, $request, (bool) $shield->config['debugHeader'], $settled['page']);
             exit;
         }
         $_SERVER['REQUEST_SHIELD'] = $decision->action;
@@ -123,18 +136,69 @@ final class Shield
 
     public function decide(Request $request, float $now): Decision
     {
-        $decision = Decision::allow();
+        $base = Decision::allow();
+        $budget = null;
         foreach ($this->rules as $rule) {
             $wants = $rule->check($request, $now);
             if ($wants === null) {
                 continue;
             }
             if ($wants->action === Decision::REJECT) {
-                return $wants;
+                return $this->base = $wants;
             }
-            $decision = $decision->stricter($wants);
+            if ($rule instanceof BudgetRule) {
+                $budget = $budget === null ? $wants : $budget->stricter($wants);
+            } else {
+                $base = $base->stricter($wants);
+            }
         }
-        return $decision;
+        $this->base = $base;
+        return $budget === null ? $base : $base->stricter($budget);
+    }
+
+    /**
+     * The request after the budgets: a challenged request goes through the
+     * gate (pass cookie, solution, crawler, exempt path, or the page).
+     *
+     * @return array{decision: Decision, cookies: list<string>, page: ?string}
+     */
+    public function settle(Decision $decision, Request $request, float $now): array
+    {
+        if ($decision->action !== Decision::CHALLENGE) {
+            return ['decision' => $decision, 'cookies' => [], 'page' => null];
+        }
+        return $this->gate()->resolve($decision, $this->base ?? Decision::allow(), $request, $now);
+    }
+
+    private function gate(): Gate
+    {
+        $c = (array) $this->config['challenge'];
+        $dir = (string) $this->config['storeDir'];
+        $engines = null;
+        $list = $c['searchEngines'] ?? true;
+        if ($list !== false) {
+            $apcu = ApcuStore::usable();
+            $engines = new SearchEngines(
+                is_array($list) ? $list : SearchEngines::defaults(),
+                static function (string $key) use ($apcu, $dir) {
+                    if ($apcu) {
+                        $v = apcu_fetch('rshield:' . $key);
+                        return $v === false ? null : $v;
+                    }
+                    $f = $dir . '/se/' . md5($key);
+                    return is_file($f) && filemtime($f) > time() - 86400 ? (string) @file_get_contents($f) : null;
+                },
+                static function (string $key, string $value) use ($apcu, $dir): void {
+                    if ($apcu) {
+                        apcu_store('rshield:' . $key, $value, 86400);
+                        return;
+                    }
+                    @mkdir($dir . '/se', 0700, true);
+                    @file_put_contents($dir . '/se/' . md5($key), $value);
+                },
+            );
+        }
+        return new Gate($c, Secret::resolve($c['secret'] ?? null, $dir), $engines, (int) $this->config['ipv6Prefix'], $this->store);
     }
 
     /**

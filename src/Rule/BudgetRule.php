@@ -44,7 +44,8 @@ final class BudgetRule implements Rule
             return Decision::throttle($this->name, (int) ceil($this->window * ($count - $this->limit) / $this->limit));
         }
         if ($this->challengeAt !== null && $this->challengeAt > 0 && $count > $this->challengeAt) {
-            return Decision::challenge($this->name);
+            $span = max(1, $this->limit - $this->challengeAt);
+            return Decision::challenge($this->name, ($count - $this->challengeAt) / $span);
         }
         return null;
     }
