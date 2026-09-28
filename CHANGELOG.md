@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   analysis uploaded to code scanning, `composer validate`/`audit`, Dependabot.
 - `SECURITY.md`, `CONTRIBUTING.md`, `AGENTS.md`.
 
+### Fixed
+- A settings file rewritten within the same second was compiled with its old
+  contents (OPcache judged it by the unchanged mtime) and kept them; it is now
+  invalidated in OPcache before it is read again. Found by CI, which runs the
+  tests with OPcache on.
+
 ### Changed
 - `Request` reads headers lazily from `$_SERVER` (about 40 % less time per
   request).

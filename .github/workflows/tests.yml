@@ -19,7 +19,7 @@ jobs:
         php: ['8.1', '8.2', '8.3', '8.4', '8.5']
         apcu: [true, false]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -29,9 +29,9 @@ jobs:
           coverage: none
           tools: none
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Syntax check (PHP ${{ matrix.php }})
         run: find src tests bench config bootstrap.php -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null

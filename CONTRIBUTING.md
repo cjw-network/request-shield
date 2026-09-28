@@ -5,7 +5,11 @@ things come first: **it must be right, and it must be fast.**
 
 ## Rules
 
-1. **Tests for every change.** `php tests/run.php` — no framework needed. Add
+1. **Tests for every change.** `php tests/run.php` — no framework needed —
+   and once more with OPcache and APCu on, as production runs:
+   `php -d apc.enable_cli=1 -d opcache.enable_cli=1 -d opcache.file_update_protection=0 tests/run.php`
+   (that is how a settings file rewritten within one second was found to be
+   compiled stale). Add
    unit tests and, where the change touches the request path, an end-to-end
    case (`tests/ProtectTest.php` runs PHP's built-in server with
    `auto_prepend_file`). Check that a new test fails without the change.

@@ -128,6 +128,12 @@ final class Settings
             $exported = $e['settings'];
             return self::import($exported);
         }
+        // Rebuilding: the file changed. OPcache judges a file by its mtime,
+        // and a file rewritten within the same second keeps it -- the old
+        // settings would be compiled under the new size and stay for good.
+        if (function_exists('opcache_invalidate')) {
+            @opcache_invalidate($file, true);
+        }
         $config = require $file;
         if (!is_array($config)) {
             throw new \RuntimeException("request-shield: $file must return an array");
