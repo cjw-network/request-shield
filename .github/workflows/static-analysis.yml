@@ -43,7 +43,7 @@ jobs:
         run: vendor/bin/psalm --no-cache --no-progress --taint-analysis --report=psalm-taint.sarif
       - name: Upload to code scanning
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: psalm-taint.sarif
           category: psalm-taint
