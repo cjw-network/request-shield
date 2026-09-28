@@ -1,5 +1,10 @@
 # cjw-network/request-shield
 
+[![Tests](https://github.com/cjw-network/request-shield/actions/workflows/tests.yml/badge.svg)](https://github.com/cjw-network/request-shield/actions/workflows/tests.yml)
+[![Static analysis and security](https://github.com/cjw-network/request-shield/actions/workflows/static-analysis.yml/badge.svg)](https://github.com/cjw-network/request-shield/actions/workflows/static-analysis.yml)
+![PHP](https://img.shields.io/badge/php-8.1%20%E2%80%93%208.5-777bb4)
+![License: MIT](https://img.shields.io/badge/license-MIT-green)
+
 A request shield for PHP sites. It runs **before the application** — before the
 framework, its autoloader and its database — and decides in a few microseconds
 whether a request reaches the application, and whether the answer may be cached.
