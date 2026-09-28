@@ -28,10 +28,16 @@ and PHP slots, just very briefly.
 
 ## Status
 
-Phase 1 of 4: the core. Next: a proof-of-work browser challenge (ALTCHA-style,
-stateless, signed pass cookie), adapters for Exponential, WordPress and Ibexa
-(URL indexes, cache integration), and exporting the rules to nginx, Apache and
-Varnish.
+- **0.1.0:** the core.
+- **Unreleased:** the browser challenge (proof of work), settings compiled for
+  OPcache.
+- **Next:** earning back a spent budget with a challenge, for forms and APIs
+  ([proposal 0001](docs/proposals/0001-earn-back-a-spent-budget.md)); adapters
+  for Exponential, WordPress and Ibexa; exporting the rules to nginx, Apache
+  and Varnish.
+
+Documentation: [docs/](docs/README.md) — features, use cases, proposals,
+architecture decisions. Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## Installation
 
@@ -62,8 +68,11 @@ composer require cjw-network/request-shield
 and call it first thing in the front controller:
 
 ```php
-CjwNetwork\RequestShield\Shield::protect(require __DIR__ . '/../config/request-shield.php');
+CjwNetwork\RequestShield\Shield::protectFile(__DIR__ . '/../config/request-shield.php');
 ```
+
+`protectFile()` checks the settings once and keeps them compiled for OPcache;
+`protect($array)` checks them on every call.
 
 - **WordPress:** at the top of `wp-config.php`, or as `auto_prepend_file`.
 - **Ibexa / Symfony:** at the top of `public/index.php`.
@@ -110,18 +119,29 @@ if (!$shield->consume('misses', $request)->passes()) {
 `php -d apc.enable_cli=1 bench/overhead.php` — a passing request with eleven
 headers behind a trusted proxy, every check on:
 
-| PHP 8.1, APCu | ~12 µs, plus ~3 µs to build the shield from its settings |
+| PHP 8.1 | per passing request |
 |---|---|
-| PHP 8.1, files | ~41 µs |
+| checks, APCu store | ~12 µs |
+| checks, file store | ~42 µs |
+| settings (compiled, OPcache) | ~8 µs |
+| challenge page / solution check / pass cookie (challenged clients only) | ~12 / ~9 / ~5 µs |
 
-## Tests
+## Tests and checks
 
 ```bash
-php tests/run.php
+php tests/run.php            # no framework needed, PHP 8.1+
+composer install && composer phpstan && composer taint
 ```
 
-No test framework needed; the tests run on every PHP from 8.1, including an
-end-to-end test through PHP's built-in server with `auto_prepend_file`.
+The tests include an end-to-end run through PHP's built-in server with
+`auto_prepend_file`, and the challenge page's own script run in Node against
+the PHP check. CI runs them on every supported PHP version, with and without
+APCu, plus PHPStan (level max) and Psalm's taint analysis.
+
+## Contributing and security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) (and [AGENTS.md](AGENTS.md) for AI
+coding agents). Security issues: [SECURITY.md](SECURITY.md).
 
 ## Copyright & license
 

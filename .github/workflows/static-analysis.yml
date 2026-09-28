@@ -1,0 +1,49 @@
+name: Static analysis and security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '17 4 * * 1'      # weekly: new checks in newer tool versions
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  phpstan:
+    name: PHPStan (level max)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - run: composer validate --strict
+      - run: composer install --no-interaction --no-progress
+      - run: composer audit
+      - run: vendor/bin/phpstan analyse --no-progress
+
+  taint:
+    name: Psalm taint analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write      # upload the findings to GitHub code scanning
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - run: composer install --no-interaction --no-progress
+      - name: Taint analysis (request data into output, headers, files, eval, SQL)
+        run: vendor/bin/psalm --no-cache --no-progress --taint-analysis --report=psalm-taint.sarif
+      - name: Upload to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: psalm-taint.sarif
+          category: psalm-taint

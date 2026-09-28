@@ -1,0 +1,46 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: PHP ${{ matrix.php }}${{ matrix.apcu && ' + APCu' || ' (file store)' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1', '8.2', '8.3', '8.4', '8.5']
+        apcu: [true, false]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: ${{ matrix.apcu && 'apcu, pcntl' || 'pcntl, :apcu' }}
+          ini-values: ${{ matrix.apcu && 'apc.enable_cli=1, opcache.enable_cli=1, opcache.file_update_protection=0' || 'opcache.enable_cli=1, opcache.file_update_protection=0' }}
+          coverage: none
+          tools: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Syntax check (PHP ${{ matrix.php }})
+        run: find src tests bench config bootstrap.php -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+
+      - name: Tests
+        env:
+          # With APCu every test must run; without it the APCu store test is skipped on purpose.
+          TESTS_FAIL_ON_SKIP: ${{ matrix.apcu && '1' || '0' }}
+        run: php tests/run.php
+
+      - name: Cost of a passing request (smoke benchmark)
+        run: php bench/overhead.php 20000

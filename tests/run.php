@@ -59,5 +59,11 @@ foreach (glob(__DIR__ . '/*Test.php') ?: [] as $file) {
         }
     }
 }
+// In CI a skipped test is a failure unless the job is meant to lack something
+// (TESTS_FAIL_ON_SKIP=1): a test that did not run proves nothing.
+if (getenv('TESTS_FAIL_ON_SKIP') === '1' && $skipped > 0) {
+    $fail += $skipped;
+    echo "  (TESTS_FAIL_ON_SKIP: skipped tests count as failures)\n";
+}
 printf("\n  %s - %d passed, %d failed, %d skipped (PHP %s)\n\n", $fail === 0 ? 'PASS' : 'FAIL', $pass, $fail, $skipped, PHP_VERSION);
 exit($fail === 0 ? 0 : 1);

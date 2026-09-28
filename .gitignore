@@ -2,3 +2,4 @@
 /composer.lock
 /config/request-shield.php
 /var/
+/psalm-taint.sarif
