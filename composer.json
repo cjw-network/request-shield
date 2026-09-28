@@ -3,7 +3,25 @@
     "description": "A request shield for PHP sites: trusted proxies, hard rejects, a cacheable-URL definition and per-client budgets before the application runs; a small DoS guard that works on shared hosting.",
     "type": "library",
     "license": "MIT",
-    "keywords": ["security", "rate limiting", "dos", "cache", "firewall", "shared hosting"],
+    "authors": [
+        {
+            "name": "JAC Systeme GmbH",
+            "homepage": "https://www.jac-systeme.de",
+            "role": "Author"
+        },
+        {
+            "name": "CJW Network",
+            "homepage": "https://cjw-network.com"
+        }
+    ],
+    "keywords": [
+        "security",
+        "rate limiting",
+        "dos",
+        "cache",
+        "firewall",
+        "shared hosting"
+    ],
     "require": {
         "php": ">=8.1"
     },
@@ -11,7 +29,9 @@
         "ext-apcu": "Counters in shared memory (the file store is used without it)"
     },
     "autoload": {
-        "psr-4": { "CjwNetwork\\RequestShield\\": "src/" }
+        "psr-4": {
+            "CjwNetwork\\RequestShield\\": "src/"
+        }
     },
     "scripts": {
         "test": "php tests/run.php"

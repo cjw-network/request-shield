@@ -123,6 +123,7 @@ php tests/run.php
 No test framework needed; the tests run on every PHP from 8.1, including an
 end-to-end test through PHP's built-in server with `auto_prepend_file`.
 
-## License
+## Copyright & license
 
-MIT, see `LICENSE`.
+Copyright (C) 2026 JAC Systeme GmbH, part of [CJW Network](https://cjw-network.com).
+Released under the MIT license, see `LICENSE`.

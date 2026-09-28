@@ -2,6 +2,7 @@
 /**
  * This file is part of cjw-network/request-shield.
  *
+ * @copyright Copyright (C) 2026 JAC Systeme GmbH, CJW Network
  * @license MIT, see LICENSE
  */
 
