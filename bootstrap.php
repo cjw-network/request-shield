@@ -34,13 +34,10 @@ spl_autoload_register(static function (string $class): void {
         return;
     }
     define('REQUEST_SHIELD_DONE', true);
-    $file = defined('REQUEST_SHIELD_CONFIG') ? (string) constant('REQUEST_SHIELD_CONFIG')
-        : (getenv('REQUEST_SHIELD_CONFIG') ?: __DIR__ . '/config/request-shield.php');
+    $named = defined('REQUEST_SHIELD_CONFIG') ? constant('REQUEST_SHIELD_CONFIG') : getenv('REQUEST_SHIELD_CONFIG');
+    $file = is_string($named) && $named !== '' ? $named : __DIR__ . '/config/request-shield.php';
     if (!is_file($file)) {
         return;
     }
-    $config = require $file;
-    if (is_array($config)) {
-        \CjwNetwork\RequestShield\Shield::protect($config);
-    }
+    \CjwNetwork\RequestShield\Shield::protectFile($file);
 })();

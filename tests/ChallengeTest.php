@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use CjwNetwork\RequestShield\ChallengeSettings;
 use CjwNetwork\RequestShield\Challenge\ChallengePage;
 use CjwNetwork\RequestShield\Challenge\Gate;
 use CjwNetwork\RequestShield\Challenge\PassCookie;
@@ -87,7 +88,7 @@ return [
         exec('rm -rf ' . escapeshellarg($dir));
     },
     'gate: page, then solution -> pass cookie, then pass -> through' => function (): void {
-        $gate = new Gate(['difficulty' => ['min' => 1000, 'max' => 3000]], SECRET);
+        $gate = new Gate(ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 3000]]), SECRET);
         $challenged = Decision::challenge('requests', 0.0);
         $base = Decision::allow();
 
@@ -109,7 +110,7 @@ return [
         same(Decision::CHALLENGE, $gate->resolve($challenged, $base, creq('/other', ['rs_pass' => $pass], 'GET', '198.51.100.1'), 1500.0)['decision']->action, 'the pass is for one client only');
     },
     'gate: difficulty grows with the level; POST is throttled; exempt paths pass' => function (): void {
-        $gate = new Gate(['difficulty' => ['min' => 1000, 'max' => 5000], 'exemptPaths' => ['#^/api/#']], SECRET);
+        $gate = new Gate(ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 5000], 'exemptPaths' => ['#^/api/#']]), SECRET);
         $r = $gate->resolve(Decision::challenge('requests', 1.0), Decision::allow(), creq('/'), 1.0);
         preg_match('/var RS=(\{.*?\});\(function/s', $r['page'], $m);
         same(5000, json_decode($m[1], true)['c']['maxnumber'], 'level 1: maximum difficulty');
@@ -117,14 +118,14 @@ return [
         same(Decision::ALLOW, $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/api/x'), 1.0)['decision']->action);
     },
     'gate: a solution buys one pass, not one per replay' => function (): void {
-        $gate = new Gate(['difficulty' => ['min' => 1000, 'max' => 1000]], SECRET, null, 64, new MemoryStore());
+        $gate = new Gate(ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 1000]]), SECRET, null, 64, new MemoryStore());
         $c = (new ProofOfWork(SECRET))->create('203.0.113.7', 1000, 2000);
         $solved = creq('/', ['rs_solution' => solveInPhp($c)]);
         same(Decision::ALLOW_UNCACHED, $gate->resolve(Decision::challenge('requests'), Decision::allow(), $solved, 1000.0)['decision']->action, 'first use');
         same(Decision::CHALLENGE, $gate->resolve(Decision::challenge('requests'), Decision::allow(), $solved, 1010.0)['decision']->action, 'replayed');
     },
     'gate: a wrong solution gets a new challenge and loses its cookie' => function (): void {
-        $gate = new Gate(['difficulty' => ['min' => 1000, 'max' => 1000]], SECRET);
+        $gate = new Gate(ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 1000]]), SECRET);
         $r = $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', ['rs_solution' => 'bogus']), 1.0);
         same(Decision::CHALLENGE, $r['decision']->action);
         same('', cookieValue($r['cookies'], 'rs_solution'));
@@ -141,7 +142,7 @@ return [
         same('1', $cache['se:66.249.66.1'] ?? null, 'remembered');
         truthy(!$engines->verified('6.6.6.6', $bot), 'claims Googlebot, resolves elsewhere');
         truthy(!$engines->verified('66.249.66.1', 'curl/8'), 'no crawler claimed');
-        $gate = new Gate([], SECRET, $engines);
+        $gate = new Gate(ChallengeSettings::from([]), SECRET, $engines);
         same(Decision::ALLOW, $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', [], 'GET', '66.249.66.1', $bot), 1.0)['decision']->action);
         same(Decision::CHALLENGE, $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', [], 'GET', '6.6.6.6', $bot), 1.0)['decision']->action);
     },

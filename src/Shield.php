@@ -34,15 +34,15 @@ use CjwNetwork\RequestShield\Store\Store;
  *
  * The checks run cheapest first -- method, sizes, path sanity, host, blocked
  * paths -- and stop at the first rejection, so a scanner's request costs a
- * few string comparisons. The cacheable definition and the budgets follow.
+ * few string comparisons. The cacheable definition and the budgets follow;
+ * a request the budgets want challenged then goes through the gate.
  */
 final class Shield
 {
     /** @var list<Rule> */
     private array $rules = [];
 
-    /** @var array<string, mixed> */
-    private array $config;
+    public readonly Settings $settings;
 
     private Store $store;
 
@@ -52,38 +52,40 @@ final class Shield
     private Decision $base;
 
     /**
-     * @param array<string, mixed> $config see Config::defaults()
+     * @param array<mixed>|Settings $config see Config::defaults()
      * @param (callable(Request): ?bool)|null $known an adapter's URL index (see CacheableRule)
+     * @throws \InvalidArgumentException for a setting of the wrong type
      */
-    public function __construct(array $config = [], ?Store $store = null, ?callable $known = null)
+    public function __construct(array|Settings $config = [], ?Store $store = null, ?callable $known = null)
     {
-        $this->config = $c = Config::merge($config);
-        $this->store = $store ?? self::storeFor($c);
+        $s = $this->settings = $config instanceof Settings ? $config : Settings::from($config);
+        $this->store = $store ?? self::storeFor($s);
+        $this->base = Decision::allow();
 
-        $this->rules[] = new MethodRule(array_map('strtoupper', (array) $c['methods']));
-        $limits = (array) $c['limits'];
-        $this->rules[] = new LimitsRule((int) ($limits['uri'] ?? 0), (int) ($limits['queryParameters'] ?? 0), (int) ($limits['headerBytes'] ?? 0));
+        $this->rules[] = new MethodRule($s->methods);
+        $this->rules[] = new LimitsRule($s->maxUri, $s->maxQueryParameters, $s->maxHeaderBytes);
         $this->rules[] = new PathSanityRule();
-        if ((array) $c['hosts'] !== []) {
-            $this->rules[] = new HostRule(array_values((array) $c['hosts']));
+        if ($s->hosts !== []) {
+            $this->rules[] = new HostRule($s->hosts);
         }
-        $this->rules[] = new BlockedPathRule(array_values((array) $c['blockedPaths']));
-        $cacheable = (array) $c['cacheable'];
-        $this->rules[] = new CacheableRule(
-            isset($cacheable['paths']) ? array_values((array) $cacheable['paths']) : null,
-            isset($cacheable['query']) ? array_values((array) $cacheable['query']) : null,
-            $known,
-        );
-        $exempt = array_values((array) ($c['exempt']['ips'] ?? []));
-        foreach ((array) $c['budgets'] as $name => $budget) {
-            if (!is_array($budget) || (int) ($budget['limit'] ?? 0) <= 0 || !empty($budget['onDemand'])) {
-                continue;
+        $this->rules[] = new BlockedPathRule($s->blockedPaths);
+        $this->rules[] = new CacheableRule($s->cacheablePaths, $s->cacheableQuery, $known);
+        foreach ($s->budgets as $budget) {
+            if (!$budget->onDemand) {
+                $this->rules[] = $this->budgetRule($budget);
             }
-            $this->rules[] = new BudgetRule(
-                $this->store, (string) $name, (int) $budget['limit'], (int) ($budget['window'] ?? 60),
-                isset($budget['challengeAt']) ? (int) $budget['challengeAt'] : null, $exempt, (int) $c['ipv6Prefix'],
-            );
         }
+    }
+
+    /**
+     * protect() with the settings of a file, checked only when it changed
+     * (see Settings::load()): the way to run the shield on every request.
+     *
+     * @param (callable(Request): ?bool)|null $known
+     */
+    public static function protectFile(string $file, ?callable $known = null, ?string $cacheDir = null): Decision
+    {
+        return self::protect(Settings::load($file, $cacheDir), $known);
     }
 
     /**
@@ -92,12 +94,18 @@ final class Shield
      * decision otherwise. Also Shield::current() and
      * $_SERVER['REQUEST_SHIELD'] ("allow" or "allow-uncached") afterwards.
      *
-     * @param array<string, mixed> $config
+     * An array is checked on every call; protectFile() checks it once.
+     *
+     * @param array<mixed>|Settings $config
+     * @param (callable(Request): ?bool)|null $known
      */
-    public static function protect(array $config = [], ?callable $known = null): Decision
+    public static function protect(array|Settings $config = [], ?callable $known = null): Decision
     {
         $shield = new self($config, null, $known);
-        $request = Request::fromServer($_SERVER, array_values((array) $shield->config['trustedProxies']));
+        $s = $shield->settings;
+        /** @var array<string, mixed> $server */
+        $server = $_SERVER;
+        $request = Request::fromServer($server, $s->trustedProxies);
         $now = microtime(true);
         $settled = $shield->settle($shield->decide($request, $now), $request, $now);
         $decision = $settled['decision'];
@@ -108,7 +116,7 @@ final class Shield
             }
         }
 
-        if (!$request->viaTrustedProxy && !empty($shield->config['stripUntrustedForwarded'])) {
+        if (!$request->viaTrustedProxy && $s->stripUntrustedForwarded) {
             foreach (array_keys($_SERVER) as $name) {
                 if (is_string($name) && strncmp($name, 'HTTP_X_FORWARDED_', 17) === 0) {
                     unset($_SERVER[$name]);
@@ -118,11 +126,11 @@ final class Shield
         }
 
         if (!$decision->passes()) {
-            (new Responder())->send($decision, $request, (bool) $shield->config['debugHeader'], $settled['page']);
+            (new Responder())->send($decision, $request, $s->debugHeader, $settled['page']);
             exit;
         }
         $_SERVER['REQUEST_SHIELD'] = $decision->action;
-        if (!empty($shield->config['debugHeader']) && !headers_sent()) {
+        if ($s->debugHeader && !headers_sent()) {
             header('X-Request-Shield: ' . $decision->action . ($decision->reason !== '' ? ' ' . $decision->reason : ''));
         }
         return $decision;
@@ -167,26 +175,50 @@ final class Shield
         if ($decision->action !== Decision::CHALLENGE) {
             return ['decision' => $decision, 'cookies' => [], 'page' => null];
         }
-        return $this->gate()->resolve($decision, $this->base ?? Decision::allow(), $request, $now);
+        return $this->gate()->resolve($decision, $this->base, $request, $now);
+    }
+
+    /**
+     * Counts one event against a budget that no rule counts by itself -- a
+     * cache miss, a failed sign-in -- and says what the client has earned.
+     * Budgets marked 'onDemand' => true in the configuration are only counted here.
+     */
+    public function consume(string $budget, Request $request, ?float $now = null): Decision
+    {
+        $b = $this->settings->budgets[$budget] ?? null;
+        if ($b === null) {
+            return Decision::allow();
+        }
+        return $this->budgetRule($b)->check($request, $now ?? microtime(true)) ?? Decision::allow();
+    }
+
+    private function budgetRule(Budget $b): BudgetRule
+    {
+        return new BudgetRule($this->store, $b->name, $b->limit, $b->window, $b->challengeAt,
+            $this->settings->exemptIps, $this->settings->ipv6Prefix);
     }
 
     private function gate(): Gate
     {
-        $c = (array) $this->config['challenge'];
-        $dir = (string) $this->config['storeDir'];
+        $c = $this->settings->challenge;
+        $dir = $this->settings->storeDir;
         $engines = null;
-        $list = $c['searchEngines'] ?? true;
-        if ($list !== false) {
+        if ($c->searchEngines !== null) {
             $apcu = ApcuStore::usable();
             $engines = new SearchEngines(
-                is_array($list) ? $list : SearchEngines::defaults(),
-                static function (string $key) use ($apcu, $dir) {
+                $c->searchEngines,
+                static function (string $key) use ($apcu, $dir): ?string {
                     if ($apcu) {
                         $v = apcu_fetch('rshield:' . $key);
-                        return $v === false ? null : $v;
+                        return is_string($v) ? $v : null;
                     }
                     $f = $dir . '/se/' . md5($key);
-                    return is_file($f) && filemtime($f) > time() - 86400 ? (string) @file_get_contents($f) : null;
+                    $mtime = @filemtime($f);
+                    if ($mtime === false || $mtime <= time() - 86400) {
+                        return null;
+                    }
+                    $v = @file_get_contents($f);
+                    return is_string($v) ? $v : null;
                 },
                 static function (string $key, string $value) use ($apcu, $dir): void {
                     if ($apcu) {
@@ -198,36 +230,16 @@ final class Shield
                 },
             );
         }
-        return new Gate($c, Secret::resolve($c['secret'] ?? null, $dir), $engines, (int) $this->config['ipv6Prefix'], $this->store);
+        return new Gate($c, Secret::resolve($c->secret, $dir), $engines, $this->settings->ipv6Prefix, $this->store);
     }
 
-    /**
-     * Counts one event against a budget that no rule counts by itself -- a
-     * cache miss, a failed sign-in -- and says what the client has earned.
-     * Budgets marked 'onDemand' => true in the configuration are only counted here.
-     */
-    public function consume(string $budget, Request $request, ?float $now = null): Decision
+    private static function storeFor(Settings $s): Store
     {
-        $b = $this->config['budgets'][$budget] ?? null;
-        if (!is_array($b) || (int) ($b['limit'] ?? 0) <= 0) {
-            return Decision::allow();
-        }
-        $rule = new BudgetRule(
-            $this->store, $budget, (int) $b['limit'], (int) ($b['window'] ?? 60),
-            isset($b['challengeAt']) ? (int) $b['challengeAt'] : null,
-            array_values((array) ($this->config['exempt']['ips'] ?? [])), (int) $this->config['ipv6Prefix'],
-        );
-        return $rule->check($request, $now ?? microtime(true)) ?? Decision::allow();
-    }
-
-    /** @param array<string, mixed> $c */
-    private static function storeFor(array $c): Store
-    {
-        return match ((string) $c['store']) {
+        return match ($s->store) {
             'apcu' => new ApcuStore(),
-            'file' => new FileStore((string) $c['storeDir']),
+            'file' => new FileStore($s->storeDir),
             'memory' => new MemoryStore(),
-            default => ApcuStore::usable() ? new ApcuStore() : new FileStore((string) $c['storeDir']),
+            default => ApcuStore::usable() ? new ApcuStore() : new FileStore($s->storeDir),
         };
     }
 }

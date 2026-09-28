@@ -52,7 +52,11 @@ final class SearchEngines
     ) {
     }
 
-    /** The engine's suffixes the User-Agent claims, or null for no crawler. */
+    /**
+     * The engine's suffixes the User-Agent claims, or null for no crawler.
+     *
+     * @return list<string>|null
+     */
     public function claims(string $userAgent): ?array
     {
         foreach ($this->engines as $pattern => $suffixes) {
@@ -110,10 +114,9 @@ final class SearchEngines
     {
         $out = [];
         foreach (@dns_get_record($host, DNS_A | DNS_AAAA) ?: [] as $record) {
-            if (isset($record['ip'])) {
-                $out[] = $record['ip'];
-            } elseif (isset($record['ipv6'])) {
-                $out[] = $record['ipv6'];
+            $ip = $record['ip'] ?? ($record['ipv6'] ?? null);
+            if (is_string($ip)) {
+                $out[] = $ip;
             }
         }
         return $out;

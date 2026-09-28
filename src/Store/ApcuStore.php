@@ -34,13 +34,19 @@ final class ApcuStore implements Store
         if (!$ok || $current === false) {
             $current = 1;
         }
-        return SlidingWindow::estimate((int) $current, (int) apcu_fetch($k . ($slot - 1)), $weight);
+        return SlidingWindow::estimate($current, self::count($k . ($slot - 1)), $weight);
     }
 
     public function peek(string $key, int $window, float $now): float
     {
         [$slot, $weight] = SlidingWindow::position($window, $now);
         $k = $this->prefix . $window . ':' . $key . ':';
-        return SlidingWindow::estimate((int) apcu_fetch($k . $slot), (int) apcu_fetch($k . ($slot - 1)), $weight);
+        return SlidingWindow::estimate(self::count($k . $slot), self::count($k . ($slot - 1)), $weight);
+    }
+
+    private static function count(string $key): int
+    {
+        $v = apcu_fetch($key);
+        return is_int($v) ? $v : 0;
     }
 }

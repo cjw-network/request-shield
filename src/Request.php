@@ -49,19 +49,19 @@ final class Request
         // from $server directly, not copied into a map of every header.
         $headerBytes = 0;
         foreach ($server as $name => $value) {
-            if (is_string($value) && is_string($name) && strncmp($name, 'HTTP_', 5) === 0) {
+            if (is_string($value) && strncmp($name, 'HTTP_', 5) === 0) {
                 $headerBytes += strlen($name) - 1 + strlen($value);
             }
         }
-        $forwardedFor = $server['HTTP_X_FORWARDED_FOR'] ?? null;
-        $forwardedProto = $server['HTTP_X_FORWARDED_PROTO'] ?? null;
-        $forwardedHost = $server['HTTP_X_FORWARDED_HOST'] ?? null;
+        $forwardedFor = self::str($server, 'HTTP_X_FORWARDED_FOR');
+        $forwardedProto = self::str($server, 'HTTP_X_FORWARDED_PROTO');
+        $forwardedHost = self::str($server, 'HTTP_X_FORWARDED_HOST');
 
-        $peer = (string) ($server['REMOTE_ADDR'] ?? '');
+        $peer = self::str($server, 'REMOTE_ADDR') ?? '';
         $trusted = $peer !== '' && $trustedProxies !== [] && IpAddress::inRanges($peer, $trustedProxies);
 
         $client = $peer;
-        if ($trusted && is_string($forwardedFor)) {
+        if ($trusted && $forwardedFor !== null) {
             // Right to left: the last address a trusted proxy added is the
             // first one nobody here vouches for.
             $hops = array_reverse(array_map('trim', explode(',', $forwardedFor)));
@@ -76,18 +76,19 @@ final class Request
             }
         }
 
-        $https = !empty($server['HTTPS']) && strtolower((string) $server['HTTPS']) !== 'off';
-        if ($trusted && is_string($forwardedProto)) {
+        $httpsVar = self::str($server, 'HTTPS') ?? '';
+        $https = $httpsVar !== '' && strtolower($httpsVar) !== 'off';
+        if ($trusted && $forwardedProto !== null) {
             $https = strtolower(trim(explode(',', $forwardedProto)[0])) === 'https';
         }
 
-        $host = (string) ($server['HTTP_HOST'] ?? ($server['SERVER_NAME'] ?? ''));
-        if ($trusted && is_string($forwardedHost)) {
+        $host = self::str($server, 'HTTP_HOST') ?? (self::str($server, 'SERVER_NAME') ?? '');
+        if ($trusted && $forwardedHost !== null) {
             $host = trim(explode(',', $forwardedHost)[0]);
         }
         $host = strtolower(preg_replace('/:\d+$/', '', $host) ?? $host);
 
-        $uri = (string) ($server['REQUEST_URI'] ?? '/');
+        $uri = self::str($server, 'REQUEST_URI') ?? '/';
         $hash = strpos($uri, '#');
         if ($hash !== false) {
             $uri = substr($uri, 0, $hash);
@@ -97,7 +98,7 @@ final class Request
         $query = $q === false ? '' : substr($uri, $q + 1);
 
         return new self(
-            strtoupper((string) ($server['REQUEST_METHOD'] ?? 'GET')),
+            strtoupper(self::str($server, 'REQUEST_METHOD') ?? 'GET'),
             $https ? 'https' : 'http',
             $host,
             $path === '' ? '/' : $path,
@@ -109,6 +110,13 @@ final class Request
             $headerBytes,
             $server,
         );
+    }
+
+    /** @param array<string, mixed> $server */
+    private static function str(array $server, string $key): ?string
+    {
+        $v = $server[$key] ?? null;
+        return is_string($v) ? $v : null;
     }
 
     /** A cookie of the request, read from the Cookie header (not $_COOKIE). */

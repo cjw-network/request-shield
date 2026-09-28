@@ -96,8 +96,8 @@ final class Config
     }
 
     /**
-     * @param array<string, mixed> $config
-     * @return array<string, mixed>
+     * @param array<mixed> $config
+     * @return array<mixed>
      */
     public static function merge(array $config): array
     {

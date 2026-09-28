@@ -28,6 +28,14 @@ final class Decision
     public const THROTTLE = 'throttle';
     public const REJECT = 'reject';
 
+    private const RANK = [
+        self::ALLOW => 0, self::ALLOW_UNCACHED => 1, self::CHALLENGE => 2,
+        self::THROTTLE => 3, self::REJECT => 4,
+    ];
+
+    /** Immutable, so one is enough. */
+    private static ?self $allow = null;
+
     private function __construct(
         public readonly string $action,
         public readonly int $status,
@@ -39,8 +47,7 @@ final class Decision
 
     public static function allow(): self
     {
-        static $allow = null;          // immutable, so one is enough
-        return $allow ??= new self(self::ALLOW, 200, '');
+        return self::$allow ??= new self(self::ALLOW, 200, '');
     }
 
     public static function allowUncached(string $reason): self
@@ -79,10 +86,6 @@ final class Decision
     /** The more restrictive of two decisions. */
     public function stricter(self $other): self
     {
-        static $rank = [
-            self::ALLOW => 0, self::ALLOW_UNCACHED => 1, self::CHALLENGE => 2,
-            self::THROTTLE => 3, self::REJECT => 4,
-        ];
-        return $rank[$other->action] > $rank[$this->action] ? $other : $this;
+        return (self::RANK[$other->action] ?? 0) > (self::RANK[$this->action] ?? 0) ? $other : $this;
     }
 }

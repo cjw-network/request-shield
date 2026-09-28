@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield\Challenge;
 
+use CjwNetwork\RequestShield\ChallengeSettings;
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\IpAddress;
 use CjwNetwork\RequestShield\Request;
@@ -27,11 +28,8 @@ use CjwNetwork\RequestShield\Store\Store;
  */
 final class Gate
 {
-    /**
-     * @param array<string, mixed> $config Config's 'challenge' section
-     */
     public function __construct(
-        private readonly array $config,
+        private readonly ChallengeSettings $config,
         private readonly string $secret,
         private readonly ?SearchEngines $searchEngines = null,
         private readonly int $ipv6Prefix = 64,
@@ -48,9 +46,9 @@ final class Gate
     {
         $bucket = IpAddress::bucket($request->clientIp, $this->ipv6Prefix);
         $ua = (string) $request->header('user-agent');
-        $pass = new PassCookie($this->secret, (bool) ($this->config['bindUserAgent'] ?? true));
-        $passName = (string) ($this->config['cookie'] ?? 'rs_pass');
-        $solutionName = (string) ($this->config['solutionCookie'] ?? 'rs_solution');
+        $pass = new PassCookie($this->secret, $this->config->bindUserAgent);
+        $passName = $this->config->cookie;
+        $solutionName = $this->config->solutionCookie;
         $secure = $request->scheme === 'https';
 
         if ($pass->valid($request->cookie($passName), $bucket, $ua, $now)) {
@@ -61,7 +59,7 @@ final class Gate
         if ($solution !== null && ($request->method === 'GET' || $request->method === 'HEAD')) {
             $cookies = [self::cookie($solutionName, '', 0, $secure)];
             if ((new ProofOfWork($this->secret))->verify($solution, $bucket, $now) && $this->firstUse($solution, $now)) {
-                $ttl = max(60, (int) ($this->config['passTtl'] ?? 3600));
+                $ttl = $this->config->passTtl;
                 $cookies[] = self::cookie($passName, $pass->issue($bucket, $ua, (int) $now + $ttl), $ttl, $secure);
                 // The page this request gets is for a challenged client:
                 // answered, but kept out of every cache.
@@ -75,7 +73,7 @@ final class Gate
         if ($this->searchEngines !== null && $this->searchEngines->verified($request->clientIp, $ua)) {
             return ['decision' => $base, 'cookies' => $cookies, 'page' => null];
         }
-        foreach ((array) ($this->config['exemptPaths'] ?? []) as $pattern) {
+        foreach ($this->config->exemptPaths as $pattern) {
             if (@preg_match($pattern, $request->path) === 1) {
                 return ['decision' => $base, 'cookies' => $cookies, 'page' => null];
             }
@@ -84,12 +82,11 @@ final class Gate
             return ['decision' => Decision::throttle($challenged->reason, 10), 'cookies' => $cookies, 'page' => null];
         }
 
-        $min = max(1000, (int) ($this->config['difficulty']['min'] ?? 50000));
-        $max = max($min, (int) ($this->config['difficulty']['max'] ?? 500000));
-        $maxNumber = (int) round($min + ($max - $min) * $challenged->level);
-        $expires = (int) $now + max(30, (int) ($this->config['solutionTtl'] ?? 300));
+        $min = $this->config->difficultyMin;
+        $maxNumber = (int) round($min + ($this->config->difficultyMax - $min) * $challenged->level);
+        $expires = (int) $now + $this->config->solutionTtl;
         $challenge = (new ProofOfWork($this->secret))->create($bucket, $maxNumber, $expires);
-        $page = ChallengePage::render($challenge, $solutionName, $secure, (array) ($this->config['texts'] ?? []));
+        $page = ChallengePage::render($challenge, $solutionName, $secure, $this->config->texts);
         return ['decision' => $challenged, 'cookies' => $cookies, 'page' => $page];
     }
 
@@ -104,8 +101,7 @@ final class Gate
         if ($this->store === null || $challenge === null) {
             return $this->store === null;
         }
-        $ttl = max(30, (int) ($this->config['solutionTtl'] ?? 300));
-        return $this->store->hit('pow:' . $challenge, $ttl, $now) <= 1.0;
+        return $this->store->hit('pow:' . $challenge, $this->config->solutionTtl, $now) <= 1.0;
     }
 
     /** A Set-Cookie value; $maxAge 0 deletes the cookie. */

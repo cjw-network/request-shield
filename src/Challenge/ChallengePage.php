@@ -37,7 +37,7 @@ final class ChallengePage
             'failed' => 'The check did not succeed. Please reload the page.',
         ];
         $e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-        $js = static fn ($v): string => json_encode($v, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+        $js = static fn ($v): string => json_encode($v, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
         $config = $js([
             'c' => $challenge,
             'cookie' => $cookieName,

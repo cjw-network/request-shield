@@ -50,12 +50,25 @@ foreach ($stores as $name => $store) {
     }
     printf("  %-7s %6.2f µs per request (%s)\n", $name, (hrtime(true) - $t) / $iterations / 1000, $d->action);
 }
-// Building the shield itself (once per request in protect()).
+// Building the shield itself, once per request: from an array (every setting
+// checked), and from a settings file compiled once (Settings::load(), served
+// by OPcache -- run with -d opcache.enable_cli=1 to see what FPM sees).
 $t = hrtime(true);
 for ($i = 0; $i < 20000; $i++) {
     $s = new Shield($config, $stores['memory']);
 }
-printf("  %-7s %6.2f µs per request (new Shield with this configuration)\n", 'setup', (hrtime(true) - $t) / 20000 / 1000);
+printf("  %-7s %6.2f µs per request (new Shield from an array: every setting checked)\n", 'setup', (hrtime(true) - $t) / 20000 / 1000);
+$cfgFile = $dir . '-config.php';
+file_put_contents($cfgFile, '<?php return ' . var_export($config, true) . ';');
+CjwNetwork\RequestShield\Settings::load($cfgFile, $dir . '-cache');
+$t = hrtime(true);
+for ($i = 0; $i < 20000; $i++) {
+    clearstatcache();       // each request starts with an empty stat cache
+    $s = new Shield(CjwNetwork\RequestShield\Settings::load($cfgFile, $dir . '-cache'), $stores['memory']);
+}
+printf("  %-7s %6.2f µs per request (new Shield from a compiled settings file%s)\n", 'setup', (hrtime(true) - $t) / 20000 / 1000,
+    function_exists('opcache_get_status') && ini_get('opcache.enable_cli') ? ', OPcache on' : ', OPcache OFF: the file is parsed every time');
+exec('rm -rf ' . escapeshellarg($cfgFile) . ' ' . escapeshellarg($dir . '-cache'));
 exec('rm -rf ' . escapeshellarg($dir));
 
 // ── The challenge paths (only for clients past a threshold) ──────────────────
