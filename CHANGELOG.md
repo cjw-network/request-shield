@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-09-28
+
 ### Added
 - The browser challenge: an ALTCHA-compatible proof of work for clients past a
   budget's `challengeAt`, a signed pass cookie bound to client and User-Agent,
@@ -42,5 +44,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `Shield::consume()`, APCu, file and memory stores, `bootstrap.php` for
   `auto_prepend_file`.
 
-[Unreleased]: https://github.com/cjw-network/request-shield/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/cjw-network/request-shield/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/cjw-network/request-shield/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/cjw-network/request-shield/releases/tag/v0.1.0

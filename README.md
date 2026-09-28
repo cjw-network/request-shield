@@ -34,8 +34,8 @@ and PHP slots, just very briefly.
 ## Status
 
 - **0.1.0:** the core.
-- **Unreleased:** the browser challenge (proof of work), settings compiled for
-  OPcache.
+- **0.2.0:** the browser challenge (proof of work), settings checked once and
+  compiled for OPcache, documentation, CI.
 - **Next:** earning back a spent budget with a challenge, for forms and APIs
   ([proposal 0001](docs/proposals/0001-earn-back-a-spent-budget.md)); adapters
   for Exponential, WordPress and Ibexa; exporting the rules to nginx, Apache
