@@ -89,6 +89,10 @@ final class Config
             // (all), 'ips' => [range, ...] or [] (everyone)], ...]. Path sanity
             // (traversal, disguised paths) is never lifted.
             'blockExceptions' => [],
+            // Attack patterns in the query and the headers (rules/attacks.rules):
+            // [['target' => 'query'|'headers'|'anywhere'|'header:<name>',
+            //   'patterns' => [regex, ...]], ...], matched against Request::content().
+            'contentRules' => [],
             // Methods allowed only on some paths: ['POST' => [regex, ...]]; other
             // paths answer 405 for that method. Methods not listed: see 'methods'.
             'methodPaths' => [],

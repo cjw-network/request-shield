@@ -124,6 +124,57 @@ final class Request
 
     private ?string $matchPath = null;
 
+    /** @var array<string, string> */
+    private array $content = [];
+
+    /**
+     * What attack rules look at, normalised so that disguises do not help:
+     * decoded (twice: "%2527" is "'"), "+" as a space in the query, lower
+     * case, SQL comments and runs of white space as one space.
+     *
+     *   "query"          the query string
+     *   "header:<name>"  one header ("header:user-agent")
+     *   "headers"        every header's value
+     *   "anywhere"       path, query and every header
+     */
+    public function content(string $target): string
+    {
+        if (isset($this->content[$target])) {
+            return $this->content[$target];
+        }
+        if ($target === 'query') {
+            $v = self::normal(str_replace('+', ' ', $this->query));
+        } elseif (strncmp($target, 'header:', 7) === 0) {
+            $v = self::normal((string) $this->header(substr($target, 7)));
+        } elseif ($target === 'headers') {
+            $all = [];
+            foreach ($this->server as $name => $value) {
+                if (is_string($value) && strncmp($name, 'HTTP_', 5) === 0 && $name !== 'HTTP_COOKIE') {
+                    $all[] = $value;
+                }
+            }
+            $v = self::normal(implode("\n", $all));
+        } else {
+            $v = self::normal($this->path) . "\n" . $this->content('query') . "\n" . $this->content('headers');
+        }
+        return $this->content[$target] = $v;
+    }
+
+    private static function normal(string $v): string
+    {
+        if ($v === '') {
+            return '';
+        }
+        for ($i = 0; $i < 2 && strpos($v, '%') !== false; $i++) {
+            $v = rawurldecode($v);
+        }
+        $v = strtolower($v);
+        if (strpos($v, '/*') !== false) {
+            $v = (string) preg_replace('#/\*.*?\*/#s', ' ', $v);
+        }
+        return (string) preg_replace('/\s+/', ' ', $v);
+    }
+
     /**
      * The path as the application will route it: percent-decoded, with "//"
      * and "/./" collapsed -- what path rules that grant or refuse access are

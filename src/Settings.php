@@ -30,6 +30,8 @@ final class Settings
      * @param list<array{paths: list<string>, ips: list<string>}> $restricted
      * @param array<string, list<string>> $methodPaths
      * @param list<array{paths: list<string>, patterns: list<string>|null, ips: list<string>}> $blockExceptions
+     * @param list<array{target: string, patterns: list<string>}> $contentRules
+     * @param array<string, string> $contentIndex
      */
     private function __construct(
         /** @readonly */
@@ -84,6 +86,10 @@ final class Settings
         public array $blockExceptions = [],
         /** @readonly */
         public bool $appChallenge = false,
+        /** @readonly */
+        public array $contentRules = [],
+        /** @readonly target => all of its patterns in one expression */
+        public array $contentIndex = [],
     ) {
     }
 
@@ -114,6 +120,7 @@ final class Settings
             $exceptions[] = ['paths' => self::strings($x, 'paths', "blockExceptions.$i.paths"),
                 'patterns' => self::stringsOrNull($x, 'patterns', "blockExceptions.$i.patterns"), 'ips' => self::strings($x, 'ips', "blockExceptions.$i.ips")];
         }
+        [$contentRules, $contentIndex] = self::contentRules(self::map($c, 'contentRules'));
         $methodPaths = [];
         foreach (self::map($c, 'methodPaths') as $method => $paths) {
             $methodPaths[strtoupper((string) $method)] = self::strings(['p' => $paths], 'p', "methodPaths.$method");
@@ -169,7 +176,52 @@ final class Settings
             max(4096, self::int($log, 'maxSize', 'log.maxSize', 10485760)),
             $exceptions,
             self::bool($c, 'appChallenge'),
+            $contentRules,
+            $contentIndex,
         );
+    }
+
+    /**
+     * The attack rules, and per target one expression of all its patterns --
+     * a clean request then costs one match per target.
+     *
+     * @param array<mixed> $list
+     * @return array{0: list<array{target: string, patterns: list<string>}>, 1: array<string, string>}
+     */
+    private static function contentRules(array $list): array
+    {
+        $rules = [];
+        $bodies = [];
+        foreach ($list as $i => $r) {
+            if (!is_array($r)) {
+                throw self::wrong("contentRules.$i", "an array of 'target' and 'patterns'");
+            }
+            $target = strtolower(self::string($r, 'target', "contentRules.$i.target"));
+            if (!in_array($target, ['query', 'headers', 'anywhere'], true) && !preg_match('/^header:[a-z0-9-]+$/', $target)) {
+                throw self::wrong("contentRules.$i.target", 'query, headers, anywhere or header:<name>');
+            }
+            $patterns = self::strings($r, 'patterns', "contentRules.$i.patterns");
+            foreach ($patterns as $p) {
+                if (!preg_match('/^#(.*)#i?$/s', $p, $m) || @preg_match($p, '') === false) {
+                    throw self::wrong("contentRules.$i.patterns", 'regular expressions in #...# (flag i at most)');
+                }
+                // All of a target's patterns become one expression: a back
+                // reference would point at another pattern's group.
+                if (preg_match('/\\\\[1-9]|\\\\g\{?-?\d|\(\?P?[<\'=]/', $m[1])) {
+                    throw self::wrong("contentRules.$i.patterns", 'expressions without back references or named groups');
+                }
+                $bodies[$target][] = '(?:' . $m[1] . ')';
+            }
+            $rules[] = ['target' => $target, 'patterns' => $patterns];
+        }
+        $index = [];
+        foreach ($bodies as $target => $b) {
+            $index[$target] = '#' . implode('|', $b) . '#i';
+            if (@preg_match($index[$target], '') === false) {
+                throw self::wrong('contentRules', 'patterns that also work together (' . $target . ')');
+            }
+        }
+        return [$rules, $index];
     }
 
     /**
@@ -205,7 +257,7 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 8;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home
+    private const FORMAT = 9;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules
 
     /**
      * The settings of a file, checked only when it changed. A ".rules" file
