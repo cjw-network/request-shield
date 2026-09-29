@@ -70,4 +70,13 @@ return [
         same('', Request::fromServer(['REQUEST_URI' => '/'])->content('query'), 'no query: empty');
         same('', Request::fromServer([])->content('headers'), 'no headers: empty');
     },
+    'mayHold(): the raw value holds a text (any case) or something encoded' => function (): void {
+        $r = Request::fromServer(['REQUEST_URI' => '/p?a=1', 'HTTP_USER_AGENT' => 'Mozilla/5.0', 'HTTP_X_ONE' => 'A ${Thing}', 'HTTP_COOKIE' => '${cookie}']);
+        same(true, $r->mayHold('headers', ['${thing']), 'any case');
+        same(false, $r->mayHold('query', ['${']));
+        same(false, $r->mayHold('header:user-agent', ['${']));
+        same(true, Request::fromServer(['REQUEST_URI' => '/p?a=%24%7Bx']) ->mayHold('query', ['${']), 'encoded: it could be');
+        same(true, Request::fromServer(['REQUEST_URI' => '/p/%2524']) ->mayHold('anywhere', ['${']), 'the path counts for anywhere');
+        same(false, Request::fromServer(['REQUEST_URI' => '/p', 'HTTP_COOKIE' => '${x}'])->mayHold('headers', ['${']), 'cookies are not looked at');
+    },
 ];

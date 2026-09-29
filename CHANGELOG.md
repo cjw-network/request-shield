@@ -120,6 +120,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   refused request looked unblocked there.
 
 ### Changed
+- Faster: the blocked paths are matched as one expression (compiled once), so
+  a clean request costs one match however many blocks there are (7.7 instead of
+  8.2 µs per request with the defaults); attack rules skip a target when its
+  raw value cannot hold what every one of its patterns starts with (Log4Shell:
+  `${`), and white space is only normalised where there is any. With
+  `include @attacks` a clean request costs about 8.6 µs more instead of 10.5
+  (PHP 8.1, measured end to end).
 - The end-to-end tests take their ports from the operating system: a guessed
   port could belong to another service, which then answered the test.
 - The compiled settings record every source file and the environment

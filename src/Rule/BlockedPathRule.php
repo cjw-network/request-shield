@@ -27,7 +27,7 @@ final class BlockedPathRule implements Rule
      * @param list<array{paths: list<string>, patterns: list<string>|null, ips: list<string>}> $exceptions
      *   where blocked paths are let through anyway -- looked at only once a pattern matched
      */
-    public function __construct(private array $patterns, private array $exceptions = [])
+    public function __construct(private array $patterns, private array $exceptions = [], private string $index = '')
     {
     }
 
@@ -37,6 +37,12 @@ final class BlockedPathRule implements Rule
             return null;
         }
         $path = strtolower(rawurldecode($request->path));
+        // All patterns in one expression (Settings::combine()): a clean path
+        // costs one match; only a hit looks for the pattern, for the
+        // exceptions and the rule's ID.
+        if ($this->index !== '' && @preg_match($this->index, $path) !== 1) {
+            return null;
+        }
         foreach ($this->patterns as $pattern) {
             if (@preg_match($pattern, $path) === 1 && ($this->exceptions === [] || self::excepted($this->exceptions, $pattern, $request) === null)) {
                 return Decision::reject(404, 'blocked path');

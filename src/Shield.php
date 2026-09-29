@@ -86,7 +86,7 @@ final class Shield
         if ($s->hosts !== []) {
             $this->rules[] = new HostRule($s->hosts);
         }
-        $this->rules[] = new BlockedPathRule($s->blockedPaths, $s->blockExceptions);
+        $this->rules[] = new BlockedPathRule($s->blockedPaths, $s->blockExceptions, $s->blockedIndex);
         if ($s->methodPaths !== []) {
             $this->rules[] = new MethodPathRule($s->methodPaths);
         }
@@ -94,7 +94,7 @@ final class Shield
             $this->rules[] = new RestrictedPathRule($s->restricted);
         }
         if ($s->contentIndex !== []) {
-            $this->rules[] = new ContentRule($s->contentIndex, $s->contentRules, $s->blockExceptions);
+            $this->rules[] = new ContentRule($s->contentIndex, $s->contentRules, $s->blockExceptions, $s->contentHints);
         }
         $this->rules[] = new CacheableRule($s->cacheablePaths, $s->cacheableQuery, $known);
         foreach ($s->budgets as $budget) {

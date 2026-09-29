@@ -153,11 +153,50 @@ final class Request
                     $all[] = $value;
                 }
             }
-            $v = self::normal(implode("\n", $all));
+            // Joined by a space: what a line break would have become anyway.
+            $v = self::normal(implode(' ', $all));
         } else {
-            $v = self::normal($this->path) . "\n" . $this->content('query') . "\n" . $this->content('headers');
+            $v = self::normal($this->path) . ' ' . $this->content('query') . ' ' . $this->content('headers');
         }
         return $this->content[$target] = $v;
+    }
+
+    /**
+     * Whether the raw value of a target could hold one of $texts once
+     * normalised: it holds one (any case), or a "%" that decoding could turn
+     * into one. Cheaper than normalising.
+     *
+     * @param list<string> $texts lower case
+     */
+    public function mayHold(string $target, array $texts): bool
+    {
+        $raw = [];
+        if ($target === 'query' || $target === 'anywhere') {
+            $raw[] = $this->query;
+        }
+        if ($target === 'anywhere') {
+            $raw[] = $this->path;
+        }
+        if (strncmp($target, 'header:', 7) === 0) {
+            $raw[] = (string) $this->header(substr($target, 7));
+        } elseif ($target === 'headers' || $target === 'anywhere') {
+            foreach ($this->server as $name => $value) {
+                if (is_string($value) && strncmp($name, 'HTTP_', 5) === 0 && $name !== 'HTTP_COOKIE') {
+                    $raw[] = $value;
+                }
+            }
+        }
+        foreach ($raw as $v) {
+            if (strpos($v, '%') !== false) {
+                return true;
+            }
+            foreach ($texts as $t) {
+                if (stripos($v, $t) !== false) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static function normal(string $v): string
@@ -171,6 +210,13 @@ final class Request
         $v = strtolower($v);
         if (strpos($v, '/*') !== false) {
             $v = (string) preg_replace('#/\*.*?\*/#s', ' ', $v);
+        }
+        // Runs of white space as one space -- only when there are any: most
+        // values have single spaces, and the expression is the costly part.
+        // (One compiled expression is the quickest test here: faster than
+        // strpbrk() and strcspn() on header-length strings.)
+        if (preg_match('/[\t\n\r\x0B\x0C]|  /', $v) !== 1) {
+            return $v;
         }
         return (string) preg_replace('/\s+/', ' ', $v);
     }

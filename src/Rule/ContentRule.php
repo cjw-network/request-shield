@@ -27,14 +27,20 @@ final class ContentRule implements Rule
      * @param array<string, string> $index target => the combined expression
      * @param list<array{target: string, patterns: list<string>}> $rules
      * @param list<array{paths: list<string>, patterns: list<string>|null, ips: list<string>}> $exceptions
+     * @param array<string, list<string>> $hints
      */
-    public function __construct(private array $index, private array $rules, private array $exceptions = [])
+    public function __construct(private array $index, private array $rules, private array $exceptions = [], private array $hints = [])
     {
     }
 
     public function check(Request $request, float $now): ?Decision
     {
         foreach ($this->index as $target => $all) {
+            // A text every pattern of the target needs (Settings::hints()):
+            // not in the raw value, and nothing encoded -- nothing to find.
+            if (isset($this->hints[$target]) && !$request->mayHold($target, $this->hints[$target])) {
+                continue;
+            }
             $content = $request->content($target);
             if ($content !== '' && @preg_match($all, $content) === 1 && self::matched($this->rules, $this->exceptions, $target, $request) !== null) {
                 return Decision::reject(403, 'attack');

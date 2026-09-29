@@ -108,4 +108,29 @@ return [
             truthy(strpos($e->getMessage(), 'cannot read') !== false, $e->getMessage());
         }
     },
+    'combine(): several expressions as one, only where that means the same' => function (): void {
+        same('#(?:a/b)|(?i:c)#', Settings::combine(['/a\/b/', '#c#i']));
+        same('', Settings::combine(['#a#']), 'one: nothing to combine');
+        same('', Settings::combine(['#(a)\1#', '#b#']), 'a back reference would point elsewhere');
+        same('', Settings::combine(['#a#x', '#b#']), 'another flag');
+        same('', Settings::combine(['~a~', '#b#']), 'another delimiter');
+        $s = Settings::from([]);
+        truthy($s->blockedIndex !== '', 'the built-in blocks are combined');
+        foreach (['/.env', '/x/dump.sql', '/phpinfo.php', '/cgi-bin/x', '/page', '/about/team', '/.well-known/acme-challenge/x'] as $path) {
+            $one = false;
+            foreach ($s->blockedPaths as $p) {
+                $one = $one || preg_match($p, $path) === 1;
+            }
+            same($one, preg_match($s->blockedIndex, $path) === 1, "combined = one by one: $path");
+        }
+    },
+    'hints(): the text every pattern of a target starts with -- else none' => function (): void {
+        $rule = static fn (string $target, string ...$p): array => ['target' => $target, 'patterns' => $p];
+        same(['anywhere' => ['${']], Settings::hints([$rule('anywhere', '#\$\{(aa|bb)|\$\{cc:#i')]));
+        same(['query' => ['foo', 'bar']], Settings::hints([$rule('query', '#foo\d|bar#i')]));
+        same([], Settings::hints([$rule('query', '#ab?c#i')]), 'b is optional: only "a" is sure -- too short');
+        same([], Settings::hints([$rule('query', '#\bfoo#i')]), 'starts with an assertion');
+        same([], Settings::hints([$rule('query', '#foo#i', '#(x|y)z#i')]), 'one pattern without: the whole target without');
+        same(['header:x' => ['[ab']], Settings::hints([$rule('header:x', '#\[ab#i')]), 'escaped characters are plain text');
+    },
 ];

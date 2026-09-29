@@ -130,7 +130,7 @@ final class Inspector
         $restricted = $s->restricted === [] ? null : (new RestrictedPathRule($s->restricted))->check($request, $now);
         $step('Areas for certain visitors', $restricted, $this->restrictedPass($request),
             fn (): string => 'only for ' . $this->restrictedFor($request) . " — $request->clientIp is not one of them");
-        $step('Attack patterns', $s->contentIndex === [] ? null : (new ContentRule($s->contentIndex, $s->contentRules, $s->blockExceptions))->check($request, $now),
+        $step('Attack patterns', $s->contentIndex === [] ? null : (new ContentRule($s->contentIndex, $s->contentRules, $s->blockExceptions, $s->contentHints))->check($request, $now),
             $s->contentIndex === [] ? 'no attack patterns configured' : $this->attackPass($request),
             fn (): string => 'refused: ' . $this->attackMatch($request));
         $step('May a cache keep the answer?', (new CacheableRule($s->cacheablePaths, $s->cacheableQuery))->check($request, $now),
