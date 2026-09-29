@@ -24,7 +24,8 @@
   [0003 human-readable rule files](proposals/0003-human-readable-rule-files.md) (implemented) ·
   [0004 modes: monitor and strict](proposals/0004-modes-monitor-and-strict.md) ·
   [0005 versioned rule sets](proposals/0005-versioned-rule-sets.md) (implemented) ·
-  [0006 the site asks for the check](proposals/0006-the-site-asks-for-the-check.md) (implemented)
+  [0006 the site asks for the check](proposals/0006-the-site-asks-for-the-check.md) (implemented) ·
+  [0008 match blocks](proposals/0008-match-blocks.md)
   (0002, a single-file build, is reserved)
 - **Architecture decisions**:
   [0001 run in PHP first](adr/0001-run-in-php-before-the-application.md) ·
