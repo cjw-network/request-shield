@@ -95,13 +95,13 @@ return [
         try {
             $s = Settings::from(['log' => ['file' => "$dir/shield.log"]]);
             $r = Request::fromServer(['REQUEST_URI' => '/.env', 'REMOTE_ADDR' => '198.51.100.7', 'HTTP_HOST' => 'example.org']);
-            Log::write($s, $r, Decision::reject(404, 'blocked path'), 'default @scanners.hidden-files', 1000.0);
-            Log::write($s, $r, Decision::reject(404, 'blocked path'), 'default @scanners.hidden-files', 200000.0);
-            Log::write($s, $r, Decision::reject(404, 'blocked path'), 'default @scanners.hidden-files', 200100.0);
+            Log::write($s, $r, Decision::reject(404, 'blocked path'), 'SCAN-HIDDEN', 1000.0);
+            Log::write($s, $r, Decision::reject(404, 'blocked path'), 'SCAN-HIDDEN', 200000.0);
+            Log::write($s, $r, Decision::reject(404, 'blocked path'), 'SCAN-HIDDEN', 200100.0);
             Log::write($s, $r, Decision::challenge('requests'), 'site.rules:7', 200200.0);
             file_put_contents("$dir/shield.log", "garbage line\n", FILE_APPEND);
             $st = LogStats::read("$dir/shield.log", 200000 - 86400);
-            same(['count' => 2, 'last' => 200100], $st['rules']['default @scanners.hidden-files'], 'the old one is outside the 24 hours');
+            same(['count' => 2, 'last' => 200100], $st['rules']['SCAN-HIDDEN'], 'the old one is outside the 24 hours');
             same(['reject' => 2, 'challenge' => 1], $st['actions']);
             same('site.rules:7', $st['recent'][0]['rule'], 'newest first');
             same('http://example.org/.env', $st['recent'][0]['url']);

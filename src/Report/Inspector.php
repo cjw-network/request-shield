@@ -164,7 +164,7 @@ final class Inspector
         $path = strtolower(rawurldecode($request->path));
         foreach ($this->settings->blockedPaths as $p) {
             if (@preg_match($p, $path) === 1) {
-                return Describe::pattern($this->settings, $p);
+                return Describe::rule($this->settings, 'blockedPaths', $p);
             }
         }
         return 'a refused address';
@@ -179,7 +179,7 @@ final class Inspector
                 $i = BlockedPathRule::excepted($this->settings->blockExceptions, $p, $request);
                 if ($i !== null) {
                     $x = $this->settings->blockExceptions[$i];
-                    return 'would be refused (' . Describe::pattern($this->settings, $p) . '), but open here'
+                    return 'would be refused (' . Describe::rule($this->settings, 'blockedPaths', $p) . '), but open here'
                         . ($x['ips'] !== [] ? " for $request->clientIp (" . implode(', ', $x['ips']) . ')' : ' for everyone')
                         . ' — ' . ($this->settings->origin('blockExceptions', $x['paths'][0] ?? '') ?? "blockExceptions[$i]");
                 }

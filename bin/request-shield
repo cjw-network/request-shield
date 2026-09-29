@@ -94,8 +94,9 @@ if ($command === 'check' || $command === 'reload') {
             $warnings++;
         }
     }
-    $files = count(array_filter(array_keys($read['seen']), 'is_file'));
-    echo "ok: $files file(s), " . count($settings->blockedPaths) . ' blocked patterns, ' . count($settings->budgets) . " budget(s)\n";
+    $shipped = dirname(__DIR__) . '/rules/';
+    $files = count(array_filter(array_keys($read['seen']), static fn (string $f): bool => is_file($f) && strncmp((string) realpath($f), $shipped, strlen($shipped)) !== 0));
+    echo "ok: $files file(s) + built-in rules, " . count($settings->blockedPaths) . ' blocked patterns, ' . count($settings->budgets) . " budget(s)\n";
     if ($command === 'reload') {
         touch($file);
         echo "reload: $file marked changed; every server reads the rules again on its next check\n";
@@ -105,8 +106,17 @@ if ($command === 'check' || $command === 'reload') {
 
 // show: the effective rules, as rule lines (patterns as the regular
 // expressions they became), each with its origin.
-$o = static fn (string $setting, string $what): string => '    # ' . ($settings->origin($setting, $what) ?? 'default');
-$line = static fn (string $text, string $origin = ''): string => str_pad($text, 60) . ($origin !== '' ? ' ' . trim($origin) : '') . "\n";
+// Each rule as a rule line: [ID] in front when it has one of its own, and as
+// the comment its description and where it is written.
+$o = static fn (string $setting, string $what): string => $settings->origin($setting, $what) ?? \CjwNetwork\RequestShield\Config::setName($what) ?? 'default';
+$line = static function (string $text, string $id = '') use ($settings): string {
+    if ($id === '') {
+        return $text . "\n";
+    }
+    $where = $settings->origin('at', $id);
+    $about = $settings->origin('text', $id) ?? '';
+    return str_pad(($where !== null ? "[$id] " : '') . $text, 64) . ' # ' . trim($about . '  (' . ($where ?? $id) . ')') . "\n";
+};
 $regex = static fn (string $p): string => trim(preg_replace('/^#|#i?$/', '', $p) ?? $p);
 
 echo "# Effective rules of $file" . ($sources !== [] ? ' with ' . implode(' ', $sources) : '') . "\n";

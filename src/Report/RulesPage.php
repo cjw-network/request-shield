@@ -82,16 +82,19 @@ final class RulesPage
         $h .= '</section>';
 
         // ── The rules ───────────────────────────────────────────────────────
-        $h .= '<h2>The rules</h2><p class="note">Each with where it is written and, from the log, how often it decided in the last 24 hours.</p>';
+        $h .= '<h2>The rules</h2><p class="note">Each with its ID, where it is written and, from the log, how often it decided in the last 24 hours. The text is the comment after the rule in the rule file.</p>';
         foreach (self::groups($s) as [$heading, $intro, $rows]) {
             $h .= '<section class="card"><h3>' . $e($heading) . '</h3><p class="intro">' . $e($intro) . '</p>';
             if ($rows !== []) {
                 $h .= '<table>';
-                foreach ($rows as [$text, $origin, $id]) {
-                    $hit = $id !== null ? ($stats['rules'][$id] ?? null) : null;
-                    $h .= '<tr><td>' . $e($text) . '</td><td class="meta">' . ($origin !== null ? '<code class="origin">' . $e($origin) . '</code>' : '')
-                        . '</td><td class="hits"' . ($id !== null ? ' data-live id="hits-' . md5($id) . '"' : '') . '>'
-                        . ($hit !== null ? '<span class="badge">' . $hit['count'] . '×</span> <span class="note">last ' . $e(self::ago($now - $hit['last'])) . '</span>' : ($s->logFile !== null && $id !== null ? '<span class="note">—</span>' : ''))
+                foreach ($rows as $r) {
+                    $log = $r['log'] !== '' ? $r['log'] : null;
+                    $hit = $log !== null ? ($stats['rules'][$log] ?? null) : null;
+                    $h .= '<tr><td>' . $e($r['text']) . ($r['detail'] !== null ? '<br><code class="rule">' . $e($r['detail']) . '</code>' : '') . '</td>'
+                        . '<td class="meta">' . ($r['id'] !== null ? '<code class="origin">' . $e($r['id']) . '</code>' : '')
+                        . ($r['where'] !== null ? '<br><span class="note">' . $e($r['where']) . '</span>' : '') . '</td>'
+                        . '<td class="hits"' . ($log !== null ? ' data-live id="hits-' . md5($log) . '"' : '') . '>'
+                        . ($hit !== null ? '<span class="badge">' . $hit['count'] . '×</span> <span class="note">last ' . $e(self::ago($now - $hit['last'])) . '</span>' : ($s->logFile !== null && $log !== null ? '<span class="note">—</span>' : ''))
                         . '</td></tr>';
                 }
                 $h .= '</table>';
@@ -122,70 +125,88 @@ final class RulesPage
     }
 
     /**
-     * The rules, grouped the way a site owner thinks about them.
+     * The rules, grouped the way a site owner thinks about them. Each row: its
+     * text for people (the rule's description, else what it does), the rule
+     * as written when a description stands in front, its ID, where it is
+     * written, and the ID the log counts it under.
      *
-     * @return list<array{0: string, 1: string, 2: list<array{0: string, 1: ?string, 2: ?string}>}>
+     * @return list<array{0: string, 1: string, 2: list<array{text: string, detail: ?string, id: ?string, where: ?string, log: ?string}>}>
      */
     public static function groups(Settings $s): array
     {
         $o = static fn (string $setting, string $what): ?string => $s->origin($setting, $what);
-        $row = static fn (string $text, string $setting, string $what, string $fallback): array => [$text, $o($setting, $what), $o($setting, $what) ?? $fallback];
+        $row = static function (string $says, ?string $id, ?string $log = null) use ($s): array {
+            $text = $id !== null ? $s->origin('text', $id) : null;
+            $where = $id !== null ? $s->origin('at', $id) : null;
+            return ['text' => $text ?? $says, 'detail' => $text !== null ? $says : null, 'id' => $id, 'where' => $where, 'log' => $log ?? $id];
+        };
+        $pattern = static fn (string $p): string => Describe::pattern($s, $p);
         $g = [];
 
         $rows = [];
         foreach ($s->blockedPaths as $i => $p) {
-            $rows[] = $row(Describe::pattern($s, $p), 'blockedPaths', $p, "blockedPaths[$i]");
+            $id = $o('blockedPaths', $p);
+            $text = $id !== null ? $s->origin('text', $id) : null;
+            $text ??= Describe::builtIn($p);
+            $says = $pattern($p);
+            $rows[] = ['text' => $text ?? $says, 'detail' => $text !== null && $text !== $says ? $says : null, 'id' => $id ?? \CjwNetwork\RequestShield\Config::setName($p),
+                'where' => $id !== null ? $s->origin('at', $id) : null, 'log' => $id ?? \CjwNetwork\RequestShield\Config::setName($p) ?? "blockedPaths[$i]"];
         }
-        foreach ($s->blockExceptions as $n => $x) {
-            $what = $x['patterns'] === null ? 'all of the above' : implode('; ', array_map(static fn (string $p): string => Describe::pattern($s, $p), $x['patterns']));
-            $rows[] = ['Open at ' . implode(', ', array_map(static fn (string $p): string => Describe::pattern($s, $p), $x['paths'])) . ': ' . $what
+        foreach ($s->blockExceptions as $x) {
+            $what = $x['patterns'] === null ? 'every block above' : implode('; ', array_map(static fn (string $p): string => Describe::rule($s, 'blockedPaths', $p), $x['patterns']));
+            $rows[] = $row('Open at ' . implode(', ', array_map($pattern, $x['paths'])) . ': ' . $what
                 . ($x['ips'] !== [] ? ' — only for ' . implode(', ', $x['ips']) : ' — ⚠ for everyone: make sure only admins reach it'),
-                $o('blockExceptions', $x['paths'][0] ?? ''), null];
+                $o('blockExceptions', $x['paths'][0] ?? ''), '');
         }
         $g[] = ['Addresses only attackers ask for', $rows === [] ? 'None are refused.' : 'Refused with "not found" (404) before the site sees them:', $rows];
 
         $rows = [];
         foreach ($s->restricted as $n => $r) {
             foreach ($r['paths'] as $p) {
-                $rows[] = $row(Describe::pattern($s, $p) . ' — only for ' . implode(', ', $r['ips']), 'restricted', $p, "restricted[$n]");
+                $rows[] = $row($pattern($p) . ' — only for ' . implode(', ', $r['ips']), $o('restricted', $p), $o('restricted', $p) ?? "restricted[$n]");
             }
         }
         $g[] = ['Areas for certain visitors', $rows === [] ? 'No area is restricted.' : 'Everyone else gets "no access" (403):', $rows];
 
         $rows = [];
         foreach ($s->methodPaths as $m => $patterns) {
-            $rows[] = [$m . ' only at: ' . implode(', ', array_map(static fn (string $p): string => Describe::pattern($s, $p), $patterns)), $o('methodPaths', $m), $o('methodPaths', $m) ?? "methodPaths.$m"];
+            $rows[] = $row($m . ' only at: ' . implode(', ', array_map($pattern, $patterns)), $o('methodPaths', $m), $o('methodPaths', $m) ?? "methodPaths.$m");
         }
         $g[] = ['Where forms may be sent', 'Accepted kinds of request: ' . implode(', ', $s->methods) . ($rows === [] ? '; forms may be sent anywhere.' : '; anywhere else "not allowed here" (405):'), $rows];
 
         $g[] = ['Website names and sizes', ($s->hosts === [] ? 'Any website name is accepted. ' : 'The site answers as ' . implode(', ', $s->hosts) . '; any other name gets "not found". ')
             . "Addresses up to $s->maxUri characters and $s->maxQueryParameters parameters, headers up to " . round($s->maxHeaderBytes / 1024) . ' KB; disguised addresses and attempts to leave the site\'s folder are refused.',
-            $s->hosts === [] ? [] : [['Website names: ' . implode(', ', $s->hosts), $o('hosts', '*'), $o('hosts', '*') ?? 'hosts']]];
+            $s->hosts === [] ? [] : [$row('Website names: ' . implode(', ', $s->hosts), $o('hosts', '*'), $o('hosts', '*') ?? 'hosts')]];
 
-        $rows = [];
+        // One row per rule: a cache-path line often lists several paths.
+        $byRule = [];
         foreach ($s->cacheablePaths ?? [] as $p) {
-            $rows[] = [Describe::pattern($s, $p), $o('cacheable.paths', $p), null];
+            $byRule[$o('cacheable.paths', $p) ?? ''][] = $pattern($p);
         }
-        $query = $s->cacheableQuery === null ? 'with any parameters' : ($s->cacheableQuery === [] ? 'without parameters' : 'only with the parameters ' . implode(', ', array_map(static fn (string $q): string => "\"$q\"", $s->cacheableQuery)));
+        $rows = [];
+        foreach ($byRule as $id => $paths) {
+            $rows[] = $row(implode('  ', $paths), $id !== '' ? $id : null, '');
+        }
+        $query = $s->cacheableQuery === null ? 'with any parameters' : ($s->cacheableQuery === [] ? 'without parameters' : 'only with the parameter' . (count($s->cacheableQuery) > 1 ? 's ' : ' ') . implode(', ', array_map(static fn (string $q): string => "\"$q\"", $s->cacheableQuery)));
         $g[] = ['What a cache may keep', ($s->cacheablePaths === null ? 'Every address, ' : 'These addresses, ') . $query
             . '. Anything else is answered by the site, but not kept — so made-up addresses cannot fill a cache.', $rows];
 
         $rows = [];
         foreach ($s->budgets as $b) {
-            $rows[] = [$b->onDemand
+            $rows[] = $row($b->onDemand
                 ? "\"$b->name\": at most $b->limit per " . Describe::duration($b->window) . ', counted by the site itself (searches, failed sign-ins, cache misses)'
                 : "\"$b->name\": $b->limit requests per " . Describe::duration($b->window) . ($b->challengeAt !== null ? ", the browser check from $b->challengeAt" : '') . ', then a pause',
-                $o('budgets', $b->name), $o('budgets', $b->name) ?? "budgets.$b->name"];
+                $o('budgets', $b->name), $o('budgets', $b->name) ?? "budgets.$b->name");
         }
         $g[] = ['Pace per visitor', 'Counted per address (IPv6: per /' . $s->ipv6Prefix . ' network)'
             . ($s->exemptIps === [] ? '.' : '; never counted: ' . implode(', ', $s->exemptIps) . '.'), $rows];
 
         $rows = [];
         foreach ($s->challenge->alwaysPaths as $p) {
-            $rows[] = ['always checked: ' . Describe::pattern($s, $p), $o('challenge.alwaysPaths', $p), $o('challenge.alwaysPaths', $p) ?? 'challenge.alwaysPaths'];
+            $rows[] = $row('always checked: ' . $pattern($p), $o('challenge.alwaysPaths', $p), $o('challenge.alwaysPaths', $p) ?? 'challenge.alwaysPaths');
         }
         foreach ($s->challenge->exemptPaths as $p) {
-            $rows[] = ['never checked: ' . Describe::pattern($s, $p), $o('challenge.exemptPaths', $p), null];
+            $rows[] = $row('never checked: ' . $pattern($p), $o('challenge.exemptPaths', $p), '');
         }
         $g[] = ['Browser check', 'An invisible check that a real browser passes in a moment; a passed check is valid for ' . Describe::span($s->challenge->passTtl)
             . ($s->challenge->searchEngines !== null ? '. Search engines (Google, Bing, …) are recognised and let through.' : '.'), $rows];
@@ -232,7 +253,7 @@ main{max-width:60rem;margin:0 auto;padding:1.5rem 1rem 3rem}h1{font-size:1.6rem;
 .tile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;color:var(--muted);font-size:.9rem}.tile .n{display:block;font-size:1.6rem;font-weight:650;color:var(--fg)}
 table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:.45rem .4rem;border-top:1px solid var(--line);vertical-align:top}tr:first-child td,tr:first-child th{border-top:0}
 td.meta{width:1%;white-space:nowrap}td.hits{width:1%;white-space:nowrap;text-align:right}td.url{word-break:break-all;font:13px/1.4 ui-monospace,monospace}
-code{font:13px/1.4 ui-monospace,monospace}code.origin{color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:0 .3rem}
+code{font:13px/1.4 ui-monospace,monospace}code.rule{color:var(--muted);font-size:12px}code.origin{color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:0 .3rem}
 .badge{display:inline-block;min-width:1.6rem;text-align:center;background:var(--accent);color:#fff;border-radius:99px;padding:0 .45rem;font-size:.85rem;font-weight:600}
 form.try{display:flex;gap:.5rem;flex-wrap:wrap}form.try input,form.try select{padding:.45rem .6rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit}
 form.try input[name=url]{flex:1 1 18rem}form.try input.ip{flex:0 1 11rem}

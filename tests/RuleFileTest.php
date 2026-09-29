@@ -188,7 +188,7 @@ return [
             same(['#^/early$#', '#^/site$#'], array_slice($s->blockedPaths, -2), 'in the order read');
             same('rules.d/90-late.rules:1', $s->origin('budgets', 'x'), 'origin relative to the main file');
             same('site.rules:2', $s->origin('blockedPaths', '#^/site$#'));
-            same('default @scanners.hidden-files', $s->origin('blockedPaths', \CjwNetwork\RequestShield\Config::scannerPaths()[0]));
+            same('SCAN-HIDDEN', $s->origin('blockedPaths', \CjwNetwork\RequestShield\Config::scannerPaths()[0]));
             truthy(isset($read['seen']["$dir/rules.d"]), 'the include directory is watched');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
@@ -294,8 +294,8 @@ return [
                 return $shield->explain($shield->decide($r, 1000.0), $r);
             };
             same('site.rules:2', $explain('/x/y'));
-            same('default @scanners.hidden-files', $explain('/.env'));
-            same('default @scanners.backups', $explain('/dump.sql'));
+            same('SCAN-HIDDEN', $explain('/.env'));
+            same('SCAN-BACKUP', $explain('/dump.sql'));
             same('site.rules:3', $explain('/admin/'));
             same('site.rules:4', $explain('/page', ['REQUEST_METHOD' => 'POST']));
             same('site.rules:6', $explain('/login'));
@@ -318,7 +318,7 @@ return [
         try {
             exec("$bin check " . escapeshellarg("$dir/site.rules") . ' --source=' . escapeshellarg("$dir/ext/*.rules") . ' 2>&1', $out, $code);
             same(0, $code, implode("\n", $out));
-            truthy(strpos(implode("\n", $out), 'ok: 2 file(s)') !== false, implode("\n", $out));
+            truthy(strpos(implode("\n", $out), 'ok: 2 file(s) + built-in rules') !== false, implode("\n", $out));
             $out = [];
             exec("$bin check " . escapeshellarg("$dir/bad.rules") . ' 2>&1', $out, $code);
             same(1, $code);
@@ -326,8 +326,8 @@ return [
             $out = [];
             exec("$bin show " . escapeshellarg("$dir/site.rules") . ' --source=' . escapeshellarg("$dir/ext/*.rules") . ' 2>&1', $out, $code);
             $shown = implode("\n", $out);
-            truthy(preg_match('~^block regex \^/x\(\?:/\.\*\)\?\$ +# site\.rules:1$~m', $shown) === 1, $shown);
-            truthy(preg_match('~^challenge regex \^/login\$ +# ext/a\.rules:1$~m', $shown) === 1, 'the extension\'s rule, with its origin');
+            truthy(preg_match('~^block regex \^/x\(\?:/\.\*\)\?\$ +# \(site\.rules:1\)$~m', $shown) === 1, $shown);
+            truthy(preg_match('~^challenge regex \^/login\$ +# \(ext/a\.rules:1\)$~m', $shown) === 1, 'the extension\'s rule, with its origin');
             truthy(strpos($shown, 'set secret (generated in store-dir)') !== false, 'a secret is never shown');
             touch("$dir/site.rules", time() - 100);
             exec("$bin reload " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
@@ -348,7 +348,7 @@ return [
         }
     },
     'unblock at: blocked paths open at some paths only, for some addresses only; traversal never' => function (): void {
-        $s = rulesFrom("unblock at /admin/files/** for 192.0.2.0/24\nunblock @scanners.hidden-files at /public/**\n");
+        $s = rulesFrom("unblock at /admin/files/** for 192.0.2.0/24\nunblock [SCAN-HIDDEN] at /public/**\n");
         $from = static fn (string $ip, string $path): string => decideFor($s, $path, ['REMOTE_ADDR' => $ip]);
         same('allow', $from('192.0.2.5', '/admin/files/.env'), 'the admin file reader, from the office');
         same('allow', $from('192.0.2.5', '/admin/files/backup.sql'), 'every block lifted there');
@@ -361,21 +361,22 @@ return [
         rulesFail(['site.rules' => "unblock at\n"], 'site.rules:1', 'unblock [<what>] at <paths>');
         rulesFail(['site.rules' => "unblock at /x for\n"], 'site.rules:1', 'unblock [<what>] at <paths>');
         rulesFail(['site.rules' => "unblock /never at /x\n"], 'site.rules:1', 'nothing to unblock');
-        rulesFail(['site.rules' => "unblock @scanners.nope at /x\n"], 'site.rules:1', 'unknown set');
+        rulesFail(['site.rules' => "unblock [SCAN-NOPE] at /x\n"], 'site.rules:1', 'no earlier block has the ID [SCAN-NOPE]');
+        rulesFail(['site.rules' => "unblock @joomla at /x\n"], 'site.rules:1', 'unknown set');
         rulesFail(['site.rules' => "unblock at /x for office\n"], 'site.rules:1', 'not an address');
         // PHP array settings
         $a = new Shield(['blockExceptions' => [['paths' => ['#^/files/#'], 'patterns' => null, 'ips' => []]]], new MemoryStore());
         same('allow', $a->decide(Request::fromServer(['REQUEST_URI' => '/files/.env', 'REMOTE_ADDR' => '198.51.100.7']), 1000.0)->action);
     },
     'unblock at: shown in the check, on the page, and warned about without "for"' => function (): void {
-        $dir = ruleDir(['site.rules' => "unblock at /admin/files/** for 192.0.2.0/24\nunblock @scanners.backups at /downloads/**\n"]);
+        $dir = ruleDir(['site.rules' => "unblock at /admin/files/** for 192.0.2.0/24\nunblock [SCAN-BACKUP] at /downloads/**\n"]);
         try {
             $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
             $t = (new \CjwNetwork\RequestShield\Report\Inspector($s, new MemoryStore()))->trace(\CjwNetwork\RequestShield\Report\Inspector::request('GET', '/admin/files/.env', '192.0.2.5'), 1000.0);
             same('pass', $t['steps'][4]['state']);
             same('would be refused (hidden files and folders: .env, .git, .htpasswd, editor settings), but open here for 192.0.2.5 (192.0.2.0/24) — site.rules:1', $t['steps'][4]['text']);
             $html = \CjwNetwork\RequestShield\Report\RulesPage::render($s, ['store' => new MemoryStore()]);
-            truthy(strpos($html, 'Open at /admin/files/**: all of the above — only for 192.0.2.0/24') !== false, 'the exception on the page');
+            truthy(strpos($html, 'Open at /admin/files/**: every block above — only for 192.0.2.0/24') !== false, 'the exception on the page');
             truthy(strpos($html, 'Open at /downloads/**: backups, dumps and archives') !== false && strpos($html, '⚠ for everyone') !== false, 'the open one, with a warning');
             $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
             exec("$bin check " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
@@ -383,9 +384,70 @@ return [
             truthy(strpos(implode("\n", $out), 'warning: site.rules:2: blocked paths are open there for everyone') !== false, implode("\n", $out));
             $out = [];
             exec("$bin show " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out);
-            truthy(preg_match('~^unblock at regex \^/admin/files\(\?:/\.\*\)\?\$ for 192\.0\.2\.0/24 +# site\.rules:1$~m', implode("\n", $out)) === 1, implode("\n", $out));
+            truthy(preg_match('~^unblock at regex \^/admin/files\(\?:/\.\*\)\?\$ for 192\.0\.2\.0/24 +# \(site\.rules:1\)$~m', implode("\n", $out)) === 1, implode("\n", $out));
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }
+    },
+    'IDs: [SITE-10] before a rule names it everywhere; the comment after it describes it' => function (): void {
+        $dir = ruleDir(['site.rules' => "ids SITE\n\n[SITE-10] restrict /admin/** to 192.0.2.0/24   # the admin area: office only\n[SITE-ADMIN-FILES] unblock [SCAN-HIDDEN] at /admin/files/** for 192.0.2.0/24\n block /x/**   # no ID: file and line\n[SITE-20] limit requests 5/min\n"]);
+        try {
+            $s = Settings::load("$dir/site.rules", "$dir/cache");
+            $explain = static function (string $path) use ($s): ?string {
+                $shield = new Shield($s, new MemoryStore());
+                $r = Request::fromServer(['REQUEST_URI' => $path, 'REMOTE_ADDR' => '198.51.100.7']);
+                return $shield->explain($shield->decide($r, 1000.0), $r);
+            };
+            same('SITE-10', $explain('/admin/'));
+            same('site.rules:5', $explain('/x/y'), 'without an ID: file and line');
+            same('SCAN-HIDDEN', $explain('/.env'));
+            same('site.rules:3', $s->origin('at', 'SITE-10'), 'where it is written');
+            same('the admin area: office only', $s->origin('text', 'SITE-10'), 'its description');
+            same('no ID: file and line', $s->origin('text', 'site.rules:5'));
+            same('built-in scanners.rules:10', $s->origin('at', 'SCAN-HIDDEN'));
+            same('SITE-20', $s->origin('budgets', 'requests'));
+            $html = \CjwNetwork\RequestShield\Report\RulesPage::render($s, ['store' => new MemoryStore()]);
+            truthy(strpos($html, 'the admin area: office only<br><code class="rule">/admin/** — only for 192.0.2.0/24</code>') !== false, 'the page: description, then the rule');
+            truthy(strpos($html, '<code class="origin">SITE-10</code><br><span class="note">site.rules:3</span>') !== false, 'the page: ID and where');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'IDs: the namespace of a file, required IDs, no duplicates, and the errors' => function (): void {
+        same('SHOP-1', rulesFrom("ids SHOP\n[SHOP-1] block /x\nblock /y\n")->origin('blockedPaths', '#^/x$#'), 'IDs optional by default');
+        truthy(rulesFrom("ids SHOP required\nset debug-header on\n[SHOP-1] block /x\n") !== null, 'set and include need no ID');
+        rulesFail(['site.rules' => "ids SHOP required\n[SHOP-1] block /x\nblock /y\n"], 'site.rules:3', 'every rule in this file needs an ID');
+        rulesFail(['site.rules' => "ids SHOP\n[SITE-1] block /x\n"], 'site.rules:2', 'not in this file\'s namespace -- its IDs start with SHOP-');
+        rulesFail(['site.rules' => "include ext/*.rules\n[SHOP-1] block /y\n", 'ext/shop.rules' => "ids SHOP\n[SHOP-1] block /x\n"], 'site.rules:2', '[SHOP-1] is used twice -- already at ext/shop.rules:2');
+        rulesFail(['site.rules' => "[SCAN-HIDDEN] block /x\n"], 'site.rules:1', 'used twice -- already at built-in scanners.rules:10');
+        rulesFail(['site.rules' => "[a b] block /x\n"], 'site.rules:1', 'is not an ID');
+        rulesFail(['site.rules' => "[X-1]\n"], 'site.rules:1', 'before what?');
+        rulesFail(['site.rules' => "[X-1] set debug-header on\n"], 'site.rules:1', 'set takes no ID');
+        rulesFail(['site.rules' => "ids SHOP\nids SITE\n"], 'site.rules:2', 'a file has one namespace');
+        rulesFail(['site.rules' => "ids 1SHOP\n"], 'site.rules:1', 'ids <NAMESPACE> [required]');
+        $dir = ruleDir(['site.rules' => "include ext/*.rules\n[ANY-1] block /a\n", 'ext/shop.rules' => "ids SHOP required\n[SHOP-1] block /x\n"]);
+        try {
+            same('ANY-1', Settings::from(RuleFile::read(["$dir/site.rules"])['config'])->origin('blockedPaths', '#^/a$#'), 'an included file\'s namespace does not bind the file including it');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'the built-in rules: shipped as rule files, the same as the PHP defaults' => function (): void {
+        $mirror = \CjwNetwork\RequestShield\Config::builtIns();
+        $defaults = rulesFrom('');
+        same(\CjwNetwork\RequestShield\Config::scannerPaths(), $defaults->blockedPaths, 'rules/scanners.rules = Config::scannerPaths()');
+        $wp = rulesFrom("unblock @scanners\ninclude @wordpress\n");
+        same(\CjwNetwork\RequestShield\Config::wordpressPaths(), $wp->blockedPaths, 'rules/wordpress.rules = Config::wordpressPaths()');
+        foreach ([$defaults, $wp] as $s) {
+            foreach ($s->blockedPaths as $p) {
+                $id = (string) $s->origin('blockedPaths', $p);
+                same($mirror[$p] ?? null, [$id, $s->origin('text', $id)], "ID and description of $id, in Config::builtIns() and the rule file");
+            }
+        }
+        same(\CjwNetwork\RequestShield\Settings::from([])->blockedPaths, $defaults->blockedPaths, 'PHP array settings get the same blocks');
+        same(count(\CjwNetwork\RequestShield\Config::scannerPaths()) + 2, count(rulesFrom("block @wordpress\n")->blockedPaths), 'block @wordpress = include @wordpress');
+        same(count(rulesFrom("include @wordpress\nblock @wordpress\n")->blockedPaths), count(rulesFrom("include @wordpress\n")->blockedPaths), 'twice is once');
+        same(4, count(rulesFrom("unblock [SCAN-CGI]\n")->blockedPaths), 'one taken back by its ID');
+        same('SCAN-BACKUP', \CjwNetwork\RequestShield\Config::setName(\CjwNetwork\RequestShield\Config::scannerPaths()[1]), 'PHP array settings: the ID too');
     },
 ];

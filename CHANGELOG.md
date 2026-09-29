@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   application routes it — `//admin`, `/%61dmin` and case do not get past
   ([docs](docs/features/access-rules.md)).
 - Rule IDs: every decision that stops or flags a request names its rule
-  (`site.rules:12`, `default @scanners`, `built-in`) in `X-Request-Shield`,
+  (`SITE-10`, `site.rules:12`, `SCAN-BACKUP`, `built-in`) in `X-Request-Shield`,
   `$_SERVER['REQUEST_SHIELD_RULE']` and `Shield::currentRule()`; looked up only
   for such requests.
 - An optional log (`set log`, `log-level stop|flag|all|off`, `log-ip
@@ -34,15 +34,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - The active rules page (`Report\RulesPage`): the rules in plain words with
   their origin and how often each decided in the last 24 hours, the latest
   activity, and a check that tries any address step by step without counting
-  it; refreshes itself. `bin/request-shield trace`. Built-in patterns have
-  names (`@scanners.backups`, …) in decisions and the log
+  it; refreshes itself. `bin/request-shield trace`
   ([docs](docs/features/active-rules-page.md)).
 - `unblock [<what>] at <paths> [for <addresses>]`: blocked paths let through at
   some paths only — an admin's file reader that has to open `.env` or a
   backup — optionally only for some addresses; the path check is never lifted;
-  `check` warns about exceptions for everyone. Named built-in patterns
-  (`@scanners.hidden-files`, …) usable in rule files
+  `check` warns about exceptions for everyone
   ([docs](docs/features/access-rules.md#exceptions-an-admins-file-reader)).
+- Rule IDs of one's own: `[SITE-10]` before a rule names it in decisions,
+  the log, the rules page and `trace` instead of `file:line`; `ids <NS>
+  [required]` gives a file its number block; an ID used twice is an error
+  naming both places; the comment after a rule is its description.
+- The built-in blocks are rule files shipped with the library
+  (`rules/scanners.rules`, `rules/wordpress.rules`, IDs `SCAN-…`, `WP-…`):
+  `include @wordpress`, `unblock [SCAN-CGI]`, `unblock @scanners`
+  ([docs](docs/features/rule-files.md#the-built-in-rules)).
 - Proposal 0004: modes (`off`, `monitor`, `enforce`, `strict`), `monitor` for
   single rules, a fresh check per path.
 - `challenge.alwaysPaths`: paths every visitor has to pass the browser check

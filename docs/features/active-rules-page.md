@@ -12,7 +12,7 @@ technicians — and lets anyone with access try an address against the rules:
   shows every check as a step — ✓ fine, ! answered with a remark (not cached,
   browser check), ✕ refused here, – not checked any more — and the result in
   one sentence: *"This visitor gets "not found" (404) — the site never sees
-  it. Decided by: default @scanners.backups"*. **Nothing is counted**: the
+  it. Decided by: SCAN-BACKUP"*. **Nothing is counted**: the
   check only reads the visitor's counters, and shows them ("4 of 60 per
   minute, browser check from 20").
 - **The rules in plain words**, grouped the way a site owner thinks about them
@@ -20,8 +20,9 @@ technicians — and lets anyone with access try an address against the rules:
   may be sent, website names and sizes, what a cache may keep, pace per
   visitor, browser check, proxies and the log). Each shows what was written
   (`/wp-admin/**`, not the regular expression; the built-in ones in words:
-  "backups, dumps and archives: .bak, .old, .sql, .zip …"), where it is
-  written (`site.rules:12`), and how often it decided in the last 24 hours,
+  "backups, dumps and archives: .bak, .old, .sql, .zip …" — the comment after a
+  rule in its file is its description), its ID and where it is
+  written (`SITE-10`, `site.rules:12`), and how often it decided in the last 24 hours,
   and when last.
 - **Lately:** the latest refused or checked requests, in words.
 - The summary, the counts and the latest activity **refresh every 10

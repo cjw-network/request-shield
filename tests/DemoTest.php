@@ -67,12 +67,6 @@ function withDemo(callable $body, string $prefix = ''): void
     }
 }
 
-/** The decision in X-Request-Shield, with "; rule=<file:line>" reduced to "; rule=<file>". */
-function shieldSaid(?string $header): string
-{
-    return (string) preg_replace('/(rule=[^:;]+):\d+/', '$1', (string) $header);
-}
-
 $examples = function (string $prefix): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
@@ -88,13 +82,13 @@ $examples = function (string $prefix): void {
             truthy(preg_match('#<code>http://127\.0\.0\.1:\d+' . preg_quote($prefix, '#') . '/page/about\?page=2</code>#', $r['body']) === 1, 'the full URL on the page');
             truthy(strpos($r['body'], '<del class="no">X-Forwarded-For: 203.0.113.9</del>') !== false, 'the forged header shown as removed');
             truthy(strpos($r['body'], 'X-Request-Shield: allow') !== false, 'the answer\'s headers, with the decision');
-            same('allow-uncached query parameter; rule=request-shield.rules', shieldSaid($get('GET', '/?utm_source=newsletter')['shield']));
+            same('allow-uncached query parameter; rule=DEMO-CACHE-QUERY', $get('GET', '/?utm_source=newsletter')['shield']);
             $r = $get('GET', '/random/abc');
             same(200, $r['status'], 'an unknown path passes: the site answers it');
-            same('allow-uncached path not cacheable; rule=request-shield.rules', shieldSaid($r['shield']));
+            same('allow-uncached path not cacheable; rule=DEMO-CACHE', $r['shield']);
             $r = $get('GET', '/.env');
             same(404, $r['status'], 'scanner path');
-            same('reject blocked path; rule=default @scanners.hidden-files', $r['shield']);
+            same('reject blocked path; rule=SCAN-HIDDEN', $r['shield']);
             same(400, $get('GET', '/files/%2e%2e/secret')['status'], 'traversal');
             $r = $get('GET', '/files/.env');
             same(200, $r['status'], 'the file reader: hidden files open there, for this machine');
@@ -108,7 +102,7 @@ $examples = function (string $prefix): void {
             // PHP deletes a cookie as "name=deleted" with an expiry in the past.
             truthy(in_array($r['cookies']['rs_pass'] ?? null, ['', 'deleted'], true), 'the pass cookie is deleted');
             $r = $get('GET', '/');
-            truthy(preg_match('#reject 404 &quot;blocked path&quot; rule=default @scanners.hidden-files &quot;GET http://127\.0\.0\.1' . preg_quote($prefix, '#') . '/\.env&quot;#', $r['body']) === 1, 'the log on the page, with the full URL');
+            truthy(preg_match('#reject 404 &quot;blocked path&quot; rule=SCAN-HIDDEN &quot;GET http://127\.0\.0\.1' . preg_quote($prefix, '#') . '/\.env&quot;#', $r['body']) === 1, 'the log on the page, with the full URL');
             truthy(strpos($r['body'], ' 127.0.0.0/24 reject') !== false, 'the address anonymised in the log');
         }, $prefix);
 };
@@ -124,9 +118,9 @@ $forms = function (string $prefix): void {
             same('allow-uncached method; rule=built-in', $r['shield']);
             $r = $get('POST', '/page/about', [], 'message=spam');
             same(405, $r['status'], 'a POST where there is no form');
-            same('reject method not allowed here; rule=request-shield.rules', shieldSaid($r['shield']));
+            same('reject method not allowed here; rule=DEMO-FORMS', $r['shield']);
             same(403, $get('GET', '/admin/')['status'], 'the admin area: not from here');
-            same('reject restricted; rule=request-shield.rules', shieldSaid($get('GET', '/admin/')['shield']));
+            same('reject restricted; rule=DEMO-ADMIN', $get('GET', '/admin/')['shield']);
             foreach (['//admin/', '/%61dmin/', '/ADMIN/users', '/./admin/'] as $sneaked) {
                 same(403, $get('GET', $sneaked)['status'], "sneaked: $sneaked");
             }
@@ -141,7 +135,7 @@ $forms = function (string $prefix): void {
                 $r = $get('GET', '/search?q=' . $i);
                 same(200, $r['status'], "search $i");
             }
-            same('allow-uncached query parameter; rule=request-shield.rules', shieldSaid($r['shield']), 'a search is never cached');
+            same('allow-uncached query parameter; rule=DEMO-CACHE-QUERY', $r['shield'], 'a search is never cached');
             $r = $get('GET', '/search?q=11');
             same(429, $r['status'], 'search 11: the page\'s own budget');
             truthy(strpos($r['body'], 'Too many searches') !== false, 'says why');
@@ -158,7 +152,7 @@ $challenge = function (string $prefix): void {
         withDemo(function (callable $get): void {
             $r = $get('GET', '/challenge');
             same(429, $r['status'], 'challenged at once, whatever the budget');
-            same('challenge always; rule=request-shield.rules', shieldSaid($r['shield']));
+            same('challenge always; rule=DEMO-LOGIN', $r['shield']);
             truthy(preg_match('/var RS=(\{.*?\});\(function/s', $r['body'], $m) === 1, 'the challenge page');
             $rs = json_decode($m[1], true);
             [$payload] = solveInNode($rs['c']);
@@ -181,7 +175,7 @@ $budget = function (string $prefix): void {
             }
             $r = $get('GET', '/');
             same(429, $r['status'], 'request 21');
-            same('challenge requests; rule=request-shield.rules', shieldSaid($r['shield']));
+            same('challenge requests; rule=DEMO-PACE', $r['shield']);
         }, $prefix);
 };
 

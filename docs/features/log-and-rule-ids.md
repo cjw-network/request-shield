@@ -7,15 +7,16 @@ where it was written:
 
 | ID | Meaning |
 |---|---|
-| `site.rules:12` | line 12 of a rule file (relative to the main file's directory) |
+| `SITE-10` | a rule's own ID (`[SITE-10] restrict …`, see [rule files](rule-files.md#ids-namespaces-and-descriptions)) |
+| `site.rules:12` | a rule without an ID: line 12 of a rule file (relative to the main file's directory) |
 | `ext/shop/settings/request-shield.rules:2` | an extension's rule file |
-| `default @scanners.backups` | a built-in pattern (`@scanners.hidden-files`, `.backups`, `.test-scripts`, `.db-tools`, `.cgi`; `@wordpress.folders`, `.scripts`) |
+| `SCAN-BACKUP` | a built-in rule (`SCAN-HIDDEN`, `-BACKUP`, `-TEST`, `-DBTOOL`, `-CGI`; `WP-FOLDERS`, `-SCRIPTS`), from `rules/*.rules` |
 | `built-in` | a check every site has: sizes, path encoding, traversal; a POST is never cached |
 | `blockedPaths[3]`, `budgets.requests` | PHP array settings: the setting and index |
 
 It appears in
 
-- `X-Request-Shield: reject blocked path; rule=site.rules:5` (with
+- `X-Request-Shield: reject blocked path; rule=SCAN-HIDDEN` (with
   `set debug-header on`),
 - `$_SERVER['REQUEST_SHIELD_RULE']` and `Shield::currentRule()`, for the
   application,
@@ -39,9 +40,9 @@ decision, status, reason, rule, the request with its **full URL**, the
 User-Agent:
 
 ```text
-2026-09-29T08:41:03+02:00 198.51.100.0/24 reject 404 "blocked path" rule=default @scanners.hidden-files "GET https://www.example.org/.env" "Mozilla/5.0 ..."
-2026-09-29T08:41:07+02:00 198.51.100.0/24 challenge 429 "requests" rule=site.rules:13 "GET https://www.example.org/news?page=4711" "python-requests/2.32"
-2026-09-29T08:41:09+02:00 2001:db8:1::/48 reject 403 "restricted" rule=site.rules:25 "GET https://www.example.org//admin/" "curl/8.5"
+2026-09-29T08:41:03+02:00 198.51.100.0/24 reject 404 "blocked path" rule=SCAN-HIDDEN "GET https://www.example.org/.env" "Mozilla/5.0 ..."
+2026-09-29T08:41:07+02:00 198.51.100.0/24 challenge 429 "requests" rule=SITE-PACE "GET https://www.example.org/news?page=4711" "python-requests/2.32"
+2026-09-29T08:41:09+02:00 2001:db8:1::/48 reject 403 "restricted" rule=SITE-10 "GET https://www.example.org//admin/" "curl/8.5"
 ```
 
 The URL is the one the visitor used: scheme and host as a [trusted

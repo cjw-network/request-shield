@@ -20,21 +20,27 @@ use CjwNetwork\RequestShield\Settings;
  */
 final class Describe
 {
-    /** The built-in patterns, as a site owner would say them. */
+    /** A built-in pattern, as a site owner would say it. */
     public static function builtIn(string $pattern): ?string
     {
-        $scanners = Config::scannerPaths();
-        $wordpress = Config::wordpressPaths();
-        $names = [
-            $scanners[0] => 'hidden files and folders: .env, .git, .htpasswd, editor settings',
-            $scanners[1] => 'backups, dumps and archives: .bak, .old, .sql, .zip, .tar.gz, .log …',
-            $scanners[2] => 'test and info scripts: phpinfo.php, info.php, test.php',
-            $scanners[3] => 'database and test tools: phpMyAdmin, Adminer, PHPUnit',
-            $scanners[4] => 'cgi-bin, and .well-known except certificates, security.txt and password change',
-            $wordpress[0] => 'WordPress folders: /wp-admin, /wp-includes, /wp-content',
-            $wordpress[1] => 'WordPress scripts: wp-login.php, xmlrpc.php, wp-config.php',
-        ];
-        return $names[$pattern] ?? null;
+        return Config::builtIns()[$pattern][1] ?? null;
+    }
+
+    /**
+     * A rule for people: its description (the comment after it in the rule
+     * file), else the pattern as written.
+     */
+    public static function rule(Settings $s, string $setting, string $pattern): string
+    {
+        $id = $s->origin($setting, $pattern);
+        $text = $id !== null ? $s->origin('text', $id) : null;
+        return $text ?? self::pattern($s, $pattern);
+    }
+
+    /** Where a rule is written: "site.rules:12", "built-in scanners.rules:10". */
+    public static function where(Settings $s, ?string $id): ?string
+    {
+        return $id === null ? null : $s->origin('at', $id);
     }
 
     /** A path pattern as it was written in a rule file, the built-in name, or the expression. */

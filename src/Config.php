@@ -113,29 +113,31 @@ final class Config
     }
 
     /**
-     * A name for each built-in pattern, so a decision (and the log) says
-     * which one: "@scanners.backups".
+     * The built-in blocks with their IDs and descriptions, for settings from a
+     * PHP array. The source is rules/scanners.rules and rules/wordpress.rules
+     * (a rule file reads those); a test keeps this copy the same.
+     *
+     * @return array<string, array{0: string, 1: string}> pattern => [ID, description]
      */
-    public static function setName(string $pattern): ?string
+    public static function builtIns(): array
     {
-        /** @var array<string, string>|null $names */
-        static $names = null;
-        if ($names === null) {
-            $names = array_combine(self::scannerPaths(), ['@scanners.hidden-files', '@scanners.backups', '@scanners.test-scripts', '@scanners.db-tools', '@scanners.cgi'])
-                + array_combine(self::wordpressPaths(), ['@wordpress.folders', '@wordpress.scripts']);
-        }
-        return $names[$pattern] ?? null;
+        $s = self::scannerPaths();
+        $w = self::wordpressPaths();
+        return [
+            $s[0] => ['SCAN-HIDDEN', 'hidden files and folders: .env, .git, .htpasswd, editor settings'],
+            $s[1] => ['SCAN-BACKUP', 'backups, dumps and archives: .bak, .old, .sql, .zip, .tar.gz, .log …'],
+            $s[2] => ['SCAN-TEST', 'test and info scripts: phpinfo.php, info.php, test.php'],
+            $s[3] => ['SCAN-DBTOOL', 'database and test tools: phpMyAdmin, Adminer, PHPUnit'],
+            $s[4] => ['SCAN-CGI', 'cgi-bin, and .well-known except certificates, security.txt and password change'],
+            $w[0] => ['WP-FOLDERS', 'WordPress folders: /wp-admin, /wp-includes, /wp-content'],
+            $w[1] => ['WP-SCRIPTS', 'WordPress scripts: wp-login.php, xmlrpc.php, wp-config.php'],
+        ];
     }
 
-    /** The built-in pattern with a name ("@scanners.backups"), or null. */
-    public static function setPattern(string $name): ?string
+    /** A built-in pattern's ID ("SCAN-BACKUP"), or null. */
+    public static function setName(string $pattern): ?string
     {
-        foreach (array_merge(self::scannerPaths(), self::wordpressPaths()) as $p) {
-            if (self::setName($p) === $name) {
-                return $p;
-            }
-        }
-        return null;
+        return self::builtIns()[$pattern][0] ?? null;
     }
 
     /**

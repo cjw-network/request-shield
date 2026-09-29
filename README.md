@@ -68,7 +68,8 @@ application, and whether the answer may be cached.
   application routes the path, so `//admin` or `/%61dmin` do not get past.
 - **Rule files and a log:** the settings one rule per line, from several files
   (a CMS extension ships its own); every decision names its rule
-  (`site.rules:12`); an optional log of what was stopped or flagged.
+  (`[SITE-10]`, or `site.rules:12`); an optional log of what was stopped or
+  flagged. The built-in blocks are rule files too (`rules/`).
 - **No dependencies, no services:** counters in APCu, or in plain files on hosting
   without APCu. PHP ≥ 8.0 (the Red Hat Enterprise Linux 9 baseline).
 

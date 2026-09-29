@@ -36,7 +36,7 @@ the blocks at some paths only, and `for` only for some addresses:
 unblock at /admin/files/** for 192.0.2.0/24 2001:db8:1::/48
 
 # finer: only hidden files and backups, only there
-unblock @scanners.hidden-files @scanners.backups at /admin/files/** for 192.0.2.0/24
+unblock [SCAN-HIDDEN] [SCAN-BACKUP] at /admin/files/** for 192.0.2.0/24
 ```
 
 As PHP settings: `'blockExceptions' => [['paths' => ['#^/admin/files(?:/.*)?$#i'],
@@ -53,7 +53,7 @@ As PHP settings: `'blockExceptions' => [['paths' => ['#^/admin/files(?:/.*)?$#i'
   rules; the exceptions are looked at only once a block matched, so a normal
   request pays nothing.
 - The step-by-step check shows it: *"would be refused (hidden files …), but
-  open here for 192.0.2.5 — site.rules:9"*.
+  open here for 192.0.2.5 — SITE-FILES"*.
 
 ## Details
 

@@ -1,0 +1,14 @@
+# Built into cjw-network/request-shield, read before every site's own rules:
+# addresses only scanners ask for, on any PHP site. A site takes one back with
+# "unblock [SCAN-BACKUP]", or all of them with "unblock @scanners"; opens one
+# at some paths with "unblock [SCAN-HIDDEN] at /admin/files/** for <addresses>".
+#
+# The comment after each rule is its description on the active rules page.
+
+ids SCAN required
+
+[SCAN-HIDDEN]   block regex /\.(git|svn|hg|bzr|env|htpasswd|ds_store|idea|vscode)(/|$)                 # hidden files and folders: .env, .git, .htpasswd, editor settings
+[SCAN-BACKUP]   block regex \.(bak|old|orig|save|swp|sql|sql\.gz|tar|tar\.gz|tgz|zip|7z|rar|log)$      # backups, dumps and archives: .bak, .old, .sql, .zip, .tar.gz, .log …
+[SCAN-TEST]     block regex /(phpinfo|php_info|info|test)\.php$                                        # test and info scripts: phpinfo.php, info.php, test.php
+[SCAN-DBTOOL]   block regex /(vendor/phpunit|phpmyadmin|pma|adminer)(/|\.php|$)                        # database and test tools: phpMyAdmin, Adminer, PHPUnit
+[SCAN-CGI]      block regex /(cgi-bin|\.well-known/(?!acme-challenge|security\.txt|change-password))    # cgi-bin, and .well-known except certificates, security.txt and password change

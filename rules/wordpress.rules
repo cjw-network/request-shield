@@ -1,0 +1,7 @@
+# Built into cjw-network/request-shield, for every site that is NOT WordPress:
+# "include @wordpress" (or "block @wordpress") in the site's rules.
+
+ids WP required
+
+[WP-FOLDERS]    block regex ^/(wp-admin|wp-includes|wp-content)(/|$)     # WordPress folders: /wp-admin, /wp-includes, /wp-content
+[WP-SCRIPTS]    block regex ^/(wp-login|xmlrpc|wp-config)\.php$          # WordPress scripts: wp-login.php, xmlrpc.php, wp-config.php

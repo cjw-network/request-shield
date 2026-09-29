@@ -1,52 +1,46 @@
 # The demo site's rules. Low limits on purpose, so every reaction can be seen
 # within a few clicks; a real site uses the defaults or more.
 #
+# Every rule has its own ID -- [DEMO-...] -- and the comment after it is its
+# description on the active rules page (/rules). Decisions and the log name
+# the ID: X-Request-Shield: reject restricted; rule=DEMO-ADMIN
+# The built-in blocks come from the library's rules/scanners.rules (SCAN-...).
+#
 # The paths start with **/ so the demo works in any directory (/demo/page/about,
 # /demo/index.php/page/about). A real site writes them from its root: /page/*.
-# Every decision names the line behind it: X-Request-Shield ...; rule=request-shield.rules:12
 
-# What a cache may keep: the front page and /page/<name>, with ?page=<n>.
-# Anything else passes too -- the site answers it, 200 or 404 -- but marked
-# "allow-uncached", so made-up URLs cannot fill a cache. (A CMS with URLs
-# that change all the time keeps "cache-path any", the default, and counts
-# its cache misses per client instead: the "misses" budget below.)
-cache-path  **/  **/index.php  **/page/*
-cache-query page
+ids DEMO
 
-# The search page takes any ?q= -- answered, never cached (q is not in
-# cache-query) -- and counts every search against its own budget
-# (on-demand: the page counts, see index.php).
-limit       searches 10/min on-demand
+# What a cache may keep. Anything else passes too -- the site answers it, 200
+# or 404 -- but marked "allow-uncached", so made-up URLs cannot fill a cache.
+# (A CMS whose URLs change all the time keeps "cache-path any", the default,
+# and counts its cache misses per client instead: an on-demand budget.)
+[DEMO-CACHE]        cache-path  **/  **/index.php  **/page/*      # the front page and /page/<name> may be cached
+[DEMO-CACHE-QUERY]  cache-query page                              # only the parameter "page" may be in a cached address
 
-# A POST only where there is a form; anywhere else 405.
-allow       POST  **/edit
+# The search page takes any ?q= -- answered, never cached -- and counts every
+# search against its own budget (on-demand: the page counts, see index.php).
+[DEMO-SEARCH]       limit searches 10/min on-demand               # at most 10 searches a minute per visitor
 
-# The admin area only from the office network, the API only from this machine.
-restrict    **/admin/**  to 192.0.2.0/24
-restrict    **/api/**    to 127.0.0.1 ::1
+[DEMO-FORMS]        allow POST  **/edit                           # forms may only be sent to the edit page
 
-# The admin's file reader: hidden files and backups are open there -- for
-# this machine only. The path check stays: /files/%2e%2e/secret is still 400.
-unblock     @scanners.hidden-files @scanners.backups  at **/files/**  for 127.0.0.1 ::1
+[DEMO-ADMIN]        restrict **/admin/**  to 192.0.2.0/24         # the admin area: only the office network
+[DEMO-API]          restrict **/api/**    to 127.0.0.1 ::1        # the API: only this machine
+[DEMO-RULES]        restrict **/rules     to 127.0.0.1 ::1        # this rules page: only this machine
 
-# The active rules page shows how the site is protected: this machine only.
-restrict    **/rules     to 127.0.0.1 ::1
+# The path check stays even here: /files/%2e%2e/secret is still refused (400).
+[DEMO-FILES]        unblock [SCAN-HIDDEN] [SCAN-BACKUP]  at **/files/**  for 127.0.0.1 ::1   # the admin's file reader may open hidden files and backups, from this machine
 
-# Per visitor and minute: past 20 requests the invisible browser check, past
-# 60 a pause (429). Reload any page 20 times to see it.
-limit       requests 60/min challenge-at 20
-
-# A page that always checks the browser, whatever the budget -- as a login would.
-challenge   **/challenge
-
-# A passed check is valid for one minute here, so you can watch it expire;
-# a real site keeps it an hour or more (the default: 1h).
-set         pass-ttl 1m
+[DEMO-PACE]         limit requests 60/min challenge-at 20          # per visitor: browser check past 20 requests a minute, a pause past 60
+[DEMO-LOGIN]        challenge   **/challenge                       # a page where every visitor is checked, as a login would be
 
 # The demo runs on your own machine: count localhost too (a real site exempts
 # its monitoring and its own servers here).
-exempt      none
+[DEMO-EXEMPT]       exempt none                                    # nobody is exempt from counting, not even this machine
 
+# A passed check is valid for one minute here, so you can watch it expire; a
+# real site keeps it an hour or more (the default: 1h).
+set         pass-ttl 1m
 set         difficulty-min 50000
 set         difficulty-max 300000
 set         search-engines off
@@ -58,5 +52,5 @@ set         log ${REQUEST_SHIELD_DEMO_VAR:-/tmp/request-shield-demo}/shield.log
 set         log-level flag
 set         recheck 0
 
-# X-Request-Shield: <decision> <reason>; rule=<file:line> on every response.
+# X-Request-Shield: <decision> <reason>; rule=<ID> on every response.
 set         debug-header on

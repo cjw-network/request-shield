@@ -83,13 +83,47 @@ Simple patterns by default, matched against the path (not the query):
 delimiters: `block regex ^/(phpmyadmin|adminer)`. Every pattern is compiled
 when the files are read — a broken one is an error then, never a silent miss.
 
-`block @scanners` and `block @wordpress` add the built-in sets (the scanner
-set is on by default); `unblock @scanners` takes it back, `unblock <pattern>`
-takes back exactly that pattern from an earlier line or file. Each built-in
-pattern has its own name, usable in `block`, `unblock` and `unblock … at`:
-`@scanners.hidden-files`, `@scanners.backups`, `@scanners.test-scripts`,
-`@scanners.db-tools`, `@scanners.cgi`, `@wordpress.folders`,
-`@wordpress.scripts`.
+`unblock <pattern>` takes back exactly that pattern from an earlier line or
+file; `unblock [SCAN-BACKUP]` a rule by its ID.
+
+## IDs, namespaces and descriptions
+
+```text
+ids SITE                                                  # this file's IDs start with SITE-
+
+[SITE-10]    restrict /admin/** to 192.0.2.0/24           # the admin area: office only
+[SITE-FILES] unblock [SCAN-HIDDEN] at /admin/files/** for 192.0.2.0/24   # the admin's file reader
+             block /old-api/**                            # no ID: named site.rules:5
+```
+
+- **`[ID]` before a rule** gives it a name that stays when lines move:
+  letters, digits, `-`, `_`, `.` — names or numbers (`[SITE-10]`,
+  `[SHOP-CHECKOUT]`). Decisions, the log, the rules page and `trace` use it
+  (`rule=SITE-10`); where it is written is shown next to it. A rule without an
+  ID is named by file and line, as before.
+- **`ids <NAMESPACE>`** at the top of a file: every ID in that file starts with
+  `<NAMESPACE>-` — a number block per file, so the site (`SITE`), an extension
+  (`SHOP`) and the built-ins (`SCAN`, `WP`) never collide. `ids SHOP required`:
+  every rule in the file needs an ID (not `set` and `include`). A namespace
+  binds only its own file.
+- **An ID used twice** — in any file — is an error naming both places.
+- **The comment after a rule is its description**: the rules page shows it
+  instead of the pattern, for people who do not read patterns
+  (the pattern stays underneath).
+
+## The built-in rules
+
+The blocks every site has are rule files shipped with the library, read
+before the site's own rules — the same format, with IDs and descriptions:
+
+| File | IDs | Use |
+|---|---|---|
+| `rules/scanners.rules` | `SCAN-HIDDEN`, `SCAN-BACKUP`, `SCAN-TEST`, `SCAN-DBTOOL`, `SCAN-CGI` | always read |
+| `rules/wordpress.rules` | `WP-FOLDERS`, `WP-SCRIPTS` | `include @wordpress` (or `block @wordpress`), for sites that are not WordPress |
+
+`unblock @scanners` takes back all of a shipped file's blocks, `unblock
+[SCAN-CGI]` one. PHP array settings get the same blocks from `Config`; a test
+keeps both the same.
 
 ### `set`
 
@@ -125,8 +159,9 @@ changes.
   `unblock`, `no-limit`, `none` let a later file take back what an earlier one
   (or a default) set. The main file comes last, so the site has the last word.
 
-Every rule remembers where it was written (`site.rules:12`,
-`ext/shop/settings/request-shield.rules:2`, `default @scanners.backups`), and every
+Every rule remembers its ID and where it was written (`SITE-10` in
+`site.rules:12`, `ext/shop/settings/request-shield.rules:2`, `SCAN-BACKUP` in
+`built-in scanners.rules:11`), and every
 decision names it ([rule IDs](log-and-rule-ids.md)).
 
 ## Cost and changes

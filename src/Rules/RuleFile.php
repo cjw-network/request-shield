@@ -76,13 +76,29 @@ final class RuleFile
     /** @var list<string> the files being read, for include loops */
     private array $stack = [];
 
+    /** The rule being read: its own ID ("SITE-10") or, without one, where it is ("site.rules:12"). */
+    private string $rid = '';
+
+    /** @var array<string, array{0: string, 1: bool}> file => its namespace ("SITE") and whether IDs are required */
+    private array $ns = [];
+
+    /** @var array<string, string> ID => where it was given, for duplicates */
+    private array $ids = [];
+
+    /** The shipped rule files: rules/<name>.rules ("@scanners", "@wordpress"). */
+    public static function shipped(string $name): ?string
+    {
+        $file = dirname(__DIR__, 2) . '/rules/' . $name . '.rules';
+        return preg_match('/^[a-z0-9-]+$/', $name) && is_file($file) ? $file : null;
+    }
+
     private function __construct()
     {
         $this->c = Config::defaults();
         $this->c['recheck'] = 10;
-        foreach (Config::scannerPaths() as $p) {
-            $this->origins['blockedPaths'][$p] = 'default ' . Config::setName($p);
-        }
+        // The built-in blocks come from rules/scanners.rules, read first, so
+        // they have IDs and descriptions like every other rule.
+        $this->c['blockedPaths'] = [];
         $this->origins['budgets']['requests'] = 'default';
     }
 
@@ -101,6 +117,7 @@ final class RuleFile
         // Origins are named relative to the main file's directory (the last one).
         $main = $files === [] ? false : realpath(dirname($files[count($files) - 1]));
         $r->base = $main === false ? '' : $main . '/';
+        $r->file((string) self::shipped('scanners'), null, null);
         foreach ($files as $file) {
             $r->source($file, null, null);
         }
@@ -169,7 +186,9 @@ final class RuleFile
         }
         $this->seen[$file] = $stat;
         $this->stack[] = $real;
-        $name = $this->base !== '' && strncmp($real, $this->base, strlen($this->base)) === 0 ? substr($real, strlen($this->base)) : $real;
+        $shipped = dirname(__DIR__, 2) . '/rules/';
+        $name = strncmp($real, $shipped, strlen($shipped)) === 0 ? 'built-in ' . substr($real, strlen($shipped))
+            : ($this->base !== '' && strncmp($real, $this->base, strlen($this->base)) === 0 ? substr($real, strlen($this->base)) : $real);
         foreach (preg_split('/\r\n|\n|\r/', $text) ?: [] as $i => $line) {
             $this->line($line, "$name:" . ($i + 1), $file);
         }
@@ -179,20 +198,62 @@ final class RuleFile
     private function line(string $line, string $at, string $file): void
     {
         // "#" starts a comment at the start of a line or after a space; "\#"
-        // is a literal "#" (in a regex, say).
-        $line = preg_replace('/(^|\s)#.*$/', '', $line) ?? $line;
+        // is a literal "#" (in a regex, say). A comment after a rule is its
+        // description, for people (the active rules page).
+        $text = null;
+        if (preg_match('/(?:^|\s)#\s*(.*)$/', $line, $m, PREG_OFFSET_CAPTURE) === 1) {
+            $text = trim($m[1][0]);
+            $line = substr($line, 0, $m[0][1]);
+        }
         $line = trim(str_replace('\\#', '#', $line));
         if ($line === '') {
             return;
+        }
+        // [SITE-10] before a rule: its own ID, used everywhere instead of file:line.
+        $id = null;
+        if (preg_match('/^\[([^\]]*)\]\s*(.*)$/', $line, $m) === 1) {
+            if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9_.-]{0,47}$/', $m[1])) {
+                throw new RuleFileException("$at: \"[$m[1]]\" is not an ID -- letters, digits, \"-\", \"_\" and \".\" ([SITE-10], [SHOP-CHECKOUT])");
+            }
+            $id = $m[1];
+            $line = $m[2];
+            if ($line === '') {
+                throw new RuleFileException("$at: [$id] before what? The rule follows the ID on the same line");
+            }
         }
         $parts = preg_split('/\s+/', $line) ?: [];
         $keyword = strtolower((string) array_shift($parts));
         $args = array_map(fn (string $a): string => $this->env($a, $at), $parts);
 
+        if ($keyword === 'ids') {
+            $this->namespace($args, $at, $file, $id);
+            return;
+        }
+        [$ns, $required] = $this->ns[$file] ?? ['', false];
+        if ($id !== null) {
+            if ($keyword === 'set' || $keyword === 'include') {
+                throw new RuleFileException("$at: $keyword takes no ID -- it is not a rule");
+            }
+            if ($ns !== '' && strncmp($id, $ns . '-', strlen($ns) + 1) !== 0) {
+                throw new RuleFileException("$at: [$id] is not in this file's namespace -- its IDs start with $ns- ([$ns-10])");
+            }
+            if (isset($this->ids[$id]) && $this->ids[$id] !== $at) {
+                throw new RuleFileException("$at: [$id] is used twice -- already at {$this->ids[$id]}");
+            }
+            $this->ids[$id] = $at;
+            $this->origins['at'][$id] = $at;
+        } elseif ($required && $keyword !== 'set' && $keyword !== 'include') {
+            throw new RuleFileException("$at: every rule in this file needs an ID ([$ns-...] before it: ids $ns required)");
+        }
+        $this->rid = $id ?? $at;
+        if ($text !== null && $text !== '' && $keyword !== 'set' && $keyword !== 'include') {
+            $this->origins['text'][$this->rid] = $text;
+        }
+
         switch ($keyword) {
             case 'host':
                 $this->list('hosts', $args, $at, static fn (string $h): string => strtolower($h));
-                $this->origins['hosts']['*'] = $at;
+                $this->origins['hosts']['*'] = $this->rid;
                 return;
             case 'restrict':
                 $this->restrict($args, $at);
@@ -212,7 +273,7 @@ final class RuleFile
                     }
                     return strtoupper($m);
                 });
-                $this->origins['methods']['*'] = $at;
+                $this->origins['methods']['*'] = $this->rid;
                 return;
             case 'block':
                 $this->patterns('blockedPaths', $args, $at, true);
@@ -222,11 +283,11 @@ final class RuleFile
                 return;
             case 'cache-path':
                 $this->patterns('cacheable.paths', $args, $at, false);
-                $this->origins['cacheable.paths']['*'] = $at;
+                $this->origins['cacheable.paths']['*'] = $this->rid;
                 return;
             case 'cache-query':
                 $this->list('cacheable.query', $args, $at, static fn (string $q): string => $q);
-                $this->origins['cacheable.query']['*'] = $at;
+                $this->origins['cacheable.query']['*'] = $this->rid;
                 return;
             case 'challenge':
                 $this->patterns('challenge.alwaysPaths', $args, $at, false);
@@ -253,6 +314,16 @@ final class RuleFile
                     throw new RuleFileException("$at: include of what?");
                 }
                 foreach ($args as $path) {
+                    if ($path[0] === '@') {
+                        $shipped = self::shipped(substr($path, 1));
+                        if ($shipped === null) {
+                            throw new RuleFileException("$at: unknown set \"$path\" (there are @" . implode(', @', self::SETS) . ')');
+                        }
+                        if (!isset($this->seen[$shipped])) {
+                            $this->file($shipped, null, $at);
+                        }
+                        continue;
+                    }
                     $absolute = $path[0] === '/';
                     if (!$absolute && preg_match('#(^|/)\.\.(/|$)#', $path)) {
                         throw new RuleFileException("$at: $path is outside " . dirname($file) . ' (an include stays below the including file, unless its path is absolute)');
@@ -265,6 +336,25 @@ final class RuleFile
         }
         throw new RuleFileException("$at: unknown rule \"$keyword\"" . self::suggest($keyword,
             ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'limit', 'no-limit', 'set', 'include']));
+    }
+
+    /**
+     * ids <NS> [required]: the IDs in this file start with "<NS>-"; with
+     * "required", every rule needs one. For number blocks per file: the site
+     * SITE, an extension SHOP, the built-ins SCAN and WP.
+     *
+     * @param list<string> $args
+     */
+    private function namespace(array $args, string $at, string $file, ?string $id): void
+    {
+        if ($id !== null || $args === [] || count($args) > 2 || (isset($args[1]) && $args[1] !== 'required')
+            || !preg_match('/^[A-Za-z][A-Za-z0-9_]{0,23}$/', $args[0])) {
+            throw new RuleFileException("$at: ids <NAMESPACE> [required] -- letters and digits, e.g. ids SHOP");
+        }
+        if (isset($this->ns[$file])) {
+            throw new RuleFileException("$at: a file has one namespace -- already ids {$this->ns[$file][0]}");
+        }
+        $this->ns[$file] = [$args[0], isset($args[1])];
     }
 
     /**
@@ -315,13 +405,16 @@ final class RuleFile
             unset($this->origins[$key]);
             return;
         }
-        $list = $this->get($key);
-        $list = is_array($list) ? $list : [];
         if ($args[0] === 'none') {
-            $list = [];
+            $this->put($key, []);
             unset($this->origins[$key]);
         }
-        foreach ($this->compile($args, $at, $sets) as $pattern => $origin) {
+        // Compiled first: a set ("@wordpress") reads its file now, which adds
+        // its blocks with their own IDs.
+        $compiled = $this->compile($args, $at, $sets);
+        $list = $this->get($key);
+        $list = is_array($list) ? $list : [];
+        foreach ($compiled as $pattern => $origin) {
             if (!in_array($pattern, $list, true)) {
                 $list[] = $pattern;
                 $this->origins[$key][$pattern] = $origin;
@@ -346,12 +439,12 @@ final class RuleFile
                 $regex = true;
                 continue;
             }
-            if ($a[0] === '@') {
+            if ($a[0] === '@' || $a[0] === '[') {
                 if (!$sets) {
-                    throw new RuleFileException("$at: a set ($a) only works with block and unblock");
+                    throw new RuleFileException("$at: $a only works with block and unblock");
                 }
-                foreach (self::set_($a, $at) as $p) {
-                    $out[$p] = "$at " . (Config::setName($p) ?? $a);
+                foreach ($this->refer($a, $at) as $p => $origin) {
+                    $out[$p] = $origin;
                 }
                 continue;
             }
@@ -359,7 +452,7 @@ final class RuleFile
             if (!Pattern::valid($pattern)) {
                 throw new RuleFileException("$at: \"$a\" is not a valid regular expression");
             }
-            $out[$pattern] = $at;
+            $out[$pattern] = $this->rid;
             // As written, for people (the rules page): "/wp-admin/**", not the expression.
             $this->origins['written'][$pattern] = $this->origins['written'][$pattern . 'i'] = ($regex ? 'regex ' : '') . $a;
         }
@@ -369,24 +462,43 @@ final class RuleFile
         return $out;
     }
 
-    /** @return list<string> */
-    private static function set_(string $name, string $at): array
+    /**
+     * The blocks a reference stands for: "[SCAN-BACKUP]" one rule by its ID,
+     * "@wordpress" every block of a shipped file (read now if it was not).
+     *
+     * @return array<string, string> pattern => its rule's ID
+     */
+    private function refer(string $ref, string $at): array
     {
-        switch (substr($name, 1)) {
-            case 'scanners':
-                return Config::scannerPaths();
-            case 'wordpress':
-                return Config::wordpressPaths();
+        $out = [];
+        if ($ref[0] === '[') {
+            $id = trim($ref, '[]');
+            foreach ($this->origins['blockedPaths'] ?? [] as $p => $origin) {
+                if ($origin === $id) {
+                    $out[$p] = $origin;
+                }
+            }
+            if ($out === []) {
+                throw new RuleFileException("$at: no earlier block has the ID $ref");
+            }
+            return $out;
         }
-        $one = Config::setPattern($name);          // "@scanners.backups": one of them
-        if ($one !== null) {
-            return [$one];
+        $file = self::shipped(substr($ref, 1));
+        if ($file === null) {
+            throw new RuleFileException("$at: unknown set \"$ref\" (there are @" . implode(', @', self::SETS) . ')');
         }
-        $all = [];
-        foreach (array_merge(Config::scannerPaths(), Config::wordpressPaths()) as $p) {
-            $all[] = (string) Config::setName($p);
+        $real = (string) realpath($file);
+        if (!isset($this->seen[$file])) {
+            $saved = $this->rid;
+            $this->file($file, null, $at);
+            $this->rid = $saved;
         }
-        throw new RuleFileException("$at: unknown set \"$name\" (there are @" . implode(', @', self::SETS) . ', ' . implode(', ', $all) . ')');
+        foreach ($this->origins['blockedPaths'] ?? [] as $p => $origin) {
+            if (strncmp((string) ($this->origins['at'][$origin] ?? ''), 'built-in ' . basename($real) . ':', strlen(basename($real)) + 10) === 0) {
+                $out[$p] = $origin;
+            }
+        }
+        return $out;
     }
 
     /**
@@ -450,7 +562,7 @@ final class RuleFile
         foreach ($this->compile($pathArgs, $at, false) as $pattern => $_) {
             $pattern .= 'i';
             $paths[] = $pattern;
-            $this->origins['blockExceptions'][$pattern] = $at;
+            $this->origins['blockExceptions'][$pattern] = $this->rid;
         }
         $list = $this->get('blockExceptions');
         $list = is_array($list) ? $list : [];
@@ -513,7 +625,7 @@ final class RuleFile
                 }
             }
             $this->put("methodPaths.$m", $list);
-            $this->origins['methodPaths'][$m] = $at;
+            $this->origins['methodPaths'][$m] = $this->rid;
             $all = (array) $this->get('methods');
             if (!in_array($m, $all, true)) {
                 $all[] = $m;
@@ -557,7 +669,7 @@ final class RuleFile
             }
         }
         $this->put("budgets.$name", $budget);
-        $this->origins['budgets'][$name] = $at;
+        $this->origins['budgets'][$name] = $this->rid;
     }
 
     private function set(string $line, string $at, string $file): void
