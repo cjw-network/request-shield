@@ -180,7 +180,7 @@ final class Settings
 
     /**
      * Where the rule behind a pattern or budget was written ("site.rules:12",
-     * "default @scanners"); null for settings from a PHP array.
+     * "default @scanners.backups"); null for settings from a PHP array.
      */
     public function origin(string $setting, string $what): ?string
     {

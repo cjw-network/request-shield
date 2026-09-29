@@ -17,7 +17,7 @@ function withDemo(callable $body, string $prefix = ''): void
 {
     $var = sys_get_temp_dir() . '/rshield-demo-' . getmypid() . '-' . mt_rand();
     mkdir($var, 0700, true);
-    $port = 19000 + mt_rand(0, 999);
+    $port = freePort();
     $root = dirname(__DIR__);
     $cmd = sprintf('REQUEST_SHIELD_DEMO_VAR=%s exec %s -S 127.0.0.1:%d %s > /dev/null 2>&1',
         escapeshellarg($var), escapeshellarg(PHP_BINARY), $port,
@@ -94,7 +94,7 @@ $examples = function (string $prefix): void {
             same('allow-uncached path not cacheable; rule=request-shield.rules', shieldSaid($r['shield']));
             $r = $get('GET', '/.env');
             same(404, $r['status'], 'scanner path');
-            same('reject blocked path; rule=default @scanners', $r['shield']);
+            same('reject blocked path; rule=default @scanners.hidden-files', $r['shield']);
             same(400, $get('GET', '/files/%2e%2e/secret')['status'], 'traversal');
             $r = $get('GET', '/files/%2e%2e/secret');
             same('reject path traversal; rule=built-in', $r['shield']);
@@ -104,7 +104,7 @@ $examples = function (string $prefix): void {
             // PHP deletes a cookie as "name=deleted" with an expiry in the past.
             truthy(in_array($r['cookies']['rs_pass'] ?? null, ['', 'deleted'], true), 'the pass cookie is deleted');
             $r = $get('GET', '/');
-            truthy(preg_match('#reject 404 &quot;blocked path&quot; rule=default @scanners &quot;GET http://127\.0\.0\.1' . preg_quote($prefix, '#') . '/\.env&quot;#', $r['body']) === 1, 'the log on the page, with the full URL');
+            truthy(preg_match('#reject 404 &quot;blocked path&quot; rule=default @scanners.hidden-files &quot;GET http://127\.0\.0\.1' . preg_quote($prefix, '#') . '/\.env&quot;#', $r['body']) === 1, 'the log on the page, with the full URL');
             truthy(strpos($r['body'], ' 127.0.0.0/24 reject') !== false, 'the address anonymised in the log');
         }, $prefix);
 };
@@ -126,6 +126,10 @@ $forms = function (string $prefix): void {
             foreach (['//admin/', '/%61dmin/', '/ADMIN/users', '/./admin/'] as $sneaked) {
                 same(403, $get('GET', $sneaked)['status'], "sneaked: $sneaked");
             }
+            $r = $get('GET', '/rules?method=GET&url=' . rawurlencode('/wp-config.php.bak') . '&ip=198.51.100.7');
+            same(200, $r['status'], 'the active rules page, for this machine');
+            truthy(strpos($r['body'], 'This visitor gets &quot;not found&quot; (404)') !== false, 'the check on the page');
+            truthy(strpos($r['body'], 'only for 127.0.0.1, ::1') !== false, 'the page\'s own rule in words');
             $r = $get('GET', '/api/status');
             same(200, $r['status'], 'the API answers this machine');
             truthy(strpos($r['body'], '"ok":true') !== false, 'the API itself');

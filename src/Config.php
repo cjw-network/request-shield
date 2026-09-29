@@ -108,6 +108,21 @@ final class Config
     }
 
     /**
+     * A name for each built-in pattern, so a decision (and the log) says
+     * which one: "@scanners.backups".
+     */
+    public static function setName(string $pattern): ?string
+    {
+        /** @var array<string, string>|null $names */
+        static $names = null;
+        if ($names === null) {
+            $names = array_combine(self::scannerPaths(), ['@scanners.hidden-files', '@scanners.backups', '@scanners.test-scripts', '@scanners.db-tools', '@scanners.cgi'])
+                + array_combine(self::wordpressPaths(), ['@wordpress.folders', '@wordpress.scripts']);
+        }
+        return $names[$pattern] ?? null;
+    }
+
+    /**
      * @param array<mixed> $config
      * @return array<mixed>
      */

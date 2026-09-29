@@ -9,7 +9,7 @@ where it was written:
 |---|---|
 | `site.rules:12` | line 12 of a rule file (relative to the main file's directory) |
 | `ext/shop/settings/request-shield.rules:2` | an extension's rule file |
-| `default @scanners` | a built-in default |
+| `default @scanners.backups` | a built-in pattern (`@scanners.hidden-files`, `.backups`, `.test-scripts`, `.db-tools`, `.cgi`; `@wordpress.folders`, `.scripts`) |
 | `built-in` | a check every site has: sizes, path encoding, traversal; a POST is never cached |
 | `blockedPaths[3]`, `budgets.requests` | PHP array settings: the setting and index |
 
@@ -39,7 +39,7 @@ decision, status, reason, rule, the request with its **full URL**, the
 User-Agent:
 
 ```text
-2026-09-29T08:41:03+02:00 198.51.100.0/24 reject 404 "blocked path" rule=default @scanners "GET https://www.example.org/.env" "Mozilla/5.0 ..."
+2026-09-29T08:41:03+02:00 198.51.100.0/24 reject 404 "blocked path" rule=default @scanners.hidden-files "GET https://www.example.org/.env" "Mozilla/5.0 ..."
 2026-09-29T08:41:07+02:00 198.51.100.0/24 challenge 429 "requests" rule=site.rules:13 "GET https://www.example.org/news?page=4711" "python-requests/2.32"
 2026-09-29T08:41:09+02:00 2001:db8:1::/48 reject 403 "restricted" rule=site.rules:25 "GET https://www.example.org//admin/" "curl/8.5"
 ```

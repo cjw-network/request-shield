@@ -25,6 +25,9 @@ allow       POST  **/edit
 restrict    **/admin/**  to 192.0.2.0/24
 restrict    **/api/**    to 127.0.0.1 ::1
 
+# The active rules page shows how the site is protected: this machine only.
+restrict    **/rules     to 127.0.0.1 ::1
+
 # Per visitor and minute: past 20 requests the invisible browser check, past
 # 60 a pause (429). Reload any page 20 times to see it.
 limit       requests 60/min challenge-at 20

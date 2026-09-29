@@ -9,6 +9,7 @@
  *   php bin/request-shield check  site.rules [--source=<glob>]...
  *   php bin/request-shield show   site.rules [--source=<glob>]...
  *   php bin/request-shield reload site.rules [--source=<glob>]...
+ *   php bin/request-shield trace  site.rules "GET https://www.example.org/wp-login.php" [--ip=<address>]
  *
  * check:  reads every file, reports the first error with file and line, and
  *         warns about rule files anyone else could change.
@@ -16,12 +17,15 @@
  * reload: check, then mark the main file changed (touch), so every server
  *         reads the rules again on its next check -- for files added or changed
  *         where servers without APCu do not look by themselves (extensions).
+ * trace:  what happens to a request, check by check, in plain words (nothing
+ *         is counted); the visitor's address with --ip (default 198.51.100.7).
  */
 
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/bootstrap.php';
 
+use CjwNetwork\RequestShield\Report\Inspector;
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Rules\RuleFileException;
 use CjwNetwork\RequestShield\Settings;
@@ -29,16 +33,20 @@ use CjwNetwork\RequestShield\Settings;
 $args = array_slice($argv, 1);
 $sources = [];
 $rest = [];
+$ip = '198.51.100.7';
 foreach ($args as $a) {
-    if (strncmp($a, '--source=', 9) === 0) {
+    if (strncmp($a, '--ip=', 5) === 0) {
+        $ip = substr($a, 5);
+    } elseif (strncmp($a, '--source=', 9) === 0) {
         $sources[] = substr($a, 9);
     } else {
         $rest[] = $a;
     }
 }
-[$command, $file] = $rest + [null, null];
-if (!in_array($command, ['check', 'show', 'reload'], true) || $file === null) {
-    fwrite(STDERR, "usage: request-shield check|show|reload <main.rules> [--source=<glob>]...\n");
+[$command, $file, $what] = $rest + [null, null, null];
+if (!in_array($command, ['check', 'show', 'reload', 'trace'], true) || $file === null || ($command === 'trace' && $what === null)) {
+    fwrite(STDERR, "usage: request-shield check|show|reload <main.rules> [--source=<glob>]...\n"
+        . "       request-shield trace <main.rules> \"GET https://www.example.org/path\" [--ip=<address>] [--source=<glob>]...\n");
     exit(2);
 }
 if (substr($file, -6) !== '.rules') {
@@ -54,6 +62,20 @@ try {
 } catch (InvalidArgumentException $e) {
     fwrite(STDERR, $e->getMessage() . "\n");
     exit(1);
+}
+
+if ($command === 'trace') {
+    $parts = preg_split('/\s+/', trim((string) $what), 2) ?: [];
+    [$method, $url] = count($parts) === 2 ? $parts : ['GET', $parts[0] ?? '/'];
+    // Only looks at the counters (APCu is the CLI's own; files are the site's).
+    $t = (new Inspector($settings))->trace(Inspector::request($method, $url, $ip));
+    $mark = ['pass' => '✓', 'note' => '!', 'stop' => '✕', 'skip' => '–'];
+    echo strtoupper($method) . " $url from $ip\n\n";
+    foreach ($t['steps'] as $st) {
+        echo '  ' . $mark[$st['state']] . ' ' . str_pad($st['check'], 34) . $st['text'] . ($st['rule'] !== null ? "  [{$st['rule']}]" : '') . "\n";
+    }
+    echo "\nThis visitor {$t['verdict']}." . ($t['rule'] !== null ? " Decided by {$t['rule']}." : '') . "\n";
+    exit($t['decision']->passes() ? 0 : 4);
 }
 
 if ($command === 'check' || $command === 'reload') {

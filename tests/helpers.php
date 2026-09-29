@@ -35,3 +35,18 @@ function solveInNode(array $challenge): array
     }
     return [$r['payload'], (int) $r['ms'], (int) $r['n']];
 }
+
+/**
+ * A port nobody listens on, from the operating system -- a guessed one can
+ * belong to another service on the machine, which then answers the test.
+ */
+function freePort(): int
+{
+    $probe = stream_socket_server('tcp://127.0.0.1:0');
+    if ($probe === false) {
+        throw new RuntimeException('no free port');
+    }
+    $name = (string) stream_socket_get_name($probe, false);
+    fclose($probe);
+    return (int) substr($name, strrpos($name, ':') + 1);
+}

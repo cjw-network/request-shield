@@ -188,7 +188,7 @@ return [
             same(['#^/early$#', '#^/site$#'], array_slice($s->blockedPaths, -2), 'in the order read');
             same('rules.d/90-late.rules:1', $s->origin('budgets', 'x'), 'origin relative to the main file');
             same('site.rules:2', $s->origin('blockedPaths', '#^/site$#'));
-            same('default @scanners', $s->origin('blockedPaths', \CjwNetwork\RequestShield\Config::scannerPaths()[0]));
+            same('default @scanners.hidden-files', $s->origin('blockedPaths', \CjwNetwork\RequestShield\Config::scannerPaths()[0]));
             truthy(isset($read['seen']["$dir/rules.d"]), 'the include directory is watched');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
@@ -294,7 +294,8 @@ return [
                 return $shield->explain($shield->decide($r, 1000.0), $r);
             };
             same('site.rules:2', $explain('/x/y'));
-            same('default @scanners', $explain('/.env'));
+            same('default @scanners.hidden-files', $explain('/.env'));
+            same('default @scanners.backups', $explain('/dump.sql'));
             same('site.rules:3', $explain('/admin/'));
             same('site.rules:4', $explain('/page', ['REQUEST_METHOD' => 'POST']));
             same('site.rules:6', $explain('/login'));
@@ -308,7 +309,7 @@ return [
         $r = Request::fromServer(['REQUEST_URI' => '/b', 'REMOTE_ADDR' => '198.51.100.7']);
         same('blockedPaths[1]', $shield->explain($shield->decide($r, 1000.0), $r));
     },
-    'bin/request-shield: check, show, reload' => function (): void {
+    'bin/request-shield: check, show, reload, trace' => function (): void {
         if (!function_exists('exec')) {
             skip('no exec');
         }
@@ -332,6 +333,11 @@ return [
             exec("$bin reload " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
             clearstatcache();
             truthy(filemtime("$dir/site.rules") >= time() - 5, 'reload marks the main file changed');
+            $out = [];
+            exec("$bin trace " . escapeshellarg("$dir/site.rules") . ' ' . escapeshellarg('GET https://www.example.org/x/y') . ' --ip=192.0.2.1 2>&1', $out, $code);
+            same(4, $code, 'refused: exit 4');
+            truthy(preg_match('~✕ Addresses only attackers ask for\s+refused: /x/\*\*  \[site\.rules:1\]~u', implode("\n", $out)) === 1, implode("\n", $out));
+            truthy(strpos(implode("\n", $out), 'This visitor gets "not found" (404)') !== false, 'the verdict');
             chmod("$dir/site.rules", 0666);
             $out = [];
             exec("$bin check " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);

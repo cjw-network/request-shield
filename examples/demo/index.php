@@ -23,6 +23,7 @@ require __DIR__ . '/../../bootstrap.php';       // with Composer: vendor/autoloa
 // ─────────────────────────────────────────────────────────────────────────────
 
 use CjwNetwork\RequestShield\IpAddress;
+use CjwNetwork\RequestShield\Report\RulesPage;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Shield;
 
@@ -70,6 +71,12 @@ if ($path === '/search') {
     $content = ['Edit form', $method === 'POST' ? 'Saved: "' . (string) ($_POST['message'] ?? '') . '" -- a POST is allowed here (allow POST **/edit) and never cached.' : 'A POST is allowed on this page only.'];
 } elseif (strncmp($path, '/admin/', 7) === 0) {
     $content = ['Admin area', 'Only the office network (192.0.2.0/24) gets here.'];
+} elseif ($path === '/rules' && $shield !== null) {
+    // The active rules, in plain words, with a live check (restricted to this
+    // machine by the rules). Loaded only here: a normal request never does.
+    header('Content-Type: text/html; charset=utf-8');
+    echo RulesPage::render($shield->settings, ['check' => $_GET, 'action' => $url('/rules'), 'ip' => $request->clientIp, 'title' => 'Active rules — request-shield demo']);
+    exit;
 } elseif ($path === '/api/status') {
     header('Content-Type: application/json');
     echo json_encode(['ok' => true, 'note' => 'the API answers only this machine (restrict **/api/** to 127.0.0.1 ::1)']), "\n";
@@ -104,6 +111,7 @@ $tests = [
     ['/admin/', 'The admin area', '403 — only for the office network'],
     ['//admin/', 'The admin area, sneaked', '403 — "//", "%61" and case do not get past it'],
     ['/api/status', 'The API', 'allowed from this machine only'],
+    ['/rules', 'The active rules', 'all rules in plain words, how often each decided, and a check for any address (this machine only)'],
     ['/challenge', 'A page that always checks the browser', 'the invisible check once, then the page'],
     ['/.env', 'What a scanner looks for', '404 — the site never sees it'],
     ['/files/%2e%2e/secret', 'Path traversal', '400'],

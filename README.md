@@ -30,6 +30,9 @@ else:
   let through.
 - **Readable rules** — one per line, in a plain text file; every refusal names
   the line that caused it, and an optional log shows what was turned away.
+- **See what it does** — a page shows the active rules in plain words, how
+  often each one decided, and what happens to any address you try, step by
+  step.
 
 No extra server, no subscription, no data sent to anyone: one PHP library —
 upload, include, done.
@@ -79,7 +82,8 @@ server and PHP slots, just very briefly.
 - **0.1.0:** the core.
 - **0.2.0:** the browser challenge (proof of work), settings checked once and
   compiled for OPcache, documentation, CI.
-- **Unreleased:** rule files, access rules, rule IDs, the log, the demo.
+- **Unreleased:** rule files, access rules, rule IDs, the log, the active
+  rules page, the demo.
 - **Next:** modes — monitor first, strict under attack
   ([proposal 0004](docs/proposals/0004-modes-monitor-and-strict.md)); earning back a spent budget with a challenge, for forms and APIs
   ([proposal 0001](docs/proposals/0001-earn-back-a-spent-budget.md)); adapters
@@ -147,7 +151,10 @@ set          log /var/log/request-shield.log
 ```
 
 `php bin/request-shield check|show|reload site.rules` checks it, shows the
-rules in effect with their origins, or makes every server read it again.
+rules in effect with their origins, or makes every server read it again;
+`trace site.rules "GET https://…/wp-login.php"` shows what happens to a
+request, check by check. The same as a page for the admin area:
+[the active rules page](docs/features/active-rules-page.md).
 
 Or as a PHP array — every key, with its default, is in `src/Config.php`;
 `config/request-shield.dist.php` is a starting point:

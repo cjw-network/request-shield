@@ -9,6 +9,7 @@
   [access rules](features/access-rules.md) ·
   [rule files](features/rule-files.md) ·
   [log and rule IDs](features/log-and-rule-ids.md) ·
+  [active rules page](features/active-rules-page.md) ·
   [settings](features/settings.md)
 - **Use cases** — scenarios end to end:
   [shared hosting DoS guard](use-cases/shared-hosting-dos-guard.md) ·

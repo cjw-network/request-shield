@@ -121,7 +121,7 @@ changes.
   (or a default) set. The main file comes last, so the site has the last word.
 
 Every rule remembers where it was written (`site.rules:12`,
-`ext/shop/settings/request-shield.rules:2`, `default @scanners`), and every
+`ext/shop/settings/request-shield.rules:2`, `default @scanners.backups`), and every
 decision names it ([rule IDs](log-and-rule-ids.md)).
 
 ## Cost and changes

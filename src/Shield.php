@@ -195,7 +195,7 @@ final class Shield
 
     /**
      * The rule behind a decision: where it was written ("site.rules:12",
-     * "default @scanners"), the setting for PHP array settings
+     * "default @scanners.backups"), the setting for PHP array settings
      * ("blockedPaths[3]"), "built-in" for the checks every site has
      * (sizes, path encoding), or null when no single rule decided (allow).
      * Runs the matching again, so it is meant for decisions that stopped or
@@ -219,7 +219,7 @@ final class Shield
         switch ($d->reason) {
             case 'blocked path':
                 $i = $first($s->blockedPaths, strtolower(rawurldecode($request->path)));
-                return $i === null ? null : $name('blockedPaths', $s->blockedPaths[$i], "blockedPaths[$i]");
+                return $i === null ? null : $name('blockedPaths', $s->blockedPaths[$i], Config::setName($s->blockedPaths[$i]) ?? "blockedPaths[$i]");
             case 'restricted':
                 foreach ($s->restricted as $n => $r) {
                     $i = $first($r['paths'], $request->matchPath());
@@ -365,7 +365,8 @@ final class Shield
         return new Gate($c, Secret::resolve($c->secret, $dir), $engines, $this->settings->ipv6Prefix, $this->store);
     }
 
-    private static function storeFor(Settings $s): Store
+    /** The store the settings ask for ("auto": APCu when usable, else files). */
+    public static function storeFor(Settings $s): Store
     {
         return match ($s->store) {
             'apcu' => new ApcuStore(),

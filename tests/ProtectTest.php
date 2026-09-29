@@ -18,7 +18,7 @@ function withServer(array $config, callable $body): void
     mkdir($dir . '/docroot', 0700, true);
     file_put_contents($dir . '/docroot/index.php', '<?php echo json_encode(["shield" => $_SERVER["REQUEST_SHIELD"] ?? null, "xff" => $_SERVER["HTTP_X_FORWARDED_FOR"] ?? null, "cacheable" => \CjwNetwork\RequestShield\Shield::current()?->cacheable()]);');
     file_put_contents($dir . '/config.php', '<?php return ' . var_export($config + ['store' => 'file', 'storeDir' => $dir . '/store'], true) . ';');
-    $port = 18000 + mt_rand(0, 999);
+    $port = freePort();
     $cmd = sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
         escapeshellarg($dir . '/config.php'), escapeshellarg(PHP_BINARY), escapeshellarg(dirname(__DIR__) . '/bootstrap.php'),
         $port, escapeshellarg($dir . '/docroot'));

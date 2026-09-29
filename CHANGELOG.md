@@ -31,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `Shield::active()`: the shield `protect()` ran with, so the application
   counts on-demand budgets against the same settings and request
   (`Shield::active()->consume('misses')`); refusals are logged.
+- The active rules page (`Report\RulesPage`): the rules in plain words with
+  their origin and how often each decided in the last 24 hours, the latest
+  activity, and a check that tries any address step by step without counting
+  it; refreshes itself. `bin/request-shield trace`. Built-in patterns have
+  names (`@scanners.backups`, …) in decisions and the log
+  ([docs](docs/features/active-rules-page.md)).
 - Proposal 0004: modes (`off`, `monitor`, `enforce`, `strict`), `monitor` for
   single rules, a fresh check per path.
 - `challenge.alwaysPaths`: paths every visitor has to pass the browser check
@@ -53,6 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   only where PHP has them. CI tests PHP 8.0 too. Cost on PHP 8.1 unchanged.
 
 ### Changed
+- The end-to-end tests take their ports from the operating system: a guessed
+  port could belong to another service, which then answered the test.
 - The compiled settings record every source file and the environment
   variables used (format 4: rebuilt once after the update); `Settings` has the
   log, the access rules and the rules' origins. `Shield::consume()` takes the

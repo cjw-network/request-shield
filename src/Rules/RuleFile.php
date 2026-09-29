@@ -81,7 +81,7 @@ final class RuleFile
         $this->c = Config::defaults();
         $this->c['recheck'] = 10;
         foreach (Config::scannerPaths() as $p) {
-            $this->origins['blockedPaths'][$p] = 'default @scanners';
+            $this->origins['blockedPaths'][$p] = 'default ' . Config::setName($p);
         }
         $this->origins['budgets']['requests'] = 'default';
     }
@@ -351,7 +351,7 @@ final class RuleFile
                     throw new RuleFileException("$at: a set ($a) only works with block and unblock");
                 }
                 foreach (self::set_($a, $at) as $p) {
-                    $out[$p] = "$at $a";
+                    $out[$p] = "$at " . (Config::setName($p) ?? $a);
                 }
                 continue;
             }
@@ -360,6 +360,8 @@ final class RuleFile
                 throw new RuleFileException("$at: \"$a\" is not a valid regular expression");
             }
             $out[$pattern] = $at;
+            // As written, for people (the rules page): "/wp-admin/**", not the expression.
+            $this->origins['written'][$pattern] = $this->origins['written'][$pattern . 'i'] = ($regex ? 'regex ' : '') . $a;
         }
         if ($regex && $out === []) {
             throw new RuleFileException("$at: regex of what?");
