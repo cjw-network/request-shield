@@ -67,6 +67,8 @@ And what it does **not** cost you:
 
 ## How it works, step by step
 
+![The browser check, step by step: the browser asks, gets a small page with a task, solves it, sends the answer, the shield checks it and the page comes with a pass](browser-check.svg)
+
 1. **The shield decides** that this request is to be checked (too many
    requests, or a page that is always checked).
 2. **Instead of the page, it sends a small page** (about 5 KB, no external

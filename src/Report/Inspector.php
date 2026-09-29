@@ -56,12 +56,17 @@ final class Inspector
      */
     public static function request(string $method, string $url, string $ip, array $headers = []): Request
     {
-        $parts = parse_url($url);
-        if ($parts === false || $url === '') {
-            $parts = ['path' => '/'];
-        }
-        if (!isset($parts['host']) && $url !== '' && $url[0] !== '/') {
-            $parts = parse_url('/' . $url) ?: ['path' => '/'];     // "wp-login.php" as a path
+        // A full URL, or a path: "//admin/users" is a path here (as a browser
+        // sends it in the request line), not a host.
+        if (preg_match('#^[a-z][a-z0-9+.-]*://#i', $url)) {
+            $parts = parse_url($url) ?: ['path' => '/'];
+        } else {
+            $q = strpos($url, '?');
+            $path = $q === false ? $url : substr($url, 0, $q);
+            $parts = ['path' => $path === '' ? '/' : ($path[0] === '/' ? $path : '/' . $path)];     // "wp-login.php" as a path
+            if ($q !== false) {
+                $parts['query'] = substr($url, $q + 1);
+            }
         }
         $server = [
             'REQUEST_METHOD' => strtoupper($method !== '' ? $method : 'GET'),

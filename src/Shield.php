@@ -167,7 +167,7 @@ final class Shield
         if (!$decision->passes()) {
             $c = $s->challenge;
             (new Responder())->send($decision, $request, $s->debugHeader, $settled['page'], $rule,
-                Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts));
+                Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts), $c->home);
             exit;
         }
         if ($s->appChallenge && ($request->method === 'GET' || $request->method === 'HEAD')) {
@@ -377,7 +377,7 @@ final class Shield
         $texts = Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts);
         $responder = new Responder();
         $responder->headers($d, $s->debugHeader, $rule);
-        $body = $request->method === 'HEAD' ? '' : $responder->body($d, $page, $texts);
+        $body = $request->method === 'HEAD' ? '' : $responder->body($d, $page, $texts, $c->home);
         if ($echo) {
             echo $body;
         }

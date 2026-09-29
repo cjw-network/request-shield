@@ -17,11 +17,11 @@ namespace CjwNetwork\RequestShield;
 class Responder
 {
     /** @param array<string, string> $texts in the visitor's language (Texts::all()) */
-    public function send(Decision $decision, Request $request, bool $debugHeader = false, ?string $page = null, ?string $rule = null, array $texts = []): void
+    public function send(Decision $decision, Request $request, bool $debugHeader = false, ?string $page = null, ?string $rule = null, array $texts = [], ?string $home = null): void
     {
         $this->headers($decision, $debugHeader, $rule);
         if ($request->method !== 'HEAD') {
-            echo $this->body($decision, $page, $texts);
+            echo $this->body($decision, $page, $texts, $home);
         }
     }
 
@@ -51,7 +51,7 @@ class Responder
      *
      * @param array<string, string> $texts
      */
-    public function body(Decision $decision, ?string $page = null, array $texts = []): string
+    public function body(Decision $decision, ?string $page = null, array $texts = [], ?string $home = null): string
     {
         if ($page !== null) {
             return $page;
@@ -63,6 +63,9 @@ class Responder
         if ($decision->retryAfter > 0) {
             // str_replace, not sprintf: a site's text may hold a "%" of its own.
             $h .= '<p>' . $e(str_replace('%s', (string) $decision->retryAfter, $texts['try-again'])) . '</p>';
+        }
+        if ($home !== null) {
+            $h .= '<p><a href="' . $e($home) . '">' . $e($texts['home']) . '</a></p>';
         }
         return $h;
     }

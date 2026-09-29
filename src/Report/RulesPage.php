@@ -27,7 +27,7 @@ use CjwNetwork\RequestShield\Store\Store;
 final class RulesPage
 {
     /**
-     * @param array{check?: array<mixed>, action?: string, title?: string, store?: Store, now?: int, ip?: string} $o
+     * @param array{check?: array<mixed>, action?: string, title?: string, store?: Store, now?: int, ip?: string, home?: string, homeLabel?: string} $o
      *   check: the form's values (method, url, ip), usually $_GET; action: the form's URL;
      *   ip: the address the check starts with (the viewer's own, say)
      */
@@ -44,7 +44,11 @@ final class RulesPage
         $ip = is_string($check['ip'] ?? null) && @inet_pton(trim($check['ip'])) !== false ? trim($check['ip']) : ($o['ip'] ?? '198.51.100.7');
 
         $h = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-            . '<meta name="robots" content="noindex,nofollow"><title>' . $e($title) . '</title><style>' . self::CSS . '</style></head><body><main>';
+            . '<meta name="robots" content="noindex,nofollow"><title>' . $e($title) . '</title><style>' . self::CSS . '</style></head><body>';
+        if (isset($o['home'])) {
+            $h .= '<header class="bar"><div><a class="name" href="' . $e($o['home']) . '">← ' . $e($o['homeLabel'] ?? 'Back') . '</a></div></header>';
+        }
+        $h .= '<main>';
         $h .= '<h1>' . $e($title) . '</h1><p class="lead">How this site is protected, in plain words — and what happens to any address you try.</p>';
         $versions = $s->origins['versions'] ?? [];
         if ($versions !== []) {
@@ -78,6 +82,7 @@ final class RulesPage
         if ($url !== '') {
             $t = (new Inspector($s, $o['store'] ?? null))->trace(Inspector::request($method, $url, $ip), (float) $now);
             $state = $t['decision']->passes() ? ($t['decision']->action === 'allow' ? 'pass' : 'note') : ($t['decision']->action === 'challenge' ? 'note' : 'stop');
+            $h .= '<div class="diagram">' . Diagram::trace($t, $method . ' ' . (string) (parse_url($url, PHP_URL_PATH) ?: $url)) . '</div>';
             $h .= '<div class="verdict ' . $state . '"><span class="icon">' . self::icon($state) . '</span><div><strong>This visitor ' . $e($t['verdict']) . '.</strong>'
                 . ($t['rule'] !== null ? '<br><span class="note">Decided by: <code>' . $e($t['rule']) . '</code></span>' : '') . '</div></div><ol class="steps">';
             foreach ($t['steps'] as $st) {
@@ -107,7 +112,7 @@ final class RulesPage
                 $h .= '</table>';
             }
             if ($heading === 'Browser check') {
-                $h .= self::BROWSER_CHECK;
+                $h .= str_replace('%DIAGRAM%', '<div class="diagram">' . Diagram::browserCheck() . '</div>', self::BROWSER_CHECK);
             }
             $h .= '</section>';
         }
@@ -271,6 +276,7 @@ final class RulesPage
         . '<p><strong>What it brings:</strong> simple bots and scrapers run no JavaScript and never get past the small page — the site renders nothing for them. '
         . 'Bots with a real browser engine pay computing time for every pass, and more the more aggressive they are. '
         . 'Real visitors see it at most once in a while. Nothing comes from or goes to a third party: no Google, no Cloudflare, no tracking.</p>'
+        . '%DIAGRAM%'
         . '<p><strong>What it does not do:</strong> it is no CAPTCHA against people, and an attacker with many real browsers gets through — slower and at their own cost.</p>'
         . '</details>';
 
@@ -278,6 +284,7 @@ final class RulesPage
 :root{--bg:#f6f7f9;--fg:#1d2127;--muted:#5b6470;--card:#fff;--line:#dfe3e8;--accent:#2f62c9;--ok:#1e7b43;--okbg:#e6f4ea;--warn:#8a5a00;--warnbg:#fdf3dc;--no:#a3361f;--nobg:#fbe9e5;--skip:#8a929c}
 @media (prefers-color-scheme:dark){:root{--bg:#15181c;--fg:#e7e9ec;--muted:#a0a8b3;--card:#1d2127;--line:#2d333b;--accent:#7aa2ff;--ok:#5fcf8a;--okbg:#17301f;--warn:#f0c060;--warnbg:#3a2f15;--no:#ff8a70;--nobg:#3d1f19;--skip:#6b737d}}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,sans-serif}
+header.bar{background:var(--card);border-bottom:1px solid var(--line)}header.bar div{max-width:60rem;margin:0 auto;padding:.7rem 1rem}header.bar a{font-weight:700;color:var(--fg);text-decoration:none}
 main{max-width:60rem;margin:0 auto;padding:1.5rem 1rem 3rem}h1{font-size:1.6rem;margin:.2rem 0}h2{font-size:1.2rem;margin:2rem 0 .6rem}h3{font-size:1.02rem;margin:0 0 .3rem}
 .lead,.note,.intro{color:var(--muted)}.lead{margin:0 0 1.2rem}.note{font-size:.9rem}.intro{margin:.1rem 0 .6rem}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem 1.2rem;margin-bottom:.8rem}.card h2{margin-top:0}
@@ -295,7 +302,7 @@ button{padding:.45rem 1rem;border:0;border-radius:6px;background:var(--accent);c
 ol.steps{list-style:none;margin:0;padding:0}ol.steps li{display:flex;gap:.7rem;padding:.45rem 0;border-top:1px solid var(--line)}ol.steps li:first-child{border-top:0}
 .icon{flex:0 0 1.5rem;height:1.5rem;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:#fff}
 .pass .icon{background:var(--ok)}.note .icon{background:var(--warn)}.stop .icon{background:var(--no)}.skip .icon{background:var(--skip)}.skip{color:var(--skip)}
-details.explain{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.6rem}details.explain summary{cursor:pointer;font-weight:600;color:var(--accent)}details.explain ol{padding-left:1.3rem}
+.diagram{overflow-x:auto;margin:.8rem 0}.diagram svg{min-width:40rem;max-width:100%;height:auto}details.explain{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.6rem}details.explain summary{cursor:pointer;font-weight:600;color:var(--accent)}details.explain ol{padding-left:1.3rem}
 table.recent .icon{width:1.3rem;height:1.3rem;display:inline-flex;font-size:.75rem}
 @media (max-width:40rem){td.meta,td.hits{white-space:normal}table.recent th:nth-child(2),table.recent td:nth-child(2){display:none}}
 CSS;

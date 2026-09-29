@@ -38,6 +38,8 @@ else:
 No extra server, no subscription, no data sent to anyone: one PHP library —
 upload, include, done.
 
+![How request-shield sits in front of a site: visitors, the shield in microseconds, your site; junk, requests not for them, suspicious and too fast ones are answered by the shield itself](docs/explained/overview.svg)
+
 *What it is not:* protection against attacks so large that they overload the
 network or the web server itself — that remains the job of your hoster or a CDN.
 

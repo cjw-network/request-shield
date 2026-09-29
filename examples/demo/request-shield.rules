@@ -60,5 +60,9 @@ set         recheck 0
 # X-Request-Shield-Challenge: required on a page (/profile) -- the latter needs:
 set         app-challenge on
 
+# The shield's own pages (404, 403, a pause, the check page) link back here:
+# the demo sets the variable to its own front page, wherever it lives.
+set         home ${REQUEST_SHIELD_DEMO_HOME:-/}
+
 # X-Request-Shield: <decision> <reason>; rule=<ID> on every response.
 set         debug-header on

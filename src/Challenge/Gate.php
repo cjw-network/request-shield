@@ -98,7 +98,7 @@ final class Gate
         $challenge = (new ProofOfWork($this->secret))->create($bucket, $maxNumber, $expires);
         $c = $this->config;
         $texts = \CjwNetwork\RequestShield\Texts::all(\CjwNetwork\RequestShield\Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts);
-        $page = ChallengePage::render($challenge, $solutionName, $secure, $texts, $resend);
+        $page = ChallengePage::render($challenge, $solutionName, $secure, $texts, $resend, $c->home);
         return ['decision' => $challenged, 'cookies' => $cookies, 'page' => $page];
     }
 

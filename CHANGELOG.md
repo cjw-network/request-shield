@@ -69,6 +69,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   response header `X-Request-Shield-Challenge: required` on a page
   (`set app-challenge on`). Proposal 0006
   ([docs](docs/features/app-challenges.md)).
+- `set home /`: the shield's own pages (404, 403, a pause, the check page) link
+  back to the site ("To the home page", in the visitor's language); the rules
+  page takes a link back too. The demo leads back to its front page from
+  everywhere.
+- Diagrams, drawn as SVG without a library: the path of a request through the
+  checks on the rules page, the browser check step by step, and how the shield
+  sits in front of a site (README, `docs/explained/`).
 - Proposal 0004: modes (`off`, `monitor`, `enforce`, `strict`), `monitor` for
   single rules, a fresh check per path.
 - `challenge.alwaysPaths`: paths every visitor has to pass the browser check

@@ -70,5 +70,16 @@ return [
         ob_start();
         (new Responder())->send(Decision::reject(404, 'blocked path'), $r);
         truthy(strpos((string) ob_get_clean(), '<h1>Not Found</h1>') !== false, 'English without texts');
+        ob_start();
+        (new Responder())->send(Decision::reject(403, 'restricted'), $r, false, null, null, Texts::all('de'), '/start?a=1&b="2"');
+        truthy(strpos((string) ob_get_clean(), '<a href="/start?a=1&amp;b=&quot;2&quot;">Zur Startseite</a>') !== false, 'a link home, escaped');
+        foreach (['javascript:alert(1)', 'www.example.org', "/x\ny"] as $bad) {
+            try {
+                Settings::from(['challenge' => ['home' => $bad]]);
+                throw new TestFailure("accepted home $bad");
+            } catch (InvalidArgumentException $e) {
+                truthy(strpos($e->getMessage(), 'challenge.home') !== false, $e->getMessage());
+            }
+        }
     },
 ];

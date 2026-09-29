@@ -29,7 +29,7 @@ final class ChallengePage
      *   a form that was sent without a pass: its fields, to send it again after the check;
      *   false when it cannot be (files, too large): the visitor is asked to send it again
      */
-    public static function render(array $challenge, string $cookieName, bool $secure, array $texts = [], $resend = null): string
+    public static function render(array $challenge, string $cookieName, bool $secure, array $texts = [], $resend = null, ?string $home = null): string
     {
         $t = $texts + \CjwNetwork\RequestShield\Texts::all('en');
         if ($resend !== null) {
@@ -51,12 +51,13 @@ final class ChallengePage
             . '<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">'
             . '<title>' . $e($t['title']) . '</title><style>'
             . 'body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font:16px/1.5 system-ui,sans-serif;background:#f6f7f9;color:#222}'
-            . 'main{max-width:28rem;padding:2rem;text-align:center}h1{font-size:1.3rem;margin:0 0 .5rem}'
+            . 'main{max-width:28rem;padding:2rem;text-align:center}.home{margin-top:2rem;font-size:.9rem}.home a{color:inherit;opacity:.7}h1{font-size:1.3rem;margin:0 0 .5rem}'
             . '#p{height:4px;background:#dde1e6;border-radius:2px;margin-top:1.2rem;overflow:hidden}#b{height:100%;width:0;background:#3b6fd4;transition:width .2s}'
             . '@media(prefers-color-scheme:dark){body{background:#16181c;color:#e6e6e6}#p{background:#2b3038}}'
             . '</style></head><body><main><h1>' . $e($t['title']) . '</h1><p id="m">' . $e($t['text']) . '</p>'
             . '<noscript><p><strong>' . $e($t['noscript']) . '</strong></p></noscript><div id="p"><div id="b"></div></div>'
             . self::resendForm($resend, $t, $e)
+            . ($home !== null ? '<p class="home"><a href="' . $e($home) . '">' . $e($t['home']) . '</a></p>' : '')
             . '</main>'
             . '<script>var RS=' . $config . ';' . self::SCRIPT . '</script></body></html>';
     }

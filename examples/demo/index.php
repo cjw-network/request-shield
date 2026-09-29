@@ -14,23 +14,6 @@
 
 declare(strict_types=1);
 
-// ── The integration: the first lines of the front controller ─────────────────
-// Everything below this block runs only for requests the shield lets through.
-// (On a site without a front controller, auto_prepend_file does the same.)
-$arrived = $_SERVER;                            // demo only: the request before the shield, to show what it removes
-define('REQUEST_SHIELD_CONFIG', __DIR__ . '/request-shield.rules');
-require __DIR__ . '/../../bootstrap.php';       // with Composer: vendor/autoload.php + Shield::protectFile(...)
-// ─────────────────────────────────────────────────────────────────────────────
-
-use CjwNetwork\RequestShield\IpAddress;
-use CjwNetwork\RequestShield\Report\Describe;
-use CjwNetwork\RequestShield\Report\RulesPage;
-use CjwNetwork\RequestShield\Request;
-use CjwNetwork\RequestShield\Shield;
-
-$decision = Shield::current();
-$e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
-
 // Where the demo lives: at the root (PHP's built-in server with router.php),
 // or in any subdirectory of a web server -- with rewrite rules (.htaccess:
 // /demo/challenge) or without them (/demo/index.php/challenge). $front is
@@ -43,6 +26,28 @@ if (substr($script, -10) === '/index.php') {
 }
 $path = '/' . ltrim((string) substr($uri, strlen($front)), '/');
 $url = static fn (string $local): string => $front . $local;
+// The shield's own pages (404, a pause, the check page) link back to the demo's
+// front page: "set home ${REQUEST_SHIELD_DEMO_HOME:-/}" in the rules.
+putenv('REQUEST_SHIELD_DEMO_HOME=' . $front . '/');
+
+// ── The integration: the first lines of the front controller ─────────────────
+// Everything below this block runs only for requests the shield lets through.
+// (On a site without a front controller, auto_prepend_file does the same.)
+$arrived = $_SERVER;                            // demo only: the request before the shield, to show what it removes
+define('REQUEST_SHIELD_CONFIG', __DIR__ . '/request-shield.rules');
+require __DIR__ . '/../../bootstrap.php';       // with Composer: vendor/autoload.php + Shield::protectFile(...)
+// ─────────────────────────────────────────────────────────────────────────────
+
+use CjwNetwork\RequestShield\IpAddress;
+use CjwNetwork\RequestShield\Report\Describe;
+use CjwNetwork\RequestShield\Report\Diagram;
+use CjwNetwork\RequestShield\Report\RulesPage;
+use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Shield;
+
+$decision = Shield::current();
+$e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
+
 
 // "Forget my pass": delete the pass cookie, to see the check again.
 if ($path === '/reset') {
@@ -92,7 +97,8 @@ if ($path === '/search') {
     // The active rules, in plain words, with a live check (restricted to this
     // machine by the rules). Loaded only here: a normal request never does.
     header('Content-Type: text/html; charset=utf-8');
-    echo RulesPage::render($shield->settings, ['check' => $_GET, 'action' => $url('/rules'), 'ip' => $request->clientIp, 'title' => 'Active rules — request-shield demo']);
+    echo RulesPage::render($shield->settings, ['check' => $_GET, 'action' => $url('/rules'), 'ip' => $request->clientIp, 'title' => 'Active rules — request-shield demo',
+        'home' => $url('/'), 'homeLabel' => 'request-shield demo']);
     exit;
 } elseif ($path === '/api/status') {
     header('Content-Type: application/json');
@@ -239,6 +245,7 @@ $responseLines = array_map(static function (string $line) use ($short): array {
   pre.answer { font-size: 13px; white-space: pre-wrap; word-break: break-all; }
   details { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: .7rem 1.1rem; margin-bottom: .6rem; }
   summary { cursor: pointer; font-weight: 600; }
+  .diagram { overflow-x: auto; margin: .6rem 0; } .diagram svg { min-width: 36rem; max-width: 100%; height: auto; }
   ol.happened { padding-left: 1.3rem; margin: .3rem 0; } ol.happened li { margin: .35rem 0; }
 </style>
 </head>
@@ -266,6 +273,7 @@ $responseLines = array_map(static function (string $line) use ($short): array {
     <li>The shield checked the answer (one calculation, well under a millisecond; every answer counts only once) and handed out the pass cookie <code>rs_pass</code>.</li>
     <li>With the pass you get through straight away<?= $passLeft !== null ? ' — for ' . (int) $passLeft . ' more seconds here (<code>set pass-ttl 1m</code>; a real site: an hour)' : '' ?>. After that, or after <a href="<?= $e($url('/reset')) ?>">Reset my pass</a>, the check comes again.</li>
   </ol>
+  <div class="diagram"><?= Diagram::browserCheck() ?></div>
   <p class="note"><strong>What it brings:</strong> a scraper or bot that runs no JavaScript never gets past step 1 — the site renders nothing for it. One with a real browser engine pays computing time for every pass. Search engines are recognised and never checked. Nothing goes to a third party. More: <code>docs/explained/browser-check.md</code>.</p>
   </section>
   <?php endif ?>
@@ -282,6 +290,8 @@ $responseLines = array_map(static function (string $line) use ($short): array {
     <div><span>Browser check passed</span><b class="<?= $passLeft !== null ? 'yes' : 'no' ?>"><?= $passLeft !== null ? 'yes' : 'no' ?></b><?= $passLeft !== null ? ' — ' . $passLeft . ' s left' : '' ?></div>
     <div><span>May a cache keep this page?</span><b class="<?= $status['May a cache keep this page?'] ?>"><?= $e($status['May a cache keep this page?']) ?></b></div>
   </div>
+
+  <details class="card"><summary>How it works — in one picture</summary><div class="diagram"><?= Diagram::overview() ?></div></details>
 
   <h2>Try it</h2>
   <div class="groups">

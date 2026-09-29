@@ -48,6 +48,8 @@ final class ChallengeSettings
         public array $alwaysPaths = [],
         /** @readonly */
         public string $language = 'auto',
+        /** @readonly the address the shield's own pages link to ("To the home page"); null: none */
+        public ?string $home = null,
     ) {
     }
 
@@ -100,7 +102,21 @@ final class ChallengeSettings
             $texts,
             Settings::strings($c, 'alwaysPaths', 'challenge.alwaysPaths'),
             self::language($c),
+            self::home($c),
         );
+    }
+
+    /** @param array<mixed> $c */
+    private static function home(array $c): ?string
+    {
+        $home = $c['home'] ?? null;
+        if ($home === null || $home === '') {
+            return null;
+        }
+        if (!is_string($home) || !preg_match('#^(/|https?://)[^\s"<>]*$#i', $home)) {
+            throw Settings::wrong('challenge.home', 'null, a path (/) or an http(s) address');
+        }
+        return $home;
     }
 
     /** @param array<mixed> $c */

@@ -134,4 +134,21 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'diagrams: valid SVG, the path of a request, everything escaped; the files in docs/ are current' => function (): void {
+        $i = new Inspector(reportSettings(REPORT_RULES), new MemoryStore());
+        $svg = \CjwNetwork\RequestShield\Report\Diagram::trace($i->trace(Inspector::request('GET', 'https://www.example.org/wp-admin/<script>', '198.51.100.7'), 1000.0), 'GET /wp-admin/<script>');
+        truthy(@simplexml_load_string($svg) !== false, 'well-formed');
+        truthy(strpos($svg, '<script') === false, 'nothing from the request is markup');
+        same(1, substr_count($svg, 'class="stop"'), 'one refusing check');
+        same(5, substr_count($svg, 'class="skip"'), 'the rest not checked');
+        truthy(strpos($svg, '>404</text>') !== false, 'where it ends: the shield\'s answer');
+        $ok = \CjwNetwork\RequestShield\Report\Diagram::trace($i->trace(Inspector::request('GET', 'https://www.example.org/', '198.51.100.7'), 1000.0), 'GET /');
+        truthy(strpos($ok, '>Your site</text>') !== false && strpos($ok, 'class="stop"') === false, 'a passing request: the site');
+        foreach (['browserCheck' => 'browser-check.svg', 'overview' => 'overview.svg'] as $method => $file) {
+            $drawn = \CjwNetwork\RequestShield\Report\Diagram::$method();
+            truthy(@simplexml_load_string($drawn) !== false, "$method: well-formed");
+            same($drawn . "\n", (string) file_get_contents(dirname(__DIR__) . "/docs/explained/$file"),
+                "docs/explained/$file is current (php -r 'require \"bootstrap.php\"; echo CjwNetwork\\RequestShield\\Report\\Diagram::$method(), \"\\n\";' > docs/explained/$file)");
+        }
+    },
 ];

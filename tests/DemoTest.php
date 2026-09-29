@@ -88,6 +88,7 @@ $examples = function (string $prefix): void {
             same('allow-uncached path not cacheable; rule=DEMO-CACHE', $r['shield']);
             $r = $get('GET', '/.env');
             same(404, $r['status'], 'scanner path');
+            truthy(strpos($r['body'], '<a href="' . $prefix . '/">To the home page</a>') !== false, 'the shield\'s own page leads back to the demo');
             same('reject blocked path; rule=SCAN-HIDDEN', $r['shield']);
             same(400, $get('GET', '/files/%2e%2e/secret')['status'], 'traversal');
             $r = $get('GET', '/files/.env');

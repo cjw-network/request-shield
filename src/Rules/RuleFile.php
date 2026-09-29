@@ -54,6 +54,7 @@ final class RuleFile
         'search-engines' => ['challenge.searchEngines', 'bool'],
         'recheck' => ['recheck', 'seconds'],
         'language' => ['challenge.language', 'language'],
+        'home' => ['challenge.home', 'string'],
         'log' => ['log.file', 'path'],
         'log-level' => ['log.level', 'loglevel'],
         'log-ip' => ['log.ip', 'logip'],

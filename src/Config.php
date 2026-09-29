@@ -68,6 +68,9 @@ final class Config
                 // The language visitors read: auto (their browser's, among those
                 // there are texts for; else English) or a code. Built in: en, de.
                 'language' => 'auto',
+                // Where the shield's own pages (404, a pause, the check page) link to,
+                // "To the home page": a path (/) or an address; null: no link.
+                'home' => null,
                 // Own texts: 'title' for every language, 'de.title' for one
                 // (keys: Texts::KEYS).
                 'texts' => [],
