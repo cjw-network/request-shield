@@ -118,4 +118,42 @@ return [
         $shield->decide(req('/.env'), 60.0);
         same(0.0, $store->peek('requests:203.0.113.7', 60, 60.0));
     },
+    'content rules: attack patterns in the query and the headers, 403 "attack"' => function (): void {
+        $c = ['contentRules' => [
+            ['target' => 'query', 'patterns' => ['#\bunion\s+select\b#i']],
+            ['target' => 'header:user-agent', 'patterns' => ['#\bsqlmap\b#i']],
+            ['target' => 'headers', 'patterns' => ['#\$\{jndi:#i']],
+            ['target' => 'anywhere', 'patterns' => ['#\$\{env:#i']],
+        ]];
+        same(403, decide($c, req('/?id=1 union select 2'))->status, 'the query');
+        same('attack', decide($c, req('/?id=1 union select 2'))->reason);
+        same(Decision::REJECT, decide($c, req('/', 'GET', ['HTTP_USER_AGENT' => 'sqlmap/1.7']))->action, 'one named header');
+        same(Decision::REJECT, decide($c, req('/', 'GET', ['HTTP_X_THING' => 'x ${jndi:ldap://e}']))->action, 'every header');
+        same(Decision::REJECT, decide($c, req('/${env:x}'))->action, 'anywhere: the path too');
+        // The Cookie header is out of "headers" (and so of "anywhere"); a rule
+        // that wants it names it: "header:cookie".
+        same(Decision::ALLOW, decide($c, req('/', 'GET', ['HTTP_COOKIE' => 'a=${jndi:x}']))->action, '"headers" skips the cookie');
+        same(Decision::ALLOW, decide($c, req('/', 'GET', ['HTTP_COOKIE' => 'a=${env:x}']))->action, 'and "anywhere" too');
+        same(Decision::REJECT, decide(['contentRules' => [['target' => 'header:cookie', 'patterns' => ['#\$\{env:#i']]]],
+            req('/', 'GET', ['HTTP_COOKIE' => 'a=${env:x}']))->action, 'named, it is seen');
+        same(Decision::ALLOW, decide($c, req('/?q=union bank'))->action, 'a near miss passes');
+        same(Decision::ALLOW, decide($c, req('/', 'GET', ['HTTP_USER_AGENT' => 'Mozilla/5.0']))->action);
+        // The refusal names the setting that blocked; allowed names nothing.
+        $shield = new Shield($c, new MemoryStore());
+        $r = req('/?id=1 union select 2');
+        same('contentRules', $shield->explain($shield->decide($r, 1000.0), $r), 'PHP settings: the setting itself');
+        $r = req('/?q=union bank');
+        same(null, $shield->explain($shield->decide($r, 1000.0), $r));
+    },
+    'content rules: an exception opens a pattern at some paths, for some addresses' => function (): void {
+        $c = ['contentRules' => [['target' => 'query', 'patterns' => ['#\bunion\s+select\b#i', '#\bhavij\b#i']]],
+            'blockExceptions' => [['paths' => ['#^/search#'], 'patterns' => ['#\bunion\s+select\b#i'], 'ips' => ['192.0.2.0/24']]]];
+        same(Decision::ALLOW, decide($c, req('/search?id=1 union select 2', 'GET', ['REMOTE_ADDR' => '192.0.2.5']))->action, 'open there, for them');
+        same(Decision::REJECT, decide($c, req('/other?id=1 union select 2', 'GET', ['REMOTE_ADDR' => '192.0.2.5']))->action, 'elsewhere still refused');
+        same(Decision::REJECT, decide($c, req('/search?id=1 union select 2', 'GET', ['REMOTE_ADDR' => '198.51.100.7']))->action, 'for anyone else refused');
+        same(Decision::REJECT, decide($c, req('/search?ua=havij', 'GET', ['REMOTE_ADDR' => '192.0.2.5']))->action, 'the exception names its pattern');
+        // patterns: null opens every content rule there
+        $c['blockExceptions'] = [['paths' => ['#^/open#'], 'patterns' => null, 'ips' => []]];
+        same(Decision::ALLOW, decide($c, req('/open?ua=havij'))->action, 'every pattern open');
+    },
 ];

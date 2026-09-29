@@ -46,7 +46,7 @@ return [
         same('site.rules:2', $t['rule']);
         same('gets "not found" (404) — the site never sees it', $t['verdict']);
         same(['Kind of request' => 'pass', 'Size' => 'pass', 'Disguised address' => 'pass', 'Website name' => 'pass', 'Addresses only attackers ask for' => 'stop',
-            'Where forms may be sent' => 'skip', 'Areas for certain visitors' => 'skip', 'May a cache keep the answer?' => 'skip', 'Pace: "requests"' => 'skip', 'Browser check' => 'skip'], steps($t));
+            'Where forms may be sent' => 'skip', 'Areas for certain visitors' => 'skip', 'Attack patterns' => 'skip', 'May a cache keep the answer?' => 'skip', 'Pace: "requests"' => 'skip', 'Browser check' => 'skip'], steps($t));
         same('refused: /wp-admin/**', $t['steps'][4]['text'], 'the pattern as it was written');
     },
     'trace: the other outcomes, in plain words' => function (): void {
@@ -78,8 +78,8 @@ return [
         for ($n = 0; $n < 5; $n++) {
             $t = $i->trace(Inspector::request('GET', 'https://www.example.org/', '198.51.100.7'), 1000.0);
         }
-        truthy(strpos($t['steps'][8]['text'], '4 of 5 per minute') !== false, 'three counted + this one: ' . $t['steps'][8]['text']);
-        same('note', $t['steps'][8]['state'], 'past challenge-at 3');
+        truthy(strpos($t['steps'][9]['text'], '4 of 5 per minute') !== false, 'three counted + this one: ' . $t['steps'][9]['text']);
+        same('note', $t['steps'][9]['state'], 'past challenge-at 3');
         same('challenge', $t['decision']->action);
         same(3.0, round($store->peek('requests:198.51.100.7', 60, 1000.0)), 'the traces counted nothing');
     },
@@ -140,7 +140,7 @@ return [
         truthy(@simplexml_load_string($svg) !== false, 'well-formed');
         truthy(strpos($svg, '<script') === false, 'nothing from the request is markup');
         same(1, substr_count($svg, 'class="stop"'), 'one refusing check');
-        same(5, substr_count($svg, 'class="skip"'), 'the rest not checked');
+        same(6, substr_count($svg, 'class="skip"'), 'the rest not checked');
         truthy(strpos($svg, '>404</text>') !== false, 'where it ends: the shield\'s answer');
         $ok = \CjwNetwork\RequestShield\Report\Diagram::trace($i->trace(Inspector::request('GET', 'https://www.example.org/', '198.51.100.7'), 1000.0), 'GET /');
         truthy(strpos($ok, '>Your site</text>') !== false && strpos($ok, 'class="stop"') === false, 'a passing request: the site');

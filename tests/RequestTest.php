@@ -51,4 +51,23 @@ return [
         same(['a', 'b', 'd'], $r->queryNames());
         same('GET', $r->method);
     },
+    'content(): what the attack rules see -- decoded twice, lower case, comments out' => function (): void {
+        $r = Request::fromServer([
+            'REQUEST_URI' => '/A%20Path?x=UnIoN%2F%2A%2A%2FSeLeCt%25201&y=a+b',
+            'HTTP_USER_AGENT' => 'Bad%20Bot',
+            'HTTP_COOKIE' => 'sid=secret',
+            'HTTP_X_THING' => 'a    b',
+        ]);
+        same('x=union select 1&y=a b', $r->content('query'), 'decoded twice, "+" a space, /**/ a space, lower case');
+        same('bad bot', $r->content('header:user-agent'), 'one header by name');
+        same('', $r->content('header:x-missing'), 'a header not sent');
+        truthy(strpos($r->content('headers'), 'a b') !== false, 'headers: every HTTP_ value, white space collapsed');
+        truthy(strpos($r->content('headers'), 'sid=secret') === false, 'the Cookie header is not in "headers"');
+        truthy(strpos($r->content('header:cookie'), 'sid=secret') !== false, 'but can be asked for by name');
+        $all = $r->content('anywhere');
+        truthy(strpos($all, '/a path') !== false && strpos($all, 'union select') !== false && strpos($all, 'a b') !== false,
+            'anywhere is path + query + headers');
+        same('', Request::fromServer(['REQUEST_URI' => '/'])->content('query'), 'no query: empty');
+        same('', Request::fromServer([])->content('headers'), 'no headers: empty');
+    },
 ];

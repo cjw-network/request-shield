@@ -40,6 +40,27 @@ return [
         expectInvalid(['challenge' => ['searchEngines' => 'google']], 'challenge.searchEngines');
         expectInvalid(['cacheable' => ['query' => 'page']], 'cacheable.query');
     },
+    'contentRules: targets and patterns checked, one expression per target' => function (): void {
+        $s = Settings::from(['contentRules' => [
+            ['target' => 'query', 'patterns' => ['#a#', '#b#i']],
+            ['target' => 'HEADER:User-Agent', 'patterns' => ['#c#']],
+            ['target' => 'query', 'patterns' => ['#d#']],
+        ]]);
+        same('header:user-agent', $s->contentRules[1]['target'], 'the header name lower-cased');
+        same('#(?:a)|(?:b)|(?:d)#i', $s->contentIndex['query'], 'all of a target\'s patterns in one expression');
+        same('#(?:c)#i', $s->contentIndex['header:user-agent']);
+        truthy(Settings::from(['contentRules' => []])->contentIndex === [], 'none: no index, no work on the request path');
+        expectInvalid(['contentRules' => [['target' => 'body', 'patterns' => ['#x#']]]], 'contentRules.0.target');
+        expectInvalid(['contentRules' => [['patterns' => ['#x#']]]], 'contentRules.0.target');
+        expectInvalid(['contentRules' => [['target' => 'header:Bad_Name', 'patterns' => ['#x#']]]], 'contentRules.0.target');
+        expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => ['/x/']]]], 'contentRules.0.patterns');
+        expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => ['#[#']]]], 'contentRules.0.patterns');
+        // A back reference or a named group would point into another pattern
+        // of the combined expression -- refused.
+        expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => ['#(a)\\1#']]]], 'contentRules.0.patterns');
+        expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => ['#(?<n>a)#']]]], 'contentRules.0.patterns');
+        expectInvalid(['contentRules' => ['not a map']], 'contentRules.0');
+    },
     'export and import lose nothing' => function (): void {
         $s = Settings::from(['trustedProxies' => ['10.0.0.0/8'], 'hosts' => ['a.example'], 'cacheable' => ['query' => ['page'], 'paths' => null],
             'budgets' => ['misses' => ['limit' => 9, 'window' => 10, 'onDemand' => true]], 'challenge' => ['secret' => str_repeat('k', 40), 'texts' => ['title' => 'T']]]);

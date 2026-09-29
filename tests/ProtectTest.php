@@ -131,4 +131,22 @@ return [
             same(429, $get('GET', '/page', $ua + ['Cookie' => $rs['cookie'] . '=' . $payload])['status'], 'the same solution again: a new challenge');
         });
     },
+    'protect(): content rules refuse an attack pattern before the application runs' => function (): void {
+        if (!function_exists('proc_open')) {
+            skip('no proc_open');
+        }
+        withServer([
+            'contentRules' => [
+                ['target' => 'query', 'patterns' => ['#\bunion\s+select\b#i']],
+                ['target' => 'header:user-agent', 'patterns' => ['#\bsqlmap\b#i']],
+            ],
+        ], function (callable $get): void {
+            same(403, $get('GET', '/index.php?id=1+union+select+2')['status'], 'an attack in the query');
+            same(403, $get('GET', '/index.php', ['User-Agent' => 'sqlmap/1.7'])['status'], 'an attack tool');
+            same(403, $get('GET', '/index.php?id=1%20union%2520select%202')['status'], 'double-encoded does not help');
+            $r = $get('GET', '/index.php?id=1');
+            same(200, $r['status'], 'a clean request reaches the application');
+            same('allow', $r['json']['shield'] ?? null);
+        });
+    },
 ];
