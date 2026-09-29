@@ -29,11 +29,27 @@ nginx's document root: open `…/examples/demo/`. It works out its own address
 from `SCRIPT_NAME`, so every link and the form stay inside it:
 
 - **with rewrite rules** (the `.htaccess` here, for Apache and LiteSpeed; for
-  nginx `try_files $uri /…/examples/demo/index.php$is_args$args;`):
-  `…/examples/demo/challenge`
+  nginx the block below): `…/examples/demo/challenge`
 - **without them:** `…/examples/demo/index.php/challenge`. The web server then
   answers paths such as `/.env` itself; the shield sees them only as
   `index.php/.env`.
+
+nginx does neither by itself: a generic `try_files $uri $uri/ /index.html;`
+answers `…/page/about` with 500 (the fallback does not exist), and
+`location ~ \.php$` does not match `index.php/page/about`. This sends every
+path of the demo to its front controller (adjust the directory and the
+`fastcgi_pass`):
+
+```nginx
+location ^~ /request-shield/examples/demo/ {
+    rewrite ^ /request-shield/examples/demo/index.php last;
+}
+location = /request-shield/examples/demo/index.php {
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    fastcgi_pass 127.0.0.1:9000;
+}
+```
 
 The patterns in `request-shield.php` match the end of the path for this reason;
 a real site anchors them at its own base.
