@@ -10,6 +10,7 @@
 # /demo/index.php/page/about). A real site writes them from its root: /page/*.
 
 ids DEMO
+version 2026-09-29.1        # this rule set's own version: shown on /rules and by check
 
 # What a cache may keep. Anything else passes too -- the site answers it, 200
 # or 404 -- but marked "allow-uncached", so made-up URLs cannot fill a cache.
@@ -29,7 +30,9 @@ ids DEMO
 [DEMO-RULES]        restrict **/rules     to 127.0.0.1 ::1        # this rules page: only this machine
 
 # The path check stays even here: /files/%2e%2e/secret is still refused (400).
-[DEMO-FILES]        unblock [SCAN-HIDDEN] [SCAN-BACKUP]  at **/files/**  for 127.0.0.1 ::1   # the admin's file reader may open hidden files and backups, from this machine
+# @1: the revision of the built-in rules this was reviewed for -- when a library
+# update changes them, check and /rules say so (the rules keep applying).
+[DEMO-FILES]        unblock [SCAN-HIDDEN@1] [SCAN-BACKUP@1]  at **/files/**  for 127.0.0.1 ::1   # the admin's file reader may open hidden files and backups, from this machine
 
 [DEMO-PACE]         limit requests 60/min challenge-at 20          # per visitor: browser check past 20 requests a minute, a pause past 60
 [DEMO-LOGIN]        challenge   **/challenge                       # a page where every visitor is checked, as a login would be

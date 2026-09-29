@@ -69,7 +69,8 @@ application, and whether the answer may be cached.
 - **Rule files and a log:** the settings one rule per line, from several files
   (a CMS extension ships its own); every decision names its rule
   (`[SITE-10]`, or `site.rules:12`); an optional log of what was stopped or
-  flagged. The built-in blocks are rule files too (`rules/`).
+  flagged. The built-in blocks are rule files too (`rules/`), versioned; a
+  site that changes one is told when an update changes it underneath.
 - **No dependencies, no services:** counters in APCu, or in plain files on hosting
   without APCu. PHP ≥ 8.0 (the Red Hat Enterprise Linux 9 baseline).
 

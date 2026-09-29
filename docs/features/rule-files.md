@@ -111,6 +111,42 @@ ids SITE                                                  # this file's IDs star
   instead of the pattern, for people who do not read patterns
   (the pattern stays underneath).
 
+## Versions, revisions and replacing a rule
+
+```text
+ids SITE
+version 2026-09-29.2                                            # this rule set's version
+
+[SITE-DL]  unblock [SCAN-BACKUP@1] at /downloads/**             # downloads are archives
+replace    [SCAN-TEST@1] block /phpinfo.php /info.php            # test.php is a real page here
+```
+
+- **`version <word>`**, one per file: shown by `check`, `show` and the rules
+  page — which rule set is live on which server.
+- **`[ID@n]`** before a rule is its revision; the built-in rules raise it when a
+  rule changes what it matches ([`rules/CHANGELOG.md`](../../rules/CHANGELOG.md)).
+- **`[ID@n]` as a reference** names the revision you reviewed. After a library
+  update that changes the rule, `check` (exit 3) and the rules page warn:
+  *"SITE-DL (site.rules:4) was written for SCAN-BACKUP revision 1; SCAN-BACKUP
+  is now revision 2 … please check what changed"*. The changed rule applies at
+  once; only your deviation needs a look.
+- **`replace [ID@n] <rule>`** swaps a rule in one line: what the old rule set
+  is taken back, the new one takes its ID — the log and the rules page go on
+  counting it. For any rule: a built-in one, an extension's, your own.
+
+### Changing a built-in rule — the ways
+
+| You want | Write |
+|---|---|
+| one rule differently | `replace [SCAN-BACKUP@1] block *.sql *.bak` |
+| one rule open at some paths only | `[SITE-DL] unblock [SCAN-BACKUP@1] at /downloads/**` (`for <addresses>`) |
+| one rule gone | `unblock [SCAN-CGI@1]` |
+| all of a file gone, your own instead | `unblock @scanners`, then `include rules.d/our-scanners.rules` |
+
+Never edit `rules/*.rules` in the library's directory: an update overwrites it,
+and the change is gone without a word. The ways above live in your own files
+and survive updates — and with `@n` you learn when the rule underneath changed.
+
 ## The built-in rules
 
 The blocks every site has are rule files shipped with the library, read

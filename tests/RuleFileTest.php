@@ -47,6 +47,19 @@ function rulesFail(array $files, string $at, string $part): void
     throw new TestFailure("accepted: " . json_encode($files));
 }
 
+/** Where a built-in rule is written: "built-in scanners.rules:<line>". */
+function shippedAt(string $id): string
+{
+    foreach (['scanners', 'wordpress'] as $name) {
+        foreach (file(dirname(__DIR__) . "/rules/$name.rules") ?: [] as $i => $line) {
+            if (preg_match('/^\[' . preg_quote($id, '/') . '(@\d+)?\]/', $line)) {
+                return "built-in $name.rules:" . ($i + 1);
+            }
+        }
+    }
+    return '?';
+}
+
 function decideFor(Settings $s, string $path, array $server = []): string
 {
     $shield = new Shield($s, new MemoryStore());
@@ -404,7 +417,7 @@ return [
             same('site.rules:3', $s->origin('at', 'SITE-10'), 'where it is written');
             same('the admin area: office only', $s->origin('text', 'SITE-10'), 'its description');
             same('no ID: file and line', $s->origin('text', 'site.rules:5'));
-            same('built-in scanners.rules:10', $s->origin('at', 'SCAN-HIDDEN'));
+            same(shippedAt('SCAN-HIDDEN'), $s->origin('at', 'SCAN-HIDDEN'));
             same('SITE-20', $s->origin('budgets', 'requests'));
             $html = \CjwNetwork\RequestShield\Report\RulesPage::render($s, ['store' => new MemoryStore()]);
             truthy(strpos($html, 'the admin area: office only<br><code class="rule">/admin/** — only for 192.0.2.0/24</code>') !== false, 'the page: description, then the rule');
@@ -419,7 +432,7 @@ return [
         rulesFail(['site.rules' => "ids SHOP required\n[SHOP-1] block /x\nblock /y\n"], 'site.rules:3', 'every rule in this file needs an ID');
         rulesFail(['site.rules' => "ids SHOP\n[SITE-1] block /x\n"], 'site.rules:2', 'not in this file\'s namespace -- its IDs start with SHOP-');
         rulesFail(['site.rules' => "include ext/*.rules\n[SHOP-1] block /y\n", 'ext/shop.rules' => "ids SHOP\n[SHOP-1] block /x\n"], 'site.rules:2', '[SHOP-1] is used twice -- already at ext/shop.rules:2');
-        rulesFail(['site.rules' => "[SCAN-HIDDEN] block /x\n"], 'site.rules:1', 'used twice -- already at built-in scanners.rules:10');
+        rulesFail(['site.rules' => "[SCAN-HIDDEN] block /x\n"], 'site.rules:1', 'used twice -- already at ' . shippedAt('SCAN-HIDDEN'));
         rulesFail(['site.rules' => "[a b] block /x\n"], 'site.rules:1', 'is not an ID');
         rulesFail(['site.rules' => "[X-1]\n"], 'site.rules:1', 'before what?');
         rulesFail(['site.rules' => "[X-1] set debug-header on\n"], 'site.rules:1', 'set takes no ID');
@@ -449,5 +462,77 @@ return [
         same(count(rulesFrom("include @wordpress\nblock @wordpress\n")->blockedPaths), count(rulesFrom("include @wordpress\n")->blockedPaths), 'twice is once');
         same(4, count(rulesFrom("unblock [SCAN-CGI]\n")->blockedPaths), 'one taken back by its ID');
         same('SCAN-BACKUP', \CjwNetwork\RequestShield\Config::setName(\CjwNetwork\RequestShield\Config::scannerPaths()[1]), 'PHP array settings: the ID too');
+    },
+    'versions: one per file, named by its namespace; shown by check' => function (): void {
+        $dir = ruleDir(['site.rules' => "ids SITE\nversion 2026-09-29.2\ninclude ext/*.rules\n", 'ext/shop.rules' => "version 1.4.0\nblock /x\n"]);
+        try {
+            $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
+            same(['SCAN' => '2026.09.1', 'ext/shop.rules' => '1.4.0', 'SITE' => '2026-09-29.2'], $s->origins['versions'], 'the built-ins, then in the order read; a file without namespace by its name');
+            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
+            exec("$bin check " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
+            truthy(strpos(implode("\n", $out), 'rule sets SCAN 2026.09.1, ext/shop.rules 1.4.0, SITE 2026-09-29.2') !== false, implode("\n", $out));
+            $html = \CjwNetwork\RequestShield\Report\RulesPage::render($s, ['store' => new MemoryStore()]);
+            truthy(strpos($html, '<code>SITE 2026-09-29.2</code>') !== false, 'on the rules page');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+        rulesFail(['site.rules' => "version 1.0\nversion 1.1\n"], 'site.rules:2', 'a file has one version');
+        rulesFail(['site.rules' => "version two words\n"], 'site.rules:1', 'version <version>');
+        rulesFail(['site.rules' => "[X-1] version 1\n"], 'site.rules:1', 'version <version>');
+    },
+    'revisions: [ID@n] defines and pins; a changed rule is a warning, and still applies' => function (): void {
+        same('1', rulesFrom('')->origin('rev', 'SCAN-BACKUP'), 'the built-ins have revisions');
+        same([], rulesFrom("unblock [SCAN-BACKUP@1] at /downloads/**\n")->origins['warnings'] ?? [], 'the reviewed revision: no warning');
+        same([], rulesFrom("unblock [SCAN-BACKUP] at /downloads/**\n")->origins['warnings'] ?? [], 'no revision named: no warning');
+        same([], rulesFrom("[SITE-1@1] block /x\n[SITE-2] unblock [SITE-1@1]\n")->origins['warnings'] ?? [], 'own rules too');
+        // A library update: SCAN-BACKUP is revision 2 now (a copy of the shipped file).
+        $dir = ruleDir(['site.rules' => "ids SITE\n[SITE-DL] unblock [SCAN-BACKUP@1] at /downloads/**\n"]);
+        $lib = sys_get_temp_dir() . '/rshield-lib-' . getmypid() . '-' . mt_rand();
+        try {
+            mkdir($lib, 0700, true);
+            foreach (['src', 'rules', 'bin', 'bootstrap.php'] as $part) {
+                exec('cp -r ' . escapeshellarg(dirname(__DIR__) . "/$part") . ' ' . escapeshellarg($lib));
+            }
+            $f = "$lib/rules/scanners.rules";
+            file_put_contents($f, str_replace('[SCAN-BACKUP@1]', '[SCAN-BACKUP@2]', (string) file_get_contents($f)));
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg("$lib/bin/request-shield") . ' check ' . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
+            same(3, $code, 'check warns');
+            truthy(strpos(implode("\n", $out), 'warning: SITE-DL (site.rules:2) was written for SCAN-BACKUP revision 1; SCAN-BACKUP is now revision 2') !== false, implode("\n", $out));
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg("$lib/bin/request-shield") . ' trace ' . escapeshellarg("$dir/site.rules") . ' ' . escapeshellarg('GET https://x.example/backup.sql') . ' 2>&1', $out2, $code2);
+            same(4, $code2, 'the changed rule still applies elsewhere');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir) . ' ' . escapeshellarg($lib));
+        }
+        $warned = rulesFrom("[SITE-X] unblock [SCAN-CGI@7]\n");
+        truthy(strpos(\CjwNetwork\RequestShield\Report\RulesPage::render($warned, ['store' => new MemoryStore()]), '<strong>Please check:</strong> SITE-X (site.rules:1) was written for SCAN-CGI revision 7; SCAN-CGI is now revision 1') !== false, 'on the rules page');
+        rulesFail(['site.rules' => "[SITE-1@0] block /x\n"], 'site.rules:1', 'is not an ID');
+        rulesFail(['site.rules' => "unblock [SCAN-BACKUP@x]\n"], 'site.rules:1', 'is not an ID');
+    },
+    'replace: a rule swapped in one line, keeping its ID -- and its count in the log' => function (): void {
+        $dir = ruleDir(['site.rules' => "ids SITE\nreplace [SCAN-BACKUP@1] block *.sql *.sql.gz *.bak   # backups, but not archives: this site offers .zip downloads\n"
+            . "[SITE-PACE] limit requests 5/min\nreplace [SITE-PACE] limit requests 50/min challenge-at 25\n[SITE-ADM] restrict /admin/** to 192.0.2.1\nreplace [SITE-ADM] restrict /admin/** to 192.0.2.0/24\n"]);
+        try {
+            $s = Settings::load("$dir/site.rules", "$dir/cache");
+            $explain = static function (string $path, string $ip = '198.51.100.7') use ($s): ?string {
+                $shield = new Shield($s, new MemoryStore());
+                $r = Request::fromServer(['REQUEST_URI' => $path, 'REMOTE_ADDR' => $ip]);
+                return $shield->explain($shield->decide($r, 1000.0), $r);
+            };
+            same('SCAN-BACKUP', $explain('/dump.sql'), 'the same ID');
+            same(null, $explain('/download/site.zip'), '.zip is not blocked any more');
+            same(null, $explain('/old.log'), 'nor .log: the replacement is all there is');
+            same('backups, but not archives: this site offers .zip downloads', $s->origin('text', 'SCAN-BACKUP'), 'the new description');
+            truthy(strpos((string) $s->origin('at', 'SCAN-BACKUP'), 'site.rules:2 (replaces ' . shippedAt('SCAN-BACKUP') . ')') === 0, (string) $s->origin('at', 'SCAN-BACKUP'));
+            same([50, 25], [$s->budgets['requests']->limit, $s->budgets['requests']->challengeAt], 'a budget replaced');
+            same([['paths' => ['#^/admin(?:/.*)?$#i'], 'ips' => ['192.0.2.0/24']]], $s->restricted, 'a restrict replaced, not added');
+            same(null, $explain('/admin/', '192.0.2.9'));
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+        rulesFail(['site.rules' => "replace [SITE-NOPE] block /x\n"], 'site.rules:1', 'no earlier rule has the ID [SITE-NOPE]');
+        rulesFail(['site.rules' => "replace block /x\n"], 'site.rules:1', 'replace [<ID>] <rule>');
+        rulesFail(['site.rules' => "[X-1] replace [SCAN-CGI] block /x\n"], 'site.rules:1', 'the ID follows replace');
+        rulesFail(['site.rules' => "replace [SCAN-CGI] set debug-header on\n"], 'site.rules:1', 'replace takes a rule');
+        rulesFail(['site.rules' => "replace [SCAN-CGI] blok /x\n"], 'site.rules:1', 'unknown rule "blok"');
     },
 ];

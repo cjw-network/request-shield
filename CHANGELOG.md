@@ -49,6 +49,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (`rules/scanners.rules`, `rules/wordpress.rules`, IDs `SCAN-…`, `WP-…`):
   `include @wordpress`, `unblock [SCAN-CGI]`, `unblock @scanners`
   ([docs](docs/features/rule-files.md#the-built-in-rules)).
+- Versioned rule sets: `version <word>` per rule file, revisions per rule
+  (`[SCAN-BACKUP@1]`); a rule that takes back, replaces or opens another names
+  the revision reviewed, and `check` and the rules page warn when a library
+  update changed it. `replace [ID@n] <rule>` swaps a rule in one line and keeps
+  its ID. The built-in rules have `version 2026.09.1` and `rules/CHANGELOG.md`
+  (proposal 0005).
 - Proposal 0004: modes (`off`, `monitor`, `enforce`, `strict`), `monitor` for
   single rules, a fresh check per path.
 - `challenge.alwaysPaths`: paths every visitor has to pass the browser check

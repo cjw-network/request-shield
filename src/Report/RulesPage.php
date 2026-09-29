@@ -46,6 +46,13 @@ final class RulesPage
         $h = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             . '<meta name="robots" content="noindex,nofollow"><title>' . $e($title) . '</title><style>' . self::CSS . '</style></head><body><main>';
         $h .= '<h1>' . $e($title) . '</h1><p class="lead">How this site is protected, in plain words — and what happens to any address you try.</p>';
+        $versions = $s->origins['versions'] ?? [];
+        if ($versions !== []) {
+            $h .= '<p class="note">Rule sets: ' . implode(' · ', array_map(static fn (string $n, string $v): string => '<code>' . htmlspecialchars("$n $v", ENT_QUOTES) . '</code>', array_keys($versions), $versions)) . '</p>';
+        }
+        foreach ($s->origins['warnings'] ?? [] as $w) {
+            $h .= '<div class="verdict note"><span class="icon">!</span><div><strong>Please check:</strong> ' . $e($w) . '</div></div>';
+        }
 
         // ── Summary ─────────────────────────────────────────────────────────
         $stopped = ($stats['actions']['reject'] ?? 0) + ($stats['actions']['throttle'] ?? 0);
@@ -138,6 +145,9 @@ final class RulesPage
         $row = static function (string $says, ?string $id, ?string $log = null) use ($s): array {
             $text = $id !== null ? $s->origin('text', $id) : null;
             $where = $id !== null ? $s->origin('at', $id) : null;
+            if ($where !== null && $s->origin('rev', (string) $id) !== null) {
+                $where .= ' · revision ' . $s->origin('rev', (string) $id);
+            }
             return ['text' => $text ?? $says, 'detail' => $text !== null ? $says : null, 'id' => $id, 'where' => $where, 'log' => $log ?? $id];
         };
         $pattern = static fn (string $p): string => Describe::pattern($s, $p);
@@ -149,8 +159,12 @@ final class RulesPage
             $text = $id !== null ? $s->origin('text', $id) : null;
             $text ??= Describe::builtIn($p);
             $says = $pattern($p);
+            $where = $id !== null ? $s->origin('at', $id) : null;
+            if ($where !== null && $s->origin('rev', (string) $id) !== null) {
+                $where .= ' · revision ' . $s->origin('rev', (string) $id);
+            }
             $rows[] = ['text' => $text ?? $says, 'detail' => $text !== null && $text !== $says ? $says : null, 'id' => $id ?? \CjwNetwork\RequestShield\Config::setName($p),
-                'where' => $id !== null ? $s->origin('at', $id) : null, 'log' => $id ?? \CjwNetwork\RequestShield\Config::setName($p) ?? "blockedPaths[$i]"];
+                'where' => $where, 'log' => $id ?? \CjwNetwork\RequestShield\Config::setName($p) ?? "blockedPaths[$i]"];
         }
         foreach ($s->blockExceptions as $x) {
             $what = $x['patterns'] === null ? 'every block above' : implode('; ', array_map(static fn (string $p): string => Describe::rule($s, 'blockedPaths', $p), $x['patterns']));

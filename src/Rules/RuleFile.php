@@ -85,6 +85,12 @@ final class RuleFile
     /** @var array<string, string> ID => where it was given, for duplicates */
     private array $ids = [];
 
+    /** @var array<string, string> file => its "version" */
+    private array $versions = [];
+
+    /** @var list<string> reviewed revisions that differ from the rules' own: for check and the rules page */
+    private array $warnings = [];
+
     /** The shipped rule files: rules/<name>.rules ("@scanners", "@wordpress"). */
     public static function shipped(string $name): ?string
     {
@@ -123,6 +129,9 @@ final class RuleFile
         }
         $recheck = $r->c['recheck'];
         unset($r->c['recheck']);
+        foreach ($r->warnings as $i => $w) {
+            $r->origins['warnings']['w' . $i] = $w;      // not numeric: PHP would make it an int key
+        }
         $r->c['origins'] = $r->origins;
         return ['config' => $r->c, 'seen' => $r->seen, 'env' => $r->env, 'recheck' => is_int($recheck) ? $recheck : 10];
     }
@@ -192,6 +201,10 @@ final class RuleFile
         foreach (preg_split('/\r\n|\n|\r/', $text) ?: [] as $i => $line) {
             $this->line($line, "$name:" . ($i + 1), $file);
         }
+        if (isset($this->versions[$file])) {
+            // Named by the file's namespace, else by the file.
+            $this->origins['versions'][$this->ns[$file][0] ?? $name] = $this->versions[$file];
+        }
         array_pop($this->stack);
     }
 
@@ -210,12 +223,11 @@ final class RuleFile
             return;
         }
         // [SITE-10] before a rule: its own ID, used everywhere instead of file:line.
+        // [SCAN-BACKUP@3]: revision 3 of that rule, raised when it changes its meaning.
         $id = null;
+        $rev = null;
         if (preg_match('/^\[([^\]]*)\]\s*(.*)$/', $line, $m) === 1) {
-            if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9_.-]{0,47}$/', $m[1])) {
-                throw new RuleFileException("$at: \"[$m[1]]\" is not an ID -- letters, digits, \"-\", \"_\" and \".\" ([SITE-10], [SHOP-CHECKOUT])");
-            }
-            $id = $m[1];
+            [$id, $rev] = self::ref($m[1], $at);
             $line = $m[2];
             if ($line === '') {
                 throw new RuleFileException("$at: [$id] before what? The rule follows the ID on the same line");
@@ -227,6 +239,23 @@ final class RuleFile
 
         if ($keyword === 'ids') {
             $this->namespace($args, $at, $file, $id);
+            return;
+        }
+        if ($keyword === 'version') {
+            if ($id !== null || count($args) !== 1 || !preg_match('/^[A-Za-z0-9][A-Za-z0-9._+-]{0,39}$/', $args[0])) {
+                throw new RuleFileException("$at: version <version> -- one word: 2026-09-29.2, 1.4.0");
+            }
+            if (isset($this->versions[$file])) {
+                throw new RuleFileException("$at: a file has one version -- already {$this->versions[$file]}");
+            }
+            $this->versions[$file] = $args[0];
+            return;
+        }
+        if ($keyword === 'replace') {
+            if ($id !== null) {
+                throw new RuleFileException("$at: replace [<ID>] <rule> -- the ID follows replace");
+            }
+            $this->replace($parts, $line, $at, $file, $text);
             return;
         }
         [$ns, $required] = $this->ns[$file] ?? ['', false];
@@ -242,6 +271,9 @@ final class RuleFile
             }
             $this->ids[$id] = $at;
             $this->origins['at'][$id] = $at;
+            if ($rev !== null) {
+                $this->origins['rev'][$id] = $rev;
+            }
         } elseif ($required && $keyword !== 'set' && $keyword !== 'include') {
             throw new RuleFileException("$at: every rule in this file needs an ID ([$ns-...] before it: ids $ns required)");
         }
@@ -250,6 +282,16 @@ final class RuleFile
             $this->origins['text'][$this->rid] = $text;
         }
 
+        $this->dispatch($keyword, $args, $line, $at, $file);
+    }
+
+    /**
+     * One rule, its keyword and values; $line for "set" (texts have spaces).
+     *
+     * @param list<string> $args
+     */
+    private function dispatch(string $keyword, array $args, string $line, string $at, string $file): void
+    {
         switch ($keyword) {
             case 'host':
                 $this->list('hosts', $args, $at, static fn (string $h): string => strtolower($h));
@@ -336,6 +378,141 @@ final class RuleFile
         }
         throw new RuleFileException("$at: unknown rule \"$keyword\"" . self::suggest($keyword,
             ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'limit', 'no-limit', 'set', 'include']));
+    }
+
+    /**
+     * "SCAN-BACKUP" or "SCAN-BACKUP@3".
+     *
+     * @return array{0: string, 1: ?string} ID and revision
+     */
+    private static function ref(string $ref, string $at): array
+    {
+        if (!preg_match('/^([A-Za-z0-9][A-Za-z0-9_.-]{0,47})(?:@([1-9][0-9]{0,5}))?$/', $ref, $m)) {
+            throw new RuleFileException("$at: \"[$ref]\" is not an ID -- letters, digits, \"-\", \"_\" and \".\", a revision after @ ([SITE-10], [SCAN-BACKUP@3])");
+        }
+        return [$m[1], isset($m[2]) ? $m[2] : null];
+    }
+
+    /**
+     * A rule that takes back, replaces or opens another names the revision it
+     * was written for; when that rule has changed since (a library update),
+     * say so -- the rule still applies, only the deviation needs a look.
+     */
+    private function pin(string $id, string $rev, string $at): void
+    {
+        $now = $this->origins['rev'][$id] ?? '1';
+        if ($now !== $rev) {
+            $this->warnings[] = "$this->rid ($at) was written for $id revision $rev; $id is now revision $now ("
+                . ($this->origins['at'][$id] ?? $id) . ') -- please check what changed';
+        }
+    }
+
+    /**
+     * replace [<ID>@<rev>] <rule>: the rule with that ID is taken back
+     * everywhere it applies, and this one takes its place -- same ID, so the
+     * log and the rules page go on counting it.
+     *
+     * @param list<string> $parts
+     */
+    private function replace(array $parts, string $line, string $at, string $file, ?string $text): void
+    {
+        $ref = (string) array_shift($parts);
+        if (!preg_match('/^\[(.+)\]$/', $ref, $m) || $parts === []) {
+            throw new RuleFileException("$at: replace [<ID>] <rule> -- replace [SCAN-BACKUP@1] block *.sql *.bak");
+        }
+        [$id, $rev] = self::ref($m[1], $at);
+        $was = $this->origins['at'][$id] ?? null;
+        if ($was === null && !$this->forget($id, true)) {
+            throw new RuleFileException("$at: no earlier rule has the ID [$id]");
+        }
+        $this->rid = $id;
+        if ($rev !== null) {
+            $this->pin($id, $rev, $at);
+        }
+        $this->forget($id, false);
+        $keyword = strtolower((string) array_shift($parts));
+        if (in_array($keyword, ['set', 'include', 'ids', 'version', 'replace'], true)) {
+            throw new RuleFileException("$at: replace takes a rule, not \"$keyword\"");
+        }
+        $this->ids[$id] = $at;
+        $this->origins['at'][$id] = "$at (replaces " . ($was ?? $id) . ')';
+        if ($text !== null && $text !== '') {
+            $this->origins['text'][$id] = $text;
+        }
+        $args = array_map(fn (string $a): string => $this->env($a, $at), $parts);
+        $this->dispatch($keyword, $args, (string) preg_replace('/^\s*replace\s+\S+\s+/i', '', $line), $at, $file);
+    }
+
+    /**
+     * Takes back what the rule with $id set, wherever that is. With $probe
+     * only says whether there is anything.
+     */
+    private function forget(string $id, bool $probe): bool
+    {
+        $found = false;
+        foreach (['blockedPaths', 'cacheable.paths', 'challenge.alwaysPaths', 'challenge.exemptPaths'] as $key) {
+            $list = $this->get($key);
+            if (!is_array($list)) {
+                continue;
+            }
+            $keep = [];
+            foreach ($list as $p) {
+                if (is_string($p) && ($this->origins[$key][$p] ?? null) === $id) {
+                    $found = true;
+                    unset($this->origins[$key][$p]);
+                    continue;
+                }
+                $keep[] = $p;
+            }
+            if (!$probe) {
+                $this->put($key, $keep);
+            }
+        }
+        foreach (['restricted', 'blockExceptions'] as $key) {
+            $keep = [];
+            foreach ((array) $this->get($key) as $entry) {
+                $paths = is_array($entry) && is_array($entry['paths'] ?? null) ? $entry['paths'] : [];
+                $first = $paths[0] ?? null;
+                if (is_string($first) && ($this->origins[$key][$first] ?? null) === $id) {
+                    $found = true;
+                    continue;
+                }
+                $keep[] = $entry;
+            }
+            if (!$probe) {
+                $this->put($key, $keep);
+            }
+        }
+        foreach ($this->origins['budgets'] ?? [] as $name => $origin) {
+            if ($origin === $id) {
+                $found = true;
+                if (!$probe) {
+                    $this->put("budgets.$name", ['limit' => 0]);
+                    unset($this->origins['budgets'][$name]);
+                }
+            }
+        }
+        foreach ($this->origins['methodPaths'] ?? [] as $method => $origin) {
+            if ($origin === $id) {
+                $found = true;
+                if (!$probe) {
+                    $all = (array) $this->get('methodPaths');
+                    unset($all[$method]);
+                    $this->put('methodPaths', $all);
+                    unset($this->origins['methodPaths'][$method]);
+                }
+            }
+        }
+        foreach (['hosts' => [], 'methods' => Config::defaults()['methods'], 'cacheable.query' => null] as $key => $reset) {
+            if (($this->origins[$key]['*'] ?? null) === $id) {
+                $found = true;
+                if (!$probe) {
+                    $this->put($key, $reset);
+                    unset($this->origins[$key]['*']);
+                }
+            }
+        }
+        return $found;
     }
 
     /**
@@ -472,7 +649,10 @@ final class RuleFile
     {
         $out = [];
         if ($ref[0] === '[') {
-            $id = trim($ref, '[]');
+            [$id, $rev] = self::ref(trim($ref, '[]'), $at);
+            if ($rev !== null) {
+                $this->pin($id, $rev, $at);
+            }
             foreach ($this->origins['blockedPaths'] ?? [] as $p => $origin) {
                 if ($origin === $id) {
                     $out[$p] = $origin;

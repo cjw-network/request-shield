@@ -2,6 +2,7 @@
 # "include @wordpress" (or "block @wordpress") in the site's rules.
 
 ids WP required
+version 2026.09.1
 
-[WP-FOLDERS]    block regex ^/(wp-admin|wp-includes|wp-content)(/|$)     # WordPress folders: /wp-admin, /wp-includes, /wp-content
-[WP-SCRIPTS]    block regex ^/(wp-login|xmlrpc|wp-config)\.php$          # WordPress scripts: wp-login.php, xmlrpc.php, wp-config.php
+[WP-FOLDERS@1]  block regex ^/(wp-admin|wp-includes|wp-content)(/|$)     # WordPress folders: /wp-admin, /wp-includes, /wp-content
+[WP-SCRIPTS@1]  block regex ^/(wp-login|xmlrpc|wp-config)\.php$          # WordPress scripts: wp-login.php, xmlrpc.php, wp-config.php

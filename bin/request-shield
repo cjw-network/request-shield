@@ -78,8 +78,15 @@ if ($command === 'trace') {
     exit($t['decision']->passes() ? 0 : 4);
 }
 
+$versions = $settings->origins['versions'] ?? [];
+$sets = $versions === [] ? '' : 'rule sets ' . implode(', ', array_map(static fn (string $n, string $v): string => "$n $v", array_keys($versions), $versions));
+
 if ($command === 'check' || $command === 'reload') {
     $warnings = 0;
+    foreach ($settings->origins['warnings'] ?? [] as $w) {
+        fwrite(STDERR, "warning: $w\n");
+        $warnings++;
+    }
     foreach (array_keys($read['seen']) as $path) {
         $perms = @fileperms($path);
         if ($perms !== false && ($perms & 0002) !== 0) {
@@ -96,7 +103,7 @@ if ($command === 'check' || $command === 'reload') {
     }
     $shipped = dirname(__DIR__) . '/rules/';
     $files = count(array_filter(array_keys($read['seen']), static fn (string $f): bool => is_file($f) && strncmp((string) realpath($f), $shipped, strlen($shipped)) !== 0));
-    echo "ok: $files file(s) + built-in rules, " . count($settings->blockedPaths) . ' blocked patterns, ' . count($settings->budgets) . " budget(s)\n";
+    echo "ok: $files file(s) + built-in rules, " . count($settings->blockedPaths) . ' blocked patterns, ' . count($settings->budgets) . ' budget(s)' . ($sets !== '' ? "; $sets" : '') . "\n";
     if ($command === 'reload') {
         touch($file);
         echo "reload: $file marked changed; every server reads the rules again on its next check\n";
@@ -115,11 +122,16 @@ $line = static function (string $text, string $id = '') use ($settings): string 
     }
     $where = $settings->origin('at', $id);
     $about = $settings->origin('text', $id) ?? '';
-    return str_pad(($where !== null ? "[$id] " : '') . $text, 64) . ' # ' . trim($about . '  (' . ($where ?? $id) . ')') . "\n";
+    $rev = $settings->origin('rev', $id);
+    return str_pad(($where !== null ? '[' . $id . ($rev !== null ? "@$rev" : '') . '] ' : '') . $text, 64) . ' # ' . trim($about . '  (' . ($where ?? $id) . ')') . "\n";
 };
 $regex = static fn (string $p): string => trim(preg_replace('/^#|#i?$/', '', $p) ?? $p);
 
 echo "# Effective rules of $file" . ($sources !== [] ? ' with ' . implode(' ', $sources) : '') . "\n";
+echo $sets !== '' ? "# $sets\n" : '';
+foreach ($settings->origins['warnings'] ?? [] as $w) {
+    echo "# warning: $w\n";
+}
 if ($settings->hosts !== []) {
     echo $line('host ' . implode(' ', $settings->hosts), $o('hosts', '*'));
 }
