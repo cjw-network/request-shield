@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Implemented** 2026-09-29, first step (see [rule files](../features/rule-files.md#match-blocks-the-rules-of-an-area-in-one-place)); `limit` and `cache-query` per area: open |
 | Proposed | 2026-09-29 |
 | Affects | rule files (syntax only, and two optional new abilities), the active rules page |
 
@@ -132,7 +132,17 @@ abilities: see above, only while used.
 Rule files without blocks are unchanged. A file with blocks cannot be read by
 older versions of the library (an error names the `match` line).
 
-## Open questions
+## Decisions (with Felix, 2026-09-29)
+
+1. Nesting: yes — an inner path is added to the outer one; `**` only at the
+   end of the innermost; a block by regex holds no blocks.
+2. `limit` and `cache-query` per area: a second step; inside a block today
+   they are an error that says so.
+3. IDs per line only, not for blocks.
+4. Braces, `}` on a line of its own.
+5. Also: the rules page shows each rule's area; `replace` works inside a block.
+
+## Open questions (as proposed)
 
 1. Nesting, or one level only?
 2. The two new abilities (`limit` and `cache-query` per area): with the block

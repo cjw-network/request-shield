@@ -602,4 +602,73 @@ return [
             truthy(strpos($e->getMessage(), 'contentRules') !== false, $e->getMessage());
         }
     },
+    'match blocks: the same settings as the rules written out' => function (): void {
+        $blocks = <<<'RULES'
+            ids SITE
+            match /admin/** {
+              [SITE-ADM]   restrict to 192.0.2.0/24        # the admin area: office only
+              [SITE-ADM-F] allow POST PUT                  # forms only here
+              [SITE-ADM-C] challenge                       # always the browser check
+              [SITE-ADM-X] unblock [SCAN-HIDDEN@1] for 192.0.2.0/24
+            }
+            match /shop {
+              match /checkout/** {
+                [SITE-PAY] challenge                       # the checkout: always checked
+              }
+              [SITE-SHOP] cache-path
+            }
+            match /old/** {
+              [SITE-OLD] block
+            }
+            match regex ^/api/ {
+              [SITE-API] challenge-exempt
+            }
+            RULES;
+        $flat = <<<'RULES'
+            ids SITE
+            [SITE-ADM]   restrict /admin/** to 192.0.2.0/24        # the admin area: office only
+            [SITE-ADM-F] allow POST PUT /admin/**                  # forms only here
+            [SITE-ADM-C] challenge /admin/**                       # always the browser check
+            [SITE-ADM-X] unblock [SCAN-HIDDEN@1] at /admin/** for 192.0.2.0/24
+            [SITE-PAY] challenge /shop/checkout/**                 # the checkout: always checked
+            [SITE-SHOP] cache-path /shop
+            [SITE-OLD] block /old/**
+            [SITE-API] challenge-exempt regex ^/api/
+            RULES;
+        $a = rulesFrom($blocks)->export();
+        $b = rulesFrom($flat)->export();
+        foreach (['at', 'area'] as $k) {         // where a rule is written, and its area: of course not the same
+            unset($a['origins'][$k], $b['origins'][$k]);
+        }
+        same($b, $a);
+        $s = rulesFrom($blocks);
+        same('/admin/**', $s->origin('area', 'SITE-ADM'), 'each rule knows its area');
+        same('/shop/checkout/**', $s->origin('area', 'SITE-PAY'), 'the inner path added to the outer one');
+        same('reject restricted', decideFor($s, '/admin/users'));
+        same('challenge always', decideFor($s, '/admin/users', ['REMOTE_ADDR' => '192.0.2.9']), 'from the office: into the area, to its browser check');
+        same('challenge always', decideFor($s, '/shop/checkout/pay'));
+        same('reject blocked path', decideFor($s, '/old/page'));
+    },
+    'match blocks: what does not go, with file and line' => function (): void {
+        rulesFail(['site.rules' => "match /a/** {\n  restrict /b to 192.0.2.1\n}\n"], 'site.rules:2', 'inside match: restrict to <addresses>');
+        rulesFail(['site.rules' => "match /a/** {\n  challenge /b\n}\n"], 'site.rules:2', 'challenge takes no paths');
+        rulesFail(['site.rules' => "match /a/** {\n  allow POST /b\n}\n"], 'site.rules:2', 'inside match: allow <METHODS>');
+        rulesFail(['site.rules' => "match /a/** {\n  unblock [SCAN-HIDDEN] at /b\n}\n"], 'site.rules:2', 'the block is where');
+        rulesFail(['site.rules' => "match /a/** {\n  host a.example\n}\n"], 'site.rules:2', 'host does not go inside a match block');
+        rulesFail(['site.rules' => "match /a/** {\n  limit x 5/min\n}\n"], 'site.rules:2', 'limit per area is not there yet');
+        rulesFail(['site.rules' => "match /a/** {\n  set debug-header on\n}\n"], 'site.rules:2', 'set does not go inside a match block');
+        rulesFail(['site.rules' => "match /a/** {\n  challenge\n"], 'site.rules:1', 'match without its }');
+        rulesFail(['site.rules' => "challenge /x\n}\n"], 'site.rules:2', '} without a match block');
+        rulesFail(['site.rules' => "match /a/** {\n  match /b {\n  }\n}\n"], 'site.rules:2', 'the outer block ends in **');
+        rulesFail(['site.rules' => "match /a {\n  match b/** {\n  }\n}\n"], 'site.rules:2', 'an inner block\'s path starts with /');
+        rulesFail(['site.rules' => "match regex ^/a {\n  match /b {\n  }\n}\n"], 'site.rules:2', 'a block by regex holds no blocks');
+        rulesFail(['site.rules' => "match /a/**\n"], 'site.rules:1', 'match <path> {');
+        rulesFail(['site.rules' => "[X-1] match /a/** {\n}\n"], 'site.rules:1', 'IDs go on the rules inside a block');
+        rulesFail(['site.rules' => "match regex ^/(a {\n}\n"], 'site.rules:1', 'not a valid regular expression');
+        rulesFail(['site.rules' => "include x.rules\n", 'x.rules' => "match /a/** {\n"], 'x.rules:1', 'match without its }');
+    },
+    'match blocks: replace inside a block keeps the area' => function (): void {
+        $s = rulesFrom("ids SITE\nmatch /admin/** {\n  [SITE-ADM] restrict to 192.0.2.1\n}\nmatch /admin/** {\n  replace [SITE-ADM] restrict to 192.0.2.0/24\n}\n");
+        same([['paths' => ['#^/admin(?:/.*)?$#i'], 'ips' => ['192.0.2.0/24']]], $s->restricted);
+    },
 ];

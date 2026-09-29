@@ -26,7 +26,7 @@
   [0004 modes: monitor and strict](proposals/0004-modes-monitor-and-strict.md) ·
   [0005 versioned rule sets](proposals/0005-versioned-rule-sets.md) (implemented) ·
   [0006 the site asks for the check](proposals/0006-the-site-asks-for-the-check.md) (implemented) ·
-  [0008 match blocks](proposals/0008-match-blocks.md) ·
+  [0008 match blocks](proposals/0008-match-blocks.md) (first step implemented) ·
   [0009 typed query parameters](proposals/0009-typed-query-parameters.md) ·
   [0010 the browser check inside the form](proposals/0010-browser-check-in-the-form.md) (implemented)
   (0002, a single-file build, is reserved)

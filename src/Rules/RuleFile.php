@@ -92,6 +92,9 @@ final class RuleFile
     /** @var array<string, string> file => its "version" */
     private array $versions = [];
 
+    /** @var list<array{file: string, at: string, glob: ?string, regex: ?string, written: string}> the open match blocks */
+    private array $blocks = [];
+
     /** @var list<string> reviewed revisions that differ from the rules' own: for check and the rules page */
     private array $warnings = [];
 
@@ -205,6 +208,10 @@ final class RuleFile
         foreach (preg_split('/\r\n|\n|\r/', $text) ?: [] as $i => $line) {
             $this->line($line, "$name:" . ($i + 1), $file);
         }
+        $open = end($this->blocks);
+        if ($open !== false && $open['file'] === $file) {
+            throw new RuleFileException("{$open['at']}: match without its } -- the block opened here is not closed");
+        }
         if (isset($this->versions[$file])) {
             // Named by the file's namespace, else by the file.
             $this->origins['versions'][$this->ns[$file][0] ?? $name] = $this->versions[$file];
@@ -240,6 +247,19 @@ final class RuleFile
         $parts = preg_split('/\s+/', $line) ?: [];
         $keyword = strtolower((string) array_shift($parts));
         $args = array_map(fn (string $a): string => $this->env($a, $at), $parts);
+
+        // match <path> { ... }: the rules of an area, their paths the block's.
+        if ($keyword === 'match' || $keyword === '}') {
+            if ($id !== null) {
+                throw new RuleFileException("$at: [$id] $keyword -- IDs go on the rules inside a block, not on the block");
+            }
+            $keyword === 'match' ? $this->openBlock($args, $at, $file) : $this->closeBlock($args, $at, $file);
+            return;
+        }
+        $inBlock = $this->blocks !== [] && end($this->blocks)['file'] === $file;
+        if ($inBlock && in_array($keyword, ['ids', 'version', 'include', 'set'], true)) {
+            throw new RuleFileException("$at: $keyword does not go inside a match block -- put it before the block");
+        }
 
         if ($keyword === 'ids') {
             $this->namespace($args, $at, $file, $id);
@@ -296,6 +316,7 @@ final class RuleFile
      */
     private function dispatch(string $keyword, array $args, string $line, string $at, string $file): void
     {
+        $args = $this->inBlock($keyword, $args, $at, $file);
         switch ($keyword) {
             case 'host':
                 $this->list('hosts', $args, $at, static fn (string $h): string => strtolower($h));
@@ -536,6 +557,118 @@ final class RuleFile
             }
         }
         return $found;
+    }
+
+    /**
+     * match <glob> {  or  match regex <expression> {  -- the rules up to "}"
+     * are about that area. An inner block adds its path to the outer one
+     * (match /shop { match /checkout/** { ... } }); "**" only at the end of
+     * the innermost; a regex block holds no blocks.
+     *
+     * @param list<string> $args
+     */
+    private function openBlock(array $args, string $at, string $file): void
+    {
+        $usage = 'match <path> {  (the rules, then } on a line of its own)';
+        if (array_pop($args) !== '{' || $args === []) {
+            throw new RuleFileException("$at: $usage");
+        }
+        $regex = null;
+        $glob = null;
+        if ($args[0] === 'regex') {
+            if (count($args) !== 2) {
+                throw new RuleFileException("$at: match regex <expression> {");
+            }
+            $regex = $args[1];
+        } elseif (count($args) === 1) {
+            $glob = $args[0];
+        } else {
+            throw new RuleFileException("$at: $usage -- one path per block");
+        }
+        $outer = end($this->blocks);
+        if ($outer !== false && $outer['file'] === $file) {
+            if ($outer['regex'] !== null || $regex !== null) {
+                throw new RuleFileException("$at: a block by regex holds no blocks, and is in none -- write the whole path");
+            }
+            if (substr((string) $outer['glob'], -2) === '**') {
+                throw new RuleFileException("$at: the outer block ends in ** -- an inner path cannot follow it");
+            }
+            if ((string) $glob === '' || ((string) $glob)[0] !== '/') {
+                throw new RuleFileException("$at: an inner block's path starts with / -- it is added to the outer one");
+            }
+            $glob = rtrim((string) $outer['glob'], '/') . $glob;
+        }
+        // A broken path is an error here, not at the first rule inside.
+        if (!Pattern::valid($regex !== null ? Pattern::fromRegex($regex) : Pattern::fromGlob((string) $glob))) {
+            throw new RuleFileException("$at: \"" . ($regex ?? $glob) . "\" is not a valid regular expression");
+        }
+        $this->blocks[] = ['file' => $file, 'at' => $at, 'glob' => $glob, 'regex' => $regex, 'written' => $regex !== null ? "regex $regex" : (string) $glob];
+    }
+
+    /** @param list<string> $args */
+    private function closeBlock(array $args, string $at, string $file): void
+    {
+        $open = end($this->blocks);
+        if ($args !== [] || $open === false || $open['file'] !== $file) {
+            throw new RuleFileException("$at: } without a match block" . ($args !== [] ? ' -- } stands on a line of its own' : ''));
+        }
+        array_pop($this->blocks);
+    }
+
+    /**
+     * A rule inside a match block: its paths are the block's. Rules that take
+     * paths leave them out; those without paths do not go inside.
+     *
+     * @param list<string> $args
+     * @return list<string>
+     */
+    private function inBlock(string $keyword, array $args, string $at, string $file): array
+    {
+        $b = end($this->blocks);
+        if ($b === false || $b['file'] !== $file) {
+            return $args;
+        }
+        $path = $b['regex'] !== null ? ['regex', $b['regex']] : [(string) $b['glob']];
+        $this->origins['area'][$this->rid] = $b['written'];
+        $noPaths = static function () use ($args, $at, $keyword): void {
+            if ($args !== []) {
+                throw new RuleFileException("$at: inside match, $keyword takes no paths -- they are the block's");
+            }
+        };
+        switch ($keyword) {
+            case 'restrict':
+                if (($args[0] ?? '') !== 'to') {
+                    throw new RuleFileException("$at: inside match: restrict to <addresses> -- the paths are the block's");
+                }
+                return array_merge($path, $args);
+            case 'allow':
+                foreach ($args as $a) {
+                    if (!preg_match('/^[A-Z]+$/', $a)) {
+                        throw new RuleFileException("$at: inside match: allow <METHODS> -- the paths are the block's");
+                    }
+                }
+                return array_merge($args, $path);
+            case 'challenge':
+            case 'challenge-exempt':
+            case 'cache-path':
+                $noPaths();
+                return $path;
+            case 'block':
+                $noPaths();
+                return $path;                 // the whole area
+            case 'unblock':
+                if (in_array('at', $args, true)) {
+                    throw new RuleFileException("$at: inside match: unblock [<ID>] [for <addresses>] -- the block is where");
+                }
+                $for = array_search('for', $args, true);
+                $what = $for === false ? $args : array_slice($args, 0, (int) $for);
+                $rest = $for === false ? [] : array_slice($args, (int) $for);
+                return array_merge($what, ['at'], $path, $rest);
+            case 'limit':
+            case 'cache-query':
+                throw new RuleFileException("$at: $keyword per area is not there yet (proposal 0008, a second step) -- put it outside the block");
+        }
+        throw new RuleFileException("$at: $keyword does not go inside a match block -- it is not about paths; put it outside");
     }
 
     /**

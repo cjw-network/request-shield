@@ -156,6 +156,9 @@ final class RulesPage
             if ($where !== null && $s->origin('rev', (string) $id) !== null) {
                 $where .= ' · revision ' . $s->origin('rev', (string) $id);
             }
+            if ($id !== null && $s->origin('area', $id) !== null) {
+                $where = ($where ?? $id) . ' · in match ' . $s->origin('area', $id);
+            }
             return ['text' => $text ?? $says, 'detail' => $text !== null ? $says : null, 'id' => $id, 'where' => $where, 'log' => $log ?? $id];
         };
         $pattern = static fn (string $p): string => Describe::pattern($s, $p);

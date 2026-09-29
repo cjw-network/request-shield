@@ -83,6 +83,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   and checked pages take it from there — no check page, files included. The
   page stays cacheable; `widget.js` is a file (CSP), the task ALTCHA's format;
   texts in the visitor's language. Demo: `/contact`.
+- `match <path> { … }` in rule files (proposal 0008, first step): the rules of
+  an area in one place, their paths the block's — `restrict to …`,
+  `allow POST`, `challenge`, `block`, `unblock [ID] for …`, nested blocks,
+  blocks by regex. Exactly the rules written out: the same settings, the same
+  cost; the rules page shows each rule's area.
 - Proposal 0004: modes (`off`, `monitor`, `enforce`, `strict`), `monitor` for
   single rules, a fresh check per path.
 - `challenge.alwaysPaths`: paths every visitor has to pass the browser check

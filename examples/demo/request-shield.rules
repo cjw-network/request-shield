@@ -25,14 +25,20 @@ version 2026-09-29.1        # this rule set's own version: shown on /rules and b
 
 [DEMO-FORMS]        allow POST  **/edit **/comment **/profile **/contact     # forms may only be sent to the edit, comment, profile and contact pages
 
-[DEMO-ADMIN]        restrict **/admin/**  to 192.0.2.0/24         # the admin area: only the office network
+# The admin area, as a block: the rules of one area in one place, the path
+# written once (the same as "restrict **/admin/** to 192.0.2.0/24").
+match **/admin/** {
+  [DEMO-ADMIN]      restrict to 192.0.2.0/24                      # the admin area: only the office network
+}
 [DEMO-API]          restrict **/api/**    to 127.0.0.1 ::1        # the API: only this machine
 [DEMO-RULES]        restrict **/rules     to 127.0.0.1 ::1        # this rules page: only this machine
 
 # The path check stays even here: /files/%2e%2e/secret is still refused (400).
 # @1: the revision of the built-in rules this was reviewed for -- when a library
 # update changes them, check and /rules say so (the rules keep applying).
-[DEMO-FILES]        unblock [SCAN-HIDDEN@1] [SCAN-BACKUP@1]  at **/files/**  for 127.0.0.1 ::1   # the admin's file reader may open hidden files and backups, from this machine
+match **/files/** {
+  [DEMO-FILES]      unblock [SCAN-HIDDEN@1] [SCAN-BACKUP@1] for 127.0.0.1 ::1   # the admin's file reader may open hidden files and backups, from this machine
+}
 
 [DEMO-PACE]         limit requests 60/min challenge-at 20          # per visitor: browser check past 20 requests a minute, a pause past 60
 [DEMO-LOGIN]        challenge   **/challenge                       # a page where every visitor is checked, as a login would be

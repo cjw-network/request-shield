@@ -107,6 +107,43 @@ work for these rules exactly as for path blocks; `rules/attacks.rules`
 (`include @attacks`) is a reviewed set, after the OWASP Core Rule Set's first
 level.
 
+## match blocks: the rules of an area in one place
+
+```text
+match /admin/** {
+  [SITE-ADM]    restrict to 192.0.2.0/24          # the admin area: office only
+  [SITE-ADM-F]  allow POST                        # forms only here
+                challenge                         # always the browser check
+                unblock [SCAN-HIDDEN@1] for 192.0.2.0/24   # the file manager opens .env
+}
+
+match /shop {
+  match /checkout/** {
+    [SHOP-PAY]  challenge                         # /shop/checkout/**
+  }
+}
+
+match regex ^/api/ {
+                challenge-exempt
+}
+```
+
+- Inside a block, a rule that takes paths **leaves them out** — they are the
+  block's: `restrict to …`, `allow <METHODS>`, `challenge`, `challenge-exempt`,
+  `cache-path`, `block` (the whole area), `unblock [<ID>] [for <addresses>]`
+  (an exception there), and `replace [ID] <one of these>`.
+- A block is exactly the rules written out with the path — the same settings,
+  the same cost per request; the rules page shows each rule's area.
+- An inner block adds its path to the outer one; `**` only at the end of the
+  innermost; a block by `regex` holds no blocks.
+- Rules without paths (`host`, `trust`, `method`, `exempt`, `block query …`)
+  and `set`, `include`, `ids`, `version` do not go inside; `limit` and
+  `cache-query` per area are planned
+  ([proposal 0008](../proposals/0008-match-blocks.md), second step).
+- IDs go on the rules inside, not on the block. `}` stands on a line of its
+  own; a block not closed by the end of its file is an error naming the line
+  of its `match`.
+
 ## IDs, namespaces and descriptions
 
 ```text
