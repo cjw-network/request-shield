@@ -183,6 +183,25 @@ final class RulesPage
         $g[] = ['Addresses only attackers ask for', $rows === [] ? 'None are refused.' : 'Refused with "not found" (404) before the site sees them:', $rows];
 
         $rows = [];
+        foreach ($s->contentRules as $n => $r) {
+            foreach ($r['patterns'] as $p) {
+                $id = $o('contentRules', $p);
+                $text = $id !== null ? $s->origin('text', $id) : null;
+                $where = $id !== null ? $s->origin('at', $id) : null;
+                if ($where !== null && $s->origin('rev', (string) $id) !== null) {
+                    $where .= ' · revision ' . $s->origin('rev', (string) $id);
+                }
+                // The written form already says where it looks: "query …", "header:user-agent …".
+                $says = $pattern($p);
+                $rows[] = ['text' => $text ?? $says, 'detail' => $text !== null && $text !== $says ? $says : null, 'id' => $id,
+                    'where' => $where, 'log' => $id ?? "contentRules[$n]"];
+            }
+        }
+        if ($rows !== []) {
+            $g[] = ['Attack patterns in the request', 'Refused with "no access" (403), matched on the normalised values:', $rows];
+        }
+
+        $rows = [];
         foreach ($s->restricted as $n => $r) {
             foreach ($r['paths'] as $p) {
                 $rows[] = $row($pattern($p) . ' — only for ' . implode(', ', $r['ips']), $o('restricted', $p), $o('restricted', $p) ?? "restricted[$n]");

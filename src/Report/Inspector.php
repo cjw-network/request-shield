@@ -15,6 +15,7 @@ use CjwNetwork\RequestShield\IpAddress;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rule\BlockedPathRule;
 use CjwNetwork\RequestShield\Rule\CacheableRule;
+use CjwNetwork\RequestShield\Rule\ContentRule;
 use CjwNetwork\RequestShield\Rule\HostRule;
 use CjwNetwork\RequestShield\Rule\LimitsRule;
 use CjwNetwork\RequestShield\Rule\MethodPathRule;
@@ -129,6 +130,9 @@ final class Inspector
         $restricted = $s->restricted === [] ? null : (new RestrictedPathRule($s->restricted))->check($request, $now);
         $step('Areas for certain visitors', $restricted, $this->restrictedPass($request),
             fn (): string => 'only for ' . $this->restrictedFor($request) . " — $request->clientIp is not one of them");
+        $step('Attack patterns', $s->contentIndex === [] ? null : (new ContentRule($s->contentIndex, $s->contentRules, $s->blockExceptions))->check($request, $now),
+            $s->contentIndex === [] ? 'no attack patterns configured' : $this->attackPass($request),
+            fn (): string => 'refused: ' . $this->attackMatch($request));
         $step('May a cache keep the answer?', (new CacheableRule($s->cacheablePaths, $s->cacheableQuery))->check($request, $now),
             'yes: a known address with known parameters',
             static fn (Decision $d): string => 'answered, but not kept: ' . Describe::reason($d->reason));
@@ -191,6 +195,33 @@ final class Inspector
             }
         }
         return 'not one of the ' . count($this->settings->blockedPaths) . ' refused kinds of address';
+    }
+
+    private function attackMatch(Request $request): string
+    {
+        $p = ContentRule::matched($this->settings->contentRules, $this->settings->blockExceptions, null, $request);
+        return $p === null ? 'an attack pattern' : Describe::rule($this->settings, 'contentRules', $p);
+    }
+
+    /** No attack pattern -- or one matched, but open here by an exception. */
+    private function attackPass(Request $request): string
+    {
+        $s = $this->settings;
+        foreach ($s->contentRules as $r) {
+            $content = $request->content($r['target']);
+            foreach ($r['patterns'] as $p) {
+                if (@preg_match($p, $content) === 1) {
+                    $i = BlockedPathRule::excepted($s->blockExceptions, $p, $request);
+                    if ($i !== null) {
+                        $x = $s->blockExceptions[$i];
+                        return 'would be refused (' . Describe::rule($s, 'contentRules', $p) . '), but open here'
+                            . ($x['ips'] !== [] ? " for $request->clientIp (" . implode(', ', $x['ips']) . ')' : ' for everyone')
+                            . ' — ' . ($s->origin('blockExceptions', $x['paths'][0] ?? '') ?? "blockExceptions[$i]");
+                    }
+                }
+            }
+        }
+        return 'no attack pattern in the address or the headers';
     }
 
     private function restrictedPass(Request $request): string
