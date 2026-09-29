@@ -160,7 +160,7 @@ final class RulesPage
         foreach ($s->cacheablePaths ?? [] as $p) {
             $rows[] = [Describe::pattern($s, $p), $o('cacheable.paths', $p), null];
         }
-        $query = $s->cacheableQuery === null ? 'with any parameters' : ($s->cacheableQuery === [] ? 'without parameters' : 'with the parameters ' . implode(', ', $s->cacheableQuery) . ' only');
+        $query = $s->cacheableQuery === null ? 'with any parameters' : ($s->cacheableQuery === [] ? 'without parameters' : 'only with the parameters ' . implode(', ', array_map(static fn (string $q): string => "\"$q\"", $s->cacheableQuery)));
         $g[] = ['What a cache may keep', ($s->cacheablePaths === null ? 'Every address, ' : 'These addresses, ') . $query
             . '. Anything else is answered by the site, but not kept — so made-up addresses cannot fill a cache.', $rows];
 
@@ -221,7 +221,7 @@ final class RulesPage
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,sans-serif}
 main{max-width:60rem;margin:0 auto;padding:1.5rem 1rem 3rem}h1{font-size:1.6rem;margin:.2rem 0}h2{font-size:1.2rem;margin:2rem 0 .6rem}h3{font-size:1.02rem;margin:0 0 .3rem}
 .lead,.note,.intro{color:var(--muted)}.lead{margin:0 0 1.2rem}.note{font-size:.9rem}.intro{margin:.1rem 0 .6rem}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem 1.2rem;margin-bottom:.8rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem 1.2rem;margin-bottom:.8rem}.card h2{margin-top:0}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.6rem;margin-bottom:1rem}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;color:var(--muted);font-size:.9rem}.tile .n{display:block;font-size:1.6rem;font-weight:650;color:var(--fg)}
 table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:.45rem .4rem;border-top:1px solid var(--line);vertical-align:top}tr:first-child td,tr:first-child th{border-top:0}
