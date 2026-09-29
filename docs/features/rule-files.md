@@ -53,6 +53,7 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `allow <METHODS> <paths>` | `methodPaths` | those methods only there, else 405 ([access rules](access-rules.md)) |
 | `restrict <paths> to <addresses or ranges>` | `restricted` | only those addresses, else 403 ([access rules](access-rules.md)) |
 | `block <paths>` / `unblock <paths>` | `blockedPaths` | 404 before the site sees it / take a block back |
+| `block query|header <Name>|headers|anywhere <regex>` | `contentRules` | attack patterns in the query or the headers, 403 |
 | `unblock [<what>] at <paths> [for <addresses>]` | `blockExceptions` | blocked paths let through at some paths only (an admin's file reader) ([access rules](access-rules.md#exceptions-an-admins-file-reader)) |
 | `cache-path <paths>` | `cacheable.paths` | what a cache may keep; `any`: every path (default) |
 | `cache-query <names>` | `cacheable.query` | parameters a cached URL may have; `any` (default), `none` |
@@ -85,6 +86,26 @@ when the files are read — a broken one is an error then, never a silent miss.
 
 `unblock <pattern>` takes back exactly that pattern from an earlier line or
 file; `unblock [SCAN-BACKUP]` a rule by its ID.
+
+### Attack patterns
+
+`block` with a target instead of a path pattern looks inside the request —
+the patterns are always regular expressions and case does not matter:
+
+```text
+block query \bunion\s+select\b          # the query string
+block header User-Agent \b(sqlmap|nikto)\b   # one header
+block headers \$\{jndi:                 # every header (not Cookie: name it)
+block anywhere \$\{env:                 # path, query and every header
+```
+
+Matched after the value is normalised — decoded twice, lower case, SQL
+comments and runs of white space as one space — so `%2527` or `UnIoN/**/SeLeCt`
+do not get past; the answer is 403 and the log and trace name the rule. Form
+contents (POST bodies) are not looked at. `unblock`, `unblock at` and `replace`
+work for these rules exactly as for path blocks; `rules/attacks.rules`
+(`include @attacks`) is a reviewed set, after the OWASP Core Rule Set's first
+level.
 
 ## IDs, namespaces and descriptions
 

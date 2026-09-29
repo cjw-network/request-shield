@@ -320,6 +320,10 @@ final class RuleFile
                 $this->origins['methods']['*'] = $this->rid;
                 return;
             case 'block':
+                if (in_array($args[0] ?? '', ['query', 'header', 'headers', 'anywhere'], true)) {
+                    $this->contentBlock($args, $at);
+                    return;
+                }
                 $this->patterns('blockedPaths', $args, $at, true);
                 return;
             case 'unblock':
@@ -470,6 +474,21 @@ final class RuleFile
                 $this->put($key, $keep);
             }
         }
+        $mine = [];
+        foreach ($this->origins['contentRules'] ?? [] as $p => $origin) {
+            if ($origin === $id) {
+                $mine[] = (string) $p;
+            }
+        }
+        if ($mine !== []) {
+            $found = true;
+            if (!$probe) {
+                $this->dropContent($mine);
+                foreach ($mine as $p) {
+                    unset($this->origins['contentRules'][$p]);
+                }
+            }
+        }
         foreach (['restricted', 'blockExceptions'] as $key) {
             $keep = [];
             foreach ((array) $this->get($key) as $entry) {
@@ -618,7 +637,7 @@ final class RuleFile
                 $regex = true;
                 continue;
             }
-            if ($a[0] === '@' || $a[0] === '[') {
+            if (!$regex && ($a[0] === '@' || $a[0] === '[')) {
                 if (!$sets) {
                     throw new RuleFileException("$at: $a only works with block and unblock");
                 }
@@ -655,7 +674,7 @@ final class RuleFile
             if ($rev !== null) {
                 $this->pin($id, $rev, $at);
             }
-            foreach ($this->origins['blockedPaths'] ?? [] as $p => $origin) {
+            foreach (($this->origins['blockedPaths'] ?? []) + ($this->origins['contentRules'] ?? []) as $p => $origin) {
                 if ($origin === $id) {
                     $out[$p] = $origin;
                 }
@@ -675,7 +694,7 @@ final class RuleFile
             $this->file($file, null, $at);
             $this->rid = $saved;
         }
-        foreach ($this->origins['blockedPaths'] ?? [] as $p => $origin) {
+        foreach (($this->origins['blockedPaths'] ?? []) + ($this->origins['contentRules'] ?? []) as $p => $origin) {
             if (strncmp((string) ($this->origins['at'][$origin] ?? ''), 'built-in ' . basename($real) . ':', strlen(basename($real)) + 10) === 0) {
                 $out[$p] = $origin;
             }
@@ -706,15 +725,101 @@ final class RuleFile
             $list[] = is_string($p) ? $p : '';
         }
         $remove = array_keys($this->compile($args, $at, true));
-        foreach ($remove as $pattern) {
-            if (!in_array($pattern, $list, true)) {
+        $content = $this->contentPatterns();
+        foreach ($remove as $i => $pattern) {
+            // A written content pattern is kept with its "i" flag: "unblock
+            // regex x" takes back what "block query x" set.
+            if (!in_array($pattern, $list, true) && !in_array($pattern, $content, true) && in_array($pattern . 'i', $content, true)) {
+                $remove[$i] = $pattern . 'i';
+            }
+            if (!in_array($remove[$i], $list, true) && !in_array($remove[$i], $content, true)) {
                 throw new RuleFileException("$at: nothing to unblock -- no earlier block matches " . implode(' ', $args) . ' exactly');
             }
         }
         $this->put('blockedPaths', array_values(array_diff($list, $remove)));
+        $this->dropContent($remove);
         foreach ($remove as $pattern) {
-            unset($this->origins['blockedPaths'][$pattern]);
+            unset($this->origins['blockedPaths'][$pattern], $this->origins['contentRules'][$pattern]);
         }
+    }
+
+    /**
+     * block query|headers|anywhere <regex>..., block header <Name> <regex>...:
+     * attack patterns in the query string and the headers, matched after
+     * Request::content() normalised them (decoded, lower case). Regular
+     * expressions always; "regex" may be written, it changes nothing.
+     *
+     * @param list<string> $args
+     */
+    private function contentBlock(array $args, string $at): void
+    {
+        $where = (string) array_shift($args);
+        if ($where === 'header') {
+            $name = strtolower((string) array_shift($args));
+            if (!preg_match('/^[a-z0-9-]+$/', $name)) {
+                throw new RuleFileException("$at: block header <Name> <regex> -- block header User-Agent sqlmap");
+            }
+            $where = "header:$name";
+        }
+        if (($args[0] ?? '') === 'regex') {
+            array_shift($args);
+        }
+        if ($args === []) {
+            throw new RuleFileException("$at: block $where <regex> -- what to look for");
+        }
+        foreach ($args as $a) {
+            // Expressions only: "@set" would silently match its own name and
+            // "[X-1]" become a character class; references belong to unblock.
+            if ($a !== '' && ($a[0] === '@' || preg_match('/^\[[A-Za-z0-9][A-Za-z0-9_.-]{0,47}(?:@[1-9][0-9]{0,5})?\]$/', $a) === 1)) {
+                throw new RuleFileException("$at: block $where takes expressions, not references -- unblock [ID] takes one back");
+            }
+        }
+        $patterns = [];
+        foreach ($this->compile(array_merge(['regex'], $args), $at, false) as $p => $origin) {
+            $p .= 'i';
+            $patterns[] = $p;
+            $this->origins['contentRules'][$p] = $origin;
+            $this->origins['written'][$p] = $where . ' ' . ($this->origins['written'][substr($p, 0, -1)] ?? $p);
+        }
+        $rules = (array) $this->get('contentRules');
+        $rules[] = ['target' => $where, 'patterns' => $patterns];
+        $this->put('contentRules', $rules);
+    }
+
+    /** @return list<string> every attack pattern so far */
+    private function contentPatterns(): array
+    {
+        $out = [];
+        foreach ((array) $this->get('contentRules') as $r) {
+            foreach (is_array($r) && is_array($r['patterns'] ?? null) ? $r['patterns'] : [] as $p) {
+                if (is_string($p)) {
+                    $out[] = $p;
+                }
+            }
+        }
+        return $out;
+    }
+
+    /** @param list<string> $patterns attack patterns to take out */
+    private function dropContent(array $patterns): void
+    {
+        $rules = [];
+        foreach ((array) $this->get('contentRules') as $r) {
+            if (!is_array($r)) {
+                continue;
+            }
+            $keep = [];
+            foreach ((array) ($r['patterns'] ?? []) as $p) {
+                if (is_string($p) && !in_array($p, $patterns, true)) {
+                    $keep[] = $p;
+                }
+            }
+            $r['patterns'] = $keep;
+            if ($r['patterns'] !== []) {
+                $rules[] = $r;
+            }
+        }
+        $this->put('contentRules', $rules);
     }
 
     /** @param list<string> $args */
@@ -729,9 +834,13 @@ final class RuleFile
         $patterns = null;
         if ($where > 0) {
             $patterns = array_keys($this->compile(array_slice($args, 0, $where), $at, true));
-            $blocked = (array) $this->get('blockedPaths');
-            foreach ($patterns as $p) {
-                if (!in_array($p, $blocked, true)) {
+            $content = $this->contentPatterns();
+            $blocked = array_merge((array) $this->get('blockedPaths'), $content);
+            foreach ($patterns as $i => $p) {
+                if (!in_array($p, $blocked, true) && in_array($p . 'i', $content, true)) {
+                    $patterns[$i] = $p . 'i';   // a written content pattern, kept with its "i" flag
+                }
+                if (!in_array($patterns[$i], $blocked, true)) {
                     throw new RuleFileException("$at: nothing to unblock -- no earlier block matches " . implode(' ', array_slice($args, 0, $where)) . ' exactly');
                 }
             }

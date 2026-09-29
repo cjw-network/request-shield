@@ -535,4 +535,71 @@ return [
         rulesFail(['site.rules' => "replace [SCAN-CGI] set debug-header on\n"], 'site.rules:1', 'replace takes a rule');
         rulesFail(['site.rules' => "replace [SCAN-CGI] blok /x\n"], 'site.rules:1', 'unknown rule "blok"');
     },
+    'content rules: block query, header <Name>, headers, anywhere -- regular expressions always' => function (): void {
+        $s = rulesFrom('block query \bunion\s+select\b' . "\n"
+            . 'block header User-Agent \b(sqlmap|nikto)\b' . "\n"
+            . 'block headers \$\{jndi:' . "\n"
+            . 'block anywhere \$\{env:' . "\n");
+        same([['target' => 'query', 'patterns' => ['#\bunion\s+select\b#i']],
+            ['target' => 'header:user-agent', 'patterns' => ['#\b(sqlmap|nikto)\b#i']],
+            ['target' => 'headers', 'patterns' => ['#\$\{jndi:#i']],
+            ['target' => 'anywhere', 'patterns' => ['#\$\{env:#i']]], $s->contentRules, 'the target and its patterns');
+        same(['query' => '#(?:\bunion\s+select\b)#i', 'header:user-agent' => '#(?:\b(sqlmap|nikto)\b)#i',
+            'headers' => '#(?:\$\{jndi:)#i', 'anywhere' => '#(?:\$\{env:)#i'], $s->contentIndex, 'one expression per target');
+        same('reject attack', decideFor($s, '/?id=1%20union%20select%202'), 'the query');
+        same('reject attack', decideFor($s, '/', ['HTTP_USER_AGENT' => 'nikto scan']), 'a named header');
+        same('reject attack', decideFor($s, '/', ['HTTP_REFERER' => 'https://e/?${jndi:ldap://x}']), 'every header');
+        same('reject attack', decideFor($s, '/${env:x}'), 'anywhere: the path too');
+        same('allow', decideFor($s, '/?q=union bank'), 'a near miss passes');
+        // "regex" may be written; it changes nothing. Several patterns in one line share the rule.
+        same(['#\bunion\s+select\b#i'], rulesFrom('block query regex \bunion\s+select\b' . "\n")->contentRules[0]['patterns'], 'regex is implied');
+        same([['target' => 'query', 'patterns' => ['#a#i', '#b#i', '#c#i']]], rulesFrom("block query a b c\n")->contentRules);
+        // The refusal is named by the rule's ID, like every other rule.
+        $s = rulesFrom("ids X required\n[X-U] block query sqlmap\n");
+        $shield = new Shield($s, new MemoryStore());
+        $r = Request::fromServer(['REQUEST_URI' => '/?a=sqlmap', 'REMOTE_ADDR' => '198.51.100.7']);
+        same('X-U', $shield->explain($shield->decide($r, 1000.0), $r));
+        rulesFail(['site.rules' => "block query\n"], 'site.rules:1', 'what to look for');
+        rulesFail(['site.rules' => "block headers\n"], 'site.rules:1', 'what to look for');
+        rulesFail(['site.rules' => "block anywhere\n"], 'site.rules:1', 'what to look for');
+        rulesFail(['site.rules' => "block header\n"], 'site.rules:1', 'block header <Name>');
+        rulesFail(['site.rules' => "block header Bad_Name x\n"], 'site.rules:1', 'block header <Name>');
+        rulesFail(['site.rules' => "block query [x\n"], 'site.rules:1', 'not a valid regular expression');
+        rulesFail(['site.rules' => "block query @scanners\n"], 'site.rules:1', 'expressions, not references');
+        rulesFail(['site.rules' => "block query [X-1]\n"], 'site.rules:1', 'expressions, not references');
+    },
+    'content rules: unblock takes one back; at some paths, for some addresses; replace keeps the ID' => function (): void {
+        same('allow', decideFor(rulesFrom("block query sqlmap\nunblock regex sqlmap\n"), '/?a=sqlmap'), 'the expression as written');
+        same('allow', decideFor(rulesFrom("ids X required\n[X-1] block query sqlmap\n[X-2] unblock [X-1]\n"), '/?a=sqlmap'), 'by its ID');
+        // A glob is another pattern, not the expression.
+        rulesFail(['site.rules' => "block query sqlmap\nunblock sqlmap\n"], 'site.rules:2', 'nothing to unblock');
+        rulesFail(['site.rules' => "block query sqlmap\nunblock regex other\n"], 'site.rules:2', 'nothing to unblock');
+        // Open at some paths only -- the pattern is then part of the exception.
+        $s = rulesFrom("block query sqlmap\nunblock regex sqlmap at /ok/**\n");
+        same('allow', decideFor($s, '/ok/x?a=sqlmap'), 'open there');
+        same('reject attack', decideFor($s, '/other?a=sqlmap'), 'elsewhere still refused');
+        $s = rulesFrom("block query sqlmap\nunblock regex sqlmap at /ok/** for 192.0.2.0/24\n");
+        same('allow', decideFor($s, '/ok?a=sqlmap', ['REMOTE_ADDR' => '192.0.2.5']), 'for that range');
+        same('reject attack', decideFor($s, '/ok?a=sqlmap'), 'for anyone else: refused');
+        same('reject attack', decideFor($s, '/other?a=sqlmap', ['REMOTE_ADDR' => '192.0.2.5']), 'the range alone does not open it');
+        $s = rulesFrom("ids X required\n[X-1] block query sqlmap\n[X-2] unblock [X-1] at /ok/**\n");
+        same('allow', decideFor($s, '/ok?a=sqlmap'), 'by ID, at a path');
+        same('reject attack', decideFor($s, '/x?a=sqlmap'));
+        // Without patterns, "unblock at" opens the content rules there too.
+        same('allow', decideFor(rulesFrom("block query sqlmap\nunblock at /ok/**\n"), '/ok?a=sqlmap'), 'no pattern: every block open there');
+        // replace swaps the pattern and keeps the ID.
+        $s = rulesFrom("[X-1] block query sqlmap\nreplace [X-1] block query havij\n");
+        same('allow', decideFor($s, '/?a=sqlmap'), 'the old pattern is gone');
+        same('reject attack', decideFor($s, '/?a=havij'), 'the replacement applies');
+        $shield = new Shield($s, new MemoryStore());
+        $r = Request::fromServer(['REQUEST_URI' => '/?a=havij', 'REMOTE_ADDR' => '198.51.100.7']);
+        same('X-1', $shield->explain($shield->decide($r, 1000.0), $r), 'the same ID');
+        // A back reference would point into the combined expression: refused when checked.
+        try {
+            rulesFrom("block query (a)\\1\n");
+            throw new TestFailure('a back reference was accepted');
+        } catch (InvalidArgumentException $e) {
+            truthy(strpos($e->getMessage(), 'contentRules') !== false, $e->getMessage());
+        }
+    },
 ];

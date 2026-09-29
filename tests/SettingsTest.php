@@ -40,6 +40,27 @@ return [
         expectInvalid(['challenge' => ['searchEngines' => 'google']], 'challenge.searchEngines');
         expectInvalid(['cacheable' => ['query' => 'page']], 'cacheable.query');
     },
+    'contentRules: targets and patterns checked, one expression per target' => function (): void {
+        $s = Settings::from(['contentRules' => [
+            ['target' => 'query', 'patterns' => ['#a#', '#b#i']],
+            ['target' => 'HEADER:User-Agent', 'patterns' => ['#c#']],
+            ['target' => 'query', 'patterns' => ['#d#']],
+        ]]);
+        same('header:user-agent', $s->contentRules[1]['target'], 'the header name lower-cased');
+        same('#(?:a)|(?:b)|(?:d)#i', $s->contentIndex['query'], 'all of a target\'s patterns in one expression');
+        same('#(?:c)#i', $s->contentIndex['header:user-agent']);
+        truthy(Settings::from(['contentRules' => []])->contentIndex === [], 'none: no index, no work on the request path');
+        expectInvalid(['contentRules' => [['target' => 'body', 'patterns' => ['#x#']]]], 'contentRules.0.target');
+        expectInvalid(['contentRules' => [['patterns' => ['#x#']]]], 'contentRules.0.target');
+        expectInvalid(['contentRules' => [['target' => 'header:Bad_Name', 'patterns' => ['#x#']]]], 'contentRules.0.target');
+        expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => ['/x/']]]], 'contentRules.0.patterns');
+        expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => ['#[#']]]], 'contentRules.0.patterns');
+        // A back reference or a named group would point into another pattern
+        // of the combined expression -- refused.
+        expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => ['#(a)\\1#']]]], 'contentRules.0.patterns');
+        expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => ['#(?<n>a)#']]]], 'contentRules.0.patterns');
+        expectInvalid(['contentRules' => ['not a map']], 'contentRules.0');
+    },
     'export and import lose nothing' => function (): void {
         $s = Settings::from(['trustedProxies' => ['10.0.0.0/8'], 'hosts' => ['a.example'], 'cacheable' => ['query' => ['page'], 'paths' => null],
             'budgets' => ['misses' => ['limit' => 9, 'window' => 10, 'onDemand' => true]], 'challenge' => ['secret' => str_repeat('k', 40), 'texts' => ['title' => 'T']]]);
@@ -86,5 +107,30 @@ return [
         } catch (RuntimeException $e) {
             truthy(strpos($e->getMessage(), 'cannot read') !== false, $e->getMessage());
         }
+    },
+    'combine(): several expressions as one, only where that means the same' => function (): void {
+        same('#(?:a/b)|(?i:c)#', Settings::combine(['/a\/b/', '#c#i']));
+        same('', Settings::combine(['#a#']), 'one: nothing to combine');
+        same('', Settings::combine(['#(a)\1#', '#b#']), 'a back reference would point elsewhere');
+        same('', Settings::combine(['#a#x', '#b#']), 'another flag');
+        same('', Settings::combine(['~a~', '#b#']), 'another delimiter');
+        $s = Settings::from([]);
+        truthy($s->blockedIndex !== '', 'the built-in blocks are combined');
+        foreach (['/.env', '/x/dump.sql', '/phpinfo.php', '/cgi-bin/x', '/page', '/about/team', '/.well-known/acme-challenge/x'] as $path) {
+            $one = false;
+            foreach ($s->blockedPaths as $p) {
+                $one = $one || preg_match($p, $path) === 1;
+            }
+            same($one, preg_match($s->blockedIndex, $path) === 1, "combined = one by one: $path");
+        }
+    },
+    'hints(): the text every pattern of a target starts with -- else none' => function (): void {
+        $rule = static fn (string $target, string ...$p): array => ['target' => $target, 'patterns' => $p];
+        same(['anywhere' => ['${']], Settings::hints([$rule('anywhere', '#\$\{(aa|bb)|\$\{cc:#i')]));
+        same(['query' => ['foo', 'bar']], Settings::hints([$rule('query', '#foo\d|bar#i')]));
+        same([], Settings::hints([$rule('query', '#ab?c#i')]), 'b is optional: only "a" is sure -- too short');
+        same([], Settings::hints([$rule('query', '#\bfoo#i')]), 'starts with an assertion');
+        same([], Settings::hints([$rule('query', '#foo#i', '#(x|y)z#i')]), 'one pattern without: the whole target without');
+        same(['header:x' => ['[ab']], Settings::hints([$rule('header:x', '#\[ab#i')]), 'escaped characters are plain text');
     },
 ];

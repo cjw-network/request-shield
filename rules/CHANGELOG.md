@@ -1,7 +1,8 @@
 # Changes to the built-in rules
 
 The rule files in this directory are read by every site (`scanners.rules`) or
-on request (`wordpress.rules`: `include @wordpress`). Each file has a
+on request (`wordpress.rules`: `include @wordpress`; `attacks.rules`:
+`include @attacks`). Each file has a
 `version`; each rule a revision (`[SCAN-BACKUP@1]`), raised when the rule
 changes what it matches. A site that takes back, replaces or opens a rule and
 names the revision it reviewed (`unblock [SCAN-BACKUP@1] at /downloads/**`) is
@@ -21,3 +22,10 @@ First version as rule files, with the patterns the library had since 0.1.0.
 | `SCAN-CGI` | 1 | `cgi-bin`, `.well-known/` except `acme-challenge`, `security.txt`, `change-password` |
 | `WP-FOLDERS` | 1 | `/wp-admin`, `/wp-includes`, `/wp-content` |
 | `WP-SCRIPTS` | 1 | `/wp-login.php`, `/xmlrpc.php`, `/wp-config.php` |
+| `ATK-SQL-UNION`, `ATK-SQL-TIME`, `ATK-SQL-TAUT`, `ATK-SQL-SCHEMA`, `ATK-SQL-STACK` | 1 | SQL injection in the query: `UNION SELECT`, `sleep()`, tautologies, `information_schema`, `; DROP TABLE` |
+| `ATK-XSS-TAG`, `ATK-XSS-EVENT`, `ATK-XSS-URL` | 1 | cross-site scripting in the query: `<script>` and its siblings, `on*=` handlers, `javascript:` and `data:text/html` addresses |
+| `ATK-PHP`, `ATK-SHELL` | 1 | code and shell injection in the query: `<?php`, `eval()`, `shell_exec()`, `; cat /`, `$(id)`, `/bin/sh` |
+| `ATK-LFI`, `ATK-WRAPPER` | 1 | file inclusion in the query: `../../`, `/etc/passwd`, `php://` and the other wrappers |
+| `ATK-JNDI` | 1 | Log4Shell and template injection (`${jndi:…}`, `${env:…}`), anywhere in the request |
+| `ATK-UA-TOOLS` | 1 | attack tools by their User-Agent: sqlmap, nikto, nmap, wpscan, nuclei … |
+| `ATK-EXPLOIT` | 1 | paths of well-known exploits: `eval-stdin.php`, `/hnap1`, `/boaform`, `/.aws`, `/.ssh` |

@@ -124,6 +124,103 @@ final class Request
 
     private ?string $matchPath = null;
 
+    /** @var array<string, string> */
+    private array $content = [];
+
+    /**
+     * What attack rules look at, normalised so that disguises do not help:
+     * decoded (twice: "%2527" is "'"), "+" as a space in the query, lower
+     * case, SQL comments and runs of white space as one space.
+     *
+     *   "query"          the query string
+     *   "header:<name>"  one header ("header:user-agent")
+     *   "headers"        every header's value
+     *   "anywhere"       path, query and every header
+     */
+    public function content(string $target): string
+    {
+        if (isset($this->content[$target])) {
+            return $this->content[$target];
+        }
+        if ($target === 'query') {
+            $v = self::normal(str_replace('+', ' ', $this->query));
+        } elseif (strncmp($target, 'header:', 7) === 0) {
+            $v = self::normal((string) $this->header(substr($target, 7)));
+        } elseif ($target === 'headers') {
+            $all = [];
+            foreach ($this->server as $name => $value) {
+                if (is_string($value) && strncmp($name, 'HTTP_', 5) === 0 && $name !== 'HTTP_COOKIE') {
+                    $all[] = $value;
+                }
+            }
+            // Joined by a space: what a line break would have become anyway.
+            $v = self::normal(implode(' ', $all));
+        } else {
+            $v = self::normal($this->path) . ' ' . $this->content('query') . ' ' . $this->content('headers');
+        }
+        return $this->content[$target] = $v;
+    }
+
+    /**
+     * Whether the raw value of a target could hold one of $texts once
+     * normalised: it holds one (any case), or a "%" that decoding could turn
+     * into one. Cheaper than normalising.
+     *
+     * @param list<string> $texts lower case
+     */
+    public function mayHold(string $target, array $texts): bool
+    {
+        $raw = [];
+        if ($target === 'query' || $target === 'anywhere') {
+            $raw[] = $this->query;
+        }
+        if ($target === 'anywhere') {
+            $raw[] = $this->path;
+        }
+        if (strncmp($target, 'header:', 7) === 0) {
+            $raw[] = (string) $this->header(substr($target, 7));
+        } elseif ($target === 'headers' || $target === 'anywhere') {
+            foreach ($this->server as $name => $value) {
+                if (is_string($value) && strncmp($name, 'HTTP_', 5) === 0 && $name !== 'HTTP_COOKIE') {
+                    $raw[] = $value;
+                }
+            }
+        }
+        foreach ($raw as $v) {
+            if (strpos($v, '%') !== false) {
+                return true;
+            }
+            foreach ($texts as $t) {
+                if (stripos($v, $t) !== false) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static function normal(string $v): string
+    {
+        if ($v === '') {
+            return '';
+        }
+        for ($i = 0; $i < 2 && strpos($v, '%') !== false; $i++) {
+            $v = rawurldecode($v);
+        }
+        $v = strtolower($v);
+        if (strpos($v, '/*') !== false) {
+            $v = (string) preg_replace('#/\*.*?\*/#s', ' ', $v);
+        }
+        // Runs of white space as one space -- only when there are any: most
+        // values have single spaces, and the expression is the costly part.
+        // (One compiled expression is the quickest test here: faster than
+        // strpbrk() and strcspn() on header-length strings.)
+        if (preg_match('/[\t\n\r\x0B\x0C]|  /', $v) !== 1) {
+            return $v;
+        }
+        return (string) preg_replace('/\s+/', ' ', $v);
+    }
+
     /**
      * The path as the application will route it: percent-decoded, with "//"
      * and "/./" collapsed -- what path rules that grant or refuse access are

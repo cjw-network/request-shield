@@ -16,6 +16,7 @@ use CjwNetwork\RequestShield\Challenge\Secret;
 use CjwNetwork\RequestShield\Rule\BlockedPathRule;
 use CjwNetwork\RequestShield\Rule\BudgetRule;
 use CjwNetwork\RequestShield\Rule\CacheableRule;
+use CjwNetwork\RequestShield\Rule\ContentRule;
 use CjwNetwork\RequestShield\Rule\HostRule;
 use CjwNetwork\RequestShield\Rule\LimitsRule;
 use CjwNetwork\RequestShield\Rule\MethodPathRule;
@@ -85,12 +86,15 @@ final class Shield
         if ($s->hosts !== []) {
             $this->rules[] = new HostRule($s->hosts);
         }
-        $this->rules[] = new BlockedPathRule($s->blockedPaths, $s->blockExceptions);
+        $this->rules[] = new BlockedPathRule($s->blockedPaths, $s->blockExceptions, $s->blockedIndex);
         if ($s->methodPaths !== []) {
             $this->rules[] = new MethodPathRule($s->methodPaths);
         }
         if ($s->restricted !== []) {
             $this->rules[] = new RestrictedPathRule($s->restricted);
+        }
+        if ($s->contentIndex !== []) {
+            $this->rules[] = new ContentRule($s->contentIndex, $s->contentRules, $s->blockExceptions, $s->contentHints);
         }
         $this->rules[] = new CacheableRule($s->cacheablePaths, $s->cacheableQuery, $known);
         foreach ($s->budgets as $budget) {
@@ -255,6 +259,9 @@ final class Shield
                 return $name('hosts', '*', 'hosts');
             case 'app':
                 return 'application';
+            case 'attack':
+                $p = ContentRule::matched($s->contentRules, $s->blockExceptions, null, $request);
+                return $p === null ? null : $name('contentRules', $p, 'contentRules');
             case 'always':
                 $i = $first($s->challenge->alwaysPaths, $request->path);
                 return $i === null ? null : $name('challenge.alwaysPaths', $s->challenge->alwaysPaths[$i], "challenge.alwaysPaths[$i]");

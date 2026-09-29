@@ -30,6 +30,9 @@ final class Settings
      * @param list<array{paths: list<string>, ips: list<string>}> $restricted
      * @param array<string, list<string>> $methodPaths
      * @param list<array{paths: list<string>, patterns: list<string>|null, ips: list<string>}> $blockExceptions
+     * @param list<array{target: string, patterns: list<string>}> $contentRules
+     * @param array<string, string> $contentIndex
+     * @param array<string, list<string>> $contentHints
      */
     private function __construct(
         /** @readonly */
@@ -84,6 +87,17 @@ final class Settings
         public array $blockExceptions = [],
         /** @readonly */
         public bool $appChallenge = false,
+        /** @readonly */
+        public array $contentRules = [],
+        /** @readonly target => all of its patterns in one expression */
+        public array $contentIndex = [],
+        /** @readonly all blocked paths in one expression; '' when they cannot be combined */
+        public string $blockedIndex = '',
+        /**
+         * @readonly target => texts one of which every pattern needs; a target without is always matched
+         * @var array<string, list<string>>
+         */
+        public array $contentHints = [],
     ) {
     }
 
@@ -114,6 +128,8 @@ final class Settings
             $exceptions[] = ['paths' => self::strings($x, 'paths', "blockExceptions.$i.paths"),
                 'patterns' => self::stringsOrNull($x, 'patterns', "blockExceptions.$i.patterns"), 'ips' => self::strings($x, 'ips', "blockExceptions.$i.ips")];
         }
+        [$contentRules, $contentIndex] = self::contentRules(self::map($c, 'contentRules'));
+        $blocked = self::strings($c, 'blockedPaths');
         $methodPaths = [];
         foreach (self::map($c, 'methodPaths') as $method => $paths) {
             $methodPaths[strtoupper((string) $method)] = self::strings(['p' => $paths], 'p', "methodPaths.$method");
@@ -150,7 +166,7 @@ final class Settings
             self::int($limits, 'uri', 'limits.uri'),
             self::int($limits, 'queryParameters', 'limits.queryParameters'),
             self::int($limits, 'headerBytes', 'limits.headerBytes'),
-            self::strings($c, 'blockedPaths'),
+            $blocked,
             self::stringsOrNull($cacheable, 'paths', 'cacheable.paths'),
             self::stringsOrNull($cacheable, 'query', 'cacheable.query'),
             $budgets,
@@ -169,7 +185,187 @@ final class Settings
             max(4096, self::int($log, 'maxSize', 'log.maxSize', 10485760)),
             $exceptions,
             self::bool($c, 'appChallenge'),
+            $contentRules,
+            $contentIndex,
+            self::combine($blocked),
+            self::hints($contentRules),
         );
+    }
+
+    /**
+     * For each target, the texts every one of its patterns starts with --
+     * "${" for "\$\{(jndi|...)" -- when there are such: the request is then
+     * normalised and matched only if its raw value holds one of them, or a
+     * "%" (an encoding). Normalising can decode, lower-case and merge white
+     * space, none of which makes such a text appear. A target where any
+     * pattern can start otherwise gets none, and is always matched.
+     *
+     * @param list<array{target: string, patterns: list<string>}> $rules
+     * @return array<string, list<string>>
+     */
+    public static function hints(array $rules): array
+    {
+        $by = [];
+        $none = [];
+        foreach ($rules as $r) {
+            foreach ($r['patterns'] as $p) {
+                if (!preg_match('/^#(.*)#i?$/s', $p, $m)) {
+                    $none[$r['target']] = true;
+                    continue;
+                }
+                foreach (self::alternatives($m[1]) as $alt) {
+                    $lit = self::leadingLiteral($alt);
+                    if (strlen($lit) < 2) {
+                        $none[$r['target']] = true;
+                        continue 2;
+                    }
+                    $by[$r['target']][strtolower($lit)] = true;
+                }
+            }
+        }
+        $out = [];
+        foreach ($by as $target => $lits) {
+            if (isset($none[$target])) {
+                continue;
+            }
+            // A text that holds a shorter one is found with it: only the shorter.
+            $keep = [];
+            foreach (array_keys($lits) as $l) {
+                foreach (array_keys($lits) as $other) {
+                    if ($other !== $l && strpos((string) $l, (string) $other) !== false) {
+                        continue 2;
+                    }
+                }
+                $keep[] = (string) $l;
+            }
+            $out[$target] = $keep;
+        }
+        return $out;
+    }
+
+    /** @return list<string> an expression's top-level alternatives */
+    private static function alternatives(string $re): array
+    {
+        $out = [];
+        $depth = 0;
+        $class = false;
+        $start = 0;
+        for ($i = 0, $n = strlen($re); $i < $n; $i++) {
+            $c = $re[$i];
+            if ($c === '\\') {
+                $i++;
+            } elseif ($class) {
+                $class = $c !== ']';
+            } elseif ($c === '[') {
+                $class = true;
+            } elseif ($c === '(') {
+                $depth++;
+            } elseif ($c === ')') {
+                $depth--;
+            } elseif ($c === '|' && $depth === 0) {
+                $out[] = substr($re, $start, $i - $start);
+                $start = $i + 1;
+            }
+        }
+        $out[] = substr($re, $start);
+        return $out;
+    }
+
+    /** The plain text an alternative has to start with ("\$\{" -> "${"); '' if none. */
+    private static function leadingLiteral(string $alt): string
+    {
+        $lit = '';
+        for ($i = 0, $n = strlen($alt); $i < $n; $i++) {
+            $c = $alt[$i];
+            if ($c === '\\') {
+                $next = $alt[$i + 1] ?? '';
+                if ($next === '' || ctype_alnum($next)) {
+                    break;                  // \s, \d, \b, \1 ...: not a plain character
+                }
+                $lit .= $next;
+                $i++;
+                $last = $i;
+                continue;
+            }
+            if (strpos('.[](){}?*+|^$', $c) !== false) {
+                break;
+            }
+            $lit .= $c;
+        }
+        // A quantifier that allows none takes the last character back.
+        $after = $alt[$i] ?? '';
+        if ($lit !== '' && ($after === '?' || $after === '*' || $after === '{')) {
+            $lit = substr($lit, 0, -1);
+        }
+        return $lit;
+    }
+
+    /**
+     * Several expressions as one: "#a#", "#b#i" -> "#(?:a)|(?i:b)#". Only
+     * where that means the same -- delimiters "#" or "/", no flags but "i",
+     * no back references or named groups (they would point elsewhere);
+     * otherwise '' and the patterns are matched one by one, as before.
+     *
+     * @param list<string> $patterns
+     */
+    public static function combine(array $patterns): string
+    {
+        if (count($patterns) < 2) {
+            return '';
+        }
+        $parts = [];
+        foreach ($patterns as $p) {
+            if (!preg_match('~^([#/])(.*)\1(i?)$~s', $p, $m) || preg_match('/\\\\[1-9]|\\\\g\{?-?\d|\(\?P?[<\'=]|\(\?\|/', $m[2])) {
+                return '';
+            }
+            $body = $m[1] === '/' ? str_replace(['\\/', '#'], ['/', '\\#'], $m[2]) : $m[2];
+            $parts[] = ($m[3] === 'i' ? '(?i:' : '(?:') . $body . ')';
+        }
+        $all = '#' . implode('|', $parts) . '#';
+        return @preg_match($all, '') === false ? '' : $all;
+    }
+
+    /**
+     * The attack rules, and per target one expression of all its patterns --
+     * a clean request then costs one match per target.
+     *
+     * @param array<mixed> $list
+     * @return array{0: list<array{target: string, patterns: list<string>}>, 1: array<string, string>}
+     */
+    private static function contentRules(array $list): array
+    {
+        $rules = [];
+        $bodies = [];
+        foreach ($list as $i => $r) {
+            if (!is_array($r)) {
+                throw self::wrong("contentRules.$i", "an array of 'target' and 'patterns'");
+            }
+            $target = strtolower(self::string($r, 'target', "contentRules.$i.target"));
+            if (!in_array($target, ['query', 'headers', 'anywhere'], true) && !preg_match('/^header:[a-z0-9-]+$/', $target)) {
+                throw self::wrong("contentRules.$i.target", 'query, headers, anywhere or header:<name>');
+            }
+            $patterns = self::strings($r, 'patterns', "contentRules.$i.patterns");
+            foreach ($patterns as $p) {
+                if (!preg_match('/^#(.*)#i?$/s', $p, $m) || @preg_match($p, '') === false) {
+                    throw self::wrong("contentRules.$i.patterns", 'regular expressions in #...# (flag i at most)');
+                }
+                // All of a target's patterns become one expression: a back
+                // reference would point at another pattern's group.
+                if (preg_match('/\\\\[1-9]|\\\\g\{?-?\d|\(\?P?[<\'=]/', $m[1])) {
+                    throw self::wrong("contentRules.$i.patterns", 'expressions without back references or named groups');
+                }
+                $bodies[$target][] = '(?:' . $m[1] . ')';
+            }
+            $rules[] = ['target' => $target, 'patterns' => $patterns];
+        }
+        $index = [];
+        foreach ($bodies as $target => $b) {
+            $index[$target] = '#' . implode('|', $b) . '#i';
+            if (@preg_match($index[$target], '') === false) {
+                throw self::wrong('contentRules', 'patterns that also work together (' . $target . ')');
+            }
+        }
+        return [$rules, $index];
     }
 
     /**
@@ -205,7 +401,7 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 8;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home
+    private const FORMAT = 11;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints
 
     /**
      * The settings of a file, checked only when it changed. A ".rules" file

@@ -96,8 +96,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   properties at runtime any more — public ones are marked `@readonly`, which
   PHPStan enforces —, no string-key unpacking, `array_is_list()` and `xxh128`
   only where PHP has them. CI tests PHP 8.0 too. Cost on PHP 8.1 unchanged.
+- Attack rules look inside the request: `block query|header <Name>|headers|anywhere
+  <regex>`, matched on the normalised values (decoded twice, lower case, SQL
+  comments out) and answered with 403 "attack"; `unblock`, `unblock at` and
+  `replace` work for them. The rules are one combined expression per target,
+  checked when read — a passing request without them does nothing extra. The
+  rules page, `bin/request-shield show|check|trace` and `Shield::explain()`
+  name them like every other rule
+  ([docs](docs/features/rule-files.md#attack-patterns)).
+- `rules/attacks.rules` (`include @attacks`): a reviewed set against SQL
+  injection, cross-site scripting, code and shell injection, file inclusion,
+  Log4Shell and the known attack tools and exploit paths, after the OWASP Core
+  Rule Set's first level (IDs `ATK-…`, `version 2026.09.1`).
+
+### Fixed
+- `unblock regex <expression>` and `unblock … at <paths>` did not find a
+  content rule: its pattern is kept case-insensitive and the lookup missed it.
+- `rules/attacks.rules` blocked `/hnap1` and `/gponform/**` never: the paths
+  were written with capital letters while the path is matched lower-cased.
+- `block query @scanners` (or an `[ID]`) silently became a pattern matching its
+  own name; it is an error now.
+- `trace` and the rules page's check had no step for the attack rules: a
+  refused request looked unblocked there.
 
 ### Changed
+- Faster: the blocked paths are matched as one expression (compiled once), so
+  a clean request costs one match however many blocks there are (7.7 instead of
+  8.2 µs per request with the defaults); attack rules skip a target when its
+  raw value cannot hold what every one of its patterns starts with (Log4Shell:
+  `${`), and white space is only normalised where there is any. With
+  `include @attacks` a clean request costs about 8.6 µs more instead of 10.5
+  (PHP 8.1, measured end to end).
 - The end-to-end tests take their ports from the operating system: a guessed
   port could belong to another service, which then answered the test.
 - The compiled settings record every source file and the environment

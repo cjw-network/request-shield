@@ -103,7 +103,12 @@ if ($command === 'check' || $command === 'reload') {
     }
     $shipped = dirname(__DIR__) . '/rules/';
     $files = count(array_filter(array_keys($read['seen']), static fn (string $f): bool => is_file($f) && strncmp((string) realpath($f), $shipped, strlen($shipped)) !== 0));
-    echo "ok: $files file(s) + built-in rules, " . count($settings->blockedPaths) . ' blocked patterns, ' . count($settings->budgets) . ' budget(s)' . ($sets !== '' ? "; $sets" : '') . "\n";
+    $attacks = 0;
+    foreach ($settings->contentRules as $r) {
+        $attacks += count($r['patterns']);
+    }
+    echo "ok: $files file(s) + built-in rules, " . count($settings->blockedPaths) . ' blocked patterns, ' . count($settings->budgets) . ' budget(s)'
+        . ($attacks > 0 ? ", $attacks attack patterns" : '') . ($sets !== '' ? "; $sets" : '') . "\n";
     if ($command === 'reload') {
         touch($file);
         echo "reload: $file marked changed; every server reads the rules again on its next check\n";
@@ -147,6 +152,12 @@ foreach ($settings->restricted as $r) {
 }
 foreach ($settings->blockedPaths as $p) {
     echo $line('block regex ' . $regex($p), $o('blockedPaths', $p));
+}
+foreach ($settings->contentRules as $r) {
+    $where = strncmp((string) $r['target'], 'header:', 7) === 0 ? 'header ' . ucwords(substr((string) $r['target'], 7), '-') : $r['target'];
+    foreach ($r['patterns'] as $p) {
+        echo $line("block $where regex " . $regex($p), $o('contentRules', $p));
+    }
 }
 foreach ($settings->blockExceptions as $x) {
     echo $line('unblock ' . ($x['patterns'] === null ? '' : 'regex ' . implode(' ', array_map($regex, $x['patterns'])) . ' ') . 'at regex '
