@@ -28,6 +28,13 @@ final class PassCookie
         return 'v1.' . $expires . '.' . $tag . '.' . $this->mac($expires, $tag);
     }
 
+    /** When a pass cookie expires (0 for none): with the pass lifetime, when it was issued. Check valid() first. */
+    public function expires(string $cookie): int
+    {
+        $parts = explode('.', $cookie);
+        return isset($parts[1]) && ctype_digit($parts[1]) ? (int) $parts[1] : 0;
+    }
+
     public function valid(?string $cookie, string $bucket, string $userAgent, float $now): bool
     {
         if ($cookie === null || strlen($cookie) > 200) {

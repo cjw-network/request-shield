@@ -59,6 +59,12 @@ final class Shield
     /** The request protect() decided about. */
     private ?Request $request = null;
 
+    /** Whether this request has passed the browser check (a pass, or a solution just now). */
+    private bool $passed = false;
+
+    /** Forms larger than this are not carried through the check (the visitor sends them again). */
+    private const RESEND_MAX_BYTES = 262144;
+
     /** What decide() found without the budgets: whether the answer may be cached. */
     private Decision $base;
 
@@ -132,6 +138,7 @@ final class Shield
         $settled = $shield->settle($shield->decide($request, $now), $request, $now);
         $decision = $settled['decision'];
         self::$current = $decision;
+        $shield->passed = $settled['passed'];
         // Which rule: looked up only for a request that was stopped or flagged
         // (or when every request is logged) -- a passing one costs nothing.
         $rule = null;
@@ -162,6 +169,9 @@ final class Shield
             (new Responder())->send($decision, $request, $s->debugHeader, $settled['page'], $rule,
                 Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts));
             exit;
+        }
+        if ($s->appChallenge && ($request->method === 'GET' || $request->method === 'HEAD')) {
+            $shield->watchForChallengeHeader();
         }
         $_SERVER['REQUEST_SHIELD'] = $decision->action;
         if ($rule !== null) {
@@ -243,6 +253,8 @@ final class Shield
                 return $d->action === Decision::REJECT ? $name('methods', '*', 'methods') : 'built-in';
             case 'host':
                 return $name('hosts', '*', 'hosts');
+            case 'app':
+                return 'application';
             case 'always':
                 $i = $first($s->challenge->alwaysPaths, $request->path);
                 return $i === null ? null : $name('challenge.alwaysPaths', $s->challenge->alwaysPaths[$i], "challenge.alwaysPaths[$i]");
@@ -302,14 +314,166 @@ final class Shield
      * The request after the budgets: a challenged request goes through the
      * gate (pass cookie, solution, crawler, exempt path, or the page).
      *
-     * @return array{decision: Decision, cookies: list<string>, page: ?string}
+     * @return array{decision: Decision, cookies: list<string>, page: ?string, passed: bool}
      */
     public function settle(Decision $decision, Request $request, float $now): array
     {
         if ($decision->action !== Decision::CHALLENGE) {
-            return ['decision' => $decision, 'cookies' => [], 'page' => null];
+            return ['decision' => $decision, 'cookies' => [], 'page' => null, 'passed' => false];
         }
-        return $this->gate()->resolve($decision, $this->base, $request, $now);
+        $r = $this->gate()->resolve($decision, $this->base, $request, $now);
+        return $r + ['passed' => $r['decision']->passes()];
+    }
+
+    /**
+     * For the application: go on only with a browser that passed the check.
+     * With a valid pass (issued in the last $fresh seconds, when given) this
+     * returns; otherwise the visitor gets the check page and the request
+     * ends here -- for a form, with its fields, which are sent again once the
+     * check is done, so nothing typed is lost:
+     *
+     *   Shield::active()?->requirePass();        // before saving a comment
+     *   Shield::active()?->requirePass(300);     // a pass from the last 5 minutes
+     *
+     * Call it before acting on the request. Forms with files, or larger than
+     * 256 KB, cannot be carried through: the visitor is asked to send them
+     * again (better: require the pass on the form's page, before).
+     */
+    public function requirePass(?int $fresh = null): void
+    {
+        $request = $this->request;
+        if ($request === null || ($this->passed && $fresh === null)) {
+            return;
+        }
+        $now = microtime(true);
+        $resend = $request->method === 'GET' || $request->method === 'HEAD' ? null : self::resendFields($request);
+        $r = $this->gate()->resolve(Decision::challenge('app'), Decision::allowUncached('app'), $request, $now,
+            ['forced' => true, 'fresh' => $fresh, 'resend' => $resend]);
+        if (!headers_sent()) {
+            foreach ($r['cookies'] as $cookie) {
+                header('Set-Cookie: ' . $cookie, false);
+            }
+        }
+        if ($r['decision']->passes()) {
+            $this->passed = true;
+            return;
+        }
+        $this->stop($r['decision'], $request, $r['page'], $now);
+        exit;
+    }
+
+    /** Answers with the check page (or a status page) instead of the application's. */
+    private function stop(Decision $d, Request $request, ?string $page, float $now, bool $echo = true): string
+    {
+        $s = $this->settings;
+        $rule = $this->explain($d, $request);
+        if ($s->logFile !== null && Log::wants($s->logLevel, $d)) {
+            Log::write($s, $request, $d, $rule, $now);
+        }
+        while ($echo && ob_get_level() > 0) {
+            ob_end_clean();                 // nothing of the application's page
+        }
+        $c = $s->challenge;
+        $texts = Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts);
+        $responder = new Responder();
+        $responder->headers($d, $s->debugHeader, $rule);
+        $body = $request->method === 'HEAD' ? '' : $responder->body($d, $page, $texts);
+        if ($echo) {
+            echo $body;
+        }
+        return $body;
+    }
+
+    /**
+     * A form's fields as the application got them, to put in the check page;
+     * false when they cannot be carried (files, too large, too many).
+     *
+     * @return array{action: string, fields: list<array{0: string, 1: string}>}|false
+     */
+    private static function resendFields(Request $request)
+    {
+        foreach ($_FILES as $file) {
+            if (is_array($file) && ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+                return false;
+            }
+        }
+        $fields = [];
+        $bytes = 0;
+        $walk = static function (array $values, string $prefix) use (&$walk, &$fields, &$bytes): bool {
+            foreach ($values as $key => $value) {
+                $name = $prefix === '' ? (string) $key : $prefix . '[' . $key . ']';
+                if (is_array($value)) {
+                    if (!$walk($value, $name)) {
+                        return false;
+                    }
+                    continue;
+                }
+                $value = is_scalar($value) ? (string) $value : '';
+                $fields[] = [$name, $value];
+                $bytes += strlen($name) + strlen($value);
+                if ($bytes > self::RESEND_MAX_BYTES || count($fields) > 1000) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        /** @var array<mixed> $post */
+        $post = $_POST;
+        return $walk($post, '') ? ['action' => $request->rawUri, 'fields' => $fields] : false;
+    }
+
+    /**
+     * X-Request-Shield-Challenge: required[; fresh=<seconds>] from the
+     * application, on a page (a form's): the page is kept back until it is
+     * finished; without a pass the visitor gets the check page instead. The
+     * header never reaches the browser.
+     */
+    private function watchForChallengeHeader(): void
+    {
+        $decided = null;
+        ob_start(function (string $buffer, int $phase) use (&$decided): string {
+            if ($decided === null) {
+                $decided = '';
+                foreach (headers_list() as $h) {
+                    if (preg_match('/^X-Request-Shield-Challenge:\s*(.*)$/i', $h, $m)) {
+                        header_remove('X-Request-Shield-Challenge');
+                        $page = $this->challengeFor(trim($m[1]));
+                        if ($page !== null) {
+                            $decided = $page;
+                        }
+                        break;
+                    }
+                }
+                if ($decided !== '') {
+                    return $decided;
+                }
+                $decided = false;
+            }
+            return $decided === false ? $buffer : '';     // after the check page: nothing of the application's
+        });
+    }
+
+    /** The check page for a page the application marked, or null when the visitor has a pass. */
+    private function challengeFor(string $value): ?string
+    {
+        $request = $this->request;
+        if ($request === null || stripos($value, 'required') !== 0) {
+            return null;
+        }
+        $fresh = preg_match('/fresh=(\d+)/', $value, $m) ? (int) $m[1] : null;
+        if ($this->passed && $fresh === null) {
+            return null;
+        }
+        $now = microtime(true);
+        $r = $this->gate()->resolve(Decision::challenge('app'), Decision::allowUncached('app'), $request, $now, ['forced' => true, 'fresh' => $fresh]);
+        foreach ($r['cookies'] as $cookie) {
+            header('Set-Cookie: ' . $cookie, false);
+        }
+        if ($r['decision']->passes()) {
+            $this->passed = true;
+            return null;
+        }
+        return $this->stop($r['decision'], $request, $r['page'], $now, false);
     }
 
     /**

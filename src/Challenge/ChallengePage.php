@@ -25,13 +25,21 @@ final class ChallengePage
     /**
      * @param array{algorithm: string, challenge: string, maxnumber: int, salt: string, signature: string} $challenge
      * @param array<string, string> $texts in the visitor's language (Texts::all()); missing ones in English
+     * @param array{action: string, fields: list<array{0: string, 1: string}>}|false|null $resend
+     *   a form that was sent without a pass: its fields, to send it again after the check;
+     *   false when it cannot be (files, too large): the visitor is asked to send it again
      */
-    public static function render(array $challenge, string $cookieName, bool $secure, array $texts = []): string
+    public static function render(array $challenge, string $cookieName, bool $secure, array $texts = [], $resend = null): string
     {
         $t = $texts + \CjwNetwork\RequestShield\Texts::all('en');
+        if ($resend !== null) {
+            $t['text'] = $resend === false ? $t['resend-lost'] : $t['sending'];
+        }
         $e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $js = static fn ($v): string => json_encode($v, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
         $config = $js([
+            'resend' => is_array($resend),
+            'back' => $resend === false,
             'c' => $challenge,
             'cookie' => $cookieName,
             'secure' => $secure,
@@ -47,8 +55,34 @@ final class ChallengePage
             . '#p{height:4px;background:#dde1e6;border-radius:2px;margin-top:1.2rem;overflow:hidden}#b{height:100%;width:0;background:#3b6fd4;transition:width .2s}'
             . '@media(prefers-color-scheme:dark){body{background:#16181c;color:#e6e6e6}#p{background:#2b3038}}'
             . '</style></head><body><main><h1>' . $e($t['title']) . '</h1><p id="m">' . $e($t['text']) . '</p>'
-            . '<noscript><p><strong>' . $e($t['noscript']) . '</strong></p></noscript><div id="p"><div id="b"></div></div></main>'
+            . '<noscript><p><strong>' . $e($t['noscript']) . '</strong></p></noscript><div id="p"><div id="b"></div></div>'
+            . self::resendForm($resend, $t, $e)
+            . '</main>'
             . '<script>var RS=' . $config . ';' . self::SCRIPT . '</script></body></html>';
+    }
+
+    /**
+     * The form that was sent, as hidden fields: the script sends it again once
+     * the check is done; without JavaScript the button does. Nothing of it is
+     * kept on the server.
+     *
+     * @param array{action: string, fields: list<array{0: string, 1: string}>}|false|null $resend
+     * @param array<string, string> $t
+     * @param \Closure(string): string $e
+     */
+    private static function resendForm($resend, array $t, \Closure $e): string
+    {
+        if ($resend === false) {
+            return '<p><a href="javascript:history.back()" id="back" hidden>' . $e($t['back']) . '</a></p>';
+        }
+        if ($resend === null) {
+            return '';
+        }
+        $h = '<form id="resend" method="post" action="' . $e($resend['action']) . '">';
+        foreach ($resend['fields'] as [$name, $value]) {
+            $h .= '<input type="hidden" name="' . $e($name) . '" value="' . $e($value) . '">';
+        }
+        return $h . '<noscript><button type="submit">' . $e($t['send-again']) . '</button></noscript></form>';
     }
 
     /** The solver. Kept in one place so tests can run exactly this code. */
@@ -112,6 +146,8 @@ final class ChallengePage
     document.cookie = R.cookie + '=' + payload(R.c, number, took) + '; path=/; max-age=300; SameSite=Lax' + (R.secure ? '; Secure' : '');
     if (document.cookie.indexOf(R.cookie + '=') < 0) { m.textContent = R.nocookies; return; }
     bar.style.width = '100%';
+    if (R.resend) { document.getElementById('resend').submit(); return; }
+    if (R.back) { var b = document.getElementById('back'); b.hidden = false; return; }
     location.reload();
   }, function (p) { bar.style.width = Math.round(p * 100) + '%'; });
 })(RS);

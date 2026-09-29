@@ -62,6 +62,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   fixed with `set language de`); own texts per language
   (`set text.de.title …`, `'texts' => ['de.title' => …]`), further languages by
   their texts; `Vary: Accept-Language`.
+- The site asks for the browser check: `Shield::active()->requirePass([fresh])`
+  before acting on sent content — without a pass the check, and the form is
+  sent again by itself afterwards (fields carried in the page, the form token
+  too; not files or over 256 KB; a button without JavaScript) — and the
+  response header `X-Request-Shield-Challenge: required` on a page
+  (`set app-challenge on`). Proposal 0006
+  ([docs](docs/features/app-challenges.md)).
 - Proposal 0004: modes (`off`, `monitor`, `enforce`, `strict`), `monitor` for
   single rules, a fresh check per path.
 - `challenge.alwaysPaths`: paths every visitor has to pass the browser check

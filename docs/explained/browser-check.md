@@ -31,6 +31,10 @@ their browser's setting; a site can change every text and add languages.
   the page. Ordinary visitors never get near it.
 - **Pages every visitor has to pass,** whatever the pace: a login, a checkout,
   an admin page — so a program cannot post to a login form it never loaded.
+- **When the site asks for it:** the CMS can demand the check when content is
+  sent (a comment, a registration) or when a form is opened — for example
+  only when a post looks like spam. The visitor loses nothing: after the check
+  the form is sent again by itself.
 - **Never** for search engines: Google, Bing and others are recognised — their
   address is checked with the name service, not just their claim — and let
   through.

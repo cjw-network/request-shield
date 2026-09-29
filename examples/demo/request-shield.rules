@@ -23,7 +23,7 @@ version 2026-09-29.1        # this rule set's own version: shown on /rules and b
 # search against its own budget (on-demand: the page counts, see index.php).
 [DEMO-SEARCH]       limit searches 10/min on-demand               # at most 10 searches a minute per visitor
 
-[DEMO-FORMS]        allow POST  **/edit                           # forms may only be sent to the edit page
+[DEMO-FORMS]        allow POST  **/edit **/comment **/profile     # forms may only be sent to the edit, comment and profile pages
 
 [DEMO-ADMIN]        restrict **/admin/**  to 192.0.2.0/24         # the admin area: only the office network
 [DEMO-API]          restrict **/api/**    to 127.0.0.1 ::1        # the API: only this machine
@@ -54,6 +54,11 @@ set         store-dir ${REQUEST_SHIELD_DEMO_VAR:-/tmp/request-shield-demo}
 set         log ${REQUEST_SHIELD_DEMO_VAR:-/tmp/request-shield-demo}/shield.log
 set         log-level flag
 set         recheck 0
+
+# The site may ask for the browser check itself: Shield::active()->requirePass()
+# when a comment is sent (/comment), or the response header
+# X-Request-Shield-Challenge: required on a page (/profile) -- the latter needs:
+set         app-challenge on
 
 # X-Request-Shield: <decision> <reason>; rule=<ID> on every response.
 set         debug-header on

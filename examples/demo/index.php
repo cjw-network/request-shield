@@ -72,6 +72,20 @@ if ($path === '/search') {
     $content = ['Edit form', $method === 'POST' ? 'Saved: "' . (string) ($_POST['message'] ?? '') . '" -- a POST is allowed here (allow POST **/edit) and never cached.' : 'A POST is allowed on this page only.'];
 } elseif (strncmp($path, '/admin/', 7) === 0) {
     $content = ['Admin area', 'Only the office network (192.0.2.0/24) gets here.'];
+} elseif ($path === '/comment') {
+    // The site decides: a comment is only taken from a browser that passed the
+    // check. Without a pass, the visitor gets the check -- and the comment is
+    // sent again by itself afterwards, nothing typed is lost.
+    if ($method === 'POST' && $shield !== null) {
+        $shield->requirePass();
+        $content = ['Comment', 'Thank you — your comment "' . (string) ($_POST['comment'] ?? '') . '" arrived (a demo: nothing is saved). It came from a browser that passed the check: Shield::active()->requirePass() before saving.'];
+    } else {
+        $content = ['Comment', 'Write a comment and send it. Without a pass, the check comes first — and your comment is sent again by itself afterwards.'];
+    }
+} elseif ($path === '/profile') {
+    // The page itself asks for the check, with a header (set app-challenge on).
+    header('X-Request-Shield-Challenge: required');
+    $content = ['Profile', $method === 'POST' ? 'Saved: "' . (string) ($_POST['name'] ?? '') . '" (a demo: nothing is saved).' : 'This page asked for the browser check with a header — X-Request-Shield-Challenge: required — so you only see this form with a pass. The header never reaches your browser.'];
 } elseif (strncmp($path, '/files/', 7) === 0) {
     $content = ['File reader', 'The file reader would show "' . substr($path, 7) . '" here (a demo: nothing is read). Hidden files and backups get through at /files/ only, and only for this machine (unblock … at **/files/** for 127.0.0.1 ::1); from anywhere else they are refused.'];
 } elseif ($path === '/rules' && $shield !== null) {
@@ -126,6 +140,10 @@ $groups = [
         ['/api/status', 'The API', 'answers this machine only'],
         ['/files/.env', 'A hidden file in the admin\'s file reader', 'passes from this machine: hidden files are open at /files/ only'],
         ['/rules', 'The active rules', 'every rule in plain words, and a check for any address (this machine only)'],
+    ],
+    'The site asks for the check' => [
+        ['/comment', 'A comment form', 'sending it needs a pass: without one, the check — then the comment is sent again by itself'],
+        ['/profile', 'A page that asks for the check', 'the page sets X-Request-Shield-Challenge: required — the form only with a pass'],
     ],
     'Browser check and pace' => [
         ['/challenge', 'A page that always checks the browser', 'the invisible check once, then the page (valid for 1 minute here)'],
@@ -235,6 +253,12 @@ $responseLines = array_map(static function (string $line) use ($short): array {
   <p class="lead">This page is protected by <strong>cjw-network/request-shield</strong>: every request is checked before this page's code runs. Click an example — or see <a href="<?= $e($url('/rules')) ?>">all active rules in plain words</a>, and try any address there.</p>
 
   <?php if ($content !== null): ?><p class="card"><?= $e($content[1]) ?></p><?php endif ?>
+  <?php if ($path === '/comment' && $method !== 'POST'): ?>
+  <section class="card"><form method="post" action="<?= $e($url('/comment')) ?>"><input type="text" name="comment" placeholder="Your comment"><button type="submit">Send comment</button></form>
+  <p class="note">Try it after <a href="<?= $e($url('/reset')) ?>">Reset my pass</a>: the check comes, and your comment arrives anyway.</p></section>
+  <?php elseif ($path === '/profile' && $method !== 'POST'): ?>
+  <section class="card"><form method="post" action="<?= $e($url('/profile')) ?>"><input type="text" name="name" placeholder="Your name"><button type="submit">Save</button></form></section>
+  <?php endif ?>
   <?php if ($path === '/challenge'): ?>
   <section class="card"><h3>What just happened</h3><ol class="happened">
     <li>You opened <code>/challenge</code>, where every visitor is checked (<code>[DEMO-LOGIN] challenge **/challenge</code>). Without a pass, the shield sent — instead of this page — a small page with a task, signed so it cannot be forged: <em>find the number n for which sha256(code + n) gives this result</em>.</li>

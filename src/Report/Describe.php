@@ -114,6 +114,7 @@ final class Describe
             'path not cacheable' => 'an address a cache must not keep',
             'unknown url' => 'an address the site does not know',
             'always' => 'a page where every visitor is checked',
+            'app' => 'the site asked for the browser check (a form)',
             'challenge solved' => 'the browser check was just passed',
         ];
         return $words[$reason] ?? "the budget \"$reason\"";

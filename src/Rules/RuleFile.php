@@ -38,6 +38,7 @@ final class RuleFile
         'store-dir' => ['storeDir', 'string'],
         'ipv6-prefix' => ['ipv6Prefix', 'int'],
         'debug-header' => ['debugHeader', 'bool'],
+        'app-challenge' => ['appChallenge', 'bool'],
         'strip-untrusted-forwarded' => ['stripUntrustedForwarded', 'bool'],
         'max-uri' => ['limits.uri', 'int'],
         'max-query-parameters' => ['limits.queryParameters', 'int'],

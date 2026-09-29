@@ -189,4 +189,48 @@ return [
         same(Decision::ALLOW_UNCACHED, $shield->settle($shield->decide($postWithPass, 5.0), $postWithPass, 5.0)['decision']->action, 'a POST with the pass: through, uncached');
         exec('rm -rf ' . escapeshellarg($dir));
     },
+    'gate, asked for by the application: fresh passes, exempt paths do not count, a form comes back' => function (): void {
+        $c = ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 3000], 'exemptPaths' => ['#^/api/#'], 'passTtl' => 3600]);
+        $gate = new Gate($c, SECRET);
+        $app = Decision::challenge('app');
+        $base = Decision::allowUncached('app');
+        // A pass issued at 1000 (valid until 4600).
+        $r = $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/'), 1000.0);
+        preg_match('/var RS=(\{.*?\});\(function/s', (string) $r['page'], $m);
+        $pass = cookieValue($gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', ['rs_solution' => solveInPhp(json_decode($m[1], true)['c'])]), 1000.0)['cookies'], 'rs_pass');
+        same(Decision::ALLOW_UNCACHED, $gate->resolve($app, $base, creq('/x', ['rs_pass' => $pass]), 1200.0, ['forced' => true])['decision']->action, 'a pass is enough');
+        same(Decision::ALLOW_UNCACHED, $gate->resolve($app, $base, creq('/x', ['rs_pass' => $pass]), 1200.0, ['forced' => true, 'fresh' => 300])['decision']->action, 'issued 200 s ago: fresh enough for 300');
+        same(Decision::CHALLENGE, $gate->resolve($app, $base, creq('/x', ['rs_pass' => $pass]), 1400.0, ['forced' => true, 'fresh' => 300])['decision']->action, 'issued 400 s ago: not for 300');
+        same(Decision::ALLOW, $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/api/x'), 1.0)['decision']->action, 'exempt path, budget');
+        same(Decision::CHALLENGE, $gate->resolve($app, $base, creq('/api/x'), 1.0, ['forced' => true])['decision']->action, 'exempt path, asked for by the application: checked');
+        // A POST with its form: the page carries it; its solution comes by POST.
+        $r = $gate->resolve($app, $base, creq('/comment', [], 'POST'), 1.0, ['forced' => true, 'resend' => ['action' => '/comment?x=1', 'fields' => [['comment', '"hi"'], ['a[b]', '1']]]]);
+        same(Decision::CHALLENGE, $r['decision']->action);
+        truthy(strpos((string) $r['page'], '<form id="resend" method="post" action="/comment?x=1"><input type="hidden" name="comment" value="&quot;hi&quot;"><input type="hidden" name="a[b]" value="1">') !== false, (string) $r['page']);
+        preg_match('/var RS=(\{.*?\});\(function/s', (string) $r['page'], $m);
+        $sol = solveInPhp(json_decode($m[1], true)['c']);
+        same(Decision::ALLOW_UNCACHED, $gate->resolve($app, $base, creq('/comment', ['rs_solution' => $sol], 'POST'), 2.0, ['forced' => true])['decision']->action, 'the form sent again, solved');
+        same(Decision::THROTTLE, $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/comment', ['rs_solution' => $sol], 'POST'), 2.0)['decision']->action, 'not asked for: a POST is still throttled');
+        $lost = $gate->resolve($app, $base, creq('/upload', [], 'POST'), 1.0, ['forced' => true, 'resend' => false]);
+        truthy(strpos((string) $lost['page'], 'Please go back and send the form again') !== false && strpos((string) $lost['page'], 'id="resend"') === false, 'a form that cannot come back: asked to send it again');
+    },
+    'the fields that come back: as PHP read them; not with files, not too large' => function (): void {
+        $fields = new ReflectionMethod(\CjwNetwork\RequestShield\Shield::class, 'resendFields');
+        $fields->setAccessible(true);
+        $req = creq('/comment?x=1', [], 'POST');
+        [$post, $files] = [$_POST, $_FILES];
+        try {
+            $_POST = ['comment' => 'hi', 'tags' => ['a', 'b'], 'deep' => ['x' => ['y' => 'z']]];
+            $_FILES = [];
+            same(['action' => '/comment?x=1', 'fields' => [['comment', 'hi'], ['tags[0]', 'a'], ['tags[1]', 'b'], ['deep[x][y]', 'z']]], $fields->invoke(null, $req));
+            $_FILES = ['upload' => ['name' => 'a.pdf', 'error' => UPLOAD_ERR_OK]];
+            same(false, $fields->invoke(null, $req), 'a file cannot come back');
+            $_FILES = ['upload' => ['name' => '', 'error' => UPLOAD_ERR_NO_FILE]];
+            truthy(is_array($fields->invoke(null, $req)), 'an empty file field is fine');
+            $_POST = ['text' => str_repeat('x', 300000)];
+            same(false, $fields->invoke(null, $req), 'too large');
+        } finally {
+            [$_POST, $_FILES] = [$post, $files];
+        }
+    },
 ];

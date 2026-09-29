@@ -82,6 +82,8 @@ final class Settings
         public int $logMaxSize = 10485760,
         /** @readonly */
         public array $blockExceptions = [],
+        /** @readonly */
+        public bool $appChallenge = false,
     ) {
     }
 
@@ -166,6 +168,7 @@ final class Settings
             $ip,
             max(4096, self::int($log, 'maxSize', 'log.maxSize', 10485760)),
             $exceptions,
+            self::bool($c, 'appChallenge'),
         );
     }
 
@@ -202,7 +205,7 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 6;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language
+    private const FORMAT = 7;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge
 
     /**
      * The settings of a file, checked only when it changed. A ".rules" file

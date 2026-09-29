@@ -12,6 +12,7 @@
   [rule files](features/rule-files.md) ·
   [log and rule IDs](features/log-and-rule-ids.md) ·
   [active rules page](features/active-rules-page.md) ·
+  [the site asks for the check](features/app-challenges.md) ·
   [settings](features/settings.md)
 - **Use cases** — scenarios end to end:
   [shared hosting DoS guard](use-cases/shared-hosting-dos-guard.md) ·
@@ -22,7 +23,8 @@
   [0001 earn back a spent budget](proposals/0001-earn-back-a-spent-budget.md) ·
   [0003 human-readable rule files](proposals/0003-human-readable-rule-files.md) (implemented) ·
   [0004 modes: monitor and strict](proposals/0004-modes-monitor-and-strict.md) ·
-  [0005 versioned rule sets](proposals/0005-versioned-rule-sets.md) (implemented)
+  [0005 versioned rule sets](proposals/0005-versioned-rule-sets.md) (implemented) ·
+  [0006 the site asks for the check](proposals/0006-the-site-asks-for-the-check.md) (implemented)
   (0002, a single-file build, is reserved)
 - **Architecture decisions**:
   [0001 run in PHP first](adr/0001-run-in-php-before-the-application.md) ·

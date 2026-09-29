@@ -58,7 +58,7 @@ function withDemo(callable $body, string $prefix = ''): void
                     $location = trim(substr($line, 9));
                 }
             }
-            return ['status' => $status, 'body' => (string) $body, 'shield' => $shield, 'cookies' => $cookies, 'location' => $location];
+            return ['status' => $status, 'body' => (string) $body, 'shield' => $shield, 'cookies' => $cookies, 'location' => $location, 'headers' => $http_response_header ?? []];
         });
     } finally {
         proc_terminate($proc);
@@ -180,6 +180,47 @@ $budget = function (string $prefix): void {
         }, $prefix);
 };
 
+$appChallenges = function (string $prefix): void {
+        if (!function_exists('proc_open')) {
+            skip('no proc_open');
+        }
+        if (nodeBinary() === null) {
+            skip('no node on this machine');
+        }
+        withDemo(function (callable $get) use ($prefix): void {
+            // A comment without a pass: the check, with the comment inside.
+            $form = 'comment=' . rawurlencode('Hello <b>world</b>') . '&token=abc%26123&tags%5B0%5D=a&tags%5B1%5D=b';
+            $r = $get('POST', '/comment', ['Accept-Language' => 'de'], $form);
+            same(429, $r['status'], 'the check first');
+            same('challenge app; rule=application', $r['shield']);
+            truthy(strpos($r['body'], 'danach wird gesendet, was Sie eingegeben haben') !== false, 'says so, in German');
+            truthy(strpos($r['body'], '<form id="resend" method="post" action="' . $prefix . '/comment">') !== false, 'the form, to the same address');
+            truthy(strpos($r['body'], '<input type="hidden" name="comment" value="Hello &lt;b&gt;world&lt;/b&gt;">') !== false, 'the comment, escaped');
+            truthy(strpos($r['body'], 'name="token" value="abc&amp;123"') !== false && strpos($r['body'], 'name="tags[1]" value="b"') !== false, 'every field, the form token and lists too');
+            truthy(strpos($r['body'], '<noscript><button type="submit">Erneut senden</button></noscript>') !== false, 'a button without JavaScript');
+            // The browser solves it and sends the form again, with the solution.
+            preg_match('/var RS=(\{.*?\});\(function/s', $r['body'], $m);
+            $rs = json_decode($m[1], true);
+            same(true, $rs['resend'], 'the script sends the form, it does not reload');
+            [$payload] = solveInNode($rs['c']);
+            $r = $get('POST', '/comment', ['Cookie' => $rs['cookie'] . '=' . $payload], $form);
+            same(200, $r['status'], 'sent again: through');
+            truthy(strpos($r['body'], 'your comment &quot;Hello &lt;b&gt;world&lt;/b&gt;&quot; arrived') !== false, 'the comment arrived');
+            $pass = $r['cookies']['rs_pass'] ?? '';
+            truthy($pass !== '', 'and a pass');
+            same(200, $get('POST', '/comment', ['Cookie' => "rs_pass=$pass"], 'comment=again')['status'], 'with the pass: straight through');
+            same(429, $get('POST', '/comment', ['Cookie' => $rs['cookie'] . '=' . $payload], $form)['status'], 'the same solution twice: no');
+            // A page that asks for the check with a header.
+            $r = $get('GET', '/profile');
+            same(429, $r['status'], 'the page asked for the check');
+            truthy(strpos($r['body'], 'var RS=') !== false && strpos($r['body'], 'This page asked for the browser check') === false, 'the check page, nothing of the page');
+            $r = $get('GET', '/profile', ['Cookie' => "rs_pass=$pass"]);
+            same(200, $r['status'], 'with a pass: the page');
+            truthy(strpos($r['body'], 'This page asked for the browser check with a header') !== false, 'the page itself');
+            truthy(strpos(implode("\n", $r['headers']), 'X-Request-Shield-Challenge') === false, 'the header never reaches the browser');
+        }, $prefix);
+};
+
 $sub = '/examples/demo/index.php';
 return [
     'the demo: every example link does what the page says' => fn () => $examples(''),
@@ -190,4 +231,6 @@ return [
     'the demo in a subdirectory: /challenge is always checked' => fn () => $challenge($sub),
     'the demo in a subdirectory: the budget' => fn () => $budget($sub),
     'the demo in a subdirectory: search, forms, admin and API' => fn () => $forms($sub),
+    'the demo: the site asks for the check -- a comment sent again after it, a page that asks with a header' => fn () => $appChallenges(''),
+    'the demo in a subdirectory: the site asks for the check' => fn () => $appChallenges($sub),
 ];
