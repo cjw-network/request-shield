@@ -33,15 +33,16 @@ final class FileStore implements Store
         [$slot, $weight] = SlidingWindow::position($window, $now);
         $file = $this->path($key, $window, $slot);
         $fh = @fopen($file, 'ab');
-        if ($fh === false) {
-            $dir = dirname($file);
-            if (!is_dir($dir)) {
-                @mkdir($dir, 0700, true);
-            }
+        // The directory is missing on the first hits. Processes creating it at
+        // the same moment can make a recursive mkdir() fail in one of them (a
+        // parent appeared in between) -- so try again a few times, or that hit
+        // would not be counted.
+        for ($try = 0; $fh === false && $try < 3; $try++) {
+            @mkdir(dirname($file), 0700, true);
             $fh = @fopen($file, 'ab');
-            if ($fh === false) {
-                return 0.0;     // cannot count: never stop a request for it
-            }
+        }
+        if ($fh === false) {
+            return 0.0;     // cannot count: never stop a request for it
         }
         fwrite($fh, "\n");
         $stat = fstat($fh);

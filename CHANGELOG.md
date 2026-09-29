@@ -126,6 +126,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `trace` and the rules page's check had no step for the attack rules: a
   refused request looked unblocked there.
 
+### Fixed
+- The file store could lose a count on the very first hits of a new
+  directory: processes creating it at the same moment made a recursive
+  `mkdir()` fail in one of them. It now tries again (reproduced: 1 of 240 runs
+  of 8 processes lost one hit; after the fix 0 of 360).
+
 ### Changed
 - Faster: the blocked paths are matched as one expression (compiled once), so
   a clean request costs one match however many blocks there are (7.7 instead of
