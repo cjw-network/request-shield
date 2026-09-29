@@ -16,19 +16,17 @@ namespace CjwNetwork\RequestShield;
  */
 class Responder
 {
-    private const TEXT = [
-        400 => 'Bad Request', 403 => 'Forbidden', 404 => 'Not Found', 405 => 'Method Not Allowed',
-        414 => 'URI Too Long', 429 => 'Too Many Requests', 431 => 'Request Header Fields Too Large',
-    ];
-
-    public function send(Decision $decision, Request $request, bool $debugHeader = false, ?string $page = null, ?string $rule = null): void
+    /** @param array<string, string> $texts in the visitor's language (Texts::all()) */
+    public function send(Decision $decision, Request $request, bool $debugHeader = false, ?string $page = null, ?string $rule = null, array $texts = []): void
     {
-        $text = self::TEXT[$decision->status] ?? 'Error';
+        $texts += Texts::all('en');
+        $text = Texts::status($decision->status, $texts);
         if (!headers_sent()) {
             http_response_code($decision->status);
             header('Content-Type: text/html; charset=utf-8');
             header('Cache-Control: no-store');
             header('X-Robots-Tag: noindex');
+            header('Vary: Accept-Language');     // the texts are in the visitor's language
             if ($decision->retryAfter > 0) {
                 header('Retry-After: ' . $decision->retryAfter);
             }
@@ -46,9 +44,11 @@ class Responder
             echo $page;             // the challenge page
             return;
         }
-        echo '<!doctype html><title>', $decision->status, ' ', $text, '</title><h1>', $text, '</h1>';
+        $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        echo '<!doctype html><html lang="', $e($texts['lang'] ?? 'en'), '"><meta charset="utf-8"><title>', $decision->status, ' ', $e($text), '</title><h1>', $e($text), '</h1>';
         if ($decision->retryAfter > 0) {
-            echo '<p>Please try again in ', $decision->retryAfter, ' seconds.</p>';
+            // str_replace, not sprintf: a site's text may hold a "%" of its own.
+            echo '<p>', $e(str_replace('%s', (string) $decision->retryAfter, $texts['try-again'])), '</p>';
         }
     }
 }

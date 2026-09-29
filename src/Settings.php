@@ -202,7 +202,7 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 5;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions
+    private const FORMAT = 6;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language
 
     /**
      * The settings of a file, checked only when it changed. A ".rules" file

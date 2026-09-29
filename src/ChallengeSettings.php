@@ -46,6 +46,8 @@ final class ChallengeSettings
         public array $texts,
         /** @readonly */
         public array $alwaysPaths = [],
+        /** @readonly */
+        public string $language = 'auto',
     ) {
     }
 
@@ -97,7 +99,18 @@ final class ChallengeSettings
             Settings::strings($c, 'exemptPaths', 'challenge.exemptPaths'),
             $texts,
             Settings::strings($c, 'alwaysPaths', 'challenge.alwaysPaths'),
+            self::language($c),
         );
+    }
+
+    /** @param array<mixed> $c */
+    private static function language(array $c): string
+    {
+        $lang = strtolower(Settings::string($c, 'language', 'challenge.language', 'auto'));
+        if ($lang !== 'auto' && !preg_match('/^[a-z]{2,3}(-[a-z0-9]{2,8})?$/', $lang)) {
+            throw Settings::wrong('challenge.language', '"auto" or a language code such as de, en, fr, de-at');
+        }
+        return $lang;
     }
 
     /** @param array<mixed> $c */

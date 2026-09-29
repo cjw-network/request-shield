@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace CjwNetwork\RequestShield\Rules;
 
 use CjwNetwork\RequestShield\Config;
+use CjwNetwork\RequestShield\Texts;
 
 /**
  * Rule files: the settings written one rule per line, for people rather than
@@ -51,13 +52,12 @@ final class RuleFile
         'bind-user-agent' => ['challenge.bindUserAgent', 'bool'],
         'search-engines' => ['challenge.searchEngines', 'bool'],
         'recheck' => ['recheck', 'seconds'],
+        'language' => ['challenge.language', 'language'],
         'log' => ['log.file', 'path'],
         'log-level' => ['log.level', 'loglevel'],
         'log-ip' => ['log.ip', 'logip'],
         'log-max-size' => ['log.maxSize', 'bytes'],
     ];
-
-    private const TEXTS = ['lang', 'title', 'text', 'noscript', 'nocookies', 'failed'];
 
     /** @var array<string, mixed> */
     private array $c;
@@ -861,12 +861,25 @@ final class RuleFile
         if ($key === '' || $value === '') {
             throw new RuleFileException("$at: set <key> <value>");
         }
+        // text.<key> for every language, text.<lang>.<key> for one.
         if (strncmp($key, 'text.', 5) === 0) {
-            $text = substr($key, 5);
-            if (!in_array($text, self::TEXTS, true)) {
-                throw new RuleFileException("$at: unknown text \"$text\" (there are " . implode(', ', self::TEXTS) . ')');
+            $rest = substr($key, 5);
+            $dot = strrpos($rest, '.');
+            $lang = $dot === false ? null : substr($rest, 0, $dot);
+            $text = $dot === false ? $rest : substr($rest, $dot + 1);
+            if ($text === 'lang') {
+                return;                 // an old setting: the language is chosen now
             }
-            $this->put("challenge.texts.$text", $value);
+            if (!in_array($text, Texts::KEYS, true)) {
+                throw new RuleFileException("$at: unknown text \"$text\" (there are " . implode(', ', Texts::KEYS) . ')');
+            }
+            if ($lang !== null && !preg_match('/^[a-z]{2,3}(-[a-z0-9]{2,8})?$/', $lang)) {
+                throw new RuleFileException("$at: \"$lang\" is not a language code (de, en, fr, de-at)");
+            }
+            // Stored flat ("de.title"): the settings keep one list of texts.
+            $texts = (array) $this->get('challenge.texts');
+            $texts[($lang !== null ? "$lang." : '') . $text] = $value;
+            $this->put('challenge.texts', $texts);
             return;
         }
         if (!isset(self::SET[$key])) {
@@ -891,6 +904,12 @@ final class RuleFile
                     throw new RuleFileException("$at: $key is a duration (300, 30s, 5m, 1h, 1d), not \"$value\"");
                 }
                 $v = (int) $m[1] * ['' => 1, 's' => 1, 'm' => 60, 'h' => 3600, 'd' => 86400][$m[2] ?? ''];
+                break;
+            case 'language':
+                $v = strtolower($value);
+                if ($v !== 'auto' && !preg_match('/^[a-z]{2,3}(-[a-z0-9]{2,8})?$/', $v)) {
+                    throw new RuleFileException("$at: language is auto or a code (de, en, fr, de-at), not \"$value\"");
+                }
                 break;
             case 'loglevel':
                 if (!in_array($value, \CjwNetwork\RequestShield\Log::LEVELS, true)) {

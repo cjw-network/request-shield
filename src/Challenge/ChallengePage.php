@@ -24,18 +24,11 @@ final class ChallengePage
 {
     /**
      * @param array{algorithm: string, challenge: string, maxnumber: int, salt: string, signature: string} $challenge
-     * @param array{title?: string, text?: string, noscript?: string, nocookies?: string, failed?: string, lang?: string} $texts
+     * @param array<string, string> $texts in the visitor's language (Texts::all()); missing ones in English
      */
     public static function render(array $challenge, string $cookieName, bool $secure, array $texts = []): string
     {
-        $t = $texts + [
-            'lang' => 'en',
-            'title' => 'One moment, please',
-            'text' => 'Your browser is being checked. This takes a moment and happens only once.',
-            'noscript' => 'Please enable JavaScript to continue.',
-            'nocookies' => 'Please allow cookies for this site to continue.',
-            'failed' => 'The check did not succeed. Please reload the page.',
-        ];
+        $t = $texts + \CjwNetwork\RequestShield\Texts::all('en');
         $e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $js = static fn ($v): string => json_encode($v, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
         $config = $js([

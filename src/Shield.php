@@ -158,7 +158,9 @@ final class Shield
         }
 
         if (!$decision->passes()) {
-            (new Responder())->send($decision, $request, $s->debugHeader, $settled['page'], $rule);
+            $c = $s->challenge;
+            (new Responder())->send($decision, $request, $s->debugHeader, $settled['page'], $rule,
+                Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts));
             exit;
         }
         $_SERVER['REQUEST_SHIELD'] = $decision->action;

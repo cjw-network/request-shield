@@ -86,7 +86,9 @@ final class Gate
         $maxNumber = (int) round($min + ($this->config->difficultyMax - $min) * $challenged->level);
         $expires = (int) $now + $this->config->solutionTtl;
         $challenge = (new ProofOfWork($this->secret))->create($bucket, $maxNumber, $expires);
-        $page = ChallengePage::render($challenge, $solutionName, $secure, $this->config->texts);
+        $c = $this->config;
+        $texts = \CjwNetwork\RequestShield\Texts::all(\CjwNetwork\RequestShield\Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts);
+        $page = ChallengePage::render($challenge, $solutionName, $secure, $texts);
         return ['decision' => $challenged, 'cookies' => $cookies, 'page' => $page];
     }
 

@@ -20,7 +20,9 @@ click, no pictures of traffic lights, no puzzle.** Usually it takes 0.1 to
 0.5 seconds, and it happens once: afterwards the browser holds a pass for an
 hour (the site decides how long).
 
-Without JavaScript or without cookies, the page says what is missing.
+Without JavaScript or without cookies, the page says what is missing. The
+page speaks the visitor's language — German or English built in, chosen by
+their browser's setting; a site can change every text and add languages.
 
 ## When it happens
 

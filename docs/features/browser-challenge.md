@@ -2,6 +2,16 @@
 
 *In plain words, for site owners: [the browser check, explained](../explained/browser-check.md).*
 
+## Languages
+
+The check page and the shield's own answers (a pause, "not found", "no
+access") are in the visitor's language: the one their browser asks for
+(`Accept-Language`) among those there are texts for — **English and German
+built in** — else English; `language: 'de'` (`set language de`) fixes one.
+Own texts per language: `'texts' => ['de.title' => '…', 'title' => '…']`
+(`set text.de.title …`; without a language for all). Those answers carry
+`Vary: Accept-Language`.
+
 ## What it does
 
 A client past a budget's `challengeAt` gets, instead of the page, a small page

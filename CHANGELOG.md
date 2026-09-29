@@ -57,6 +57,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (proposal 0005).
 - The browser check explained in plain words (`docs/explained/browser-check.md`),
   on the active rules page and, after passing it, in the demo.
+- What visitors read is in their language: the check page and the shield's
+  own answers in English or German by `Accept-Language` (else English, or
+  fixed with `set language de`); own texts per language
+  (`set text.de.title …`, `'texts' => ['de.title' => …]`), further languages by
+  their texts; `Vary: Accept-Language`.
 - Proposal 0004: modes (`off`, `monitor`, `enforce`, `strict`), `monitor` for
   single rules, a fresh check per path.
 - `challenge.alwaysPaths`: paths every visitor has to pass the browser check

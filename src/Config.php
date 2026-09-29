@@ -65,6 +65,11 @@ final class Config
                 // Paths every visitor has to pass the check for (once per pass
                 // cookie), whatever the budgets say: a login or admin page.
                 'alwaysPaths' => [],
+                // The language visitors read: auto (their browser's, among those
+                // there are texts for; else English) or a code. Built in: en, de.
+                'language' => 'auto',
+                // Own texts: 'title' for every language, 'de.title' for one
+                // (keys: Texts::KEYS).
                 'texts' => [],
             ],
             // X-Request-Shield: <action> <reason> on every response (for testing).
