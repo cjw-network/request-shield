@@ -26,6 +26,10 @@ if (substr($script, -10) === '/index.php') {
 }
 $path = '/' . ltrim((string) substr($uri, strlen($front)), '/');
 $url = static fn (string $local): string => $front . $local;
+// The same request, checked step by step on the active rules page -- with the
+// diagram of where it goes. Nothing is counted there.
+$pathOf = static fn (string $local, string $method = 'GET', string $ip = ''): string => $front . '/rules?method=' . $method
+    . '&url=' . rawurlencode($front . $local) . ($ip !== '' ? '&ip=' . rawurlencode($ip) : '') . '#check';
 // The shield's own pages (404, a pause, the check page) link back to the demo's
 // front page: "set home ${REQUEST_SHIELD_DEMO_HOME:-/}" in the rules.
 putenv('REQUEST_SHIELD_DEMO_HOME=' . $front . '/');
@@ -241,6 +245,7 @@ $responseLines = array_map(static function (string $line) use ($short): array {
   .note { color: var(--muted); font-size: .92rem; margin: .4rem 0; }
   button { padding: .45rem .9rem; border: 0; border-radius: 6px; background: var(--accent); color: #fff; cursor: pointer; font: inherit; }
   button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+  a.path { display: inline-block; margin: .3rem 0 0 .6rem; font-size: .85rem; }
   button.peek { margin-top: .3rem; padding: .15rem .55rem; font-size: .82rem; background: transparent; color: var(--accent); border: 1px solid var(--line); }
   pre.answer { font-size: 13px; white-space: pre-wrap; word-break: break-all; }
   details { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: .7rem 1.1rem; margin-bottom: .6rem; }
@@ -300,7 +305,8 @@ $responseLines = array_map(static function (string $line) use ($short): array {
         <?php foreach ($items as [$local, $what, $expect]): ?>
           <li><a href="<?= $e($url($local)) ?>"><?= $e($what) ?></a> <code><?= $e($local) ?></code>
             <span class="expect"><?= $e($expect) ?></span>
-            <button type="button" class="peek" data-url="<?= $e($url($local)) ?>">Show the answer</button><pre class="answer" hidden></pre></li>
+            <button type="button" class="peek" data-url="<?= $e($url($local)) ?>">Show the answer</button><pre class="answer" hidden></pre>
+            <a class="path" href="<?= $e($pathOf($local, 'GET', $request->clientIp)) ?>">See the path →</a></li>
         <?php endforeach ?>
         <?php if ($heading === 'Browser check and pace'): ?>
           <li><strong>Reload any page 20 times</strong><span class="expect">the invisible check (more than 20 requests a minute), past 60 a short pause (429)</span></li>
@@ -311,6 +317,7 @@ $responseLines = array_map(static function (string $line) use ($short): array {
       <form method="post" action="<?= $e($url('/edit')) ?>"><input type="text" name="message" placeholder="Type something"><button type="submit">Save (POST to /edit)</button></form>
       <p class="note">A bot posts wherever it finds a URL: <code>allow POST **/edit</code> accepts a POST on the edit page only.</p>
       <form method="post" action="<?= $e($url('/page/about')) ?>"><input type="hidden" name="message" value="spam"><button type="submit" class="secondary">POST to /page/about — 405</button></form>
+      <p class="note"><a class="path" href="<?= $e($pathOf('/edit', 'POST', $request->clientIp)) ?>">See the path of a POST to /edit →</a> · <a class="path" href="<?= $e($pathOf('/page/about', 'POST', $request->clientIp)) ?>">… and to /page/about →</a></p>
     </section>
   </div>
 

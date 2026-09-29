@@ -70,7 +70,7 @@ final class RulesPage
 
         // ── Try an address ───────────────────────────────────────────────────
         $action = $o['action'] ?? '';
-        $h .= '<section class="card"><h2>Try an address</h2><form method="get" action="' . $e($action) . '" class="try">'
+        $h .= '<section class="card" id="check"><h2>Try an address</h2><form method="get" action="' . $e($action) . '" class="try">'
             . '<select name="method" aria-label="Kind of request">';
         foreach (array_unique(array_merge(['GET', 'POST'], $s->methods)) as $m) {
             $h .= '<option' . ($m === $method ? ' selected' : '') . '>' . $e($m) . '</option>';
