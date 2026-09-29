@@ -25,6 +25,10 @@ allow       POST  **/edit
 restrict    **/admin/**  to 192.0.2.0/24
 restrict    **/api/**    to 127.0.0.1 ::1
 
+# The admin's file reader: hidden files and backups are open there -- for
+# this machine only. The path check stays: /files/%2e%2e/secret is still 400.
+unblock     @scanners.hidden-files @scanners.backups  at **/files/**  for 127.0.0.1 ::1
+
 # The active rules page shows how the site is protected: this machine only.
 restrict    **/rules     to 127.0.0.1 ::1
 

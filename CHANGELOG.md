@@ -37,6 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   it; refreshes itself. `bin/request-shield trace`. Built-in patterns have
   names (`@scanners.backups`, …) in decisions and the log
   ([docs](docs/features/active-rules-page.md)).
+- `unblock [<what>] at <paths> [for <addresses>]`: blocked paths let through at
+  some paths only — an admin's file reader that has to open `.env` or a
+  backup — optionally only for some addresses; the path check is never lifted;
+  `check` warns about exceptions for everyone. Named built-in patterns
+  (`@scanners.hidden-files`, …) usable in rule files
+  ([docs](docs/features/access-rules.md#exceptions-an-admins-file-reader)).
 - Proposal 0004: modes (`off`, `monitor`, `enforce`, `strict`), `monitor` for
   single rules, a fresh check per path.
 - `challenge.alwaysPaths`: paths every visitor has to pass the browser check

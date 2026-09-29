@@ -96,6 +96,10 @@ $examples = function (string $prefix): void {
             same(404, $r['status'], 'scanner path');
             same('reject blocked path; rule=default @scanners.hidden-files', $r['shield']);
             same(400, $get('GET', '/files/%2e%2e/secret')['status'], 'traversal');
+            $r = $get('GET', '/files/.env');
+            same(200, $r['status'], 'the file reader: hidden files open there, for this machine');
+            truthy(strpos($r['body'], 'The file reader would show &quot;.env&quot;') !== false, 'the file reader page');
+            same(200, $get('GET', '/files/backup.sql')['status'], 'backups too');
             $r = $get('GET', '/files/%2e%2e/secret');
             same('reject path traversal; rule=built-in', $r['shield']);
             $r = $get('GET', '/reset');

@@ -25,6 +25,36 @@ As PHP settings:
 'methodPaths' => ['POST' => ['#^/contact$#i', '#^/edit(?:/.*)?$#i']],
 ```
 
+## Exceptions: an admin's file reader
+
+A file manager in the admin area has to open what the shield refuses
+everywhere else — `.env`, `.git/config`, `backup.sql`. `unblock … at` lifts
+the blocks at some paths only, and `for` only for some addresses:
+
+```text
+# nothing blocked in the file reader, only from the office
+unblock at /admin/files/** for 192.0.2.0/24 2001:db8:1::/48
+
+# finer: only hidden files and backups, only there
+unblock @scanners.hidden-files @scanners.backups at /admin/files/** for 192.0.2.0/24
+```
+
+As PHP settings: `'blockExceptions' => [['paths' => ['#^/admin/files(?:/.*)?$#i'],
+'patterns' => null, 'ips' => ['192.0.2.0/24']]]` (`patterns`: entries of
+`blockedPaths`, `null` for all).
+
+- **Never lifted:** the path check (`/../`, `%2e%2e`, disguised paths) — a file
+  reader is exactly where `../../config.php` is tried — nor `restrict`, the
+  budgets or the browser check.
+- **Without `for` the exception is for everyone.** `bin/request-shield check`
+  warns about it, and the [rules page](active-rules-page.md) marks it; use it
+  only where the application itself admits nobody but admins.
+- Matched on the path as the application routes it, like the other access
+  rules; the exceptions are looked at only once a block matched, so a normal
+  request pays nothing.
+- The step-by-step check shows it: *"would be refused (hidden files …), but
+  open here for 192.0.2.5 — site.rules:9"*.
+
 ## Details
 
 - **The client address** is the one a [trusted proxy](trusted-proxies.md)

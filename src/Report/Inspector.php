@@ -115,8 +115,8 @@ final class Inspector
         $step('Website name', $s->hosts === [] ? null : (new HostRule($s->hosts))->check($request, $now),
             $s->hosts === [] ? 'any website name is accepted' : "\"$request->host\" is one of this site's names",
             static fn (): string => "\"$request->host\" is not one of this site's names (" . implode(', ', $s->hosts) . ')');
-        $step('Addresses only attackers ask for', (new BlockedPathRule($s->blockedPaths))->check($request, $now),
-            'not one of the ' . count($s->blockedPaths) . ' refused kinds of address',
+        $step('Addresses only attackers ask for', (new BlockedPathRule($s->blockedPaths, $s->blockExceptions))->check($request, $now),
+            $this->blockedPass($request),
             fn (Decision $d): string => 'refused: ' . $this->blockedMatch($request));
         $step('Where forms may be sent', $s->methodPaths === [] ? null : (new MethodPathRule($s->methodPaths))->check($request, $now),
             isset($s->methodPaths[$request->method]) ? "$request->method is allowed at this address" : ($s->methodPaths === [] ? 'no restriction' : "no restriction for $request->method"),
@@ -168,6 +168,24 @@ final class Inspector
             }
         }
         return 'a refused address';
+    }
+
+    /** Not blocked -- or blocked, but let through by an exception here. */
+    private function blockedPass(Request $request): string
+    {
+        $path = strtolower(rawurldecode($request->path));
+        foreach ($this->settings->blockedPaths as $p) {
+            if (@preg_match($p, $path) === 1) {
+                $i = BlockedPathRule::excepted($this->settings->blockExceptions, $p, $request);
+                if ($i !== null) {
+                    $x = $this->settings->blockExceptions[$i];
+                    return 'would be refused (' . Describe::pattern($this->settings, $p) . '), but open here'
+                        . ($x['ips'] !== [] ? " for $request->clientIp (" . implode(', ', $x['ips']) . ')' : ' for everyone')
+                        . ' — ' . ($this->settings->origin('blockExceptions', $x['paths'][0] ?? '') ?? "blockExceptions[$i]");
+                }
+            }
+        }
+        return 'not one of the ' . count($this->settings->blockedPaths) . ' refused kinds of address';
     }
 
     private function restrictedPass(Request $request): string

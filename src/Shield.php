@@ -79,7 +79,7 @@ final class Shield
         if ($s->hosts !== []) {
             $this->rules[] = new HostRule($s->hosts);
         }
-        $this->rules[] = new BlockedPathRule($s->blockedPaths);
+        $this->rules[] = new BlockedPathRule($s->blockedPaths, $s->blockExceptions);
         if ($s->methodPaths !== []) {
             $this->rules[] = new MethodPathRule($s->methodPaths);
         }
@@ -218,7 +218,13 @@ final class Shield
         };
         switch ($d->reason) {
             case 'blocked path':
-                $i = $first($s->blockedPaths, strtolower(rawurldecode($request->path)));
+                $i = null;
+                foreach ($s->blockedPaths as $n => $p) {
+                    if (@preg_match($p, strtolower(rawurldecode($request->path))) === 1 && BlockedPathRule::excepted($s->blockExceptions, $p, $request) === null) {
+                        $i = $n;
+                        break;
+                    }
+                }
                 return $i === null ? null : $name('blockedPaths', $s->blockedPaths[$i], Config::setName($s->blockedPaths[$i]) ?? "blockedPaths[$i]");
             case 'restricted':
                 foreach ($s->restricted as $n => $r) {

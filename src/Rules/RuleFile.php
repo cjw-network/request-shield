@@ -378,14 +378,34 @@ final class RuleFile
             case 'wordpress':
                 return Config::wordpressPaths();
         }
-        throw new RuleFileException("$at: unknown set \"$name\" (there are @" . implode(', @', self::SETS) . ')');
+        $one = Config::setPattern($name);          // "@scanners.backups": one of them
+        if ($one !== null) {
+            return [$one];
+        }
+        $all = [];
+        foreach (array_merge(Config::scannerPaths(), Config::wordpressPaths()) as $p) {
+            $all[] = (string) Config::setName($p);
+        }
+        throw new RuleFileException("$at: unknown set \"$name\" (there are @" . implode(', @', self::SETS) . ', ' . implode(', ', $all) . ')');
     }
 
-    /** @param list<string> $args */
+    /**
+     * unblock <patterns or sets>: take back an earlier block.
+     * unblock [<patterns or sets>] at <paths> [for <addresses>]: let blocked
+     * paths through at some paths only (an admin's file reader), for some
+     * addresses only; without patterns every block, without "for" everyone.
+     *
+     * @param list<string> $args
+     */
     private function unblock(array $args, string $at): void
     {
         if ($args === []) {
             throw new RuleFileException("$at: unblock what?");
+        }
+        $where = array_search('at', $args, true);
+        if ($where !== false) {
+            $this->blockException($args, (int) $where, $at);
+            return;
         }
         $list = [];
         foreach ((array) $this->get('blockedPaths') as $p) {
@@ -401,6 +421,41 @@ final class RuleFile
         foreach ($remove as $pattern) {
             unset($this->origins['blockedPaths'][$pattern]);
         }
+    }
+
+    /** @param list<string> $args */
+    private function blockException(array $args, int $where, string $at): void
+    {
+        $usage = 'unblock [<what>] at <paths> [for <addresses>]';
+        $for = array_search('for', $args, true);
+        $pathArgs = array_slice($args, $where + 1, $for === false ? null : (int) $for - $where - 1);
+        if ($pathArgs === [] || ($for !== false && ($for < $where || $for === count($args) - 1))) {
+            throw new RuleFileException("$at: $usage");
+        }
+        $patterns = null;
+        if ($where > 0) {
+            $patterns = array_keys($this->compile(array_slice($args, 0, $where), $at, true));
+            $blocked = (array) $this->get('blockedPaths');
+            foreach ($patterns as $p) {
+                if (!in_array($p, $blocked, true)) {
+                    throw new RuleFileException("$at: nothing to unblock -- no earlier block matches " . implode(' ', array_slice($args, 0, $where)) . ' exactly');
+                }
+            }
+        }
+        $ips = [];
+        foreach ($for === false ? [] : array_slice($args, (int) $for + 1) as $ip) {
+            $ips[] = self::address($ip, $at);
+        }
+        $paths = [];
+        foreach ($this->compile($pathArgs, $at, false) as $pattern => $_) {
+            $pattern .= 'i';
+            $paths[] = $pattern;
+            $this->origins['blockExceptions'][$pattern] = $at;
+        }
+        $list = $this->get('blockExceptions');
+        $list = is_array($list) ? $list : [];
+        $list[] = ['paths' => $paths, 'patterns' => $patterns, 'ips' => $ips];
+        $this->put('blockExceptions', $list);
     }
 
     /**

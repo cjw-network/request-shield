@@ -53,6 +53,7 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `allow <METHODS> <paths>` | `methodPaths` | those methods only there, else 405 ([access rules](access-rules.md)) |
 | `restrict <paths> to <addresses or ranges>` | `restricted` | only those addresses, else 403 ([access rules](access-rules.md)) |
 | `block <paths>` / `unblock <paths>` | `blockedPaths` | 404 before the site sees it / take a block back |
+| `unblock [<what>] at <paths> [for <addresses>]` | `blockExceptions` | blocked paths let through at some paths only (an admin's file reader) ([access rules](access-rules.md#exceptions-an-admins-file-reader)) |
 | `cache-path <paths>` | `cacheable.paths` | what a cache may keep; `any`: every path (default) |
 | `cache-query <names>` | `cacheable.query` | parameters a cached URL may have; `any` (default), `none` |
 | `limit <name> <n>/<unit> [challenge-at <n>] [on-demand]` | `budgets` | units `s`, `sec`, `min`, `hour`, `day`, also `20/10s` |
@@ -84,7 +85,11 @@ when the files are read — a broken one is an error then, never a silent miss.
 
 `block @scanners` and `block @wordpress` add the built-in sets (the scanner
 set is on by default); `unblock @scanners` takes it back, `unblock <pattern>`
-takes back exactly that pattern from an earlier line or file.
+takes back exactly that pattern from an earlier line or file. Each built-in
+pattern has its own name, usable in `block`, `unblock` and `unblock … at`:
+`@scanners.hidden-files`, `@scanners.backups`, `@scanners.test-scripts`,
+`@scanners.db-tools`, `@scanners.cgi`, `@wordpress.folders`,
+`@wordpress.scripts`.
 
 ### `set`
 

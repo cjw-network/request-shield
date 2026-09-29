@@ -347,4 +347,45 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'unblock at: blocked paths open at some paths only, for some addresses only; traversal never' => function (): void {
+        $s = rulesFrom("unblock at /admin/files/** for 192.0.2.0/24\nunblock @scanners.hidden-files at /public/**\n");
+        $from = static fn (string $ip, string $path): string => decideFor($s, $path, ['REMOTE_ADDR' => $ip]);
+        same('allow', $from('192.0.2.5', '/admin/files/.env'), 'the admin file reader, from the office');
+        same('allow', $from('192.0.2.5', '/admin/files/backup.sql'), 'every block lifted there');
+        same('allow', $from('192.0.2.5', '//admin/files/.git/config'), 'as the application routes it');
+        same('reject blocked path', $from('198.51.100.7', '/admin/files/.env'), 'from anyone else: blocked');
+        same('reject blocked path', $from('192.0.2.5', '/other/.env'), 'elsewhere: blocked');
+        same('reject path traversal', $from('192.0.2.5', '/admin/files/%2e%2e/%2e%2e/config.php'), 'the path check is never lifted');
+        same('allow', $from('198.51.100.7', '/public/.well-known-ish/.htaccess'), 'one set, for everyone');
+        same('reject blocked path', $from('198.51.100.7', '/public/dump.sql'), 'only that set');
+        rulesFail(['site.rules' => "unblock at\n"], 'site.rules:1', 'unblock [<what>] at <paths>');
+        rulesFail(['site.rules' => "unblock at /x for\n"], 'site.rules:1', 'unblock [<what>] at <paths>');
+        rulesFail(['site.rules' => "unblock /never at /x\n"], 'site.rules:1', 'nothing to unblock');
+        rulesFail(['site.rules' => "unblock @scanners.nope at /x\n"], 'site.rules:1', 'unknown set');
+        rulesFail(['site.rules' => "unblock at /x for office\n"], 'site.rules:1', 'not an address');
+        // PHP array settings
+        $a = new Shield(['blockExceptions' => [['paths' => ['#^/files/#'], 'patterns' => null, 'ips' => []]]], new MemoryStore());
+        same('allow', $a->decide(Request::fromServer(['REQUEST_URI' => '/files/.env', 'REMOTE_ADDR' => '198.51.100.7']), 1000.0)->action);
+    },
+    'unblock at: shown in the check, on the page, and warned about without "for"' => function (): void {
+        $dir = ruleDir(['site.rules' => "unblock at /admin/files/** for 192.0.2.0/24\nunblock @scanners.backups at /downloads/**\n"]);
+        try {
+            $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
+            $t = (new \CjwNetwork\RequestShield\Report\Inspector($s, new MemoryStore()))->trace(\CjwNetwork\RequestShield\Report\Inspector::request('GET', '/admin/files/.env', '192.0.2.5'), 1000.0);
+            same('pass', $t['steps'][4]['state']);
+            same('would be refused (hidden files and folders: .env, .git, .htpasswd, editor settings), but open here for 192.0.2.5 (192.0.2.0/24) — site.rules:1', $t['steps'][4]['text']);
+            $html = \CjwNetwork\RequestShield\Report\RulesPage::render($s, ['store' => new MemoryStore()]);
+            truthy(strpos($html, 'Open at /admin/files/**: all of the above — only for 192.0.2.0/24') !== false, 'the exception on the page');
+            truthy(strpos($html, 'Open at /downloads/**: backups, dumps and archives') !== false && strpos($html, '⚠ for everyone') !== false, 'the open one, with a warning');
+            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
+            exec("$bin check " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
+            same(3, $code, 'a warning');
+            truthy(strpos(implode("\n", $out), 'warning: site.rules:2: blocked paths are open there for everyone') !== false, implode("\n", $out));
+            $out = [];
+            exec("$bin show " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out);
+            truthy(preg_match('~^unblock at regex \^/admin/files\(\?:/\.\*\)\?\$ for 192\.0\.2\.0/24 +# site\.rules:1$~m', implode("\n", $out)) === 1, implode("\n", $out));
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
 ];

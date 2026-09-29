@@ -29,6 +29,7 @@ final class Settings
      * @param array<string, array<string, string>> $origins setting => pattern or budget => where it was set (rule files)
      * @param list<array{paths: list<string>, ips: list<string>}> $restricted
      * @param array<string, list<string>> $methodPaths
+     * @param list<array{paths: list<string>, patterns: list<string>|null, ips: list<string>}> $blockExceptions
      */
     private function __construct(
         /** @readonly */
@@ -79,6 +80,8 @@ final class Settings
         public string $logIp = 'masked',
         /** @readonly */
         public int $logMaxSize = 10485760,
+        /** @readonly */
+        public array $blockExceptions = [],
     ) {
     }
 
@@ -100,6 +103,14 @@ final class Settings
                 throw self::wrong("restricted.$i", "an array of 'paths' and 'ips'");
             }
             $restricted[] = ['paths' => self::strings($r, 'paths', "restricted.$i.paths"), 'ips' => self::strings($r, 'ips', "restricted.$i.ips")];
+        }
+        $exceptions = [];
+        foreach (self::map($c, 'blockExceptions') as $i => $x) {
+            if (!is_array($x)) {
+                throw self::wrong("blockExceptions.$i", "an array of 'paths', 'patterns' and 'ips'");
+            }
+            $exceptions[] = ['paths' => self::strings($x, 'paths', "blockExceptions.$i.paths"),
+                'patterns' => self::stringsOrNull($x, 'patterns', "blockExceptions.$i.patterns"), 'ips' => self::strings($x, 'ips', "blockExceptions.$i.ips")];
         }
         $methodPaths = [];
         foreach (self::map($c, 'methodPaths') as $method => $paths) {
@@ -154,6 +165,7 @@ final class Settings
             $level,
             $ip,
             max(4096, self::int($log, 'maxSize', 'log.maxSize', 10485760)),
+            $exceptions,
         );
     }
 
@@ -190,7 +202,7 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 4;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log
+    private const FORMAT = 5;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions
 
     /**
      * The settings of a file, checked only when it changed. A ".rules" file

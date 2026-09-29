@@ -136,6 +136,12 @@ final class RulesPage
         foreach ($s->blockedPaths as $i => $p) {
             $rows[] = $row(Describe::pattern($s, $p), 'blockedPaths', $p, "blockedPaths[$i]");
         }
+        foreach ($s->blockExceptions as $n => $x) {
+            $what = $x['patterns'] === null ? 'all of the above' : implode('; ', array_map(static fn (string $p): string => Describe::pattern($s, $p), $x['patterns']));
+            $rows[] = ['Open at ' . implode(', ', array_map(static fn (string $p): string => Describe::pattern($s, $p), $x['paths'])) . ': ' . $what
+                . ($x['ips'] !== [] ? ' — only for ' . implode(', ', $x['ips']) : ' — ⚠ for everyone: make sure only admins reach it'),
+                $o('blockExceptions', $x['paths'][0] ?? ''), null];
+        }
         $g[] = ['Addresses only attackers ask for', $rows === [] ? 'None are refused.' : 'Refused with "not found" (404) before the site sees them:', $rows];
 
         $rows = [];

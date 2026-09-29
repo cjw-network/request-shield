@@ -71,6 +71,8 @@ if ($path === '/search') {
     $content = ['Edit form', $method === 'POST' ? 'Saved: "' . (string) ($_POST['message'] ?? '') . '" -- a POST is allowed here (allow POST **/edit) and never cached.' : 'A POST is allowed on this page only.'];
 } elseif (strncmp($path, '/admin/', 7) === 0) {
     $content = ['Admin area', 'Only the office network (192.0.2.0/24) gets here.'];
+} elseif (strncmp($path, '/files/', 7) === 0) {
+    $content = ['File reader', 'The file reader would show "' . substr($path, 7) . '" here (a demo: nothing is read). Hidden files and backups get through at /files/ only, and only for this machine (unblock … at **/files/** for 127.0.0.1 ::1); from anywhere else they are refused.'];
 } elseif ($path === '/rules' && $shield !== null) {
     // The active rules, in plain words, with a live check (restricted to this
     // machine by the rules). Loaded only here: a normal request never does.
@@ -114,6 +116,7 @@ $tests = [
     ['/rules', 'The active rules', 'all rules in plain words, how often each decided, and a check for any address (this machine only)'],
     ['/challenge', 'A page that always checks the browser', 'the invisible check once, then the page'],
     ['/.env', 'What a scanner looks for', '404 — the site never sees it'],
+    ['/files/.env', 'The same file in the admin\'s file reader', 'passes from this machine: an exception for /files/ (unblock … at … for …)'],
     ['/files/%2e%2e/secret', 'Path traversal', '400'],
     ['/reset', 'Forget my pass cookie', 'the check appears again on /challenge'],
 ];

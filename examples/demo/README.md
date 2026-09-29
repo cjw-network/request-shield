@@ -20,6 +20,7 @@ shows status and headers — also for answers the page itself never sees
 | `/?utm_source=newsletter`, `/random/…` | passes, marked uncacheable |
 | `/challenge` | **the invisible browser check**, every time until you hold a pass cookie |
 | `/.env` | 404 — a scanner's request never reaches the page |
+| `/files/.env` | passes from this machine: the admin's file reader, where hidden files and backups are open (`unblock … at **/files/** for 127.0.0.1 ::1`) |
 | `/files/%2e%2e/secret` | 400 — path traversal |
 | `/reset` | forgets your pass cookie, so you can see the check again |
 | reload any page 20 times | the check appears (budget: 20 requests a minute), past 60 a pause (429) |

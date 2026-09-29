@@ -87,6 +87,13 @@ if ($command === 'check' || $command === 'reload') {
             $warnings++;
         }
     }
+    foreach ($settings->blockExceptions as $n => $x) {
+        if ($x['ips'] === []) {
+            fwrite(STDERR, 'warning: ' . ($settings->origin('blockExceptions', $x['paths'][0] ?? '') ?? "blockExceptions[$n]")
+                . ": blocked paths are open there for everyone -- add \"for <addresses>\", or make sure only admins reach it\n");
+            $warnings++;
+        }
+    }
     $files = count(array_filter(array_keys($read['seen']), 'is_file'));
     echo "ok: $files file(s), " . count($settings->blockedPaths) . ' blocked patterns, ' . count($settings->budgets) . " budget(s)\n";
     if ($command === 'reload') {
@@ -118,6 +125,10 @@ foreach ($settings->restricted as $r) {
 }
 foreach ($settings->blockedPaths as $p) {
     echo $line('block regex ' . $regex($p), $o('blockedPaths', $p));
+}
+foreach ($settings->blockExceptions as $x) {
+    echo $line('unblock ' . ($x['patterns'] === null ? '' : 'regex ' . implode(' ', array_map($regex, $x['patterns'])) . ' ') . 'at regex '
+        . implode(' ', array_map($regex, $x['paths'])) . ($x['ips'] !== [] ? ' for ' . implode(' ', $x['ips']) : ''), $o('blockExceptions', $x['paths'][0] ?? ''));
 }
 echo $settings->cacheablePaths === null ? $line('cache-path any') : '';
 foreach ($settings->cacheablePaths ?? [] as $p) {

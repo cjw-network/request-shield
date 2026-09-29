@@ -71,6 +71,11 @@ final class Config
             'debugHeader' => false,
             // Paths only some addresses may open: [['paths' => [regex, ...], 'ips' => [range, ...]], ...].
             'restricted' => [],
+            // Where blocked paths are let through anyway (an admin's file reader):
+            // [['paths' => [regex, ...], 'patterns' => [blockedPaths entries] or null
+            // (all), 'ips' => [range, ...] or [] (everyone)], ...]. Path sanity
+            // (traversal, disguised paths) is never lifted.
+            'blockExceptions' => [],
             // Methods allowed only on some paths: ['POST' => [regex, ...]]; other
             // paths answer 405 for that method. Methods not listed: see 'methods'.
             'methodPaths' => [],
@@ -120,6 +125,17 @@ final class Config
                 + array_combine(self::wordpressPaths(), ['@wordpress.folders', '@wordpress.scripts']);
         }
         return $names[$pattern] ?? null;
+    }
+
+    /** The built-in pattern with a name ("@scanners.backups"), or null. */
+    public static function setPattern(string $name): ?string
+    {
+        foreach (array_merge(self::scannerPaths(), self::wordpressPaths()) as $p) {
+            if (self::setName($p) === $name) {
+                return $p;
+            }
+        }
+        return null;
     }
 
     /**
