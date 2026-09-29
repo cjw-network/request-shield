@@ -120,7 +120,11 @@ final class Texts
         return $out;
     }
 
-    /** The heading of a status page (404: "Not Found", "Nicht gefunden"). */
+    /**
+     * The heading of a status page (404: "Not Found", "Nicht gefunden").
+     *
+     * @param array<string, string> $texts
+     */
     public static function status(int $status, array $texts): string
     {
         return $texts[self::STATUS[$status] ?? 'error'] ?? 'Error';
