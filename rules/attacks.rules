@@ -46,4 +46,4 @@ version 2026.09.1
 [ATK-UA-TOOLS@1]    block header User-Agent \b(sqlmap|nikto|nmap|masscan|zgrab|zmeu|jorgee|wpscan|nuclei|acunetix|nessus|openvas|netsparker|dirbuster|gobuster|ffuf|wfuzz|havij|commix|fimap)\b   # attack tools by their name: sqlmap, nikto, nuclei, wpscan …
 
 # --- known exploit paths (OWASP A06: outdated components) ------------------------------------
-[ATK-EXPLOIT@1]     block **/eval-stdin.php /HNAP1 /boaform/** /GponForm/** /_ignition/execute-solution /.aws/** /.ssh/** **/wp-file-manager/lib/php/connector.minimal.php /cgi-mod/** /mifs/**   # paths of well-known exploits: PHPUnit eval-stdin, routers, Laravel Ignition, stored keys
+[ATK-EXPLOIT@1]     block **/eval-stdin.php /hnap1 /boaform/** /gponform/** /_ignition/execute-solution /.aws/** /.ssh/** **/wp-file-manager/lib/php/connector.minimal.php /cgi-mod/** /mifs/**   # paths of well-known exploits: PHPUnit eval-stdin, routers, Laravel Ignition, stored keys (lower case: matched so)

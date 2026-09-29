@@ -726,8 +726,13 @@ final class RuleFile
         }
         $remove = array_keys($this->compile($args, $at, true));
         $content = $this->contentPatterns();
-        foreach ($remove as $pattern) {
-            if (!in_array($pattern, $list, true) && !in_array($pattern, $content, true)) {
+        foreach ($remove as $i => $pattern) {
+            // A written content pattern is kept with its "i" flag: "unblock
+            // regex x" takes back what "block query x" set.
+            if (!in_array($pattern, $list, true) && !in_array($pattern, $content, true) && in_array($pattern . 'i', $content, true)) {
+                $remove[$i] = $pattern . 'i';
+            }
+            if (!in_array($remove[$i], $list, true) && !in_array($remove[$i], $content, true)) {
                 throw new RuleFileException("$at: nothing to unblock -- no earlier block matches " . implode(' ', $args) . ' exactly');
             }
         }
@@ -761,6 +766,13 @@ final class RuleFile
         }
         if ($args === []) {
             throw new RuleFileException("$at: block $where <regex> -- what to look for");
+        }
+        foreach ($args as $a) {
+            // Expressions only: "@set" would silently match its own name and
+            // "[X-1]" become a character class; references belong to unblock.
+            if ($a !== '' && ($a[0] === '@' || preg_match('/^\[[A-Za-z0-9][A-Za-z0-9_.-]{0,47}(?:@[1-9][0-9]{0,5})?\]$/', $a) === 1)) {
+                throw new RuleFileException("$at: block $where takes expressions, not references -- unblock [ID] takes one back");
+            }
         }
         $patterns = [];
         foreach ($this->compile(array_merge(['regex'], $args), $at, false) as $p => $origin) {
@@ -822,9 +834,13 @@ final class RuleFile
         $patterns = null;
         if ($where > 0) {
             $patterns = array_keys($this->compile(array_slice($args, 0, $where), $at, true));
-            $blocked = array_merge((array) $this->get('blockedPaths'), $this->contentPatterns());
-            foreach ($patterns as $p) {
-                if (!in_array($p, $blocked, true)) {
+            $content = $this->contentPatterns();
+            $blocked = array_merge((array) $this->get('blockedPaths'), $content);
+            foreach ($patterns as $i => $p) {
+                if (!in_array($p, $blocked, true) && in_array($p . 'i', $content, true)) {
+                    $patterns[$i] = $p . 'i';   // a written content pattern, kept with its "i" flag
+                }
+                if (!in_array($patterns[$i], $blocked, true)) {
                     throw new RuleFileException("$at: nothing to unblock -- no earlier block matches " . implode(' ', array_slice($args, 0, $where)) . ' exactly');
                 }
             }
