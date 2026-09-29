@@ -7,9 +7,12 @@ part does. From the repository's root:
 php -S 127.0.0.1:8080 examples/demo/router.php
 ```
 
-Open http://127.0.0.1:8080/ — the page shows the shield's decision for the
-request (and so does the `X-Request-Shield` header in the browser's network
-tab), and links to one example per feature:
+Open http://127.0.0.1:8080/ — the page shows the full URL you asked for, the
+shield's decision, the request as it arrived (headers the shield removed are
+struck out) and the headers of the answer, and links to one example per
+feature. **Show the answer** next to each fetches it in the background and
+shows status and headers — also for answers the page itself never sees
+(404, 400, 429):
 
 | Link | What happens |
 |---|---|

@@ -76,6 +76,10 @@ $examples = function (string $prefix): void {
             same(200, $r['status'], 'front page');
             truthy(strpos($r['body'], 'href="' . $prefix . '/challenge"') !== false, 'links start where the demo lives');
             truthy(strpos($r['body'], 'action="' . $prefix . '/page/form"') !== false, 'so does the form');
+            $r = $get('GET', '/page/about?page=2', ['X-Forwarded-For' => '203.0.113.9']);
+            truthy(preg_match('#<code>http://127\.0\.0\.1:\d+' . preg_quote($prefix, '#') . '/page/about\?page=2</code>#', $r['body']) === 1, 'the full URL on the page');
+            truthy(strpos($r['body'], '<del class="no">X-Forwarded-For: 203.0.113.9</del>') !== false, 'the forged header shown as removed');
+            truthy(strpos($r['body'], 'X-Request-Shield: allow') !== false, 'the answer\'s headers, with the decision');
             same('allow', $r['shield']);
             truthy(strpos($r['body'], 'request-shield demo') !== false, 'the page itself');
             same('allow', $get('GET', '/page/about')['shield']);
