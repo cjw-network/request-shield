@@ -27,8 +27,8 @@ final class CacheableRule implements Rule
      * @param (callable(Request): ?bool)|null $known an adapter's own answer (null: no opinion)
      */
     public function __construct(
-        private readonly ?array $paths,
-        private readonly ?array $query,
+        private ?array $paths,
+        private ?array $query,
         private $known = null,
     ) {
     }

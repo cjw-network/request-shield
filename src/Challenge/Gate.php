@@ -29,11 +29,11 @@ use CjwNetwork\RequestShield\Store\Store;
 final class Gate
 {
     public function __construct(
-        private readonly ChallengeSettings $config,
-        private readonly string $secret,
-        private readonly ?SearchEngines $searchEngines = null,
-        private readonly int $ipv6Prefix = 64,
-        private readonly ?Store $store = null,
+        private ChallengeSettings $config,
+        private string $secret,
+        private ?SearchEngines $searchEngines = null,
+        private int $ipv6Prefix = 64,
+        private ?Store $store = null,
     ) {
     }
 

@@ -22,9 +22,9 @@ namespace CjwNetwork\RequestShield\Store;
 final class FileStore implements Store
 {
     public function __construct(
-        private readonly string $dir,
-        private readonly float $sweepChance = 0.001,
-        private readonly int $sweepBudget = 500,
+        private string $dir,
+        private float $sweepChance = 0.001,
+        private int $sweepBudget = 500,
     ) {
     }
 

@@ -16,8 +16,11 @@ things come first: **it must be right, and it must be fast.**
 2. **Measure.** `php -d apc.enable_cli=1 -d opcache.enable_cli=1 bench/overhead.php`
    before and after; the passing path must not get slower without a reason
    stated in the pull request. Keep work a feature needs off the passing path.
-3. **PHP 8.1 to the newest release.** CI runs every version; no syntax or
-   functions newer than 8.1 unless guarded.
+3. **PHP 8.0 to the newest release.** PHP 8.0 is the baseline of Red Hat
+   Enterprise Linux 9 and its rebuilds, so it stays supported. CI runs every
+   version; no syntax or functions newer than 8.0 unless guarded (no
+   `readonly` — use `@readonly`, which PHPStan enforces; no enums, no `never`,
+   no string-key unpacking, no `array_is_list()`, no `xxh*` hashes).
 4. **Static analysis stays clean.** `composer install`, then
    `composer phpstan` (level max) and `composer taint` (Psalm taint analysis).
 5. **No runtime dependencies.** Development tools go in `require-dev`.

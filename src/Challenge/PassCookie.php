@@ -18,7 +18,7 @@ namespace CjwNetwork\RequestShield\Challenge;
  */
 final class PassCookie
 {
-    public function __construct(private readonly string $secret, private readonly bool $bindUserAgent = true)
+    public function __construct(private string $secret, private bool $bindUserAgent = true)
     {
     }
 

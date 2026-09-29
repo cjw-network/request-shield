@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/cjw-network/request-shield/actions/workflows/tests.yml/badge.svg)](https://github.com/cjw-network/request-shield/actions/workflows/tests.yml)
 [![Static analysis and security](https://github.com/cjw-network/request-shield/actions/workflows/static-analysis.yml/badge.svg)](https://github.com/cjw-network/request-shield/actions/workflows/static-analysis.yml)
-![PHP](https://img.shields.io/badge/php-8.1%20%E2%80%93%208.5-777bb4)
+![PHP](https://img.shields.io/badge/php-8.0%20%E2%80%93%208.5-777bb4)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
 A request shield for PHP sites. It runs **before the application** — before the
@@ -23,7 +23,7 @@ whether a request reaches the application, and whether the answer may be cached.
   Above a threshold a client can be challenged, above the limit it gets
   `429 Too Many Requests` with `Retry-After`.
 - **No dependencies, no services:** counters in APCu, or in plain files on hosting
-  without APCu. PHP ≥ 8.1.
+  without APCu. PHP ≥ 8.0 (the Red Hat Enterprise Linux 9 baseline).
 
 It is meant as a small DoS guard that works on shared hosting too. It turns an
 expensive request (framework, database, rendering: 100–200 ms) into a cheap one
@@ -134,7 +134,7 @@ headers behind a trusted proxy, every check on:
 ## Tests and checks
 
 ```bash
-php tests/run.php            # no framework needed, PHP 8.1+
+php tests/run.php            # no framework needed, PHP 8.0+
 composer install && composer phpstan && composer taint
 ```
 

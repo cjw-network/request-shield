@@ -11,7 +11,7 @@ no root, no web server configuration beyond `.htaccess`/`.user.ini`.
 
 A PHP library that runs as `auto_prepend_file` or as the first line of the
 front controller, before the framework's autoloader and database; no
-dependencies, PHP 8.1+.
+dependencies, PHP 8.0+ (the Red Hat Enterprise Linux 9 baseline).
 
 ## Consequences
 

@@ -25,17 +25,27 @@ final class Request
      * @param array<string, mixed> $server the $_SERVER it was built from; headers are read from it when asked for
      */
     public function __construct(
-        public readonly string $method,
-        public readonly string $scheme,
-        public readonly string $host,
-        public readonly string $path,
-        public readonly string $query,
-        public readonly string $rawUri,
-        public readonly string $clientIp,
-        public readonly string $peerIp,
-        public readonly bool $viaTrustedProxy,
-        public readonly int $headerBytes,
-        private readonly array $server = [],
+        /** @readonly */
+        public string $method,
+        /** @readonly */
+        public string $scheme,
+        /** @readonly */
+        public string $host,
+        /** @readonly */
+        public string $path,
+        /** @readonly */
+        public string $query,
+        /** @readonly */
+        public string $rawUri,
+        /** @readonly */
+        public string $clientIp,
+        /** @readonly */
+        public string $peerIp,
+        /** @readonly */
+        public bool $viaTrustedProxy,
+        /** @readonly */
+        public int $headerBytes,
+        private array $server = [],
     ) {
     }
 

@@ -44,9 +44,9 @@ final class SearchEngines
      * @param (callable(string): list<string>)|null $forward addresses of a host, replaceable for tests
      */
     public function __construct(
-        private readonly array $engines,
-        private readonly ?\Closure $cacheGet = null,
-        private readonly ?\Closure $cacheSet = null,
+        private array $engines,
+        private ?\Closure $cacheGet = null,
+        private ?\Closure $cacheSet = null,
         private $reverse = null,
         private $forward = null,
     ) {

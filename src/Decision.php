@@ -37,11 +37,16 @@ final class Decision
     private static ?self $allow = null;
 
     private function __construct(
-        public readonly string $action,
-        public readonly int $status,
-        public readonly string $reason,
-        public readonly int $retryAfter = 0,
-        public readonly float $level = 0.0,
+        /** @readonly */
+        public string $action,
+        /** @readonly */
+        public int $status,
+        /** @readonly */
+        public string $reason,
+        /** @readonly */
+        public int $retryAfter = 0,
+        /** @readonly */
+        public float $level = 0.0,
     ) {
     }
 

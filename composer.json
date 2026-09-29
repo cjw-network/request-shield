@@ -23,7 +23,7 @@
         "shared hosting"
     ],
     "require": {
-        "php": ">=8.1"
+        "php": ">=8.0"
     },
     "suggest": {
         "ext-apcu": "Counters in shared memory (the file store is used without it)"

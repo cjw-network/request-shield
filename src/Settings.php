@@ -28,23 +28,40 @@ final class Settings
      * @param list<string> $exemptIps
      */
     private function __construct(
-        public readonly array $trustedProxies,
-        public readonly bool $stripUntrustedForwarded,
-        public readonly array $methods,
-        public readonly array $hosts,
-        public readonly int $maxUri,
-        public readonly int $maxQueryParameters,
-        public readonly int $maxHeaderBytes,
-        public readonly array $blockedPaths,
-        public readonly ?array $cacheablePaths,
-        public readonly ?array $cacheableQuery,
-        public readonly array $budgets,
-        public readonly array $exemptIps,
-        public readonly int $ipv6Prefix,
-        public readonly string $store,
-        public readonly string $storeDir,
-        public readonly bool $debugHeader,
-        public readonly ChallengeSettings $challenge,
+        /** @readonly */
+        public array $trustedProxies,
+        /** @readonly */
+        public bool $stripUntrustedForwarded,
+        /** @readonly */
+        public array $methods,
+        /** @readonly */
+        public array $hosts,
+        /** @readonly */
+        public int $maxUri,
+        /** @readonly */
+        public int $maxQueryParameters,
+        /** @readonly */
+        public int $maxHeaderBytes,
+        /** @readonly */
+        public array $blockedPaths,
+        /** @readonly */
+        public ?array $cacheablePaths,
+        /** @readonly */
+        public ?array $cacheableQuery,
+        /** @readonly */
+        public array $budgets,
+        /** @readonly */
+        public array $exemptIps,
+        /** @readonly */
+        public int $ipv6Prefix,
+        /** @readonly */
+        public string $store,
+        /** @readonly */
+        public string $storeDir,
+        /** @readonly */
+        public bool $debugHeader,
+        /** @readonly */
+        public ChallengeSettings $challenge,
     ) {
     }
 
@@ -118,7 +135,7 @@ final class Settings
             throw new \RuntimeException("request-shield: cannot read the settings file $file");
         }
         $cacheDir ??= rtrim(sys_get_temp_dir(), '/') . '/request-shield';
-        $compiled = $cacheDir . '/settings-' . hash('xxh128', $file) . '.php';
+        $compiled = $cacheDir . '/settings-' . hash(PHP_VERSION_ID >= 80100 ? 'xxh128' : 'md5', $file) . '.php';
         // No is_file() first: a stat costs more than everything else here, and
         // an include of a missing file just returns false.
         $e = @include $compiled;
@@ -166,8 +183,10 @@ final class Settings
         /** @var array<string, mixed> $challenge */
         $challenge = $e['challenge'];
         $e['challenge'] = ChallengeSettings::import($challenge);
+        // Positional, in declaration order (what export() returns): unpacking
+        // string keys into named arguments needs PHP 8.1.
         /** @phpstan-ignore argument.type */
-        return new self(...$e);
+        return new self(...array_values($e));
     }
 
     private static function write(string $file, string $php): void

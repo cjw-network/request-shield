@@ -20,7 +20,7 @@ final class TestSkipped extends RuntimeException
 }
 
 /** Ends a test that cannot run here (no node, no pcntl); counted, and named. */
-function skip(string $why): never
+function skip(string $why): void
 {
     throw new TestSkipped($why);
 }

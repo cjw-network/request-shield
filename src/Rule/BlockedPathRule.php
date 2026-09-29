@@ -22,7 +22,7 @@ use CjwNetwork\RequestShield\Request;
 final class BlockedPathRule implements Rule
 {
     /** @param list<string> $patterns */
-    public function __construct(private readonly array $patterns)
+    public function __construct(private array $patterns)
     {
     }
 

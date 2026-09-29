@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- PHP 8.0 support (the Red Hat Enterprise Linux 9 baseline): no `readonly`
+  properties at runtime any more — public ones are marked `@readonly`, which
+  PHPStan enforces —, no string-key unpacking, `array_is_list()` and `xxh128`
+  only where PHP has them. CI tests PHP 8.0 too. Cost on PHP 8.1 unchanged.
+
 ### Changed
 - Composer and release archives contain only what runs on a server (`src/`,
   `bootstrap.php`, `config/`, license and readme); tests, benchmarks, docs and

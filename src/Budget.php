@@ -14,11 +14,16 @@ namespace CjwNetwork\RequestShield;
 final class Budget
 {
     private function __construct(
-        public readonly string $name,
-        public readonly int $limit,
-        public readonly int $window,
-        public readonly ?int $challengeAt,
-        public readonly bool $onDemand,
+        /** @readonly */
+        public string $name,
+        /** @readonly */
+        public int $limit,
+        /** @readonly */
+        public int $window,
+        /** @readonly */
+        public ?int $challengeAt,
+        /** @readonly */
+        public bool $onDemand,
     ) {
     }
 
@@ -52,7 +57,9 @@ final class Budget
     /** @param array<string, mixed> $e what export() returned (trusted: no checks) */
     public static function import(array $e): self
     {
+        // Positional, in declaration order (what export() returns): unpacking
+        // string keys into named arguments needs PHP 8.1.
         /** @phpstan-ignore argument.type */
-        return new self(...$e);
+        return new self(...array_values($e));
     }
 }

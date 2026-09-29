@@ -104,12 +104,28 @@ final class Config
         $merged = self::defaults();
         foreach ($config as $key => $value) {
             if (is_array($value) && isset($merged[$key]) && is_array($merged[$key])
-                && !array_is_list($value) && !array_is_list($merged[$key])) {
+                && !self::isList($value) && !self::isList($merged[$key])) {
                 $merged[$key] = array_replace($merged[$key], $value);
             } else {
                 $merged[$key] = $value;
             }
         }
         return $merged;
+    }
+
+    /**
+     * array_is_list(), which PHP has only from 8.1.
+     *
+     * @param array<mixed> $a
+     */
+    private static function isList(array $a): bool
+    {
+        $i = 0;
+        foreach ($a as $k => $_) {
+            if ($k !== $i++) {
+                return false;
+            }
+        }
+        return true;
     }
 }

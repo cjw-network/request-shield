@@ -42,7 +42,9 @@ final class Shield
     /** @var list<Rule> */
     private array $rules = [];
 
-    public readonly Settings $settings;
+    /** @readonly */
+
+    public Settings $settings;
 
     private Store $store;
 

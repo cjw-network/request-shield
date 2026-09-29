@@ -17,7 +17,7 @@ use CjwNetwork\RequestShield\Request;
 final class MethodRule implements Rule
 {
     /** @param list<string> $methods */
-    public function __construct(private readonly array $methods)
+    public function __construct(private array $methods)
     {
     }
 

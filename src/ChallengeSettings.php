@@ -21,17 +21,28 @@ final class ChallengeSettings
      * @param array<string, string> $texts
      */
     private function __construct(
-        public readonly ?string $secret,
-        public readonly int $passTtl,
-        public readonly int $solutionTtl,
-        public readonly int $difficultyMin,
-        public readonly int $difficultyMax,
-        public readonly string $cookie,
-        public readonly string $solutionCookie,
-        public readonly bool $bindUserAgent,
-        public readonly ?array $searchEngines,
-        public readonly array $exemptPaths,
-        public readonly array $texts,
+        /** @readonly */
+        public ?string $secret,
+        /** @readonly */
+        public int $passTtl,
+        /** @readonly */
+        public int $solutionTtl,
+        /** @readonly */
+        public int $difficultyMin,
+        /** @readonly */
+        public int $difficultyMax,
+        /** @readonly */
+        public string $cookie,
+        /** @readonly */
+        public string $solutionCookie,
+        /** @readonly */
+        public bool $bindUserAgent,
+        /** @readonly */
+        public ?array $searchEngines,
+        /** @readonly */
+        public array $exemptPaths,
+        /** @readonly */
+        public array $texts,
     ) {
     }
 
@@ -105,7 +116,9 @@ final class ChallengeSettings
     /** @param array<string, mixed> $e what export() returned (trusted: no checks) */
     public static function import(array $e): self
     {
+        // Positional, in declaration order (what export() returns): unpacking
+        // string keys into named arguments needs PHP 8.1.
         /** @phpstan-ignore argument.type */
-        return new self(...$e);
+        return new self(...array_values($e));
     }
 }

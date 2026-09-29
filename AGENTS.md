@@ -5,7 +5,7 @@ Instructions for AI coding agents working on this repository. Humans: see
 
 ## What this is
 
-`cjw-network/request-shield`: a dependency-free PHP (≥ 8.1) library that runs
+`cjw-network/request-shield`: a dependency-free PHP (≥ 8.0) library that runs
 before the application (`auto_prepend_file` or the first line of a front
 controller) and decides whether a request reaches it and may be cached.
 Entry points: `src/Shield.php` (`protect()`, `protectFile()`), `bootstrap.php`.
@@ -22,7 +22,10 @@ Settings: `src/Config.php` (defaults) → `src/Settings.php` (checked, compiled)
   challenge page's script is tested in Node (`tests/ChallengeJsTest.php`).
   Confirm a new test fails without the change. Use `skip()` when a test cannot
   run here; never let it pass silently.
-- **Compatibility:** PHP 8.1 syntax and functions only; no runtime
+- **Compatibility:** PHP 8.0 syntax and functions only (RHEL 9 baseline): no
+  `readonly` (mark public properties `@readonly`; PHPStan enforces it), no
+  enums, no `never`, no string-key unpacking, no `array_is_list()`, no `xxh*`
+  hashes — or guard them with `PHP_VERSION_ID`; no runtime
   dependencies; `composer phpstan` (level max) and `composer taint` stay clean.
 - **Fail safe:** unsure → let the request through; refuse only clear cases.
 - **Docs in the same change:** `docs/features/`, `docs/proposals/` (new ideas,

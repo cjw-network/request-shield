@@ -16,7 +16,7 @@ namespace CjwNetwork\RequestShield\Store;
  */
 final class ApcuStore implements Store
 {
-    public function __construct(private readonly string $prefix = 'rshield:')
+    public function __construct(private string $prefix = 'rshield:')
     {
     }
 

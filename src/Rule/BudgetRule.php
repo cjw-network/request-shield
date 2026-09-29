@@ -24,13 +24,13 @@ final class BudgetRule implements Rule
 {
     /** @param list<string> $exempt */
     public function __construct(
-        private readonly Store $store,
-        private readonly string $name,
-        private readonly int $limit,
-        private readonly int $window,
-        private readonly ?int $challengeAt = null,
-        private readonly array $exempt = [],
-        private readonly int $ipv6Prefix = 64,
+        private Store $store,
+        private string $name,
+        private int $limit,
+        private int $window,
+        private ?int $challengeAt = null,
+        private array $exempt = [],
+        private int $ipv6Prefix = 64,
     ) {
     }
 

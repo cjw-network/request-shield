@@ -28,7 +28,7 @@ final class ProofOfWork
 {
     public const ALGORITHM = 'SHA-256';
 
-    public function __construct(private readonly string $secret)
+    public function __construct(private string $secret)
     {
     }
 

@@ -17,9 +17,9 @@ use CjwNetwork\RequestShield\Request;
 final class LimitsRule implements Rule
 {
     public function __construct(
-        private readonly int $maxUri,
-        private readonly int $maxQueryParameters,
-        private readonly int $maxHeaderBytes,
+        private int $maxUri,
+        private int $maxQueryParameters,
+        private int $maxHeaderBytes,
     ) {
     }
 

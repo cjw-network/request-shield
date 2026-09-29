@@ -21,7 +21,7 @@ use CjwNetwork\RequestShield\Request;
 final class HostRule implements Rule
 {
     /** @param list<string> $hosts */
-    public function __construct(private readonly array $hosts)
+    public function __construct(private array $hosts)
     {
     }
 
