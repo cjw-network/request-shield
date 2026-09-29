@@ -59,8 +59,10 @@ and `aria-live="polite"` for screen readers. `widget.js` is served with a day's
 cache and an ETag; for a strict Content-Security-Policy it is a file, not an
 inline script.
 
-Because the endpoint speaks ALTCHA's format, ALTCHA's own widget can be used
-against it instead (its `challengeurl`, the answer in `rs_solution`).
+Because the endpoint speaks ALTCHA's format, ALTCHA's own widget should work
+against it instead (its `challengeurl` pointing at the endpoint, `name="rs_solution"`):
+the shield accepts answers in ALTCHA's encoding (tested); the widget itself has
+not been tried with it yet.
 
 ## Cost
 

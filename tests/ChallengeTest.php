@@ -239,6 +239,9 @@ return [
         $task = $gate->widgetTask(creq('/request-shield/challenge'), 1.0);
         truthy(is_array($task) && $task['maxnumber'] === 2000, 'a task of the widget\'s difficulty');
         $answer = solveInPhp($task);
+        // ALTCHA's own widget sends standard base64, with padding: the same answer counts.
+        $std = base64_encode((string) base64_decode(strtr($answer, '-_', '+/') . str_repeat('=', (4 - strlen($answer) % 4) % 4)));
+        truthy((new \CjwNetwork\RequestShield\Challenge\ProofOfWork(SECRET))->verify($std, \CjwNetwork\RequestShield\IpAddress::bucket('203.0.113.7'), 2.0), 'an answer in ALTCHA\'s encoding verifies');
         $r = $gate->resolve(Decision::challenge('always'), Decision::allow(), creq('/login', [], 'POST'), 2.0, ['solution' => $answer]);
         same(Decision::ALLOW_UNCACHED, $r['decision']->action, 'a POST with the answer in the form: through');
         $pass = cookieValue($r['cookies'], 'rs_pass');
