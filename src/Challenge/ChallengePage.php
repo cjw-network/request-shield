@@ -140,8 +140,15 @@ final class ChallengePage
   // Without a task (the widget, tests in Node): only the solver above.
   if (typeof document === 'undefined' || !R.c) { return; }
   var m = document.getElementById('m'), bar = document.getElementById('b');
-  var tries = 0;
-  try { tries = +(sessionStorage.getItem('rs-tries') || 0); sessionStorage.setItem('rs-tries', tries + 1); } catch (e) {}
+  // Against a loop -- a check that never takes: after three attempts at the
+  // same address within a minute, stop and say so. Only those count: checks
+  // passed before, other pages, time gone by do not.
+  var here = location.pathname + location.search, now = Date.now(), tries = 0;
+  try {
+    var last = JSON.parse(sessionStorage.getItem('rs-tries') || 'null');
+    if (last && last.u === here && now - last.t < 60000) { tries = last.n; }
+    sessionStorage.setItem('rs-tries', JSON.stringify({ u: here, n: tries + 1, t: now }));
+  } catch (e) {}
   if (tries >= 3) { m.textContent = R.failed; try { sessionStorage.removeItem('rs-tries'); } catch (e) {} return; }
   solve(R.c, function (number, took) {
     if (number < 0) { m.textContent = R.failed; return; }

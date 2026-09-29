@@ -55,7 +55,7 @@ final class Widget
   function run(box) {
     var form = formOf(box), endpoint = box.getAttribute('data-endpoint') || (base + '/challenge');
     var start = box.getAttribute('data-start') || 'input';
-    var state = 'idle', waiting = null, field = null, texts = { checking: '', checked: '✓', failed: '' };
+    var state = 'idle', waiting = null, field = null, expires = 0, texts = { checking: '', checked: '✓', failed: '' };
     box.className += ' rs-widget';
     box.setAttribute('role', 'status');
     box.setAttribute('aria-live', 'polite');
@@ -82,10 +82,22 @@ final class Widget
             if (n < 0) { finish('failed', texts.failed); return; }
             if (!field) { field = document.createElement('input'); field.type = 'hidden'; field.name = j.field; form.appendChild(field); }
             field.value = R.payload(j.challenge, n, took);
+            // An answer counts once and for a few minutes (the task says until when).
+            var until = /[?&]expires=(\d+)/.exec(j.challenge.salt || '');
+            expires = until ? +until[1] * 1000 : 0;
             finish('done', texts.checked);
           });
         }, function () { finish('failed', texts.failed); });
     }
+    // Back to the form (the browser's back button, a page kept in its cache):
+    // the answer was sent already and counts once -- start again.
+    function reset() {
+      state = 'idle'; waiting = null; expires = 0;
+      if (field) { field.value = ''; }
+      show('idle', '');
+      if (start === 'load') { go(); }
+    }
+    window.addEventListener('pageshow', function (ev) { if (ev.persisted) { reset(); } });
     show('idle', '');
     if (!form) { return; }
     if (start === 'load') { go(); }
@@ -93,6 +105,8 @@ final class Widget
     // Sent before the check is done: wait for it, then send. Failed: send
     // anyway -- the shield checks on its own then (the check page).
     form.addEventListener('submit', function (ev) {
+      // An answer about to expire (the visitor typed for minutes): a new one first.
+      if (state === 'done' && expires && Date.now() > expires - 20000) { state = 'idle'; if (field) { field.value = ''; } }
       if (state === 'done' || state === 'failed') { return; }
       ev.preventDefault();
       waiting = ev.submitter || true;

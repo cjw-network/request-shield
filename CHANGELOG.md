@@ -122,6 +122,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   Rule Set's first level (IDs `ATK-…`, `version 2026.09.1`).
 
 ### Fixed
+- The check page said "The check did not succeed" on the fourth check in a
+  browser tab, however far apart and on whatever pages: its guard against a
+  loop counted every check page of the tab and was never reset. It now counts
+  only attempts at the same address within a minute.
+- The check inside the form sent an answer that had been used or had expired
+  -- after the back button, or a form filled in for minutes -- which then got
+  the check page. It now starts again when the page comes back from the
+  browser's cache, and fetches a new answer when the one it has is about to
+  expire.
 - `unblock regex <expression>` and `unblock … at <paths>` did not find a
   content rule: its pattern is kept case-insensitive and the lookup missed it.
 - `rules/attacks.rules` blocked `/hnap1` and `/gponform/**` never: the paths
