@@ -17,11 +17,11 @@ namespace CjwNetwork\RequestShield;
 class Responder
 {
     private const TEXT = [
-        400 => 'Bad Request', 404 => 'Not Found', 405 => 'Method Not Allowed',
+        400 => 'Bad Request', 403 => 'Forbidden', 404 => 'Not Found', 405 => 'Method Not Allowed',
         414 => 'URI Too Long', 429 => 'Too Many Requests', 431 => 'Request Header Fields Too Large',
     ];
 
-    public function send(Decision $decision, Request $request, bool $debugHeader = false, ?string $page = null): void
+    public function send(Decision $decision, Request $request, bool $debugHeader = false, ?string $page = null, ?string $rule = null): void
     {
         $text = self::TEXT[$decision->status] ?? 'Error';
         if (!headers_sent()) {
@@ -36,7 +36,7 @@ class Responder
                 header('Allow: GET, HEAD, POST');
             }
             if ($debugHeader) {
-                header('X-Request-Shield: ' . $decision->action . ' ' . $decision->reason);
+                header('X-Request-Shield: ' . $decision->action . ' ' . $decision->reason . ($rule !== null ? '; rule=' . $rule : ''));
             }
         }
         if ($request->method === 'HEAD') {

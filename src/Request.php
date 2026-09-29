@@ -122,6 +122,24 @@ final class Request
         );
     }
 
+    private ?string $matchPath = null;
+
+    /**
+     * The path as the application will route it: percent-decoded, with "//"
+     * and "/./" collapsed -- what path rules that grant or refuse access are
+     * matched against, so "//admin" or "/%61dmin" cannot slip past "/admin".
+     * ("/../" never gets this far: PathSanityRule refuses it.)
+     */
+    public function matchPath(): string
+    {
+        if ($this->matchPath === null) {
+            $p = rawurldecode($this->path);
+            $p = preg_replace('#/(?:\.?/)+#', '/', $p) ?? $p;
+            $this->matchPath = preg_replace('#/\.$#', '/', $p) ?? $p;
+        }
+        return $this->matchPath;
+    }
+
     /** @param array<string, mixed> $server */
     private static function str(array $server, string $key): ?string
     {

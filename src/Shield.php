@@ -18,8 +18,10 @@ use CjwNetwork\RequestShield\Rule\BudgetRule;
 use CjwNetwork\RequestShield\Rule\CacheableRule;
 use CjwNetwork\RequestShield\Rule\HostRule;
 use CjwNetwork\RequestShield\Rule\LimitsRule;
+use CjwNetwork\RequestShield\Rule\MethodPathRule;
 use CjwNetwork\RequestShield\Rule\MethodRule;
 use CjwNetwork\RequestShield\Rule\PathSanityRule;
+use CjwNetwork\RequestShield\Rule\RestrictedPathRule;
 use CjwNetwork\RequestShield\Rule\Rule;
 use CjwNetwork\RequestShield\Store\ApcuStore;
 use CjwNetwork\RequestShield\Store\FileStore;
@@ -50,6 +52,13 @@ final class Shield
 
     private static ?Decision $current = null;
 
+    private static ?string $rule = null;
+
+    private static ?self $active = null;
+
+    /** The request protect() decided about. */
+    private ?Request $request = null;
+
     /** What decide() found without the budgets: whether the answer may be cached. */
     private Decision $base;
 
@@ -71,6 +80,12 @@ final class Shield
             $this->rules[] = new HostRule($s->hosts);
         }
         $this->rules[] = new BlockedPathRule($s->blockedPaths);
+        if ($s->methodPaths !== []) {
+            $this->rules[] = new MethodPathRule($s->methodPaths);
+        }
+        if ($s->restricted !== []) {
+            $this->rules[] = new RestrictedPathRule($s->restricted);
+        }
         $this->rules[] = new CacheableRule($s->cacheablePaths, $s->cacheableQuery, $known);
         foreach ($s->budgets as $budget) {
             if (!$budget->onDemand) {
@@ -111,10 +126,22 @@ final class Shield
         /** @var array<string, mixed> $server */
         $server = $_SERVER;
         $request = Request::fromServer($server, $s->trustedProxies);
+        $shield->request = $request;
+        self::$active = $shield;
         $now = microtime(true);
         $settled = $shield->settle($shield->decide($request, $now), $request, $now);
         $decision = $settled['decision'];
         self::$current = $decision;
+        // Which rule: looked up only for a request that was stopped or flagged
+        // (or when every request is logged) -- a passing one costs nothing.
+        $rule = null;
+        if ($decision->action !== Decision::ALLOW || $s->logLevel === 'all') {
+            $rule = $shield->explain($decision, $request);
+            if ($s->logFile !== null && Log::wants($s->logLevel, $decision)) {
+                Log::write($s, $request, $decision, $rule, $now);
+            }
+        }
+        self::$rule = $rule;
         if (!headers_sent()) {
             foreach ($settled['cookies'] as $cookie) {
                 header('Set-Cookie: ' . $cookie, false);
@@ -131,12 +158,16 @@ final class Shield
         }
 
         if (!$decision->passes()) {
-            (new Responder())->send($decision, $request, $s->debugHeader, $settled['page']);
+            (new Responder())->send($decision, $request, $s->debugHeader, $settled['page'], $rule);
             exit;
         }
         $_SERVER['REQUEST_SHIELD'] = $decision->action;
+        if ($rule !== null) {
+            $_SERVER['REQUEST_SHIELD_RULE'] = $rule;
+        }
         if ($s->debugHeader && !headers_sent()) {
-            header('X-Request-Shield: ' . $decision->action . ($decision->reason !== '' ? ' ' . $decision->reason : ''));
+            header('X-Request-Shield: ' . $decision->action . ($decision->reason !== '' ? ' ' . $decision->reason : '')
+                . ($rule !== null ? '; rule=' . $rule : ''));
         }
         return $decision;
     }
@@ -145,6 +176,83 @@ final class Shield
     public static function current(): ?Decision
     {
         return self::$current;
+    }
+
+    /**
+     * The shield protect() ran with, to count on-demand budgets against the
+     * same settings and request: Shield::active()?->consume('searches').
+     */
+    public static function active(): ?self
+    {
+        return self::$active;
+    }
+
+    /** The rule behind current(), when it was not a plain "allow" (see explain()). */
+    public static function currentRule(): ?string
+    {
+        return self::$rule;
+    }
+
+    /**
+     * The rule behind a decision: where it was written ("site.rules:12",
+     * "default @scanners"), the setting for PHP array settings
+     * ("blockedPaths[3]"), "built-in" for the checks every site has
+     * (sizes, path encoding), or null when no single rule decided (allow).
+     * Runs the matching again, so it is meant for decisions that stopped or
+     * flagged a request, not for every one.
+     */
+    public function explain(Decision $d, Request $request): ?string
+    {
+        $s = $this->settings;
+        $name = static function (string $setting, string $what, string $fallback) use ($s): string {
+            $origin = $s->origin($setting, $what) ?? $fallback;
+            return preg_replace('/[^\x21-\x7e ]/', '?', $origin) ?? $fallback;
+        };
+        $first = static function (array $patterns, string $path): ?int {
+            foreach ($patterns as $i => $p) {
+                if (is_string($p) && @preg_match($p, $path) === 1) {
+                    return (int) $i;
+                }
+            }
+            return null;
+        };
+        switch ($d->reason) {
+            case 'blocked path':
+                $i = $first($s->blockedPaths, strtolower(rawurldecode($request->path)));
+                return $i === null ? null : $name('blockedPaths', $s->blockedPaths[$i], "blockedPaths[$i]");
+            case 'restricted':
+                foreach ($s->restricted as $n => $r) {
+                    $i = $first($r['paths'], $request->matchPath());
+                    if ($i !== null) {
+                        return $name('restricted', $r['paths'][$i], "restricted[$n]");
+                    }
+                }
+                return null;
+            case 'method not allowed here':
+                return $name('methodPaths', $request->method, "methodPaths.$request->method");
+            case 'method':
+                // Refused: not in the methods; passed uncached: a POST is never cached.
+                return $d->action === Decision::REJECT ? $name('methods', '*', 'methods') : 'built-in';
+            case 'host':
+                return $name('hosts', '*', 'hosts');
+            case 'always':
+                $i = $first($s->challenge->alwaysPaths, $request->path);
+                return $i === null ? null : $name('challenge.alwaysPaths', $s->challenge->alwaysPaths[$i], "challenge.alwaysPaths[$i]");
+            case 'query parameter':
+                return $name('cacheable.query', '*', 'cacheable.query');
+            case 'path not cacheable':
+                return $name('cacheable.paths', '*', 'cacheable.paths');
+            case 'uri length':
+            case 'query parameters':
+            case 'header size':
+            case 'path encoding':
+            case 'path traversal':
+                return 'built-in';
+        }
+        if (isset($s->budgets[$d->reason])) {
+            return $name('budgets', $d->reason, "budgets.$d->reason");
+        }
+        return null;
     }
 
     public function decide(Request $request, float $now): Decision
@@ -201,13 +309,19 @@ final class Shield
      * cache miss, a failed sign-in -- and says what the client has earned.
      * Budgets marked 'onDemand' => true in the configuration are only counted here.
      */
-    public function consume(string $budget, Request $request, ?float $now = null): Decision
+    public function consume(string $budget, ?Request $request = null, ?float $now = null): Decision
     {
         $b = $this->settings->budgets[$budget] ?? null;
-        if ($b === null) {
+        $request ??= $this->request;
+        if ($b === null || $request === null) {
             return Decision::allow();
         }
-        return $this->budgetRule($b)->check($request, $now ?? microtime(true)) ?? Decision::allow();
+        $now ??= microtime(true);
+        $d = $this->budgetRule($b)->check($request, $now) ?? Decision::allow();
+        if ($this->settings->logFile !== null && $d->action !== Decision::ALLOW && Log::wants($this->settings->logLevel, $d)) {
+            Log::write($this->settings, $request, $d, $this->explain($d, $request), $now);
+        }
+        return $d;
     }
 
     private function budgetRule(Budget $b): BudgetRule

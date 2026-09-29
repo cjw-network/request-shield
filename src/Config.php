@@ -69,6 +69,15 @@ final class Config
             ],
             // X-Request-Shield: <action> <reason> on every response (for testing).
             'debugHeader' => false,
+            // Paths only some addresses may open: [['paths' => [regex, ...], 'ips' => [range, ...]], ...].
+            'restricted' => [],
+            // Methods allowed only on some paths: ['POST' => [regex, ...]]; other
+            // paths answer 405 for that method. Methods not listed: see 'methods'.
+            'methodPaths' => [],
+            // One line per request the shield did something about (Log). level:
+            // stop (rejected, throttled, challenged), flag (also allow-uncached),
+            // all (every request), off. ip: masked (/24, /48) or full.
+            'log' => ['file' => null, 'level' => 'stop', 'ip' => 'masked', 'maxSize' => 10485760],
         ];
     }
 

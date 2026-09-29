@@ -27,6 +27,8 @@ final class Settings
      * @param array<string, Budget> $budgets
      * @param list<string> $exemptIps
      * @param array<string, array<string, string>> $origins setting => pattern or budget => where it was set (rule files)
+     * @param list<array{paths: list<string>, ips: list<string>}> $restricted
+     * @param array<string, list<string>> $methodPaths
      */
     private function __construct(
         /** @readonly */
@@ -65,6 +67,18 @@ final class Settings
         public ChallengeSettings $challenge,
         /** @readonly */
         public array $origins = [],
+        /** @readonly */
+        public array $restricted = [],
+        /** @readonly */
+        public array $methodPaths = [],
+        /** @readonly */
+        public ?string $logFile = null,
+        /** @readonly */
+        public string $logLevel = 'stop',
+        /** @readonly */
+        public string $logIp = 'masked',
+        /** @readonly */
+        public int $logMaxSize = 10485760,
     ) {
     }
 
@@ -78,6 +92,31 @@ final class Settings
         $limits = self::map($c, 'limits');
         $cacheable = self::map($c, 'cacheable');
         $exempt = self::map($c, 'exempt');
+        $log = self::map($c, 'log');
+
+        $restricted = [];
+        foreach (self::map($c, 'restricted') as $i => $r) {
+            if (!is_array($r)) {
+                throw self::wrong("restricted.$i", "an array of 'paths' and 'ips'");
+            }
+            $restricted[] = ['paths' => self::strings($r, 'paths', "restricted.$i.paths"), 'ips' => self::strings($r, 'ips', "restricted.$i.ips")];
+        }
+        $methodPaths = [];
+        foreach (self::map($c, 'methodPaths') as $method => $paths) {
+            $methodPaths[strtoupper((string) $method)] = self::strings(['p' => $paths], 'p', "methodPaths.$method");
+        }
+        $level = self::string($log, 'level', 'log.level', 'stop');
+        if (!in_array($level, Log::LEVELS, true)) {
+            throw self::wrong('log.level', implode(', ', Log::LEVELS));
+        }
+        $ip = self::string($log, 'ip', 'log.ip', 'masked');
+        if ($ip !== 'masked' && $ip !== 'full') {
+            throw self::wrong('log.ip', 'masked or full');
+        }
+        $logFile = $log['file'] ?? null;
+        if ($logFile !== null && (!is_string($logFile) || $logFile === '')) {
+            throw self::wrong('log.file', 'null or a path');
+        }
 
         $budgets = [];
         foreach (self::map($c, 'budgets') as $name => $budget) {
@@ -109,6 +148,12 @@ final class Settings
             self::bool($c, 'debugHeader'),
             ChallengeSettings::from(self::map($c, 'challenge')),
             self::origins(self::map($c, 'origins')),
+            $restricted,
+            $methodPaths,
+            $level === 'off' ? null : $logFile,
+            $level,
+            $ip,
+            max(4096, self::int($log, 'maxSize', 'log.maxSize', 10485760)),
         );
     }
 
@@ -145,7 +190,7 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 3;       // 3: rule files, several sources, origins
+    private const FORMAT = 4;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log
 
     /**
      * The settings of a file, checked only when it changed. A ".rules" file
@@ -174,11 +219,12 @@ final class Settings
         // No is_file() first: a stat costs more than everything else here, and
         // an include of a missing file just returns false.
         $e = @include $compiled;
-        if (is_array($e) && ($e['format'] ?? 0) === self::FORMAT && ($e['file'] ?? '') === $file
-            && is_array($e['settings'] ?? null) && is_array($e['seen'] ?? null) && self::fresh($e['seen'], is_int($e['recheck'] ?? null) ? $e['recheck'] : 0, $key)) {
-            /** @var array<string, mixed> $exported */
-            $exported = $e['settings'];
-            return self::import($exported);
+        // Written by write() below, so trusted beyond its format and file.
+        if (is_array($e) && ($e['format'] ?? 0) === self::FORMAT && ($e['file'] ?? '') === $file) {
+            /** @var array{seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, settings: array<string, mixed>} $e */
+            if (($e['env'] === [] || self::sameEnv($e['env'])) && self::fresh($e['seen'], $e['recheck'], $key)) {
+                return self::import($e['settings']);
+            }
         }
 
         if (substr($file, -6) === '.rules') {
@@ -189,6 +235,7 @@ final class Settings
             $seen = [$file => $read['seen'][$file] ?? [0, 0]] + $read['seen'];
             $recheck = $read['recheck'];
             $config = $read['config'];
+            $env = $read['env'];
         } else {
             clearstatcache();
             $stat = Rules\RuleFile::stat($file);
@@ -207,24 +254,41 @@ final class Settings
             }
             $seen = [$file => $stat];
             $recheck = 0;
+            $env = [];
             if ($sources !== []) {
                 throw new \RuntimeException('request-shield: further sources need a .rules main file');
             }
         }
         $settings = self::from($config);
         self::write($compiled, "<?php\n// Compiled by cjw-network/request-shield from $file; rebuilt when it changes.\nreturn "
-            . var_export(['format' => self::FORMAT, 'file' => $file, 'seen' => $seen, 'recheck' => $recheck, 'settings' => $settings->export()], true) . ";\n");
-        if (count($seen) > 1 && $recheck > 0 && function_exists('apcu_enabled') && apcu_enabled()) {
+            . var_export(['format' => self::FORMAT, 'file' => $file, 'seen' => $seen, 'env' => $env, 'recheck' => $recheck, 'settings' => $settings->export()], true) . ";\n");
+        if ($recheck > 0 && function_exists('apcu_enabled') && apcu_enabled()) {
             apcu_store('rshield:fresh:' . $key, true, $recheck);
         }
         return $settings;
     }
 
-    /** @param array<mixed> $seen path => [mtime, size], the main file first */
+    /** @param array<string, string|null> $env the environment variables a rule file used, with their values then */
+    private static function sameEnv(array $env): bool
+    {
+        foreach ($env as $name => $value) {
+            $now = getenv($name);
+            if ((is_string($now) ? $now : null) !== $value) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Whether the sources are unchanged. Kept small and free of other
+     * classes: it runs on every request.
+     *
+     * @param array<string, array{0: int, 1: int}> $seen path => [mtime, size], the main file first
+     */
     private static function fresh(array $seen, int $recheck, string $key): bool
     {
-        $several = count($seen) > 1 && $recheck > 0;
-        $apcu = $several && function_exists('apcu_enabled') && apcu_enabled();
+        $apcu = $recheck > 0 && function_exists('apcu_enabled') && apcu_enabled();
         if ($apcu && apcu_fetch('rshield:fresh:' . $key) === true) {
             return true;
         }
@@ -233,10 +297,10 @@ final class Settings
         // mtime and size would be compared, and a change never seen.
         clearstatcache();
         foreach ($seen as $path => $stat) {
-            if (Rules\RuleFile::stat((string) $path) !== $stat) {
+            if (@filemtime($path) !== $stat[0] || @filesize($path) !== $stat[1]) {
                 return false;
             }
-            if ($several && !$apcu) {
+            if ($recheck > 0 && !$apcu) {
                 break;          // without APCu: only the main file
             }
         }

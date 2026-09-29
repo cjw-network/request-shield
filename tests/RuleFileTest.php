@@ -130,11 +130,21 @@ return [
         same('challenge always', decideFor($s, '/login'));
         same('reject host', decideFor($s, '/', ['HTTP_HOST' => 'evil.example']));
     },
-    'environment variables: ${NAME}, an error when unset' => function (): void {
+    'environment variables: ${NAME}, ${NAME:-default}, an error when unset' => function (): void {
         putenv('RSHIELD_TEST_SECRET=' . str_repeat('s', 40));
         same(str_repeat('s', 40), rulesFrom("set secret \${RSHIELD_TEST_SECRET}\n")->challenge->secret);
         putenv('RSHIELD_TEST_SECRET');
         rulesFail(['site.rules' => "set secret \${RSHIELD_TEST_SECRET}\n"], 'site.rules:1', 'RSHIELD_TEST_SECRET is not set');
+        same('/srv/x', rulesFrom("set store-dir \${RSHIELD_TEST_DIR:-/srv/x}\n")->storeDir, 'a default');
+        $dir = ruleDir(['site.rules' => "set store-dir \${RSHIELD_TEST_DIR:-/srv/x}\n"]);
+        try {
+            same('/srv/x', Settings::load("$dir/site.rules", "$dir/cache")->storeDir);
+            putenv('RSHIELD_TEST_DIR=/srv/y');
+            same('/srv/y', Settings::load("$dir/site.rules", "$dir/cache")->storeDir, 'rebuilt when the variable changes');
+        } finally {
+            putenv('RSHIELD_TEST_DIR');
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
     },
     'errors name file and line' => function (): void {
         rulesFail(['site.rules' => "host a.example\n\nblok /x\n"], 'site.rules:3', 'unknown rule "blok" (did you mean "block"?)');

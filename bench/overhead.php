@@ -68,6 +68,29 @@ for ($i = 0; $i < 20000; $i++) {
 }
 printf("  %-7s %6.2f µs per request (new Shield from a compiled settings file%s)\n", 'setup', (hrtime(true) - $t) / 20000 / 1000,
     function_exists('opcache_get_status') && ini_get('opcache.enable_cli') ? ', OPcache on' : ', OPcache OFF: the file is parsed every time');
+// The same from rule files: one file (one stat() per request), and a main
+// file with an include and five extensions' files (with APCu: checked every
+// 10 seconds, no stat() in between).
+$rules = $dir . '-rules';
+@mkdir("$rules/rules.d", 0700, true);
+file_put_contents("$rules/site.rules", "trust 10.0.0.0/8\nhost www.example.org example.org\ncache-query page\nlimit requests 600/min challenge-at 300\nlimit misses 60/min on-demand\nblock /wp-admin/**\nchallenge /login\n");
+file_put_contents("$rules/multi.rules", file_get_contents("$rules/site.rules") . "include rules.d/*.rules\n");
+for ($x = 1; $x <= 5; $x++) {
+    @mkdir("$rules/ext$x", 0700, true);
+    file_put_contents("$rules/ext$x/request-shield.rules", "cache-path /ext$x/**\nchallenge /ext$x/checkout\n");
+}
+file_put_contents("$rules/rules.d/local.rules", "exempt 192.0.2.50\n");
+foreach (['one rule file' => ["$rules/site.rules", []], 'rule file + include + 5 extensions' => ["$rules/multi.rules", ["$rules/ext*/request-shield.rules"]]] as $label => [$main, $sources]) {
+    CjwNetwork\RequestShield\Settings::load($main, $dir . '-cache', $sources);
+    $t = hrtime(true);
+    for ($i = 0; $i < 20000; $i++) {
+        clearstatcache();
+        $s = new Shield(CjwNetwork\RequestShield\Settings::load($main, $dir . '-cache', $sources), $stores['memory']);
+    }
+    printf("  %-7s %6.2f µs per request (%s%s)\n", 'setup', (hrtime(true) - $t) / 20000 / 1000, $label,
+        $sources !== [] ? (function_exists('apcu_enabled') && apcu_enabled() ? ', APCu: rechecked every 10 s' : ', no APCu: main file only') : '');
+}
+exec('rm -rf ' . escapeshellarg($rules));
 exec('rm -rf ' . escapeshellarg($cfgFile) . ' ' . escapeshellarg($dir . '-cache'));
 exec('rm -rf ' . escapeshellarg($dir));
 

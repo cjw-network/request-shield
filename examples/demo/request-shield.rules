@@ -1,0 +1,51 @@
+# The demo site's rules. Low limits on purpose, so every reaction can be seen
+# within a few clicks; a real site uses the defaults or more.
+#
+# The paths start with **/ so the demo works in any directory (/demo/page/about,
+# /demo/index.php/page/about). A real site writes them from its root: /page/*.
+# Every decision names the line behind it: X-Request-Shield ...; rule=request-shield.rules:12
+
+# What a cache may keep: the front page and /page/<name>, with ?page=<n>.
+# Anything else passes too -- the site answers it, 200 or 404 -- but marked
+# "allow-uncached", so made-up URLs cannot fill a cache. (A CMS with URLs
+# that change all the time keeps "cache-path any", the default, and counts
+# its cache misses per client instead: the "misses" budget below.)
+cache-path  **/  **/index.php  **/page/*
+cache-query page
+
+# The search page takes any ?q= -- answered, never cached (q is not in
+# cache-query) -- and counts every search against its own budget
+# (on-demand: the page counts, see index.php).
+limit       searches 10/min on-demand
+
+# A POST only where there is a form; anywhere else 405.
+allow       POST  **/edit
+
+# The admin area only from the office network, the API only from this machine.
+restrict    **/admin/**  to 192.0.2.0/24
+restrict    **/api/**    to 127.0.0.1 ::1
+
+# Per visitor and minute: past 20 requests the invisible browser check, past
+# 60 a pause (429). Reload any page 20 times to see it.
+limit       requests 60/min challenge-at 20
+
+# A page that always checks the browser, whatever the budget -- as a login would.
+challenge   **/challenge
+
+# The demo runs on your own machine: count localhost too (a real site exempts
+# its monitoring and its own servers here).
+exempt      none
+
+set         difficulty-min 50000
+set         difficulty-max 300000
+set         search-engines off
+
+# Counters, the generated secret and the log: outside the document root,
+# never in a directory a web server might hand out (the tests set the variable).
+set         store-dir ${REQUEST_SHIELD_DEMO_VAR:-/tmp/request-shield-demo}
+set         log ${REQUEST_SHIELD_DEMO_VAR:-/tmp/request-shield-demo}/shield.log
+set         log-level flag
+set         recheck 0
+
+# X-Request-Shield: <decision> <reason>; rule=<file:line> on every response.
+set         debug-header on

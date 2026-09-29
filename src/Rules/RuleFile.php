@@ -51,6 +51,10 @@ final class RuleFile
         'bind-user-agent' => ['challenge.bindUserAgent', 'bool'],
         'search-engines' => ['challenge.searchEngines', 'bool'],
         'recheck' => ['recheck', 'seconds'],
+        'log' => ['log.file', 'path'],
+        'log-level' => ['log.level', 'loglevel'],
+        'log-ip' => ['log.ip', 'logip'],
+        'log-max-size' => ['log.maxSize', 'bytes'],
     ];
 
     private const TEXTS = ['lang', 'title', 'text', 'noscript', 'nocookies', 'failed'];
@@ -65,6 +69,9 @@ final class RuleFile
     private array $origins = [];
 
     private string $base = '';
+
+    /** @var array<string, string|null> the environment variables used, with their values */
+    private array $env = [];
 
     /** @var list<string> the files being read, for include loops */
     private array $stack = [];
@@ -84,7 +91,7 @@ final class RuleFile
      * one), each with its includes.
      *
      * @param list<string> $files paths or globs; a glob may match nothing
-     * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, recheck: int}
+     * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int}
      *   config: the settings array, with 'origins' (setting => pattern or budget => "file:line")
      * @throws RuleFileException naming file and line
      */
@@ -100,7 +107,7 @@ final class RuleFile
         $recheck = $r->c['recheck'];
         unset($r->c['recheck']);
         $r->c['origins'] = $r->origins;
-        return ['config' => $r->c, 'seen' => $r->seen, 'recheck' => is_int($recheck) ? $recheck : 10];
+        return ['config' => $r->c, 'seen' => $r->seen, 'env' => $r->env, 'recheck' => is_int($recheck) ? $recheck : 10];
     }
 
     /**
@@ -185,17 +192,18 @@ final class RuleFile
         switch ($keyword) {
             case 'host':
                 $this->list('hosts', $args, $at, static fn (string $h): string => strtolower($h));
+                $this->origins['hosts']['*'] = $at;
+                return;
+            case 'restrict':
+                $this->restrict($args, $at);
+                return;
+            case 'allow':
+                $this->allow($args, $at);
                 return;
             case 'trust':
             case 'exempt':
                 $key = $keyword === 'trust' ? 'trustedProxies' : 'exempt.ips';
-                $this->list($key, $args, $at, static function (string $ip) use ($at): string {
-                    $addr = explode('/', $ip, 2);
-                    if (@inet_pton($addr[0]) === false || (isset($addr[1]) && !ctype_digit($addr[1]))) {
-                        throw new RuleFileException("$at: \"$ip\" is not an address or a range (192.0.2.0/24, 2001:db8::/32)");
-                    }
-                    return $ip;
-                });
+                $this->list($key, $args, $at, static fn (string $ip): string => self::address($ip, $at));
                 return;
             case 'method':
                 $this->list('methods', $args, $at, static function (string $m) use ($at): string {
@@ -204,6 +212,7 @@ final class RuleFile
                     }
                     return strtoupper($m);
                 });
+                $this->origins['methods']['*'] = $at;
                 return;
             case 'block':
                 $this->patterns('blockedPaths', $args, $at, true);
@@ -213,9 +222,11 @@ final class RuleFile
                 return;
             case 'cache-path':
                 $this->patterns('cacheable.paths', $args, $at, false);
+                $this->origins['cacheable.paths']['*'] = $at;
                 return;
             case 'cache-query':
                 $this->list('cacheable.query', $args, $at, static fn (string $q): string => $q);
+                $this->origins['cacheable.query']['*'] = $at;
                 return;
             case 'challenge':
                 $this->patterns('challenge.alwaysPaths', $args, $at, false);
@@ -235,7 +246,7 @@ final class RuleFile
                 unset($this->origins['budgets'][$args[0]]);
                 return;
             case 'set':
-                $this->set($line, $at);
+                $this->set($line, $at, $file);
                 return;
             case 'include':
                 if ($args === []) {
@@ -253,7 +264,7 @@ final class RuleFile
                 return;
         }
         throw new RuleFileException("$at: unknown rule \"$keyword\"" . self::suggest($keyword,
-            ['host', 'trust', 'exempt', 'method', 'block', 'unblock', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'limit', 'no-limit', 'set', 'include']));
+            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'limit', 'no-limit', 'set', 'include']));
     }
 
     /**
@@ -390,6 +401,79 @@ final class RuleFile
         }
     }
 
+    /**
+     * restrict <path patterns> to <addresses or ranges>: everyone else 403.
+     * Case does not matter, and the path is matched as the application routes
+     * it (Request::matchPath()).
+     *
+     * @param list<string> $args
+     */
+    private function restrict(array $args, string $at): void
+    {
+        $to = array_search('to', $args, true);
+        if ($to === false || $to === 0 || $to === count($args) - 1) {
+            throw new RuleFileException("$at: restrict <paths> to <addresses or ranges>");
+        }
+        $ips = [];
+        foreach (array_slice($args, $to + 1) as $ip) {
+            $ips[] = self::address($ip, $at);
+        }
+        $paths = [];
+        foreach ($this->compile(array_slice($args, 0, $to), $at, false) as $pattern => $origin) {
+            $pattern .= 'i';
+            $paths[] = $pattern;
+            $this->origins['restricted'][$pattern] = $origin;
+        }
+        $list = $this->get('restricted');
+        $list = is_array($list) ? $list : [];
+        $list[] = ['paths' => $paths, 'ips' => $ips];
+        $this->put('restricted', $list);
+    }
+
+    /**
+     * allow <METHODS> <path patterns>: those methods only there (a POST where
+     * the forms are); elsewhere 405. The methods are allowed at all, too.
+     *
+     * @param list<string> $args
+     */
+    private function allow(array $args, string $at): void
+    {
+        $methods = [];
+        while ($args !== [] && preg_match('/^[A-Z]+$/', $args[0])) {
+            $methods[] = (string) array_shift($args);
+        }
+        if ($methods === [] || $args === []) {
+            throw new RuleFileException("$at: allow <METHODS> <paths> (allow POST /contact /edit/**)");
+        }
+        $patterns = $this->compile($args, $at, false);
+        foreach ($methods as $m) {
+            $list = $this->get("methodPaths.$m");
+            $list = is_array($list) ? $list : [];
+            foreach ($patterns as $pattern => $origin) {
+                $pattern .= 'i';
+                if (!in_array($pattern, $list, true)) {
+                    $list[] = $pattern;
+                }
+            }
+            $this->put("methodPaths.$m", $list);
+            $this->origins['methodPaths'][$m] = $at;
+            $all = (array) $this->get('methods');
+            if (!in_array($m, $all, true)) {
+                $all[] = $m;
+                $this->put('methods', $all);
+            }
+        }
+    }
+
+    private static function address(string $ip, string $at): string
+    {
+        $addr = explode('/', $ip, 2);
+        if (@inet_pton($addr[0]) === false || (isset($addr[1]) && !ctype_digit($addr[1]))) {
+            throw new RuleFileException("$at: \"$ip\" is not an address or a range (192.0.2.0/24, 2001:db8::/32)");
+        }
+        return $ip;
+    }
+
     /** @param list<string> $args  <name> <n>/<sec|min|hour|day> [challenge-at <n>] [on-demand] */
     private function limit(array $args, string $at): void
     {
@@ -419,7 +503,7 @@ final class RuleFile
         $this->origins['budgets'][$name] = $at;
     }
 
-    private function set(string $line, string $at): void
+    private function set(string $line, string $at, string $file): void
     {
         // The value is the rest of the line: texts have spaces.
         $parts = preg_split('/\s+/', $line, 3) ?: [];
@@ -459,6 +543,28 @@ final class RuleFile
                 }
                 $v = (int) $m[1] * ['' => 1, 's' => 1, 'm' => 60, 'h' => 3600, 'd' => 86400][$m[2] ?? ''];
                 break;
+            case 'loglevel':
+                if (!in_array($value, \CjwNetwork\RequestShield\Log::LEVELS, true)) {
+                    throw new RuleFileException("$at: log-level is " . implode(', ', \CjwNetwork\RequestShield\Log::LEVELS) . ", not \"$value\"");
+                }
+                $v = $value;
+                break;
+            case 'logip':
+                if ($value !== 'masked' && $value !== 'full') {
+                    throw new RuleFileException("$at: log-ip is masked or full, not \"$value\"");
+                }
+                $v = $value;
+                break;
+            case 'bytes':
+                if (!preg_match('/^(\d+)([kmg])?b?$/i', $value, $m)) {
+                    throw new RuleFileException("$at: $key is a size (10M, 500K), not \"$value\"");
+                }
+                $v = (int) $m[1] * ['' => 1, 'k' => 1024, 'm' => 1048576, 'g' => 1073741824][strtolower($m[2] ?? '')];
+                break;
+            case 'path':
+                // Relative to the rule file it is written in.
+                $v = $value[0] === '/' ? $value : dirname($file) . '/' . $value;
+                break;
             case 'store':
                 if (!in_array($value, ['auto', 'apcu', 'file', 'memory'], true)) {
                     throw new RuleFileException("$at: store is auto, apcu, file or memory, not \"$value\"");
@@ -471,18 +577,26 @@ final class RuleFile
         $this->put($path, $v);
     }
 
-    /** ${NAME}: an environment variable, so a secret need not be in the file. */
+    /**
+     * ${NAME}: an environment variable, so a secret need not be in the file;
+     * ${NAME:-default} when it may be unset. The values used are recorded:
+     * the compiled settings are rebuilt when one changes.
+     */
     private function env(string $value, string $at): string
     {
         if (strpos($value, '${') === false) {
             return $value;
         }
-        return (string) preg_replace_callback('/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/', static function (array $m) use ($at): string {
+        return (string) preg_replace_callback('/\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}/', function (array $m) use ($at): string {
             $v = getenv($m[1]);
-            if (!is_string($v)) {
-                throw new RuleFileException("$at: the environment variable $m[1] is not set");
+            $this->env[$m[1]] = is_string($v) ? $v : null;
+            if (is_string($v) && $v !== '') {
+                return $v;
             }
-            return $v;
+            if (isset($m[2])) {
+                return $m[2];
+            }
+            throw new RuleFileException("$at: the environment variable $m[1] is not set");
         }, $value);
     }
 

@@ -18,7 +18,7 @@ declare(strict_types=1);
 // Everything below this block runs only for requests the shield lets through.
 // (On a site without a front controller, auto_prepend_file does the same.)
 $arrived = $_SERVER;                            // demo only: the request before the shield, to show what it removes
-define('REQUEST_SHIELD_CONFIG', __DIR__ . '/request-shield.php');
+define('REQUEST_SHIELD_CONFIG', __DIR__ . '/request-shield.rules');
 require __DIR__ . '/../../bootstrap.php';       // with Composer: vendor/autoload.php + Shield::protectFile(...)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -50,8 +50,36 @@ if ($path === '/reset') {
 }
 
 $request = Request::fromServer($_SERVER);
+$shield = Shield::active();
+$method = (string) ($_SERVER['REQUEST_METHOD'] ?? 'GET');
+
+// The pages behind the examples. Everything that gets here was let through.
+$content = null;
+if ($path === '/search') {
+    // An on-demand budget: the page counts each search itself.
+    $query = (string) ($_GET['q'] ?? '');
+    $counted = $shield !== null ? $shield->consume('searches') : null;
+    if ($counted !== null && !$counted->passes()) {
+        http_response_code(429);
+        header('Retry-After: ' . $counted->retryAfter);
+        $content = ['Too many searches', 'More than 10 searches a minute from your address: please wait ' . $counted->retryAfter . ' seconds. (The "searches" budget, counted by this page with Shield::active()->consume(\'searches\').)'];
+    } else {
+        $content = ['Search', $query === '' ? 'Type something to search for.' : 'No results for "' . $query . '" -- this is a demo. The answer is never cached: q is not in cache-query.'];
+    }
+} elseif ($path === '/edit') {
+    $content = ['Edit form', $method === 'POST' ? 'Saved: "' . (string) ($_POST['message'] ?? '') . '" -- a POST is allowed here (allow POST **/edit) and never cached.' : 'A POST is allowed on this page only.'];
+} elseif (strncmp($path, '/admin/', 7) === 0) {
+    $content = ['Admin area', 'Only the office network (192.0.2.0/24) gets here.'];
+} elseif ($path === '/api/status') {
+    header('Content-Type: application/json');
+    echo json_encode(['ok' => true, 'note' => 'the API answers only this machine (restrict **/api/** to 127.0.0.1 ::1)']), "\n";
+    exit;
+}
+
+$rule = Shield::currentRule();
 $status = [
     'Decision' => $decision !== null ? $decision->action . ($decision->reason !== '' ? ' (' . $decision->reason . ')' : '') : '—',
+    'The rule behind it' => $rule ?? '— (no rule needed: allowed)',
     'May a cache keep this page?' => $decision !== null && $decision->cacheable() ? 'yes' : 'no',
     'Your address' => $request->clientIp,
     'Counted as' => IpAddress::bucket($request->clientIp),
@@ -62,12 +90,25 @@ $tests = [
     ['/', 'A normal page', 'allow — passes, may be cached'],
     ['/page/about', 'A known page', 'allow'],
     ['/?utm_source=newsletter', 'An unknown parameter', 'allow-uncached — answered, never cached'],
-    ['/random/' . bin2hex(random_bytes(3)), 'An unknown path', 'allow-uncached'],
+    ['/random/' . bin2hex(random_bytes(3)), 'An unknown path', 'allow-uncached — passes, the site answers it (a CMS: 200 or 404), but a cache must not keep it'],
+    ['/search?q=shield', 'A search page', 'allow-uncached; past 10 searches a minute 429 (a budget the page counts)'],
+    ['/edit', 'An edit form', 'a POST is allowed here only'],
+    ['/admin/', 'The admin area', '403 — only for the office network'],
+    ['//admin/', 'The admin area, sneaked', '403 — "//", "%61" and case do not get past it'],
+    ['/api/status', 'The API', 'allowed from this machine only'],
     ['/challenge', 'A page that always checks the browser', 'the invisible check once, then the page'],
     ['/.env', 'What a scanner looks for', '404 — the site never sees it'],
     ['/files/%2e%2e/secret', 'Path traversal', '400'],
     ['/reset', 'Forget my pass cookie', 'the check appears again on /challenge'],
 ];
+
+// The shield's log (set log ...; log-level flag): what it stopped or flagged, newest first.
+$logLines = [];
+$logFile = $shield !== null ? $shield->settings->logFile : null;
+if ($logFile !== null && is_readable($logFile)) {
+    $lines = file($logFile, FILE_IGNORE_NEW_LINES) ?: [];
+    $logLines = array_reverse(array_slice($lines, -15));
+}
 
 // The request as it arrived: request line and headers, and which of them the
 // shield took out of $_SERVER (X-Forwarded-* from a peer that is not a
@@ -94,7 +135,7 @@ $fullUrl = $request->scheme . '://' . (is_string($arrived['HTTP_HOST'] ?? null) 
     . (string) ($arrived['REQUEST_URI'] ?? '/');
 $requestLine = ($arrived['REQUEST_METHOD'] ?? 'GET') . ' ' . ($arrived['REQUEST_URI'] ?? '/') . ' ' . ($arrived['SERVER_PROTOCOL'] ?? 'HTTP/1.1');
 
-$title = $path === '/challenge' ? 'You passed the browser check' : 'request-shield demo';
+$title = $path === '/challenge' ? 'You passed the browser check' : ($content !== null ? $content[0] : 'request-shield demo');
 header('Content-Type: text/html; charset=utf-8');
 // What PHP sends (the web server adds Date, Server and the like).
 $responseLines = array_map(static function (string $line) use ($short): array {
@@ -134,6 +175,7 @@ $responseLines = array_map(static function (string $line) use ($short): array {
   <h1><?= $e($title) ?></h1>
   <p class="lead">This page is protected by <strong>cjw-network/request-shield</strong>. Every request below is checked before this page's code runs.</p>
 
+  <?php if ($content !== null): ?><p class="card"><?= $e($content[1]) ?></p><?php endif ?>
   <p class="url"><span class="note">You asked for</span><br><code><?= $e($fullUrl) ?></code></p>
 
   <div class="card">
@@ -170,20 +212,25 @@ $responseLines = array_map(static function (string $line) use ($short): array {
 
 <?php endforeach ?></pre>
 
-  <h2>A form (POST)</h2>
+  <h2>Forms (POST)</h2>
   <div class="card">
-    <?php if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'): ?>
-      <p>You sent: <strong><?= $e((string) ($_POST['message'] ?? '')) ?></strong> — a POST is answered, but never cached.</p>
-    <?php endif ?>
-    <form method="post" action="<?= $e($url('/page/form')) ?>"><input type="text" name="message" placeholder="Type something"><button type="submit">Send</button></form>
+    <form method="post" action="<?= $e($url('/edit')) ?>"><input type="text" name="message" placeholder="Type something"><button type="submit">Save (POST to /edit)</button></form>
+    <p class="note" style="margin-top:.8rem">A bot posting wherever it finds a URL: <code>allow POST **/edit</code> lets a POST through on the edit page only.</p>
+    <form method="post" action="<?= $e($url('/page/about')) ?>"><input type="hidden" name="message" value="spam"><button type="submit">POST to /page/about</button></form>
   </div>
 
+  <h2>The shield's log</h2>
+  <p class="note">What it stopped or flagged, newest first (<code>set log …</code>, <code>set log-level flag</code>); addresses shortened unless <code>set log-ip full</code>.</p>
+  <pre><?php if ($logLines === []): ?>(nothing yet — try /.env or /admin/)<?php endif ?><?php foreach ($logLines as $line): ?>
+<?= $e($line) . "\n" ?>
+<?php endforeach ?></pre>
+
   <h2>How this page includes the shield</h2>
-  <pre>define('REQUEST_SHIELD_CONFIG', __DIR__ . '/request-shield.php');
+  <pre>define('REQUEST_SHIELD_CONFIG', __DIR__ . '/request-shield.rules');
 require __DIR__ . '/../../bootstrap.php';
 
 $decision = CjwNetwork\RequestShield\Shield::current();   // what the shield decided</pre>
-  <p>The settings: <code>examples/demo/request-shield.php</code>. Every response carries <code>X-Request-Shield</code> with the decision (see your browser's network tab).</p>
+  <p>The rules: <code>examples/demo/request-shield.rules</code> — one per line, and every decision names the line behind it. Every response carries <code>X-Request-Shield</code> with the decision (see your browser's network tab).</p>
 </main>
 <script>
 // "Show the answer": fetches the example in the background and shows status and
