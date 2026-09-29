@@ -23,6 +23,7 @@ require __DIR__ . '/../../bootstrap.php';       // with Composer: vendor/autoloa
 // ─────────────────────────────────────────────────────────────────────────────
 
 use CjwNetwork\RequestShield\IpAddress;
+use CjwNetwork\RequestShield\Report\Describe;
 use CjwNetwork\RequestShield\Report\RulesPage;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Shield;
@@ -103,22 +104,33 @@ $status = [
     'Pass valid for' => $passLeft !== null ? $passLeft . ' more seconds (set pass-ttl 1m), then the check comes back' : '—',
 ];
 
-$tests = [
-    ['/', 'A normal page', 'allow — passes, may be cached'],
-    ['/page/about', 'A known page', 'allow'],
-    ['/?utm_source=newsletter', 'An unknown parameter', 'allow-uncached — answered, never cached'],
-    ['/random/' . bin2hex(random_bytes(3)), 'An unknown path', 'allow-uncached — passes, the site answers it (a CMS: 200 or 404), but a cache must not keep it'],
-    ['/search?q=shield', 'A search page', 'allow-uncached; past 10 searches a minute 429 (a budget the page counts)'],
-    ['/edit', 'An edit form', 'a POST is allowed here only'],
-    ['/admin/', 'The admin area', '403 — only for the office network'],
-    ['//admin/', 'The admin area, sneaked', '403 — "//", "%61" and case do not get past it'],
-    ['/api/status', 'The API', 'allowed from this machine only'],
-    ['/rules', 'The active rules', 'all rules in plain words, how often each decided, and a check for any address (this machine only)'],
-    ['/challenge', 'A page that always checks the browser', 'the invisible check once, then the page'],
-    ['/.env', 'What a scanner looks for', '404 — the site never sees it'],
-    ['/files/.env', 'The same file in the admin\'s file reader', 'passes from this machine: an exception for /files/ (unblock … at … for …)'],
-    ['/files/%2e%2e/secret', 'Path traversal', '400'],
-    ['/reset', 'Forget my pass cookie', 'the check appears again on /challenge'],
+// The examples, by what they show. [path, what, what the shield does]
+$groups = [
+    'Normal visitors' => [
+        ['/', 'A normal page', 'passes; a cache may keep it'],
+        ['/page/about', 'A known page', 'passes; a cache may keep it'],
+        ['/search?q=shield', 'A search page', 'passes, never cached; past 10 searches a minute: wait (a budget the page counts)'],
+        ['/edit', 'An edit form', 'a POST is accepted here, and only here'],
+    ],
+    'Keeping the cache clean' => [
+        ['/?utm_source=newsletter', 'An unknown parameter', 'answered, but a cache must not keep it'],
+        ['/random/' . bin2hex(random_bytes(3)), 'An unknown path', 'the site answers it (a CMS: 200 or 404), but a cache must not keep it'],
+    ],
+    'Turning attackers away' => [
+        ['/.env', 'What a scanner looks for', '"not found" (404) — the site never sees it'],
+        ['/files/%2e%2e/secret', 'Leaving the site\'s folder', 'a broken request (400)'],
+        ['//admin/', 'The admin area, sneaked', 'no access (403) — "//", "%61" and case do not get past it'],
+    ],
+    'Doors for certain people' => [
+        ['/admin/', 'The admin area', 'no access (403) — only for the office network'],
+        ['/api/status', 'The API', 'answers this machine only'],
+        ['/files/.env', 'A hidden file in the admin\'s file reader', 'passes from this machine: hidden files are open at /files/ only'],
+        ['/rules', 'The active rules', 'every rule in plain words, and a check for any address (this machine only)'],
+    ],
+    'Browser check and pace' => [
+        ['/challenge', 'A page that always checks the browser', 'the invisible check once, then the page (valid for 1 minute here)'],
+        ['/reset', 'Forget my pass', 'the check comes back on /challenge'],
+    ],
 ];
 
 // The shield's log (set log ...; log-level flag): what it stopped or flagged, newest first.
@@ -169,87 +181,120 @@ $responseLines = array_map(static function (string $line) use ($short): array {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title><?= $e($title) ?></title>
 <style>
-  :root { --bg: #f6f7f9; --fg: #1d2127; --muted: #5b6470; --card: #fff; --line: #dfe3e8; --accent: #2f62c9; --ok: #1e7b43; --no: #a3361f; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #15181c; --fg: #e7e9ec; --muted: #a0a8b3; --card: #1d2127; --line: #2d333b; --accent: #7aa2ff; --ok: #5fcf8a; --no: #ff8a70; } }
+  :root { --bg: #f6f7f9; --fg: #1d2127; --muted: #5b6470; --card: #fff; --line: #dfe3e8; --accent: #2f62c9; --ok: #1e7b43; --okbg: #e6f4ea; --warn: #8a5a00; --warnbg: #fdf3dc; --no: #a3361f; --nobg: #fbe9e5; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #15181c; --fg: #e7e9ec; --muted: #a0a8b3; --card: #1d2127; --line: #2d333b; --accent: #7aa2ff; --ok: #5fcf8a; --okbg: #17301f; --warn: #f0c060; --warnbg: #3a2f15; --no: #ff8a70; --nobg: #3d1f19; } }
+  * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 system-ui, sans-serif; }
-  main { max-width: 52rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
-  h1 { font-size: 1.6rem; margin: .2rem 0 .3rem; } h2 { font-size: 1.15rem; margin: 2rem 0 .6rem; }
-  p.lead { color: var(--muted); margin: 0 0 1.2rem; }
+  header.bar { background: var(--card); border-bottom: 1px solid var(--line); }
+  header.bar div { max-width: 60rem; margin: 0 auto; padding: .7rem 1rem; display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; }
+  header.bar .name { font-weight: 700; margin-right: auto; color: var(--fg); text-decoration: none; }
+  a.button { display: inline-block; padding: .4rem .9rem; border-radius: 6px; background: var(--accent); color: #fff; text-decoration: none; font-weight: 600; }
+  a.quiet { color: var(--muted); }
+  main { max-width: 60rem; margin: 0 auto; padding: 1.3rem 1rem 3rem; }
+  h1 { font-size: 1.5rem; margin: .2rem 0 .2rem; } h2 { font-size: 1.15rem; margin: 2rem 0 .6rem; } h3 { font-size: 1rem; margin: 0 0 .5rem; }
+  p.lead { color: var(--muted); margin: 0 0 1rem; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.2rem; }
-  table { width: 100%; border-collapse: collapse; } td, th { text-align: left; padding: .45rem .5rem; border-top: 1px solid var(--line); vertical-align: top; }
-  tr:first-child td, tr:first-child th { border-top: 0; } th { font-weight: 600; width: 45%; }
-  .yes { color: var(--ok); font-weight: 600; } .no { color: var(--no); font-weight: 600; }
+  .verdict { display: flex; gap: .8rem; align-items: flex-start; border-radius: 10px; padding: .9rem 1.1rem; margin-bottom: .8rem; }
+  .verdict.pass { background: var(--okbg); } .verdict.note { background: var(--warnbg); } .verdict.stop { background: var(--nobg); }
+  .icon { flex: 0 0 1.7rem; height: 1.7rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; }
+  .pass .icon { background: var(--ok); } .note .icon { background: var(--warn); } .stop .icon { background: var(--no); }
+  .verdict code { word-break: break-all; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr)); gap: .6rem; margin-bottom: .5rem; }
+  .facts div { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: .55rem .8rem; }
+  .facts span { display: block; color: var(--muted); font-size: .85rem; }
+  .groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr)); gap: .8rem; }
+  .groups ul { list-style: none; margin: 0; padding: 0; }
+  .groups li { padding: .5rem 0; border-top: 1px solid var(--line); } .groups li:first-child { border-top: 0; padding-top: 0; }
+  .groups li a { font-weight: 600; } .groups li code { color: var(--muted); font-size: 13px; }
+  .expect { display: block; color: var(--muted); font-size: .92rem; }
   a { color: var(--accent); } code, pre { font: 14px/1.5 ui-monospace, monospace; }
-  pre { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: .9rem 1rem; overflow-x: auto; }
-  form { display: flex; gap: .5rem; flex-wrap: wrap; } input[type=text] { flex: 1 1 14rem; padding: .45rem .6rem; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
-  p.url { margin: 0 0 1rem; } p.url code { word-break: break-all; font-size: 15px; }
-  .note { color: var(--muted); font-size: .92rem; margin: 0 0 .5rem; }
-  button.peek { margin-top: .35rem; padding: .2rem .6rem; font-size: .85rem; background: transparent; color: var(--accent); border: 1px solid var(--line); }
-  pre.answer { margin: .4rem 0 0; font-size: 13px; white-space: pre-wrap; word-break: break-all; }
-  button { padding: .45rem .9rem; border: 0; border-radius: 6px; background: var(--accent); color: #fff; cursor: pointer; }
+  pre { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: .8rem 1rem; overflow-x: auto; margin: .5rem 0 0; }
+  .yes { color: var(--ok); font-weight: 600; } .no { color: var(--no); font-weight: 600; }
+  form { display: flex; gap: .5rem; flex-wrap: wrap; margin: .3rem 0; } input[type=text] { flex: 1 1 14rem; padding: .45rem .6rem; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
+  .note { color: var(--muted); font-size: .92rem; margin: .4rem 0; }
+  button { padding: .45rem .9rem; border: 0; border-radius: 6px; background: var(--accent); color: #fff; cursor: pointer; font: inherit; }
+  button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+  button.peek { margin-top: .3rem; padding: .15rem .55rem; font-size: .82rem; background: transparent; color: var(--accent); border: 1px solid var(--line); }
+  pre.answer { font-size: 13px; white-space: pre-wrap; word-break: break-all; }
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: .7rem 1.1rem; margin-bottom: .6rem; }
+  summary { cursor: pointer; font-weight: 600; }
 </style>
 </head>
 <body>
+<header class="bar"><div>
+  <a class="name" href="<?= $e($url('/')) ?>">request-shield demo</a>
+  <a class="quiet" href="<?= $e($url('/reset')) ?>">Reset my pass</a>
+  <a class="button" href="<?= $e($url('/rules')) ?>">Active rules →</a>
+</div></header>
 <main>
   <h1><?= $e($title) ?></h1>
-  <p class="lead">This page is protected by <strong>cjw-network/request-shield</strong>. Every request below is checked before this page's code runs.</p>
+  <p class="lead">This page is protected by <strong>cjw-network/request-shield</strong>: every request is checked before this page's code runs. Click an example — or see <a href="<?= $e($url('/rules')) ?>">all active rules in plain words</a>, and try any address there.</p>
 
   <?php if ($content !== null): ?><p class="card"><?= $e($content[1]) ?></p><?php endif ?>
-  <p class="url"><span class="note">You asked for</span><br><code><?= $e($fullUrl) ?></code></p>
 
-  <div class="card">
-    <table>
-      <?php foreach ($status as $label => $value): ?>
-        <tr><th><?= $e($label) ?></th><td class="<?= $value === 'yes' ? 'yes' : ($value === 'no' ? 'no' : '') ?>"><?= $e($value) ?></td></tr>
-      <?php endforeach ?>
-    </table>
+  <?php $state = $decision === null ? 'note' : ($decision->action === 'allow' ? 'pass' : 'note'); ?>
+  <div class="verdict <?= $state ?>"><span class="icon"><?= $state === 'pass' ? '✓' : '!' ?></span><div>
+    <strong>This request: the visitor <?= $e($decision !== null ? Describe::verdict($decision) : 'was not checked') ?>.</strong><br>
+    <span class="note">Decision <code><?= $e($status['Decision']) ?></code><?= $rule !== null ? ' · rule <code>' . $e($rule) . '</code>' : '' ?></span><br>
+    <span class="note">You asked for</span> <code><?= $e($fullUrl) ?></code>
+  </div></div>
+  <div class="facts">
+    <div><span>Your address</span><?= $e($request->clientIp) ?></div>
+    <div><span>Counted as</span><?= $e(IpAddress::bucket($request->clientIp)) ?></div>
+    <div><span>Browser check passed</span><b class="<?= $passLeft !== null ? 'yes' : 'no' ?>"><?= $passLeft !== null ? 'yes' : 'no' ?></b><?= $passLeft !== null ? ' — ' . $passLeft . ' s left' : '' ?></div>
+    <div><span>May a cache keep this page?</span><b class="<?= $status['May a cache keep this page?'] ?>"><?= $e($status['May a cache keep this page?']) ?></b></div>
   </div>
 
   <h2>Try it</h2>
-  <div class="card">
-    <table>
-      <tr><th>Request</th><td><strong>What the shield does</strong></td></tr>
-      <?php foreach ($tests as [$local, $what, $expect]): ?>
-        <tr><th><a href="<?= $e($url($local)) ?>"><?= $e($what) ?></a><br><code><?= $e($local) ?></code></th><td><?= $e($expect) ?><br><button type="button" class="peek" data-url="<?= $e($url($local)) ?>">Show the answer</button><pre class="answer" hidden></pre></td></tr>
-      <?php endforeach ?>
-      <tr><th>Reload any page 20 times</th><td>the invisible check (more than 20 requests a minute), then past 60 a short pause (429)</td></tr>
-    </table>
+  <div class="groups">
+    <?php foreach ($groups as $heading => $items): ?>
+      <section class="card"><h3><?= $e($heading) ?></h3><ul>
+        <?php foreach ($items as [$local, $what, $expect]): ?>
+          <li><a href="<?= $e($url($local)) ?>"><?= $e($what) ?></a> <code><?= $e($local) ?></code>
+            <span class="expect"><?= $e($expect) ?></span>
+            <button type="button" class="peek" data-url="<?= $e($url($local)) ?>">Show the answer</button><pre class="answer" hidden></pre></li>
+        <?php endforeach ?>
+        <?php if ($heading === 'Browser check and pace'): ?>
+          <li><strong>Reload any page 20 times</strong><span class="expect">the invisible check (more than 20 requests a minute), past 60 a short pause (429)</span></li>
+        <?php endif ?>
+      </ul></section>
+    <?php endforeach ?>
+    <section class="card"><h3>Forms</h3>
+      <form method="post" action="<?= $e($url('/edit')) ?>"><input type="text" name="message" placeholder="Type something"><button type="submit">Save (POST to /edit)</button></form>
+      <p class="note">A bot posts wherever it finds a URL: <code>allow POST **/edit</code> accepts a POST on the edit page only.</p>
+      <form method="post" action="<?= $e($url('/page/about')) ?>"><input type="hidden" name="message" value="spam"><button type="submit" class="secondary">POST to /page/about — 405</button></form>
+    </section>
   </div>
 
-  <h2>This request, as it arrived</h2>
-  <p class="note">What your browser sent. <span class="no">Struck out</span>: removed by the shield before the page ran (<code>X-Forwarded-*</code> is believed only from a trusted proxy).</p>
-  <pre><?= $e($requestLine) . "\n" ?>
+  <h2>Behind the scenes</h2>
+  <details open><summary>The shield's log — what it stopped or flagged, newest first</summary>
+    <p class="note">Each line with the full URL; addresses anonymised to their network (<code>/24</code>, <code>/48</code>) unless <code>set log-ip full</code>. Counted per rule on the <a href="<?= $e($url('/rules')) ?>">active rules page</a>.</p>
+    <pre><?php if ($logLines === []): ?>(nothing yet — try /.env or /admin/)<?php endif ?><?php foreach ($logLines as $line): ?>
+<?= $e($line) . "\n" ?>
+<?php endforeach ?></pre>
+  </details>
+  <details><summary>This request, as it arrived</summary>
+    <p class="note">What your browser sent. <span class="no">Struck out</span>: removed by the shield before the page ran (<code>X-Forwarded-*</code> is believed only from a trusted proxy).</p>
+    <pre><?= $e($requestLine) . "\n" ?>
 <?php foreach ($requestLines as [$name, $value, $removed]): ?>
 <?= $removed ? '<del class="no">' : '' ?><?= $e($name) ?>: <?= $e($value) ?><?= $removed ? '</del>' : '' ?>
 
 <?php endforeach ?></pre>
-
-  <h2>The answer's headers</h2>
-  <p class="note">What this page sends back; <code>X-Request-Shield</code> is the shield's decision (the web server adds <code>Date</code>, <code>Server</code> and the like).</p>
-  <pre><?php foreach ($responseLines as [$name, $value]): ?>
+  </details>
+  <details><summary>The answer's headers</summary>
+    <p class="note"><code>X-Request-Shield</code> is the shield's decision, with the rule behind it (the web server adds <code>Date</code>, <code>Server</code> and the like).</p>
+    <pre><?php foreach ($responseLines as [$name, $value]): ?>
 <?= $e($name) ?>: <?= $e($value) ?>
 
 <?php endforeach ?></pre>
-
-  <h2>Forms (POST)</h2>
-  <div class="card">
-    <form method="post" action="<?= $e($url('/edit')) ?>"><input type="text" name="message" placeholder="Type something"><button type="submit">Save (POST to /edit)</button></form>
-    <p class="note" style="margin-top:.8rem">A bot posting wherever it finds a URL: <code>allow POST **/edit</code> lets a POST through on the edit page only.</p>
-    <form method="post" action="<?= $e($url('/page/about')) ?>"><input type="hidden" name="message" value="spam"><button type="submit">POST to /page/about</button></form>
-  </div>
-
-  <h2>The shield's log</h2>
-  <p class="note">What it stopped or flagged, newest first (<code>set log …</code>, <code>set log-level flag</code>); each with the full URL; addresses anonymised to their network (<code>/24</code>, <code>/48</code>) unless <code>set log-ip full</code>.</p>
-  <pre><?php if ($logLines === []): ?>(nothing yet — try /.env or /admin/)<?php endif ?><?php foreach ($logLines as $line): ?>
-<?= $e($line) . "\n" ?>
-<?php endforeach ?></pre>
-
-  <h2>How this page includes the shield</h2>
-  <pre>define('REQUEST_SHIELD_CONFIG', __DIR__ . '/request-shield.rules');
+  </details>
+  <details><summary>How this page includes the shield</summary>
+    <pre>define('REQUEST_SHIELD_CONFIG', __DIR__ . '/request-shield.rules');
 require __DIR__ . '/../../bootstrap.php';
 
 $decision = CjwNetwork\RequestShield\Shield::current();   // what the shield decided</pre>
-  <p>The rules: <code>examples/demo/request-shield.rules</code> — one per line, and every decision names the line behind it. Every response carries <code>X-Request-Shield</code> with the decision (see your browser's network tab).</p>
+    <p class="note">The rules: <code>examples/demo/request-shield.rules</code> — one per line; every decision names the line behind it.</p>
+  </details>
 </main>
 <script>
 // "Show the answer": fetches the example in the background and shows status and
