@@ -24,8 +24,12 @@ else:
 - **Floods are slowed down** — whoever asks too often has to wait; suspicious
   clients prove they are a real browser with an invisible check, no puzzles to
   click.
+- **Doors stay shut** — an admin area only for your office, a form only where
+  it belongs.
 - **Search engines stay welcome** — Google, Bing and others are recognised and
   let through.
+- **Readable rules** — one per line, in a plain text file; every refusal names
+  the line that caused it, and an optional log shows what was turned away.
 
 No extra server, no subscription, no data sent to anyone: one PHP library —
 upload, include, done.
@@ -56,6 +60,12 @@ application, and whether the answer may be cached.
   and budgets the application counts itself (cache misses, failed sign-ins).
   Above a threshold a client can be challenged, above the limit it gets
   `429 Too Many Requests` with `Retry-After`.
+- **Access rules:** paths only for some addresses (`restrict /admin/** to …`),
+  methods only on some paths (`allow POST /contact`) — matched as the
+  application routes the path, so `//admin` or `/%61dmin` do not get past.
+- **Rule files and a log:** the settings one rule per line, from several files
+  (a CMS extension ships its own); every decision names its rule
+  (`site.rules:12`); an optional log of what was stopped or flagged.
 - **No dependencies, no services:** counters in APCu, or in plain files on hosting
   without APCu. PHP ≥ 8.0 (the Red Hat Enterprise Linux 9 baseline).
 
@@ -69,7 +79,9 @@ server and PHP slots, just very briefly.
 - **0.1.0:** the core.
 - **0.2.0:** the browser challenge (proof of work), settings checked once and
   compiled for OPcache, documentation, CI.
-- **Next:** earning back a spent budget with a challenge, for forms and APIs
+- **Unreleased:** rule files, access rules, rule IDs, the log, the demo.
+- **Next:** modes — monitor first, strict under attack
+  ([proposal 0004](docs/proposals/0004-modes-monitor-and-strict.md)); earning back a spent budget with a challenge, for forms and APIs
   ([proposal 0001](docs/proposals/0001-earn-back-a-spent-budget.md)); adapters
   for Exponential, WordPress and Ibexa; exporting the rules to nginx, Apache
   and Varnish.
@@ -81,8 +93,9 @@ architecture decisions. Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ### Without Composer (shared hosting)
 
-Put the directory somewhere outside the document root, copy
-`config/request-shield.dist.php` to `config/request-shield.php`, and prepend it:
+Put the directory somewhere outside the document root, write the rules to
+`config/request-shield.rules` (or copy `config/request-shield.dist.php` to
+`config/request-shield.php`), and prepend it:
 
 ```ini
 ; .user.ini in the document root (PHP-FPM, LiteSpeed LSAPI)
@@ -95,7 +108,8 @@ php_value auto_prepend_file /home/you/request-shield/bootstrap.php
 ```
 
 The settings file can also be named by a constant or an environment variable,
-`REQUEST_SHIELD_CONFIG`. Without a settings file the shield does nothing.
+`REQUEST_SHIELD_CONFIG` (a `.rules` or a `.php` file). Without one the shield
+does nothing.
 
 ### With Composer
 
@@ -106,11 +120,12 @@ composer require cjw-network/request-shield
 and call it first thing in the front controller:
 
 ```php
-CjwNetwork\RequestShield\Shield::protectFile(__DIR__ . '/../config/request-shield.php');
+CjwNetwork\RequestShield\Shield::protectFile(__DIR__ . '/../config/request-shield.rules');
 ```
 
 `protectFile()` checks the settings once and keeps them compiled for OPcache;
-`protect($array)` checks them on every call.
+`protect($array)` checks them on every call. An adapter passes its
+extensions' rule files as `sources`.
 
 - **WordPress:** at the top of `wp-config.php`, or as `auto_prepend_file`.
 - **Ibexa / Symfony:** at the top of `public/index.php`.
@@ -118,8 +133,24 @@ CjwNetwork\RequestShield\Shield::protectFile(__DIR__ . '/../config/request-shiel
 
 ## Configuration
 
-Every key, with its default, is in `src/Config.php`; `config/request-shield.dist.php`
-is a starting point. The most important ones:
+As a rule file ([all rules](docs/features/rule-files.md)):
+
+```text
+trust        10.0.0.0/8
+host         www.example.org example.org
+cache-query  page
+limit        requests 600/min
+limit        misses 60/min on-demand
+restrict     /admin/** to 192.0.2.0/24
+challenge    /login
+set          log /var/log/request-shield.log
+```
+
+`php bin/request-shield check|show|reload site.rules` checks it, shows the
+rules in effect with their origins, or makes every server read it again.
+
+Or as a PHP array — every key, with its default, is in `src/Config.php`;
+`config/request-shield.dist.php` is a starting point:
 
 ```php
 return [
@@ -145,9 +176,8 @@ if ($decision && !$decision->cacheable()) {
 A page cache that misses can count the miss against the client:
 
 ```php
-$shield = new CjwNetwork\RequestShield\Shield($config);
-$request = CjwNetwork\RequestShield\Request::fromServer($_SERVER, $config['trustedProxies']);
-if (!$shield->consume('misses', $request)->passes()) {
+// after protect()/protectFile(): the same settings and request
+if (!CjwNetwork\RequestShield\Shield::active()->consume('misses')->passes()) {
     // too many renders from this client: answer 429, or a stale copy
 }
 ```
@@ -161,7 +191,7 @@ headers behind a trusted proxy, every check on:
 |---|---|
 | checks, APCu store | ~12 µs |
 | checks, file store | ~42 µs |
-| settings (compiled, OPcache) | ~8 µs |
+| settings: rule files (compiled, APCu) / PHP file | ~5.5 / ~8 µs |
 | challenge page / solution check / pass cookie (challenged clients only) | ~12 / ~9 / ~5 µs |
 
 ## Tests and checks

@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Rule files: the settings one rule per line (`host`, `trust`, `block`,
+  `cache-path`, `limit`, `challenge`, `restrict`, `allow`, `set`, `include`,
+  …), from a main file, its includes and further sources such as a CMS
+  extension's; merged in order, checked when read (errors name `file:line`),
+  compiled for OPcache and, with APCu, checked for changes every 10 seconds
+  without a `stat()` in between (~5.5 µs setup). `${NAME:-default}` for
+  environment variables. `bin/request-shield check|show|reload`
+  ([docs](docs/features/rule-files.md), proposal 0003).
+- Access rules: `restrict <paths> to <addresses>` (403 for everyone else) and
+  `allow <METHODS> <paths>` (405 elsewhere), matched against the path as the
+  application routes it — `//admin`, `/%61dmin` and case do not get past
+  ([docs](docs/features/access-rules.md)).
+- Rule IDs: every decision that stops or flags a request names its rule
+  (`site.rules:12`, `default @scanners`, `built-in`) in `X-Request-Shield`,
+  `$_SERVER['REQUEST_SHIELD_RULE']` and `Shield::currentRule()`; looked up only
+  for such requests.
+- An optional log (`set log`, `log-level stop|flag|all|off`, `log-ip
+  masked|full`, one rotation at `log-max-size`), one line per request the
+  shield stopped or flagged, the address first and shortened by default
+  ([docs](docs/features/log-and-rule-ids.md)).
+- `Shield::active()`: the shield `protect()` ran with, so the application
+  counts on-demand budgets against the same settings and request
+  (`Shield::active()->consume('misses')`); refusals are logged.
+- Proposal 0004: modes (`off`, `monitor`, `enforce`, `strict`), `monitor` for
+  single rules, a fresh check per path.
 - `challenge.alwaysPaths`: paths every visitor has to pass the browser check
   for (once per pass cookie), whatever the budgets say — for a login or admin
   page; a POST without a pass gets 429
@@ -16,7 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   of a web server, with rewrite rules (`.htaccess`) or as `index.php/…`; its
   counters and secret stay outside the document root. It shows the full URL,
   the request's headers (those the shield removed struck out), the answer's
-  headers, and each example's status and headers in place. Tested end to end, at
+  headers, and each example's status and headers in place; it runs on a rule
+  file, with a search page (its own budget), an edit form (POST only there),
+  an admin area and an API restricted by address, a pass that expires after a
+  minute, and the shield's log. Tested end to end, at
   the root and in a subdirectory.
 - PHP 8.0 support (the Red Hat Enterprise Linux 9 baseline): no `readonly`
   properties at runtime any more — public ones are marked `@readonly`, which
@@ -24,6 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   only where PHP has them. CI tests PHP 8.0 too. Cost on PHP 8.1 unchanged.
 
 ### Changed
+- The compiled settings record every source file and the environment
+  variables used (format 4: rebuilt once after the update); `Settings` has the
+  log, the access rules and the rules' origins. `Shield::consume()` takes the
+  request from `protect()` when none is given.
 - The README opens with what the shield does for a website, in plain words (a
   mini web application firewall); the package description and keywords follow.
 - Composer and release archives contain only what runs on a server (`src/`,

@@ -17,12 +17,16 @@ namespace CjwNetwork\RequestShield\Rules;
  *   /page/*        /page/about, not /page/a/b      (* stays within one segment)
  *   *.sql          any path ending in .sql         (no leading /: anywhere)
  *   /file?.txt     ? is one character, not /
+ *
+ * A pattern starting with two stars and a slash matches in any directory:
+ * the demo's admin pattern finds /admin and /shop/admin/x alike.
  */
 final class Pattern
 {
     public static function fromGlob(string $glob): string
     {
-        $anchored = $glob !== '' && $glob[0] === '/';
+        // "/..." from the root; "**/..." already anywhere; else anywhere.
+        $anchored = $glob !== '' && ($glob[0] === '/' || strncmp($glob, '**/', 3) === 0);
         $out = '';
         $n = strlen($glob);
         for ($i = 0; $i < $n; $i++) {

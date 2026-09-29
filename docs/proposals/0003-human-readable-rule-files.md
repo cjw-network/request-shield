@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Implemented** (see [rule files](../features/rule-files.md)) |
 | Proposed | 2026-09-29 |
 | Affects | settings loading, adapters |
 
@@ -107,7 +107,21 @@ The PHP array settings keep working unchanged; `protectFile()` accepts a
 `.rules` file or a `.php` settings file. Defaults apply unless a rule file
 takes them back.
 
-## Open questions
+## Decisions taken when implementing (2026-09-29)
+
+1. Patterns: `*`, `**` and `?`; `**/` at the start matches in any directory;
+   `regex` for anything more. No `{a,b}` (two patterns do the same).
+2. Recheck with APCu: every 10 s by default (`set recheck`), for a single
+   file too — no `stat()` in between; `recheck 0` checks every request.
+3. Order: sources from code first, then the main file; includes where they
+   stand. The site's file has the last word.
+4. `bin/request-shield check | show | reload` (`reload` instead of `compile`:
+   it checks, then touches the main file, so every server — whatever user
+   it runs as — rebuilds its own compiled copy).
+5. Added on the way: `${NAME:-default}`, `restrict … to …`, `allow <METHOD> …`,
+   rule IDs in every decision, the log.
+
+## Open questions (as proposed)
 
 1. Is `*`/`**` enough for patterns, or should `?` and `{a,b}` be supported?
 2. Default recheck interval with APCu (10 s?).

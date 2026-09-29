@@ -42,6 +42,9 @@
             "CjwNetwork\\RequestShield\\": "src/"
         }
     },
+    "bin": [
+        "bin/request-shield"
+    ],
     "scripts": {
         "test": "php tests/run.php",
         "phpstan": "phpstan analyse",

@@ -54,7 +54,9 @@ final class Log
             . ' "' . self::clean((string) $request->header('user-agent'), 150) . "\"\n";
 
         // One rotation when it gets large: file.log -> file.log.1. Only
-        // checked when there is something to write.
+        // checked when there is something to write -- and past PHP's stat
+        // cache, which a long-running process would otherwise keep.
+        clearstatcache(true, $file);
         $size = @filesize($file);
         if ($size !== false && $size > $s->logMaxSize) {
             @rename($file, $file . '.1');

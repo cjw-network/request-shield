@@ -50,7 +50,7 @@ function rulesFail(array $files, string $at, string $part): void
 function decideFor(Settings $s, string $path, array $server = []): string
 {
     $shield = new Shield($s, new MemoryStore());
-    $d = $shield->decide(Request::fromServer($server + ['REQUEST_URI' => $path, 'REMOTE_ADDR' => '198.51.100.7', 'HTTP_HOST' => 'www.example.org']), 1000.0);
+    $d = $shield->decide(Request::fromServer($server + ['REQUEST_URI' => $path, 'REMOTE_ADDR' => '198.51.100.7', 'HTTP_HOST' => 'www.example.org'], $s->trustedProxies), 1000.0);
     return trim($d->action . ' ' . $d->reason);
 }
 
@@ -62,6 +62,7 @@ return [
             ['*.sql', '/dump.sql', true], ['*.sql', '/a/b/dump.sql', true], ['*.sql', '/dump.sqlx', false],
             ['/file?.txt', '/file1.txt', true], ['/file?.txt', '/file12.txt', false], ['/file?.txt', '/file/.txt', false],
             ['/', '/', true], ['/', '/x', false], ['/a.b', '/aXb', false], ['/(x)', '/(x)', true],
+            ['**/admin/**', '/admin', true], ['**/admin/**', '/demo/admin/x', true], ['**/admin/**', '/demo/administrator', false],
         ];
         foreach ($cases as [$glob, $path, $match]) {
             same($match, preg_match(Pattern::fromGlob($glob), $path) === 1, "$glob ~ $path");
@@ -251,6 +252,91 @@ return [
                 apcu_clear_cache();
             }
             same(['bb.example'], Settings::load("$dir/site.rules", "$dir/cache")->hosts, 'the main file changed: everything read again');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'restrict: paths only for some addresses; //, %61, case and /./ do not get past it' => function (): void {
+        $s = rulesFrom("restrict /admin/** /api/** to 192.0.2.0/24 2001:db8::/32\n");
+        $from = static fn (string $ip, string $path): string => decideFor($s, $path, ['REMOTE_ADDR' => $ip]);
+        foreach (['/admin', '/admin/', '/admin/users', '//admin/', '/%61dmin/', '/ADMIN/x', '/./admin/', '/api/v1'] as $path) {
+            same('reject restricted', $from('198.51.100.7', $path), "outside: $path");
+        }
+        same('allow-uncached path not cacheable', rulesFrom("cache-path /\nrestrict /admin/** to 192.0.2.0/24\n") !== null ? decideFor(rulesFrom("cache-path /\nrestrict /admin/** to 192.0.2.0/24\n"), '/administrator') : '', 'a longer name is another path');
+        same('allow', $from('192.0.2.10', '/admin/users'), 'inside the range');
+        same('allow', $from('2001:db8::5', '//admin/'), 'IPv6 range');
+        // Behind a trusted proxy: the address it vouches for, not the header anyone sends.
+        $p = rulesFrom("trust 10.0.0.1\nrestrict /admin/** to 192.0.2.0/24\n");
+        same('allow', decideFor($p, '/admin/', ['REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => '192.0.2.10']));
+        same('reject restricted', decideFor($p, '/admin/', ['REMOTE_ADDR' => '198.51.100.7', 'HTTP_X_FORWARDED_FOR' => '192.0.2.10']), 'a forged header');
+        rulesFail(['site.rules' => "restrict /admin/**\n"], 'site.rules:1', 'restrict <paths> to');
+        rulesFail(['site.rules' => "restrict /admin/** to office\n"], 'site.rules:1', 'not an address');
+    },
+    'allow: a method only on some paths, anywhere else 405' => function (): void {
+        $s = rulesFrom("allow POST /edit /contact\nallow PUT DELETE /api/**\n");
+        same(['GET', 'HEAD', 'POST', 'OPTIONS', 'PUT', 'DELETE'], $s->methods, 'the methods are allowed at all');
+        $as = static fn (string $method, string $path): string => decideFor($s, $path, ['REQUEST_METHOD' => $method]);
+        same('allow-uncached method', $as('POST', '/edit'));
+        same('allow-uncached method', $as('POST', '//Contact'), 'as the application routes it');
+        same('reject method not allowed here', $as('POST', '/page/about'));
+        same('reject method not allowed here', $as('PUT', '/edit'));
+        same('allow-uncached method', $as('DELETE', '/api/items/5'));
+        same('allow', $as('GET', '/page/about'), 'other methods are not affected');
+        rulesFail(['site.rules' => "allow POST\n"], 'site.rules:1', 'allow <METHODS> <paths>');
+    },
+    'the rule behind a decision: file and line, default, built-in, or the setting' => function (): void {
+        $dir = ruleDir(['site.rules' => "# comment\nblock /x/**\nrestrict /admin/** to 192.0.2.1\nallow POST /edit\nlimit requests 2/min\nchallenge /login\n"]);
+        try {
+            $s = Settings::load("$dir/site.rules", "$dir/cache");
+            $explain = static function (string $path, array $server = []) use ($s): ?string {
+                $shield = new Shield($s, new MemoryStore());
+                $r = Request::fromServer($server + ['REQUEST_URI' => $path, 'REMOTE_ADDR' => '198.51.100.7']);
+                return $shield->explain($shield->decide($r, 1000.0), $r);
+            };
+            same('site.rules:2', $explain('/x/y'));
+            same('default @scanners', $explain('/.env'));
+            same('site.rules:3', $explain('/admin/'));
+            same('site.rules:4', $explain('/page', ['REQUEST_METHOD' => 'POST']));
+            same('site.rules:6', $explain('/login'));
+            same('built-in', $explain('/a/%2e%2e/b'));
+            same(null, $explain('/'), 'allowed: no rule');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+        // PHP array settings: the setting and the index.
+        $shield = new Shield(['blockedPaths' => ['#^/a#', '#^/b#'], 'budgets' => ['requests' => ['limit' => 1, 'window' => 60]]], new MemoryStore());
+        $r = Request::fromServer(['REQUEST_URI' => '/b', 'REMOTE_ADDR' => '198.51.100.7']);
+        same('blockedPaths[1]', $shield->explain($shield->decide($r, 1000.0), $r));
+    },
+    'bin/request-shield: check, show, reload' => function (): void {
+        if (!function_exists('exec')) {
+            skip('no exec');
+        }
+        $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
+        $dir = ruleDir(['site.rules' => "block /x/**\nlimit requests 5/min\n", 'ext/a.rules' => "challenge /login\n", 'bad.rules' => "blok /x\n"]);
+        try {
+            exec("$bin check " . escapeshellarg("$dir/site.rules") . ' --source=' . escapeshellarg("$dir/ext/*.rules") . ' 2>&1', $out, $code);
+            same(0, $code, implode("\n", $out));
+            truthy(strpos(implode("\n", $out), 'ok: 2 file(s)') !== false, implode("\n", $out));
+            $out = [];
+            exec("$bin check " . escapeshellarg("$dir/bad.rules") . ' 2>&1', $out, $code);
+            same(1, $code);
+            same('bad.rules:1: unknown rule "blok" (did you mean "block"?)', $out[0] ?? '');
+            $out = [];
+            exec("$bin show " . escapeshellarg("$dir/site.rules") . ' --source=' . escapeshellarg("$dir/ext/*.rules") . ' 2>&1', $out, $code);
+            $shown = implode("\n", $out);
+            truthy(preg_match('~^block regex \^/x\(\?:/\.\*\)\?\$ +# site\.rules:1$~m', $shown) === 1, $shown);
+            truthy(preg_match('~^challenge regex \^/login\$ +# ext/a\.rules:1$~m', $shown) === 1, 'the extension\'s rule, with its origin');
+            truthy(strpos($shown, 'set secret (generated in store-dir)') !== false, 'a secret is never shown');
+            touch("$dir/site.rules", time() - 100);
+            exec("$bin reload " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
+            clearstatcache();
+            truthy(filemtime("$dir/site.rules") >= time() - 5, 'reload marks the main file changed');
+            chmod("$dir/site.rules", 0666);
+            $out = [];
+            exec("$bin check " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
+            same(3, $code, 'a file anyone can change');
+            truthy(strpos(implode("\n", $out), 'can be changed by anyone') !== false, implode("\n", $out));
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }

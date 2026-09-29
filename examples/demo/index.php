@@ -77,13 +77,21 @@ if ($path === '/search') {
 }
 
 $rule = Shield::currentRule();
+// The pass cookie carries its expiry: v1.<expires>.<client>.<signature>. (Shown
+// here only; the shield checks the signature, this page just reads the time.)
+$passLeft = null;
+$pass = explode('.', (string) ($_COOKIE['rs_pass'] ?? ''));
+if (count($pass) === 4 && ctype_digit($pass[1]) && (int) $pass[1] > time()) {
+    $passLeft = (int) $pass[1] - time();
+}
 $status = [
     'Decision' => $decision !== null ? $decision->action . ($decision->reason !== '' ? ' (' . $decision->reason . ')' : '') : '—',
     'The rule behind it' => $rule ?? '— (no rule needed: allowed)',
     'May a cache keep this page?' => $decision !== null && $decision->cacheable() ? 'yes' : 'no',
     'Your address' => $request->clientIp,
     'Counted as' => IpAddress::bucket($request->clientIp),
-    'Browser check passed (pass cookie)' => isset($_COOKIE['rs_pass']) ? 'yes' : 'no',
+    'Browser check passed (pass cookie)' => $passLeft !== null ? 'yes' : 'no',
+    'Pass valid for' => $passLeft !== null ? $passLeft . ' more seconds (set pass-ttl 1m), then the check comes back' : '—',
 ];
 
 $tests = [

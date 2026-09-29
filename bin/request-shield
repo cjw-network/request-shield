@@ -1,0 +1,123 @@
+#!/usr/bin/env php
+<?php
+/**
+ * This file is part of cjw-network/request-shield.
+ *
+ * @copyright Copyright (C) 2026 JAC Systeme GmbH, CJW Network
+ * @license MIT, see LICENSE
+ *
+ *   php bin/request-shield check  site.rules [--source=<glob>]...
+ *   php bin/request-shield show   site.rules [--source=<glob>]...
+ *   php bin/request-shield reload site.rules [--source=<glob>]...
+ *
+ * check:  reads every file, reports the first error with file and line, and
+ *         warns about rule files anyone else could change.
+ * show:   the rules in effect after merging, each with the line it comes from.
+ * reload: check, then mark the main file changed (touch), so every server
+ *         reads the rules again on its next check -- for files added or changed
+ *         where servers without APCu do not look by themselves (extensions).
+ */
+
+declare(strict_types=1);
+
+require dirname(__DIR__) . '/bootstrap.php';
+
+use CjwNetwork\RequestShield\Rules\RuleFile;
+use CjwNetwork\RequestShield\Rules\RuleFileException;
+use CjwNetwork\RequestShield\Settings;
+
+$args = array_slice($argv, 1);
+$sources = [];
+$rest = [];
+foreach ($args as $a) {
+    if (strncmp($a, '--source=', 9) === 0) {
+        $sources[] = substr($a, 9);
+    } else {
+        $rest[] = $a;
+    }
+}
+[$command, $file] = $rest + [null, null];
+if (!in_array($command, ['check', 'show', 'reload'], true) || $file === null) {
+    fwrite(STDERR, "usage: request-shield check|show|reload <main.rules> [--source=<glob>]...\n");
+    exit(2);
+}
+if (substr($file, -6) !== '.rules') {
+    fwrite(STDERR, "request-shield: $file is not a rule file (.rules)\n");
+    exit(2);
+}
+
+$files = $sources;
+$files[] = $file;
+try {
+    $read = RuleFile::read($files);
+    $settings = Settings::from($read['config']);
+} catch (InvalidArgumentException $e) {
+    fwrite(STDERR, $e->getMessage() . "\n");
+    exit(1);
+}
+
+if ($command === 'check' || $command === 'reload') {
+    $warnings = 0;
+    foreach (array_keys($read['seen']) as $path) {
+        $perms = @fileperms($path);
+        if ($perms !== false && ($perms & 0002) !== 0) {
+            fwrite(STDERR, "warning: $path can be changed by anyone on this machine\n");
+            $warnings++;
+        }
+    }
+    $files = count(array_filter(array_keys($read['seen']), 'is_file'));
+    echo "ok: $files file(s), " . count($settings->blockedPaths) . ' blocked patterns, ' . count($settings->budgets) . " budget(s)\n";
+    if ($command === 'reload') {
+        touch($file);
+        echo "reload: $file marked changed; every server reads the rules again on its next check\n";
+    }
+    exit($warnings > 0 ? 3 : 0);
+}
+
+// show: the effective rules, as rule lines (patterns as the regular
+// expressions they became), each with its origin.
+$o = static fn (string $setting, string $what): string => '    # ' . ($settings->origin($setting, $what) ?? 'default');
+$line = static fn (string $text, string $origin = ''): string => str_pad($text, 60) . ($origin !== '' ? ' ' . trim($origin) : '') . "\n";
+$regex = static fn (string $p): string => trim(preg_replace('/^#|#i?$/', '', $p) ?? $p);
+
+echo "# Effective rules of $file" . ($sources !== [] ? ' with ' . implode(' ', $sources) : '') . "\n";
+if ($settings->hosts !== []) {
+    echo $line('host ' . implode(' ', $settings->hosts), $o('hosts', '*'));
+}
+if ($settings->trustedProxies !== []) {
+    echo $line('trust ' . implode(' ', $settings->trustedProxies));
+}
+echo $line('method none ' . implode(' ', $settings->methods), $o('methods', '*'));
+foreach ($settings->methodPaths as $m => $patterns) {
+    echo $line("allow $m regex " . implode(' ', array_map($regex, $patterns)), $o('methodPaths', $m));
+}
+foreach ($settings->restricted as $r) {
+    echo $line('restrict regex ' . implode(' ', array_map($regex, $r['paths'])) . ' to ' . implode(' ', $r['ips']), $o('restricted', $r['paths'][0] ?? ''));
+}
+foreach ($settings->blockedPaths as $p) {
+    echo $line('block regex ' . $regex($p), $o('blockedPaths', $p));
+}
+echo $settings->cacheablePaths === null ? $line('cache-path any') : '';
+foreach ($settings->cacheablePaths ?? [] as $p) {
+    echo $line('cache-path regex ' . $regex($p), $o('cacheable.paths', $p));
+}
+echo $line('cache-query ' . ($settings->cacheableQuery === null ? 'any' : ($settings->cacheableQuery === [] ? 'none' : implode(' ', $settings->cacheableQuery))), $o('cacheable.query', '*'));
+foreach ($settings->budgets as $b) {
+    echo $line("limit $b->name $b->limit/{$b->window}s" . ($b->challengeAt !== null ? " challenge-at $b->challengeAt" : '') . ($b->onDemand ? ' on-demand' : ''), $o('budgets', $b->name));
+}
+foreach ($settings->challenge->alwaysPaths as $p) {
+    echo $line('challenge regex ' . $regex($p), $o('challenge.alwaysPaths', $p));
+}
+foreach ($settings->challenge->exemptPaths as $p) {
+    echo $line('challenge-exempt regex ' . $regex($p), $o('challenge.exemptPaths', $p));
+}
+echo $line('exempt ' . ($settings->exemptIps === [] ? 'none' : implode(' ', $settings->exemptIps)));
+echo $line('set pass-ttl ' . $settings->challenge->passTtl . 's');
+echo $line('set store ' . $settings->store);
+echo $line('set store-dir ' . $settings->storeDir);
+echo $line('set secret ' . ($settings->challenge->secret === null ? '(generated in store-dir)' : '(set, not shown)'));
+echo $line('set log ' . ($settings->logFile ?? '(off)'));
+echo $line("set log-level $settings->logLevel");
+echo $line("set log-ip $settings->logIp");
+echo $line('set debug-header ' . ($settings->debugHeader ? 'on' : 'off'));
+echo $line("set recheck {$read['recheck']}s");

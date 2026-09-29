@@ -54,14 +54,13 @@ location = /request-shield/examples/demo/index.php {
 }
 ```
 
-The patterns in `request-shield.php` match the end of the path for this reason;
-a real site anchors them at its own base.
+The patterns in `request-shield.rules` start with `**/` for this reason (in
+any directory); a real site writes them from its root.
 
 The limits are low on purpose (`request-shield.php`); a real site uses the
 defaults or more. The router sends every path to `index.php`, as a web
 server's rewrite rules would — PHP's built-in server would otherwise answer
 `/.env` itself.
 
-Counters and the generated secret go to `request-shield-demo/` in the system's
-temporary directory — never into the demo's directory, which a web server
+Counters, the generated secret and the log go to `/tmp/request-shield-demo/` — never into the demo's directory, which a web server
 might hand out (set `REQUEST_SHIELD_DEMO_VAR` to put them elsewhere).

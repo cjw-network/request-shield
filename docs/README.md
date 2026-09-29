@@ -6,6 +6,9 @@
   [cacheable definition](features/cacheable-definition.md) ·
   [budgets and stores](features/budgets.md) ·
   [browser challenge](features/browser-challenge.md) ·
+  [access rules](features/access-rules.md) ·
+  [rule files](features/rule-files.md) ·
+  [log and rule IDs](features/log-and-rule-ids.md) ·
   [settings](features/settings.md)
 - **Use cases** — scenarios end to end:
   [shared hosting DoS guard](use-cases/shared-hosting-dos-guard.md) ·
@@ -14,7 +17,8 @@
   [behind a load balancer](use-cases/behind-a-load-balancer.md)
 - **Proposals** — planned features, open for discussion (status in each):
   [0001 earn back a spent budget](proposals/0001-earn-back-a-spent-budget.md) ·
-  [0003 human-readable rule files](proposals/0003-human-readable-rule-files.md)
+  [0003 human-readable rule files](proposals/0003-human-readable-rule-files.md) (implemented) ·
+  [0004 modes: monitor and strict](proposals/0004-modes-monitor-and-strict.md)
   (0002, a single-file build, is reserved)
 - **Architecture decisions**:
   [0001 run in PHP first](adr/0001-run-in-php-before-the-application.md) ·

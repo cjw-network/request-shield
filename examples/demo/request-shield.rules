@@ -32,6 +32,10 @@ limit       requests 60/min challenge-at 20
 # A page that always checks the browser, whatever the budget -- as a login would.
 challenge   **/challenge
 
+# A passed check is valid for one minute here, so you can watch it expire;
+# a real site keeps it an hour or more (the default: 1h).
+set         pass-ttl 1m
+
 # The demo runs on your own machine: count localhost too (a real site exempts
 # its monitoring and its own servers here).
 exempt      none
