@@ -1,6 +1,6 @@
 {
     "name": "cjw-network/request-shield",
-    "description": "A request shield for PHP sites: trusted proxies, hard rejects, a cacheable-URL definition and per-client budgets before the application runs; a small DoS guard that works on shared hosting.",
+    "description": "A mini web application firewall for PHP: it checks every request before your site's code runs, turns away junk and floods, keeps page caches clean and makes bots pay — even on shared hosting.",
     "type": "library",
     "license": "MIT",
     "authors": [
@@ -16,10 +16,15 @@
     ],
     "keywords": [
         "security",
+        "waf",
+        "web application firewall",
+        "firewall",
         "rate limiting",
+        "bot protection",
+        "proof of work",
         "dos",
         "cache",
-        "firewall",
+        "cache pollution",
         "shared hosting"
     ],
     "require": {

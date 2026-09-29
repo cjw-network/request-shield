@@ -5,9 +5,39 @@
 ![PHP](https://img.shields.io/badge/php-8.0%20%E2%80%93%208.5-777bb4)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
-A request shield for PHP sites. It runs **before the application** — before the
-framework, its autoloader and its database — and decides in a few microseconds
-whether a request reaches the application, and whether the answer may be cached.
+**A mini web application firewall for PHP. Harden any PHP website in minutes —
+even on simple shared hosting.**
+
+AI crawlers, scrapers and automated attacks no longer hit only big sites. Every
+such request makes your website do real work — start the software, ask the
+database, build the page. Enough of them and the site slows down or goes
+offline, and junk requests can fill your page cache so that real visitors wait.
+
+request-shield is a small gatekeeper that looks at every request **before** your
+website starts. Real visitors pass in a few millionths of a second. Everything
+else:
+
+- **Junk is turned away** — scanners hunting for password files, broken or
+  oversized requests never reach your site.
+- **Your cache stays clean** — made-up addresses and parameters are answered,
+  but never stored.
+- **Floods are slowed down** — whoever asks too often has to wait; suspicious
+  clients prove they are a real browser with an invisible check, no puzzles to
+  click.
+- **Search engines stay welcome** — Google, Bing and others are recognised and
+  let through.
+
+No extra server, no subscription, no data sent to anyone: one PHP library —
+upload, include, done.
+
+*What it is not:* protection against attacks so large that they overload the
+network or the web server itself — that remains the job of your hoster or a CDN.
+
+## How it works
+
+It runs **before the application** — before the framework, its autoloader and
+its database — and decides in a few microseconds whether a request reaches the
+application, and whether the answer may be cached.
 
 - **Trusted proxies:** `X-Forwarded-For`, `-Proto` and `-Host` are believed only
   from your load balancer or reverse proxy, and removed from `$_SERVER`
@@ -25,11 +55,10 @@ whether a request reaches the application, and whether the answer may be cached.
 - **No dependencies, no services:** counters in APCu, or in plain files on hosting
   without APCu. PHP ≥ 8.0 (the Red Hat Enterprise Linux 9 baseline).
 
-It is meant as a small DoS guard that works on shared hosting too. It turns an
-expensive request (framework, database, rendering: 100–200 ms) into a cheap one
-(well under 0.1 ms) — it does not replace protection in front of PHP (the
-hoster's, a CDN's, CloudLinux, Imunify360): a flood still occupies web server
-and PHP slots, just very briefly.
+It turns an expensive request (framework, database, rendering: 100–200 ms) into
+a cheap one (well under 0.1 ms). It does not replace protection in front of PHP
+(the hoster's, a CDN's, CloudLinux, Imunify360): a flood still occupies web
+server and PHP slots, just very briefly.
 
 ## Status
 

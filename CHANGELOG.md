@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   only where PHP has them. CI tests PHP 8.0 too. Cost on PHP 8.1 unchanged.
 
 ### Changed
+- The README opens with what the shield does for a website, in plain words (a
+  mini web application firewall); the package description and keywords follow.
 - Composer and release archives contain only what runs on a server (`src/`,
   `bootstrap.php`, `config/`, license and readme); tests, benchmarks, docs and
   tool settings stay in the repository (`.gitattributes`).
