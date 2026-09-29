@@ -13,7 +13,9 @@
   [scrapers and bots](use-cases/scraping-and-bots.md) ·
   [behind a load balancer](use-cases/behind-a-load-balancer.md)
 - **Proposals** — planned features, open for discussion (status in each):
-  [0001 earn back a spent budget](proposals/0001-earn-back-a-spent-budget.md)
+  [0001 earn back a spent budget](proposals/0001-earn-back-a-spent-budget.md) ·
+  [0003 human-readable rule files](proposals/0003-human-readable-rule-files.md)
+  (0002, a single-file build, is reserved)
 - **Architecture decisions**:
   [0001 run in PHP first](adr/0001-run-in-php-before-the-application.md) ·
   [0002 uncached, not refused](adr/0002-outside-the-definition-is-uncached-not-refused.md) ·
