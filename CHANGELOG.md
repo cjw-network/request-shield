@@ -25,7 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   for such requests.
 - An optional log (`set log`, `log-level stop|flag|all|off`, `log-ip
   masked|full`, one rotation at `log-max-size`), one line per request the
-  shield stopped or flagged, the address first and shortened by default
+  shield stopped or flagged, with the full URL; the address first, anonymised
+  by default and written as its network (`198.51.100.0/24`)
   ([docs](docs/features/log-and-rule-ids.md)).
 - `Shield::active()`: the shield `protect()` ran with, so the application
   counts on-demand budgets against the same settings and request

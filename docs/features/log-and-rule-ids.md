@@ -34,13 +34,19 @@ set log-ip     masked        # masked (default) | full
 set log-max-size 10M         # then one rotation to shield.log.1
 ```
 
-One line per request, the client address first (as fail2ban and grep expect):
+One line per request: time, the client address (anonymised by default),
+decision, status, reason, rule, the request with its **full URL**, the
+User-Agent:
 
 ```text
-2026-09-29T08:41:03+02:00 198.51.100.0 reject 404 "blocked path" rule=default @scanners "GET www.example.org/.env" "Mozilla/5.0 ..."
-2026-09-29T08:41:07+02:00 198.51.100.0 challenge 429 "requests" rule=site.rules:13 "GET www.example.org/news" "python-requests/2.32"
-2026-09-29T08:41:09+02:00 203.0.113.0 reject 403 "restricted" rule=site.rules:25 "GET www.example.org//admin/" "curl/8.5"
+2026-09-29T08:41:03+02:00 198.51.100.0/24 reject 404 "blocked path" rule=default @scanners "GET https://www.example.org/.env" "Mozilla/5.0 ..."
+2026-09-29T08:41:07+02:00 198.51.100.0/24 challenge 429 "requests" rule=site.rules:13 "GET https://www.example.org/news?page=4711" "python-requests/2.32"
+2026-09-29T08:41:09+02:00 2001:db8:1::/48 reject 403 "restricted" rule=site.rules:25 "GET https://www.example.org//admin/" "curl/8.5"
 ```
+
+The URL is the one the visitor used: scheme and host as a [trusted
+proxy](trusted-proxies.md) reports them, the path and query as sent (not
+decoded — `//admin/` and `%61dmin` stay visible).
 
 | Level | Written |
 |---|---|
@@ -52,10 +58,12 @@ One line per request, the client address first (as fail2ban and grep expect):
 Budgets counted by the application (`Shield::active()->consume('misses')`)
 are logged the same way when they refuse.
 
-- **Addresses are shortened** by default (IPv4 /24, IPv6 /48): enough to see
-  a pattern, not a person. `set log-ip full` when the log feeds a ban list
-  (fail2ban) — then it holds personal data; keep it short and say so in the
-  privacy notice.
+- **Addresses are anonymised** by default to their network, and written as
+  one (`198.51.100.0/24`, `2001:db8:1::/48`), so nobody mistakes an entry for
+  a single client: enough to see a pattern, not a person. `set log-ip full`
+  when the log feeds a ban list (fail2ban) — then it holds personal data;
+  keep it short and say so in the privacy notice. (The URL can hold personal
+  data too — a search term, an e-mail address in a link.)
 - **Nothing forged:** request line and User-Agent are shortened, non-printable
   characters become `?`, quotes `'` — a request cannot write a line of its own.
 - One line per `write()` with `O_APPEND`: lines of parallel requests do not

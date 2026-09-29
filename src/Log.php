@@ -16,11 +16,14 @@ namespace CjwNetwork\RequestShield;
  * hit. Nothing is written for a request that simply passes (unless the level
  * is "all"), so the normal path costs nothing.
  *
- *   2026-09-29T08:41:03+02:00 198.51.100.0 reject 404 "blocked path" rule=site.rules:5 "GET www.example.org/wp-login.php" "Mozilla/5.0 ..."
+ *   2026-09-29T08:41:03+02:00 198.51.100.0/24 reject 404 "blocked path" rule=site.rules:5 "GET https://www.example.org/wp-login.php" "Mozilla/5.0 ..."
  *
- * The client address first, as fail2ban and grep expect it. By default it is
- * shortened (IPv4 /24, IPv6 /48): enough to see a pattern, not a person;
- * "set log-ip full" when the log feeds a ban list.
+ * The client address first, as grep and log tools expect it. By default it is
+ * anonymised to its network (IPv4 /24, IPv6 /48), written as such so nobody
+ * mistakes it for a client: enough to see a pattern, not a person. "set
+ * log-ip full" when the log feeds a ban list (fail2ban). Then the request
+ * with its full URL, as the shield saw it (scheme and host from a trusted
+ * proxy).
  */
 final class Log
 {
@@ -50,7 +53,7 @@ final class Log
             . ($s->logIp === 'full' ? $request->clientIp : self::mask($request->clientIp)) . ' '
             . $d->action . ' ' . $d->status . ' "' . self::clean($d->reason, 60) . '"'
             . ($rule !== null ? ' rule=' . self::clean($rule, 120) : '')
-            . ' "' . self::clean($request->method, 10) . ' ' . self::clean($request->host . $request->rawUri, 300) . '"'
+            . ' "' . self::clean($request->method, 10) . ' ' . self::clean($request->scheme . '://' . $request->host . $request->rawUri, 300) . '"'
             . ' "' . self::clean((string) $request->header('user-agent'), 150) . "\"\n";
 
         // One rotation when it gets large: file.log -> file.log.1. Only
@@ -74,7 +77,7 @@ final class Log
         }
     }
 
-    /** 198.51.100.7 -> 198.51.100.0, 2001:db8:1:2::5 -> 2001:db8:1:: */
+    /** 198.51.100.7 -> 198.51.100.0/24, 2001:db8:1:2::5 -> 2001:db8:1::/48 */
     public static function mask(string $ip): string
     {
         $bin = @inet_pton($ip);
@@ -82,9 +85,9 @@ final class Log
             return '-';
         }
         if (strlen($bin) === 4) {
-            return (string) inet_ntop(substr($bin, 0, 3) . "\0");
+            return inet_ntop(substr($bin, 0, 3) . "\0") . '/24';
         }
-        return (string) inet_ntop(substr($bin, 0, 6) . str_repeat("\0", 10));
+        return inet_ntop(substr($bin, 0, 6) . str_repeat("\0", 10)) . '/48';
     }
 
     /** Printable, no quotes or line breaks (a forged log line), shortened. */

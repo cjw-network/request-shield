@@ -13,9 +13,9 @@ function logDir(): string
 }
 
 return [
-    'addresses are shortened: IPv4 /24, IPv6 /48' => function (): void {
-        same('198.51.100.0', Log::mask('198.51.100.7'));
-        same('2001:db8:1::', Log::mask('2001:db8:1:2:3::5'));
+    'addresses are anonymised to their network, written as one: IPv4 /24, IPv6 /48' => function (): void {
+        same('198.51.100.0/24', Log::mask('198.51.100.7'));
+        same('2001:db8:1::/48', Log::mask('2001:db8:1:2:3::5'));
         same('-', Log::mask('not an address'));
     },
     'levels: stop, flag, all, off' => function (): void {
@@ -26,7 +26,7 @@ return [
         same([true, true, true, true, true], $row('all'));
         same([false, false, false, false, false], $row('off'));
     },
-    'a line: address first, decision, rule, request, user agent -- nothing forged' => function (): void {
+    'a line: address first, decision, rule, the full URL, user agent -- nothing forged' => function (): void {
         $dir = logDir();
         try {
             $s = Settings::from(['log' => ['file' => "$dir/shield.log"]]);
@@ -35,7 +35,14 @@ return [
             Log::write($s, $r, Decision::reject(404, 'blocked path'), 'site.rules:4', 1790000000.0);
             $lines = file("$dir/shield.log", FILE_IGNORE_NEW_LINES);
             same(1, count($lines), 'one line, whatever the request holds');
-            truthy(preg_match('#^\S+ 198\.51\.100\.0 reject 404 "blocked path" rule=site\.rules:4 "GET example\.org/x\'\?2026-01-01 1\.2\.3\.4 allow" "bot\?\?forged"$#', $lines[0]) === 1, $lines[0]);
+            truthy(preg_match('#^\S+ 198\.51\.100\.0/24 reject 404 "blocked path" rule=site\.rules:4 "GET http://example\.org/x\'\?2026-01-01 1\.2\.3\.4 allow" "bot\?\?forged"$#', $lines[0]) === 1, $lines[0]);
+            // Scheme and host as a trusted proxy says: the URL the visitor used.
+            $viaProxy = Settings::from(['trustedProxies' => ['10.0.0.1'], 'log' => ['file' => "$dir/proxy.log"]]);
+            $p = Request::fromServer(['REQUEST_URI' => '/login?next=%2Fadmin', 'REMOTE_ADDR' => '10.0.0.1', 'HTTP_HOST' => 'backend:8080',
+                'HTTP_X_FORWARDED_FOR' => '2001:db8:1:2::5', 'HTTP_X_FORWARDED_PROTO' => 'https', 'HTTP_X_FORWARDED_HOST' => 'www.example.org'], ['10.0.0.1']);
+            Log::write($viaProxy, $p, Decision::challenge('always'), 'site.rules:9');
+            truthy(strpos((string) file_get_contents("$dir/proxy.log"), ' 2001:db8:1::/48 challenge 429 "always" rule=site.rules:9 "GET https://www.example.org/login?next=%2Fadmin" ') !== false,
+                (string) file_get_contents("$dir/proxy.log"));
             same('0640', substr(sprintf('%o', fileperms("$dir/shield.log")), -4));
             $full = Settings::from(['log' => ['file' => "$dir/full.log", 'ip' => 'full']]);
             Log::write($full, $r, Decision::reject(404, 'x'), null);

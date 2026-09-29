@@ -104,8 +104,8 @@ $examples = function (string $prefix): void {
             // PHP deletes a cookie as "name=deleted" with an expiry in the past.
             truthy(in_array($r['cookies']['rs_pass'] ?? null, ['', 'deleted'], true), 'the pass cookie is deleted');
             $r = $get('GET', '/');
-            truthy(preg_match('#reject 404 &quot;blocked path&quot; rule=default @scanners &quot;GET 127\.0\.0\.1(:\d+)?' . preg_quote($prefix, '#') . '/\.env&quot;#', $r['body']) === 1, 'the log on the page');
-            truthy(strpos($r['body'], ' 127.0.0.0 reject') !== false, 'the address shortened in the log');
+            truthy(preg_match('#reject 404 &quot;blocked path&quot; rule=default @scanners &quot;GET http://127\.0\.0\.1' . preg_quote($prefix, '#') . '/\.env&quot;#', $r['body']) === 1, 'the log on the page, with the full URL');
+            truthy(strpos($r['body'], ' 127.0.0.0/24 reject') !== false, 'the address anonymised in the log');
         }, $prefix);
 };
 

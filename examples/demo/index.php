@@ -228,7 +228,7 @@ $responseLines = array_map(static function (string $line) use ($short): array {
   </div>
 
   <h2>The shield's log</h2>
-  <p class="note">What it stopped or flagged, newest first (<code>set log …</code>, <code>set log-level flag</code>); addresses shortened unless <code>set log-ip full</code>.</p>
+  <p class="note">What it stopped or flagged, newest first (<code>set log …</code>, <code>set log-level flag</code>); each with the full URL; addresses anonymised to their network (<code>/24</code>, <code>/48</code>) unless <code>set log-ip full</code>.</p>
   <pre><?php if ($logLines === []): ?>(nothing yet — try /.env or /admin/)<?php endif ?><?php foreach ($logLines as $line): ?>
 <?= $e($line) . "\n" ?>
 <?php endforeach ?></pre>
