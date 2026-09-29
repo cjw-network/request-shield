@@ -26,6 +26,7 @@ final class Settings
      * @param list<string>|null $cacheableQuery
      * @param array<string, Budget> $budgets
      * @param list<string> $exemptIps
+     * @param array<string, array<string, string>> $origins setting => pattern or budget => where it was set (rule files)
      */
     private function __construct(
         /** @readonly */
@@ -62,6 +63,8 @@ final class Settings
         public bool $debugHeader,
         /** @readonly */
         public ChallengeSettings $challenge,
+        /** @readonly */
+        public array $origins = [],
     ) {
     }
 
@@ -105,60 +108,142 @@ final class Settings
             self::string($c, 'storeDir'),
             self::bool($c, 'debugHeader'),
             ChallengeSettings::from(self::map($c, 'challenge')),
+            self::origins(self::map($c, 'origins')),
         );
+    }
+
+    /**
+     * @param array<mixed> $o
+     * @return array<string, array<string, string>>
+     */
+    private static function origins(array $o): array
+    {
+        $out = [];
+        foreach ($o as $setting => $list) {
+            if (!is_array($list)) {
+                throw self::wrong("origins.$setting", 'an array');
+            }
+            foreach ($list as $what => $where) {
+                if (!is_string($where)) {
+                    throw self::wrong("origins.$setting", 'an array of strings');
+                }
+                $out[(string) $setting][(string) $what] = $where;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Where the rule behind a pattern or budget was written ("site.rules:12",
+     * "default @scanners"); null for settings from a PHP array.
+     */
+    public function origin(string $setting, string $what): ?string
+    {
+        return $this->origins[$setting][$what] ?? null;
     }
 
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 2;       // 2: challenge.alwaysPaths
+    private const FORMAT = 3;       // 3: rule files, several sources, origins
 
     /**
-     * The settings of a configuration file, checked only when the file
-     * changed. The checked values are kept as a PHP file in $cacheDir, which
-     * OPcache serves from memory; a request then costs two stat() calls and
-     * an include instead of checking every setting again (about 10 µs).
+     * The settings of a file, checked only when it changed. A ".rules" file
+     * is a rule file (Rules\RuleFile), anything else a PHP file returning
+     * the settings array; $sources are further rule files or globs read
+     * before it (an adapter's extensions), each with its includes.
      *
-     * @throws \InvalidArgumentException for a setting of the wrong type
+     * The checked values are kept as a PHP file in $cacheDir, which OPcache
+     * serves from memory. Whether the sources changed:
+     *   - one file: its mtime and size, on every call (one stat());
+     *   - several, with APCu: all of them, at most every "recheck" seconds
+     *     (default 10) -- in between not a single stat();
+     *   - several, without APCu: the main file on every call; the others
+     *     when it changes (bin/request-shield reload touches it).
+     * "set recheck 0" checks every source on every call.
+     *
+     * @param list<string> $sources
+     * @throws \InvalidArgumentException for a setting of the wrong type (Rules\RuleFileException: with file and line)
      * @throws \RuntimeException when the file cannot be read
      */
-    public static function load(string $file, ?string $cacheDir = null): self
+    public static function load(string $file, ?string $cacheDir = null, array $sources = []): self
     {
-        // PHP keeps the last stat() for the rest of the process: in a
-        // long-running server (and a second load() in one request) the file's
-        // old mtime and size would be compared, and a change never seen.
-        // This clears only that one entry, not the realpath cache.
-        clearstatcache();
-        $mtime = @filemtime($file);
-        $size = @filesize($file);
-        if ($mtime === false || $size === false) {
-            throw new \RuntimeException("request-shield: cannot read the settings file $file");
-        }
         $cacheDir ??= rtrim(sys_get_temp_dir(), '/') . '/request-shield';
-        $compiled = $cacheDir . '/settings-' . hash(PHP_VERSION_ID >= 80100 ? 'xxh128' : 'md5', $file) . '.php';
+        $key = hash(PHP_VERSION_ID >= 80100 ? 'xxh128' : 'md5', $file . "\0" . implode("\0", $sources));
+        $compiled = $cacheDir . '/settings-' . $key . '.php';
         // No is_file() first: a stat costs more than everything else here, and
         // an include of a missing file just returns false.
         $e = @include $compiled;
         if (is_array($e) && ($e['format'] ?? 0) === self::FORMAT && ($e['file'] ?? '') === $file
-            && ($e['mtime'] ?? -1) === $mtime && ($e['size'] ?? -1) === $size && is_array($e['settings'] ?? null)) {
+            && is_array($e['settings'] ?? null) && is_array($e['seen'] ?? null) && self::fresh($e['seen'], is_int($e['recheck'] ?? null) ? $e['recheck'] : 0, $key)) {
             /** @var array<string, mixed> $exported */
             $exported = $e['settings'];
             return self::import($exported);
         }
-        // Rebuilding: the file changed. OPcache judges a file by its mtime,
-        // and a file rewritten within the same second keeps it -- the old
-        // settings would be compiled under the new size and stay for good.
-        if (function_exists('opcache_invalidate')) {
-            @opcache_invalidate($file, true);
-        }
-        $config = require $file;
-        if (!is_array($config)) {
-            throw new \RuntimeException("request-shield: $file must return an array");
+
+        if (substr($file, -6) === '.rules') {
+            $files = $sources;
+            $files[] = $file;
+            $read = Rules\RuleFile::read($files);
+            // The main file first: without APCu it is the one checked.
+            $seen = [$file => $read['seen'][$file] ?? [0, 0]] + $read['seen'];
+            $recheck = $read['recheck'];
+            $config = $read['config'];
+        } else {
+            clearstatcache();
+            $stat = Rules\RuleFile::stat($file);
+            if ($stat === null) {
+                throw new \RuntimeException("request-shield: cannot read the settings file $file");
+            }
+            // OPcache judges a file by its mtime, and a file rewritten within
+            // the same second keeps it -- the old settings would be compiled
+            // under the new size and stay for good.
+            if (function_exists('opcache_invalidate')) {
+                @opcache_invalidate($file, true);
+            }
+            $config = require $file;
+            if (!is_array($config)) {
+                throw new \RuntimeException("request-shield: $file must return an array");
+            }
+            $seen = [$file => $stat];
+            $recheck = 0;
+            if ($sources !== []) {
+                throw new \RuntimeException('request-shield: further sources need a .rules main file');
+            }
         }
         $settings = self::from($config);
         self::write($compiled, "<?php\n// Compiled by cjw-network/request-shield from $file; rebuilt when it changes.\nreturn "
-            . var_export(['format' => self::FORMAT, 'file' => $file, 'mtime' => $mtime, 'size' => $size, 'settings' => $settings->export()], true) . ";\n");
+            . var_export(['format' => self::FORMAT, 'file' => $file, 'seen' => $seen, 'recheck' => $recheck, 'settings' => $settings->export()], true) . ";\n");
+        if (count($seen) > 1 && $recheck > 0 && function_exists('apcu_enabled') && apcu_enabled()) {
+            apcu_store('rshield:fresh:' . $key, true, $recheck);
+        }
         return $settings;
+    }
+
+    /** @param array<mixed> $seen path => [mtime, size], the main file first */
+    private static function fresh(array $seen, int $recheck, string $key): bool
+    {
+        $several = count($seen) > 1 && $recheck > 0;
+        $apcu = $several && function_exists('apcu_enabled') && apcu_enabled();
+        if ($apcu && apcu_fetch('rshield:fresh:' . $key) === true) {
+            return true;
+        }
+        // PHP keeps the last stat() for the rest of the process: in a
+        // long-running server (and a second load() in one request) the old
+        // mtime and size would be compared, and a change never seen.
+        clearstatcache();
+        foreach ($seen as $path => $stat) {
+            if (Rules\RuleFile::stat((string) $path) !== $stat) {
+                return false;
+            }
+            if ($several && !$apcu) {
+                break;          // without APCu: only the main file
+            }
+        }
+        if ($apcu) {
+            apcu_store('rshield:fresh:' . $key, true, $recheck);
+        }
+        return true;
     }
 
     /** @return array<string, mixed> */

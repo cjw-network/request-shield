@@ -82,12 +82,15 @@ final class Shield
     /**
      * protect() with the settings of a file, checked only when it changed
      * (see Settings::load()): the way to run the shield on every request.
+     * A ".rules" file is a rule file; $sources are further rule files or
+     * globs read before it -- an adapter's, for its extensions.
      *
      * @param (callable(Request): ?bool)|null $known
+     * @param list<string> $sources
      */
-    public static function protectFile(string $file, ?callable $known = null, ?string $cacheDir = null): Decision
+    public static function protectFile(string $file, ?callable $known = null, ?string $cacheDir = null, array $sources = []): Decision
     {
-        return self::protect(Settings::load($file, $cacheDir), $known);
+        return self::protect(Settings::load($file, $cacheDir, $sources), $known);
     }
 
     /**
