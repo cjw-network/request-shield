@@ -25,8 +25,9 @@ else:
   clients prove they are a real browser with an invisible check, no puzzles to
   click ([how the browser check works, in plain words](docs/explained/browser-check.md)).
 - **Doors stay shut** — an admin area only for your office, a form only where
-  it belongs; your CMS can ask for the browser check when content is sent,
-  and nobody loses what they typed.
+  it belongs; your CMS can ask for the browser check when content is sent —
+  or run it inside the form while the visitor types — and nobody loses what
+  they typed.
 - **Search engines stay welcome** — Google, Bing and others are recognised and
   let through.
 - **Readable rules** — one per line, in a plain text file; every refusal names

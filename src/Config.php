@@ -71,6 +71,11 @@ final class Config
                 // Where the shield's own pages (404, a pause, the check page) link to,
                 // "To the home page": a path (/) or an address; null: no link.
                 'home' => null,
+                // The browser check inside a form (Challenge\Widget): the endpoint's
+                // path (/request-shield: .../challenge and .../widget.js); null: off.
+                // widgetDifficulty: lower than the check page's -- the visitor types.
+                'widgetPath' => null,
+                'widgetDifficulty' => 25000,
                 // Own texts: 'title' for every language, 'de.title' for one
                 // (keys: Texts::KEYS).
                 'texts' => [],

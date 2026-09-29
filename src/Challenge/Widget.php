@@ -1,0 +1,106 @@
+<?php
+/**
+ * This file is part of cjw-network/request-shield.
+ *
+ * @copyright Copyright (C) 2026 JAC Systeme GmbH, CJW Network
+ * @license MIT, see LICENSE
+ */
+
+declare(strict_types=1);
+
+namespace CjwNetwork\RequestShield\Challenge;
+
+/**
+ * The browser check inside a form (proposal 0010): a placeholder
+ *
+ *   <div data-request-shield></div>
+ *   <script src="/request-shield/widget.js" defer></script>
+ *
+ * becomes a small box that fetches a task from the shield's endpoint when the
+ * visitor starts typing, solves it, and puts the answer into a hidden field of
+ * the form; Shield::requirePass() (or a checked path) takes it from there. The
+ * page itself carries no task, so it stays cacheable. Without JavaScript,
+ * nothing changes: the check page as before.
+ *
+ * Options on the placeholder: data-start="input" (default: the first input
+ * into the form), "load", or "submit"; data-endpoint (default: next to the
+ * script).
+ */
+final class Widget
+{
+    /** The placeholder and, once per page, the script. */
+    public static function html(string $path, string $start = 'input'): string
+    {
+        static $script = false;
+        $e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $h = '<div data-request-shield' . ($start !== 'input' ? ' data-start="' . $e($start) . '"' : '') . '></div>';
+        if (!$script) {
+            $script = true;
+            $h .= '<script src="' . $e($path . '/widget.js') . '" defer></script>';
+        }
+        return $h;
+    }
+
+    /** widget.js: the solver of the check page, and the box. */
+    public static function script(): string
+    {
+        return "var RS = {};\n" . ChallengePage::SCRIPT . "\n" . self::BOX;
+    }
+
+    private const BOX = <<<'JS'
+(function (R) {
+  if (typeof document === 'undefined') { return; }
+  var me = document.currentScript, base = ((me && me.src) || '').replace(/\/widget\.js(\?.*)?$/, '');
+  function formOf(el) { while (el && el.nodeName !== 'FORM') { el = el.parentNode; } return el; }
+  function run(box) {
+    var form = formOf(box), endpoint = box.getAttribute('data-endpoint') || (base + '/challenge');
+    var start = box.getAttribute('data-start') || 'input';
+    var state = 'idle', waiting = null, field = null, texts = { checking: '', checked: '✓', failed: '' };
+    box.className += ' rs-widget';
+    box.setAttribute('role', 'status');
+    box.setAttribute('aria-live', 'polite');
+    box.innerHTML = '<span class="rs-icon" aria-hidden="true"></span> <span class="rs-text"></span>';
+    var text = box.querySelector('.rs-text'), icon = box.querySelector('.rs-icon');
+    function show(s, t) { box.setAttribute('data-state', s); text.textContent = t; icon.textContent = s === 'done' ? '✓' : (s === 'failed' ? '!' : '…'); }
+    function finish(s, t) {
+      state = s; show(s, t);
+      if (waiting) { var b = waiting; waiting = null; if (form.requestSubmit) { form.requestSubmit(b === true ? undefined : b); } else { form.submit(); } }
+    }
+    function go() {
+      if (state !== 'idle') { return; }
+      state = 'checking';
+      show('checking', texts.checking);
+      if (!window.fetch) { finish('failed', ''); return; }
+      fetch(endpoint, { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          if (!j) { finish('failed', texts.failed); return; }
+          texts = j.texts || texts;
+          if (j.passed) { finish('done', texts.checked); return; }
+          show('checking', texts.checking);
+          R.solve(j.challenge, function (n, took) {
+            if (n < 0) { finish('failed', texts.failed); return; }
+            if (!field) { field = document.createElement('input'); field.type = 'hidden'; field.name = j.field; form.appendChild(field); }
+            field.value = R.payload(j.challenge, n, took);
+            finish('done', texts.checked);
+          });
+        }, function () { finish('failed', texts.failed); });
+    }
+    show('idle', '');
+    if (!form) { return; }
+    if (start === 'load') { go(); }
+    if (start === 'input') { form.addEventListener('input', go); form.addEventListener('change', go); }
+    // Sent before the check is done: wait for it, then send. Failed: send
+    // anyway -- the shield checks on its own then (the check page).
+    form.addEventListener('submit', function (ev) {
+      if (state === 'done' || state === 'failed') { return; }
+      ev.preventDefault();
+      waiting = ev.submitter || true;
+      go();
+    });
+  }
+  var boxes = document.querySelectorAll('[data-request-shield]');
+  for (var i = 0; i < boxes.length; i++) { run(boxes[i]); }
+})(RS);
+JS;
+}

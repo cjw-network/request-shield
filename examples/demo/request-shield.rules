@@ -23,7 +23,7 @@ version 2026-09-29.1        # this rule set's own version: shown on /rules and b
 # search against its own budget (on-demand: the page counts, see index.php).
 [DEMO-SEARCH]       limit searches 10/min on-demand               # at most 10 searches a minute per visitor
 
-[DEMO-FORMS]        allow POST  **/edit **/comment **/profile     # forms may only be sent to the edit, comment and profile pages
+[DEMO-FORMS]        allow POST  **/edit **/comment **/profile **/contact     # forms may only be sent to the edit, comment, profile and contact pages
 
 [DEMO-ADMIN]        restrict **/admin/**  to 192.0.2.0/24         # the admin area: only the office network
 [DEMO-API]          restrict **/api/**    to 127.0.0.1 ::1        # the API: only this machine
@@ -59,6 +59,10 @@ set         recheck 0
 # when a comment is sent (/comment), or the response header
 # X-Request-Shield-Challenge: required on a page (/profile) -- the latter needs:
 set         app-challenge on
+
+# The browser check inside a form (/contact): the box fetches its task here,
+# while the visitor types -- the page itself stays cacheable.
+set         widget-path ${REQUEST_SHIELD_DEMO_HOME:-/}request-shield
 
 # The shield's own pages (404, 403, a pause, the check page) link back here:
 # the demo sets the variable to its own front page, wherever it lives.

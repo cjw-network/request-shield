@@ -233,4 +233,41 @@ return [
             [$_POST, $_FILES] = [$post, $files];
         }
     },
+    'the check inside the form: the answer from a form field, the task, the setting, the placeholder' => function (): void {
+        $c = ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 3000], 'widgetPath' => '/request-shield', 'widgetDifficulty' => 2000]);
+        $gate = new Gate($c, SECRET, null, 64, new \CjwNetwork\RequestShield\Store\MemoryStore());      // a store: an answer counts once
+        $task = $gate->widgetTask(creq('/request-shield/challenge'), 1.0);
+        truthy(is_array($task) && $task['maxnumber'] === 2000, 'a task of the widget\'s difficulty');
+        $answer = solveInPhp($task);
+        $r = $gate->resolve(Decision::challenge('always'), Decision::allow(), creq('/login', [], 'POST'), 2.0, ['solution' => $answer]);
+        same(Decision::ALLOW_UNCACHED, $r['decision']->action, 'a POST with the answer in the form: through');
+        $pass = cookieValue($r['cookies'], 'rs_pass');
+        truthy($pass !== null && $pass !== '', 'with a pass');
+        same(Decision::THROTTLE, $gate->resolve(Decision::challenge('always'), Decision::allow(), creq('/login', [], 'POST'), 2.0, ['solution' => $answer])['decision']->action, 'the same answer twice: no');
+        same(null, $gate->widgetTask(creq('/x', ['rs_pass' => $pass]), 3.0), 'with a pass: no task');
+        foreach (['request-shield', '/a b', '/x/../y"', '/'] as $bad) {
+            try {
+                ChallengeSettings::from(['widgetPath' => $bad]);
+                throw new TestFailure("accepted $bad");
+            } catch (InvalidArgumentException $e) {
+                truthy(strpos($e->getMessage(), 'challenge.widgetPath') !== false, $e->getMessage());
+            }
+        }
+        same(null, ChallengeSettings::from([])->widgetPath, 'off by default');
+        $shield = new \CjwNetwork\RequestShield\Shield([], new \CjwNetwork\RequestShield\Store\MemoryStore());
+        same('', $shield->widget(), 'off: no placeholder');
+        $on = new \CjwNetwork\RequestShield\Shield(['challenge' => ['widgetPath' => '/rs']], new \CjwNetwork\RequestShield\Store\MemoryStore());
+        $first = $on->widget();
+        $second = $on->widget('load');
+        truthy(substr_count($first . $second, '<script') === 1, 'the script once per page');
+        truthy(strpos($second, 'data-start="load"') !== false, 'the start option');
+        $node = nodeBinary();
+        if ($node !== null) {
+            $f = sys_get_temp_dir() . '/rshield-widget-' . getmypid() . '.js';
+            file_put_contents($f, \CjwNetwork\RequestShield\Challenge\Widget::script());
+            exec(escapeshellarg($node) . ' --check ' . escapeshellarg($f) . ' 2>&1', $out, $code);
+            unlink($f);
+            same(0, $code, 'widget.js is valid JavaScript: ' . implode("\n", $out));
+        }
+    },
 ];

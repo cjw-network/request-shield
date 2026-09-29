@@ -68,6 +68,10 @@ what you entered is sent."* (in their language).
 - Passwords in a form come back in the page (the same site, HTTPS). For a
   login, check the page before: `challenge /login` or the header.
 
+Better still for forms: the check **inside the form**, while the visitor
+types — no check page at all, files included
+([the browser check inside the form](browser-check-in-the-form.md)).
+
 ## Details
 
 - `requirePass()` returns at once when this request already passed the check

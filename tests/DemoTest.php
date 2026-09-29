@@ -35,7 +35,9 @@ function withDemo(callable $body, string $prefix = ''): void
             $opts = ['method' => $method, 'header' => $h, 'ignore_errors' => true, 'timeout' => 10, 'follow_location' => 0];
             if ($content !== '') {
                 $opts['content'] = $content;
-                $opts['header'] .= "Content-Type: application/x-www-form-urlencoded\r\n";
+                if (stripos($h, 'Content-Type:') === false) {
+                    $opts['header'] .= "Content-Type: application/x-www-form-urlencoded\r\n";
+                }
             }
             $body = @file_get_contents("http://127.0.0.1:$port$prefix$uri", false, stream_context_create(['http' => $opts]));
             $status = 0;
@@ -225,6 +227,59 @@ $appChallenges = function (string $prefix): void {
         }, $prefix);
 };
 
+/** A multipart form: fields and one file. */
+function multipart(array $fields, string $fileField, string $fileName, string $fileBody): array
+{
+    $b = 'rsb' . bin2hex(random_bytes(6));
+    $body = '';
+    foreach ($fields as $k => $v) {
+        $body .= "--$b\r\nContent-Disposition: form-data; name=\"$k\"\r\n\r\n$v\r\n";
+    }
+    $body .= "--$b\r\nContent-Disposition: form-data; name=\"$fileField\"; filename=\"$fileName\"\r\nContent-Type: text/plain\r\n\r\n$fileBody\r\n--$b--\r\n";
+    return ["multipart/form-data; boundary=$b", $body];
+}
+
+$widget = function (string $prefix): void {
+        if (!function_exists('proc_open')) {
+            skip('no proc_open');
+        }
+        if (nodeBinary() === null) {
+            skip('no node on this machine');
+        }
+        withDemo(function (callable $get) use ($prefix): void {
+            $r = $get('GET', '/contact');
+            truthy(strpos($r['body'], '<div data-request-shield></div><script src="' . $prefix . '/request-shield/widget.js" defer></script>') !== false, 'the placeholder and the script');
+            $js = $get('GET', '/request-shield/widget.js');
+            same(200, $js['status']);
+            truthy(strpos(implode("\n", $js['headers']), 'Content-Type: text/javascript') !== false && strpos($js['body'], 'data-request-shield') !== false, 'the script');
+            preg_match('/ETag: (\S+)/', implode("\n", $js['headers']), $m);
+            same(304, $get('GET', '/request-shield/widget.js', ['If-None-Match' => $m[1] ?? '-'])['status'], 'cached by the browser');
+            same(404, $get('GET', '/request-shield/other')['status'], 'nothing else there');
+            // The task, in the visitor's language, never cached
+            $r = $get('GET', '/request-shield/challenge', ['Accept-Language' => 'de']);
+            same(200, $r['status']);
+            $task = json_decode($r['body'], true);
+            same([false, 'rs_solution', 'Browser geprüft'], [$task['passed'], $task['field'], $task['texts']['checked']]);
+            truthy(strpos(implode("\n", $r['headers']), 'Cache-Control: no-store') !== false, 'never cached');
+            [$payload] = solveInNode($task['challenge']);
+            // The form with the answer -- and a file: straight through
+            [$type, $body] = multipart(['message' => 'Hello <there>', 'rs_solution' => $payload], 'attachment', 'note.txt', 'twelve bytes');
+            $r = $get('POST', '/contact', ['Content-Type' => $type], $body);
+            same(200, $r['status'], 'the form went through');
+            truthy(strpos($r['body'], 'your message &quot;Hello &lt;there&gt;&quot; arrived with the file &quot;note.txt&quot; (12 bytes)') !== false, 'message and file arrived');
+            $pass = $r['cookies']['rs_pass'] ?? '';
+            truthy($pass !== '', 'and a pass cookie');
+            // The same answer again: used up -- the check page (a file cannot come back)
+            [$type, $body] = multipart(['message' => 'again', 'rs_solution' => $payload], 'attachment', 'note.txt', 'x');
+            $r = $get('POST', '/contact', ['Content-Type' => $type], $body);
+            same(429, $r['status'], 'an answer counts once');
+            truthy(strpos($r['body'], 'Please go back and send the form again') !== false, 'files cannot come back: asked to send again');
+            // With the pass: the endpoint says so, the form goes through without an answer
+            same(true, json_decode($get('GET', '/request-shield/challenge', ['Cookie' => "rs_pass=$pass"])['body'], true)['passed']);
+            same(200, $get('POST', '/contact', ['Cookie' => "rs_pass=$pass"], 'message=hi')['status']);
+        }, $prefix);
+};
+
 $sub = '/examples/demo/index.php';
 return [
     'the demo: every example link does what the page says' => fn () => $examples(''),
@@ -237,4 +292,6 @@ return [
     'the demo in a subdirectory: search, forms, admin and API' => fn () => $forms($sub),
     'the demo: the site asks for the check -- a comment sent again after it, a page that asks with a header' => fn () => $appChallenges(''),
     'the demo in a subdirectory: the site asks for the check' => fn () => $appChallenges($sub),
+    'the demo: the check inside the form -- task, answer in the form, a file straight through' => fn () => $widget(''),
+    'the demo in a subdirectory: the check inside the form' => fn () => $widget($sub),
 ];

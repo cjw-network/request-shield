@@ -91,6 +91,17 @@ if ($path === '/search') {
     } else {
         $content = ['Comment', 'Write a comment and send it. Without a pass, the check comes first — and your comment is sent again by itself afterwards.'];
     }
+} elseif ($path === '/contact') {
+    // The check inside the form: the box solved it while the visitor typed,
+    // and requirePass() finds the answer in the form -- files and all.
+    if ($method === 'POST' && $shield !== null) {
+        $shield->requirePass();
+        $file = $_FILES['attachment'] ?? null;
+        $got = is_array($file) && ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK ? ' with the file "' . (string) $file['name'] . '" (' . (int) $file['size'] . ' bytes)' : '';
+        $content = ['Contact', 'Thank you — your message "' . (string) ($_POST['message'] ?? '') . '" arrived' . $got . ' (a demo: nothing is kept). The browser check ran inside the form while you typed; no check page, nothing sent twice.'];
+    } else {
+        $content = ['Contact', 'Start typing: the box under the form checks your browser in the background. Send it, with a file if you like — it goes straight through.'];
+    }
 } elseif ($path === '/profile') {
     // The page itself asks for the check, with a header (set app-challenge on).
     header('X-Request-Shield-Challenge: required');
@@ -154,6 +165,7 @@ $groups = [
     'The site asks for the check' => [
         ['/comment', 'A comment form', 'sending it needs a pass: without one, the check — then the comment is sent again by itself'],
         ['/profile', 'A page that asks for the check', 'the page sets X-Request-Shield-Challenge: required — the form only with a pass'],
+        ['/contact', 'The check inside the form', 'a box in the form checks while you type — sent straight through, a file too'],
     ],
     'Browser check and pace' => [
         ['/challenge', 'A page that always checks the browser', 'the invisible check once, then the page (valid for 1 minute here)'],
@@ -245,6 +257,10 @@ $responseLines = array_map(static function (string $line) use ($short): array {
   .note { color: var(--muted); font-size: .92rem; margin: .4rem 0; }
   button { padding: .45rem .9rem; border: 0; border-radius: 6px; background: var(--accent); color: #fff; cursor: pointer; font: inherit; }
   button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+  .rs-widget { display: flex; align-items: center; gap: .45rem; flex-basis: 100%; font-size: .9rem; color: var(--muted); min-height: 1.6rem; }
+  .rs-widget .rs-icon { display: inline-flex; width: 1.4rem; height: 1.4rem; border-radius: 50%; align-items: center; justify-content: center; border: 1px solid var(--line); font-weight: 700; }
+  .rs-widget[data-state="done"] .rs-icon { background: var(--ok); color: #fff; border-color: var(--ok); }
+  .rs-widget[data-state="checking"] .rs-icon { border-color: var(--accent); color: var(--accent); }
   a.path { display: inline-block; margin: .3rem 0 0 .6rem; font-size: .85rem; }
   button.peek { margin-top: .3rem; padding: .15rem .55rem; font-size: .82rem; background: transparent; color: var(--accent); border: 1px solid var(--line); }
   pre.answer { font-size: 13px; white-space: pre-wrap; word-break: break-all; }
@@ -268,6 +284,13 @@ $responseLines = array_map(static function (string $line) use ($short): array {
   <?php if ($path === '/comment' && $method !== 'POST'): ?>
   <section class="card"><form method="post" action="<?= $e($url('/comment')) ?>"><input type="text" name="comment" placeholder="Your comment"><button type="submit">Send comment</button></form>
   <p class="note">Try it after <a href="<?= $e($url('/reset')) ?>">Reset my pass</a>: the check comes, and your comment arrives anyway.</p></section>
+  <?php elseif ($path === '/contact' && $method !== 'POST'): ?>
+  <section class="card"><form method="post" action="<?= $e($url('/contact')) ?>" enctype="multipart/form-data">
+    <input type="text" name="message" placeholder="Your message" aria-label="Your message">
+    <input type="file" name="attachment" aria-label="A file">
+    <?= $shield !== null ? $shield->widget(($_GET['start'] ?? '') === 'load' ? 'load' : 'input') : '' ?>
+    <button type="submit">Send</button></form>
+  <p class="note">The box is <code>&lt;?= Shield::active()?-&gt;widget() ?&gt;</code> — a placeholder and a script from the shield (<code>set widget-path …</code>). It starts on your first input — or at once: <a href="<?= $e($url('/contact?start=load')) ?>">check on loading</a>.</p></section>
   <?php elseif ($path === '/profile' && $method !== 'POST'): ?>
   <section class="card"><form method="post" action="<?= $e($url('/profile')) ?>"><input type="text" name="name" placeholder="Your name"><button type="submit">Save</button></form></section>
   <?php endif ?>

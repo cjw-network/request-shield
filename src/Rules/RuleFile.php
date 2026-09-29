@@ -55,6 +55,8 @@ final class RuleFile
         'recheck' => ['recheck', 'seconds'],
         'language' => ['challenge.language', 'language'],
         'home' => ['challenge.home', 'string'],
+        'widget-path' => ['challenge.widgetPath', 'string'],
+        'widget-difficulty' => ['challenge.widgetDifficulty', 'int'],
         'log' => ['log.file', 'path'],
         'log-level' => ['log.level', 'loglevel'],
         'log-ip' => ['log.ip', 'logip'],

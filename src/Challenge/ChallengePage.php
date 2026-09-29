@@ -137,7 +137,8 @@ final class ChallengePage
   R.sha256 = sha256;
   R.solve = solve;
   R.payload = payload;
-  if (typeof document === 'undefined') { return; }
+  // Without a task (the widget, tests in Node): only the solver above.
+  if (typeof document === 'undefined' || !R.c) { return; }
   var m = document.getElementById('m'), bar = document.getElementById('b');
   var tries = 0;
   try { tries = +(sessionStorage.getItem('rs-tries') || 0); sessionStorage.setItem('rs-tries', tries + 1); } catch (e) {}

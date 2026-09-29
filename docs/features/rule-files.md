@@ -195,6 +195,7 @@ keeps both the same.
 | `bind-user-agent`, `search-engines`, `debug-header`, `strip-untrusted-forwarded` | `on` / `off` |
 | `app-challenge` | `on`: the site may ask for the check with the header `X-Request-Shield-Challenge: required` ([docs](app-challenges.md)) |
 | `ipv6-prefix`, `max-uri`, `max-query-parameters`, `max-header-bytes` | numbers |
+| `widget-path`, `widget-difficulty` | the browser check inside a form: its endpoint (`/request-shield`; unset: off) and difficulty ([docs](browser-check-in-the-form.md)) |
 | `home` | a path (`/`) or an address: the shield's own pages (404, a pause, the check page) link to it, "To the home page" |
 | `language` | `auto` (default: the visitor's browser language among those there are texts for, else English) or a code: `de`, `en` |
 | `text.<key>`, `text.<lang>.<key>` | what visitors read (the rest of the line): for every language, or for one — `set text.de.title Einen Moment, bitte`. Keys: `title`, `text`, `noscript`, `nocookies`, `failed`, `try-again` (`%s` = seconds), `bad-request`, `no-access`, `not-found`, `not-allowed`, `too-long`, `too-many`, `too-large`, `error`. English and German are built in; another language comes with its texts (`text.fr.title …`) |

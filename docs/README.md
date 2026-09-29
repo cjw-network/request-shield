@@ -13,6 +13,7 @@
   [log and rule IDs](features/log-and-rule-ids.md) ·
   [active rules page](features/active-rules-page.md) ·
   [the site asks for the check](features/app-challenges.md) ·
+  [the check inside the form](features/browser-check-in-the-form.md) ·
   [settings](features/settings.md)
 - **Use cases** — scenarios end to end:
   [shared hosting DoS guard](use-cases/shared-hosting-dos-guard.md) ·
@@ -27,7 +28,7 @@
   [0006 the site asks for the check](proposals/0006-the-site-asks-for-the-check.md) (implemented) ·
   [0008 match blocks](proposals/0008-match-blocks.md) ·
   [0009 typed query parameters](proposals/0009-typed-query-parameters.md) ·
-  [0010 the browser check inside the form](proposals/0010-browser-check-in-the-form.md)
+  [0010 the browser check inside the form](proposals/0010-browser-check-in-the-form.md) (implemented)
   (0002, a single-file build, is reserved)
 - **Architecture decisions**:
   [0001 run in PHP first](adr/0001-run-in-php-before-the-application.md) ·

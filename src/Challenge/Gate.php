@@ -39,16 +39,19 @@ final class Gate
 
     /**
      * @param Decision $base what every check but the budgets decided (cacheable or not)
-     * @param array{forced?: bool, fresh?: ?int, resend?: array{action: string, fields: list<array{0: string, 1: string}>}|false|null} $o
+     * @param array{forced?: bool, fresh?: ?int, resend?: array{action: string, fields: list<array{0: string, 1: string}>}|false|null, solution?: ?string} $o
      *   forced: the application asks for the check (Shield::requirePass()): exempt paths do not count;
      *   fresh: only a pass issued in the last so many seconds counts;
-     *   resend: a form sent without a pass, to be sent again after the check (false: it cannot be)
+     *   resend: a form sent without a pass, to be sent again after the check (false: it cannot be);
+     *   solution: an answer the check inside the form sent in a hidden field
      * @return array{decision: Decision, cookies: list<string>, page: ?string}
      *         cookies are complete Set-Cookie header values
      */
     public function resolve(Decision $challenged, Decision $base, Request $request, float $now, array $o = []): array
     {
         $forced = $o['forced'] ?? false;
+        // An answer from the check inside the form (a hidden field), or none.
+        $posted = $o['solution'] ?? null;
         $fresh = $o['fresh'] ?? null;
         $resend = $o['resend'] ?? null;
         $bucket = IpAddress::bucket($request->clientIp, $this->ipv6Prefix);
@@ -65,8 +68,8 @@ final class Gate
 
         // A solution comes with the reload of a page -- or, for a form the
         // application asked the check for, with the form sent again.
-        $solution = $request->cookie($solutionName);
-        if ($solution !== null && ($request->method === 'GET' || $request->method === 'HEAD' || $forced)) {
+        $solution = $posted ?? $request->cookie($solutionName);
+        if ($solution !== null && ($request->method === 'GET' || $request->method === 'HEAD' || $forced || $posted !== null)) {
             $cookies = [self::cookie($solutionName, '', 0, $secure)];
             if ((new ProofOfWork($this->secret))->verify($solution, $bucket, $now) && $this->firstUse($solution, $now)) {
                 $ttl = $this->config->passTtl;
@@ -100,6 +103,22 @@ final class Gate
         $texts = \CjwNetwork\RequestShield\Texts::all(\CjwNetwork\RequestShield\Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts);
         $page = ChallengePage::render($challenge, $solutionName, $secure, $texts, $resend, $c->home);
         return ['decision' => $challenged, 'cookies' => $cookies, 'page' => $page];
+    }
+
+    /**
+     * A task for the check inside the form (Widget), or null when the visitor
+     * holds a pass already.
+     *
+     * @return array{algorithm: string, challenge: string, maxnumber: int, salt: string, signature: string}|null
+     */
+    public function widgetTask(Request $request, float $now): ?array
+    {
+        $bucket = IpAddress::bucket($request->clientIp, $this->ipv6Prefix);
+        $pass = new PassCookie($this->secret, $this->config->bindUserAgent);
+        if ($pass->valid($request->cookie($this->config->cookie), $bucket, (string) $request->header('user-agent'), $now)) {
+            return null;
+        }
+        return (new ProofOfWork($this->secret))->create($bucket, $this->config->widgetDifficulty, (int) $now + $this->config->solutionTtl);
     }
 
     /**

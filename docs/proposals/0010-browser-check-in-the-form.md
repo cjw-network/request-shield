@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Implemented** 2026-09-29 (see [the browser check inside the form](../features/browser-check-in-the-form.md)) |
 | Proposed | 2026-09-29 |
 | Affects | the browser check, `requirePass()` ([0006](0006-the-site-asks-for-the-check.md)), a new small endpoint, texts |
 
@@ -107,7 +107,20 @@ tag). The box:
 `requirePass()` works unchanged; the widget only makes it find an answer in the
 form. Sites without the widget see no difference.
 
-## Open questions
+## Decisions taken when implementing (2026-09-29)
+
+1. It starts on the first input into the form (`widget('load')` or
+   `data-start` for the others).
+2. The box is always there, small; ✓ once done.
+3. The endpoint has no leading dot and is off unless set:
+   `set widget-path /request-shield`.
+4. The script is served by the shield as a file (`widget.js`, cached a day,
+   ETag); `Challenge\Widget::script()` gives it to sites that serve it
+   themselves.
+5. Also: a page every visitor is checked on (`challenge /login`) takes the
+   answer from the form, and the answer is taken out of `$_POST`.
+
+## Open questions (as proposed)
 
 1. Start by default on the first input, or on loading the page?
 2. Should the box be visible at all times, or only while checking and once

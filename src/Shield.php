@@ -139,7 +139,18 @@ final class Shield
         $shield->request = $request;
         self::$active = $shield;
         $now = microtime(true);
-        $settled = $shield->settle($shield->decide($request, $now), $request, $now);
+        $decided = $shield->decide($request, $now);
+        // The endpoint of the check inside the form: answered here, before the
+        // application -- after the checks, so budgets count it and a refused
+        // client stays refused; a challenged one gets its task (that is what
+        // it asks for).
+        $w = $s->challenge->widgetPath;
+        if ($w !== null && strncmp($request->path, $w . '/', strlen($w) + 1) === 0
+            && ($decided->passes() || $decided->action === Decision::CHALLENGE)) {
+            $shield->serveWidget(substr($request->path, strlen($w) + 1), $request, $now);
+            exit;
+        }
+        $settled = $shield->settle($decided, $request, $now);
         $decision = $settled['decision'];
         self::$current = $decision;
         $shield->passed = $settled['passed'];
@@ -328,8 +339,76 @@ final class Shield
         if ($decision->action !== Decision::CHALLENGE) {
             return ['decision' => $decision, 'cookies' => [], 'page' => null, 'passed' => false];
         }
-        $r = $this->gate()->resolve($decision, $this->base, $request, $now);
+        $r = $this->gate()->resolve($decision, $this->base, $request, $now, ['solution' => $this->postedSolution()]);
         return $r + ['passed' => $r['decision']->passes()];
+    }
+
+    /**
+     * The answer the check inside the form sent with a form (hidden field),
+     * taken out of $_POST once read -- the application never sees it.
+     */
+    private function postedSolution(): ?string
+    {
+        if ($this->settings->challenge->widgetPath === null) {
+            return null;
+        }
+        $field = $this->settings->challenge->solutionCookie;
+        $v = $_POST[$field] ?? null;
+        unset($_POST[$field]);
+        if (is_string($v) && $v !== '') {
+            $this->posted = $v;
+        }
+        return $this->posted;
+    }
+
+    private ?string $posted = null;
+
+    /**
+     * The placeholder for the check inside a form, and (once per page) the
+     * script: echo Shield::active()?->widget(); -- empty while the widget is
+     * off (set widget-path ...).
+     *
+     * @param string $start "input" (the first input into the form), "load" or "submit"
+     */
+    public function widget(string $start = 'input'): string
+    {
+        $w = $this->settings->challenge->widgetPath;
+        return $w === null ? '' : \CjwNetwork\RequestShield\Challenge\Widget::html($w, $start);
+    }
+
+    /** <widgetPath>/challenge (a task as JSON) and <widgetPath>/widget.js. */
+    private function serveWidget(string $what, Request $request, float $now): void
+    {
+        $c = $this->settings->challenge;
+        if ($what === 'widget.js') {
+            $js = \CjwNetwork\RequestShield\Challenge\Widget::script();
+            $etag = '"' . substr(hash('sha256', $js), 0, 16) . '"';
+            header('Content-Type: text/javascript; charset=utf-8');
+            header('Cache-Control: public, max-age=86400');
+            header('ETag: ' . $etag);
+            if (($request->header('if-none-match') ?? '') === $etag) {
+                http_response_code(304);
+                return;
+            }
+            echo $js;
+            return;
+        }
+        if ($what !== 'challenge') {
+            http_response_code(404);
+            return;
+        }
+        $texts = Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts);
+        $task = $this->gate()->widgetTask($request, $now);
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        header('Vary: Accept-Language');
+        header('X-Robots-Tag: noindex');
+        echo json_encode([
+            'passed' => $task === null,
+            'challenge' => $task,
+            'field' => $c->solutionCookie,
+            'texts' => ['checking' => $texts['widget-checking'], 'checked' => $texts['widget-checked'], 'failed' => $texts['widget-failed']],
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP);
     }
 
     /**
@@ -355,7 +434,7 @@ final class Shield
         $now = microtime(true);
         $resend = $request->method === 'GET' || $request->method === 'HEAD' ? null : self::resendFields($request);
         $r = $this->gate()->resolve(Decision::challenge('app'), Decision::allowUncached('app'), $request, $now,
-            ['forced' => true, 'fresh' => $fresh, 'resend' => $resend]);
+            ['forced' => true, 'fresh' => $fresh, 'resend' => $resend, 'solution' => $this->postedSolution()]);
         if (!headers_sent()) {
             foreach ($r['cookies'] as $cookie) {
                 header('Set-Cookie: ' . $cookie, false);

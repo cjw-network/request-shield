@@ -76,6 +76,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Diagrams, drawn as SVG without a library: the path of a request through the
   checks on the rules page, the browser check step by step, and how the shield
   sits in front of a site (README, `docs/explained/`).
+- The browser check inside the form (proposal 0010): `set widget-path
+  /request-shield` and `Shield::active()->widget()` put a small box into a form
+  that fetches a task from the shield's endpoint on the first input, solves it
+  while the visitor types and puts the answer into the form; `requirePass()`
+  and checked pages take it from there — no check page, files included. The
+  page stays cacheable; `widget.js` is a file (CSP), the task ALTCHA's format;
+  texts in the visitor's language. Demo: `/contact`.
 - Proposal 0004: modes (`off`, `monitor`, `enforce`, `strict`), `monitor` for
   single rules, a fresh check per path.
 - `challenge.alwaysPaths`: paths every visitor has to pass the browser check

@@ -35,6 +35,9 @@ their browser's setting; a site can change every text and add languages.
   sent (a comment, a registration) or when a form is opened — for example
   only when a post looks like spam. The visitor loses nothing: after the check
   the form is sent again by itself.
+- **Inside a form, while typing:** a site can put a small box into its forms
+  — *"✓ Browser checked"* — that does the check in the background while the
+  visitor writes; sending then goes straight through.
 - **Never** for search engines: Google, Bing and others are recognised — their
   address is checked with the name service, not just their claim — and let
   through.

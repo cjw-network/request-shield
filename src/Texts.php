@@ -23,7 +23,7 @@ namespace CjwNetwork\RequestShield;
 final class Texts
 {
     /** The keys a site can set. */
-    public const KEYS = ['title', 'text', 'noscript', 'nocookies', 'failed', 'try-again', 'sending', 'send-again', 'resend-lost', 'back', 'home',
+    public const KEYS = ['title', 'text', 'noscript', 'nocookies', 'failed', 'try-again', 'sending', 'send-again', 'resend-lost', 'back', 'home', 'widget-checking', 'widget-checked', 'widget-failed',
         'bad-request', 'no-access', 'not-found', 'not-allowed', 'too-long', 'too-many', 'too-large', 'error'];
 
     public const BUILT_IN = [
@@ -39,6 +39,9 @@ final class Texts
             'resend-lost' => 'For your protection, your browser had to be checked first. Please go back and send the form again.',
             'back' => 'Back to the form',
             'home' => 'To the home page',
+            'widget-checking' => 'Checking your browser …',
+            'widget-checked' => 'Browser checked',
+            'widget-failed' => 'Your browser will be checked when you send the form.',
             'bad-request' => 'Bad Request',
             'no-access' => 'Forbidden',
             'not-found' => 'Not Found',
@@ -60,6 +63,9 @@ final class Texts
             'resend-lost' => 'Zu Ihrem Schutz musste Ihr Browser zuerst geprüft werden. Bitte gehen Sie zurück und senden Sie das Formular noch einmal.',
             'back' => 'Zurück zum Formular',
             'home' => 'Zur Startseite',
+            'widget-checking' => 'Ihr Browser wird geprüft …',
+            'widget-checked' => 'Browser geprüft',
+            'widget-failed' => 'Ihr Browser wird beim Senden geprüft.',
             'bad-request' => 'Ungültige Anfrage',
             'no-access' => 'Kein Zugriff',
             'not-found' => 'Nicht gefunden',

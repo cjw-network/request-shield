@@ -50,6 +50,10 @@ final class ChallengeSettings
         public string $language = 'auto',
         /** @readonly the address the shield's own pages link to ("To the home page"); null: none */
         public ?string $home = null,
+        /** @readonly where the check-in-the-form endpoint answers (/request-shield); null: off */
+        public ?string $widgetPath = null,
+        /** @readonly the widget's difficulty (maxnumber): the visitor is still typing */
+        public int $widgetDifficulty = 25000,
     ) {
     }
 
@@ -103,7 +107,22 @@ final class ChallengeSettings
             Settings::strings($c, 'alwaysPaths', 'challenge.alwaysPaths'),
             self::language($c),
             self::home($c),
+            self::widgetPath($c),
+            max(1000, Settings::int($c, 'widgetDifficulty', 'challenge.widgetDifficulty', 25000)),
         );
+    }
+
+    /** @param array<mixed> $c */
+    private static function widgetPath(array $c): ?string
+    {
+        $p = $c['widgetPath'] ?? null;
+        if ($p === null || $p === '') {
+            return null;
+        }
+        if (!is_string($p) || !preg_match('#^(/[A-Za-z0-9._~-]+)+$#', $p)) {
+            throw Settings::wrong('challenge.widgetPath', 'null or a path such as /request-shield');
+        }
+        return $p;
     }
 
     /** @param array<mixed> $c */
