@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Composer and release archives contain only what runs on a server (`src/`,
+  `bootstrap.php`, `config/`, license and readme); tests, benchmarks, docs and
+  tool settings stay in the repository (`.gitattributes`).
+
 ## [0.2.0] — 2026-09-28
 
 ### Added
