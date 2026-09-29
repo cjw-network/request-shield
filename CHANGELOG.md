@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `challenge.alwaysPaths`: paths every visitor has to pass the browser check
+  for (once per pass cookie), whatever the budgets say — for a login or admin
+  page; a POST without a pass gets 429
+  ([docs](docs/features/browser-challenge.md)).
+- A demo site, `examples/demo/`: one example per feature, the check included;
+  `php -S 127.0.0.1:8080 examples/demo/router.php`. Tested end to end.
 - PHP 8.0 support (the Red Hat Enterprise Linux 9 baseline): no `readonly`
   properties at runtime any more — public ones are marked `@readonly`, which
   PHPStan enforces —, no string-key unpacking, `array_is_list()` and `xxh128`

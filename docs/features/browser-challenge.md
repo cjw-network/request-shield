@@ -21,6 +21,9 @@ it expires (the hard `limit` still applies).
 - **Search engines** that would be challenged are verified by reverse and
   forward DNS (Googlebot, Bingbot, DuckDuckBot, Applebot, YandexBot, …) and
   passed; the answer is remembered for a day per address.
+- **Always-checked paths** (`alwaysPaths`): a login or admin page checks every
+  visitor once per pass cookie, whatever the budgets say, for every method — a
+  bot cannot POST to a login it never loaded (a POST without a pass gets 429).
 - **Exempt paths** (APIs, feeds) are never challenged.
 - Without JavaScript or cookies the page says what is missing; after three
   failed attempts in a tab it stops instead of looping.
@@ -29,6 +32,8 @@ it expires (the hard `limit` still applies).
 
 - Scrapers and simple bots: they either run the script (and pay CPU per
   address) or stop.
+- A login form: bots that try passwords must first pass the check for each
+  address (`alwaysPaths`).
 - Burst traffic from one address that is not malicious: a person solves once
   and does not notice.
 
@@ -43,6 +48,7 @@ it expires (the hard `limit` still applies).
     'bindUserAgent' => true,
     'searchEngines' => true,            // false: none; or pattern => host suffixes
     'exemptPaths' => ['#^/api/#', '#\.(xml|rss|json)$#'],
+    'alwaysPaths' => ['#^/(login|admin)(/|$)#'],   // checked for every visitor
     'texts' => ['lang' => 'de', 'title' => 'Einen Moment bitte', 'text' => '…'],
 ],
 ```

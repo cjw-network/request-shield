@@ -19,6 +19,7 @@ final class ChallengeSettings
      * @param array<string, list<string>>|null $searchEngines null: no crawler is exempt
      * @param list<string> $exemptPaths
      * @param array<string, string> $texts
+     * @param list<string> $alwaysPaths
      */
     private function __construct(
         /** @readonly */
@@ -43,6 +44,8 @@ final class ChallengeSettings
         public array $exemptPaths,
         /** @readonly */
         public array $texts,
+        /** @readonly */
+        public array $alwaysPaths = [],
     ) {
     }
 
@@ -93,6 +96,7 @@ final class ChallengeSettings
             $engines,
             Settings::strings($c, 'exemptPaths', 'challenge.exemptPaths'),
             $texts,
+            Settings::strings($c, 'alwaysPaths', 'challenge.alwaysPaths'),
         );
     }
 

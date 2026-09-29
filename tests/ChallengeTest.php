@@ -170,4 +170,23 @@ return [
         truthy(strpos($page, '</script><b>') === false, 'no raw </script> from the data');
         truthy(strpos($page, '&lt;i&gt;T&lt;/i&gt;') !== false, 'texts escaped');
     },
+    'alwaysPaths: challenged whatever the budget says, until the client holds a pass' => function (): void {
+        $dir = sys_get_temp_dir() . '/rshield-always-' . getmypid() . '-' . mt_rand();
+        $shield = new Shield(['storeDir' => $dir, 'budgets' => ['requests' => ['limit' => 1000, 'window' => 60]],
+            'challenge' => ['secret' => SECRET, 'searchEngines' => false, 'alwaysPaths' => ['#^/login$#'], 'difficulty' => ['min' => 1000, 'max' => 1000]]], new MemoryStore());
+        same(Decision::ALLOW, $shield->settle($shield->decide(creq('/page'), 1.0), creq('/page'), 1.0)['decision']->action, 'other paths untouched');
+        $r = $shield->settle($shield->decide(creq('/login'), 1.0), creq('/login'), 1.0);
+        same(Decision::CHALLENGE, $r['decision']->action, 'first visit: challenged');
+        same('always', $r['decision']->reason);
+        preg_match('/var RS=(\{.*?\});\(function/s', (string) $r['page'], $m);
+        $solved = creq('/login', ['rs_solution' => solveInPhp(json_decode($m[1], true)['c'])]);
+        $r = $shield->settle($shield->decide($solved, 2.0), $solved, 2.0);
+        same(Decision::ALLOW_UNCACHED, $r['decision']->action, 'solved');
+        $withPass = creq('/login', ['rs_pass' => (string) cookieValue($r['cookies'], 'rs_pass')]);
+        same(Decision::ALLOW, $shield->settle($shield->decide($withPass, 3.0), $withPass, 3.0)['decision']->action, 'with the pass: through');
+        same(Decision::THROTTLE, $shield->settle($shield->decide(creq('/login', [], 'POST'), 4.0), creq('/login', [], 'POST'), 4.0)['decision']->action, 'a POST without a pass: not through');
+        $postWithPass = creq('/login', ['rs_pass' => (string) cookieValue($r['cookies'], 'rs_pass')], 'POST');
+        same(Decision::ALLOW_UNCACHED, $shield->settle($shield->decide($postWithPass, 5.0), $postWithPass, 5.0)['decision']->action, 'a POST with the pass: through, uncached');
+        exec('rm -rf ' . escapeshellarg($dir));
+    },
 ];

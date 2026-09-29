@@ -111,7 +111,7 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 1;
+    private const FORMAT = 2;       // 2: challenge.alwaysPaths
 
     /**
      * The settings of a configuration file, checked only when the file

@@ -62,6 +62,9 @@ final class Config
                 'searchEngines' => true,
                 // Paths no browser loads as a page (APIs, feeds): never challenged.
                 'exemptPaths' => [],
+                // Paths every visitor has to pass the check for (once per pass
+                // cookie), whatever the budgets say: a login or admin page.
+                'alwaysPaths' => [],
                 'texts' => [],
             ],
             // X-Request-Shield: <action> <reason> on every response (for testing).

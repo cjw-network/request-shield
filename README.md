@@ -33,6 +33,10 @@ upload, include, done.
 *What it is not:* protection against attacks so large that they overload the
 network or the web server itself — that remains the job of your hoster or a CDN.
 
+**See it in 30 seconds:** `php -S 127.0.0.1:8080 examples/demo/router.php`, then
+open http://127.0.0.1:8080/ — a mini site with one example per feature,
+including the invisible browser check ([examples/demo](examples/demo/README.md)).
+
 ## How it works
 
 It runs **before the application** — before the framework, its autoloader and

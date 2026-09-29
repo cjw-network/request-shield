@@ -3,3 +3,4 @@
 /config/request-shield.php
 /var/
 /psalm-taint.sarif
+/examples/demo/var/

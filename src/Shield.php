@@ -163,6 +163,19 @@ final class Shield
             }
         }
         $this->base = $base;
+        // Paths that are always checked (a login page): challenged whatever the
+        // budgets say, every method -- a bot must not POST to a login without
+        // having loaded it. The gate lets a client with a pass cookie through,
+        // shows the page to a GET and answers any other method with 429.
+        $always = $this->settings->challenge->alwaysPaths;
+        if ($always !== []) {
+            foreach ($always as $pattern) {
+                if (@preg_match($pattern, $request->path) === 1) {
+                    $budget = $budget === null ? Decision::challenge('always') : $budget->stricter(Decision::challenge('always'));
+                    break;
+                }
+            }
+        }
         return $budget === null ? $base : $base->stricter($budget);
     }
 
