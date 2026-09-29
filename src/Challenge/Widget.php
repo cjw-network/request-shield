@@ -46,6 +46,7 @@ final class Widget
     /** A short hash of the script, for its address. */
     public static function version(): string
     {
+        /** @var string|null $v */
         static $v = null;
         return $v ??= substr(hash('sha256', self::script()), 0, 10);
     }
