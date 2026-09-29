@@ -170,6 +170,11 @@ $groups = [
     'Browser check and pace' => [
         ['/challenge', 'A page that always checks the browser', 'the invisible check once, then the page (valid for 1 minute here)'],
         ['/reset', 'Forget my pass', 'the check comes back on /challenge'],
+        [null, 'Reload any page 20 times', 'the invisible check (more than 20 requests a minute), past 60 a short pause (429)'],
+    ],
+    'Forms (POST)' => [
+        ['/edit', 'Send a form where one belongs', 'accepted: allow POST **/edit', 'POST'],
+        ['/page/about', 'Send a form where none belongs', '"not allowed here" (405) — a bot posting wherever it finds a URL', 'POST'],
     ],
 ];
 
@@ -261,6 +266,17 @@ $responseLines = array_map(static function (string $line) use ($short): array {
   .rs-widget .rs-icon { display: inline-flex; width: 1.4rem; height: 1.4rem; border-radius: 50%; align-items: center; justify-content: center; border: 1px solid var(--line); font-weight: 700; }
   .rs-widget[data-state="done"] .rs-icon { background: var(--ok); color: #fff; border-color: var(--ok); }
   .rs-widget[data-state="checking"] .rs-icon { border-color: var(--accent); color: var(--accent); }
+  table.tests { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  table.tests td, table.tests th { padding: .5rem .6rem; border-top: 1px solid var(--line); vertical-align: top; text-align: left; }
+  table.tests tr.group th { background: var(--bg); font-size: .95rem; padding-top: .7rem; }
+  table.tests td.no { width: 3rem; font-weight: 700; white-space: nowrap; } table.tests td.no a { color: var(--fg); text-decoration: none; }
+  table.tests td.what { width: 34%; } table.tests td.what code { color: var(--muted); font-size: 12.5px; word-break: break-all; }
+  table.tests td.expect { color: var(--muted); font-size: .92rem; }
+  table.tests td.try { width: 1%; white-space: nowrap; } table.tests td.try a.path { margin-left: .4rem; }
+  table.tests tr:target { background: var(--warnbg); }
+  table.tests tr.answer-row td { border-top: 0; padding-top: 0; }
+  form.inline { display: inline; margin: 0; } button.linkish { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; font: inherit; cursor: pointer; }
+  @media (max-width: 42rem) { table.tests td { display: block; width: auto !important; border-top: 0; padding: .2rem .6rem; } table.tests tr { display: block; border-top: 1px solid var(--line); padding: .3rem 0; } table.tests tr.group { padding: 0; } table.tests td.try { white-space: normal; } }
   a.path { display: inline-block; margin: .3rem 0 0 .6rem; font-size: .85rem; }
   button.peek { margin-top: .3rem; padding: .15rem .55rem; font-size: .82rem; background: transparent; color: var(--accent); border: 1px solid var(--line); }
   pre.answer { font-size: 13px; white-space: pre-wrap; word-break: break-all; }
@@ -322,27 +338,32 @@ $responseLines = array_map(static function (string $line) use ($short): array {
   <details class="card"><summary>How it works — in one picture</summary><div class="diagram"><?= Diagram::overview() ?></div></details>
 
   <h2>Try it</h2>
-  <div class="groups">
-    <?php foreach ($groups as $heading => $items): ?>
-      <section class="card"><h3><?= $e($heading) ?></h3><ul>
-        <?php foreach ($items as [$local, $what, $expect]): ?>
-          <li><a href="<?= $e($url($local)) ?>"><?= $e($what) ?></a> <code><?= $e($local) ?></code>
-            <span class="expect"><?= $e($expect) ?></span>
-            <button type="button" class="peek" data-url="<?= $e($url($local)) ?>">Show the answer</button><pre class="answer" hidden></pre>
-            <a class="path" href="<?= $e($pathOf($local, 'GET', $request->clientIp)) ?>">See the path →</a></li>
+  <p class="note">One test per row, numbered so we can talk about them ("test 3.2"); each number is a link to its row. <em>Show the answer</em> fetches it here, <em>See the path</em> checks it step by step on the rules page.</p>
+  <table class="tests">
+    <?php $g = 0; foreach ($groups as $heading => $items): $g++; $n = 0; ?>
+      <tbody>
+        <tr class="group"><th colspan="4"><?= $g ?> · <?= $e($heading) ?></th></tr>
+        <?php foreach ($items as $item): $n++; [$local, $what, $expect] = $item; $how = $item[3] ?? 'GET'; $id = "t$g-$n"; ?>
+          <tr id="<?= $id ?>">
+            <td class="no"><a href="#<?= $id ?>"><?= $g ?>.<?= $n ?></a></td>
+            <td class="what">
+              <?php if ($local === null): ?><strong><?= $e($what) ?></strong>
+              <?php elseif ($how === 'POST'): ?><form method="post" action="<?= $e($url($local)) ?>" class="inline"><input type="hidden" name="message" value="test <?= $g ?>.<?= $n ?>"><button type="submit" class="linkish"><?= $e($what) ?></button></form>
+              <?php else: ?><a href="<?= $e($url($local)) ?>"><?= $e($what) ?></a>
+              <?php endif ?>
+              <?php if ($local !== null): ?><br><code><?= $how === 'POST' ? 'POST ' : '' ?><?= $e($local) ?></code><?php endif ?>
+            </td>
+            <td class="expect"><?= $e($expect) ?></td>
+            <td class="try">
+              <?php if ($local !== null && $how === 'GET'): ?><button type="button" class="peek" data-url="<?= $e($url($local)) ?>">Show the answer</button><?php endif ?>
+              <?php if ($local !== null): ?><a class="path" href="<?= $e($pathOf($local, $how, $request->clientIp)) ?>">See the path →</a><?php endif ?>
+            </td>
+          </tr>
+          <tr class="answer-row" hidden><td></td><td colspan="3"><pre class="answer"></pre></td></tr>
         <?php endforeach ?>
-        <?php if ($heading === 'Browser check and pace'): ?>
-          <li><strong>Reload any page 20 times</strong><span class="expect">the invisible check (more than 20 requests a minute), past 60 a short pause (429)</span></li>
-        <?php endif ?>
-      </ul></section>
+      </tbody>
     <?php endforeach ?>
-    <section class="card"><h3>Forms</h3>
-      <form method="post" action="<?= $e($url('/edit')) ?>"><input type="text" name="message" placeholder="Type something"><button type="submit">Save (POST to /edit)</button></form>
-      <p class="note">A bot posts wherever it finds a URL: <code>allow POST **/edit</code> accepts a POST on the edit page only.</p>
-      <form method="post" action="<?= $e($url('/page/about')) ?>"><input type="hidden" name="message" value="spam"><button type="submit" class="secondary">POST to /page/about — 405</button></form>
-      <p class="note"><a class="path" href="<?= $e($pathOf('/edit', 'POST', $request->clientIp)) ?>">See the path of a POST to /edit →</a> · <a class="path" href="<?= $e($pathOf('/page/about', 'POST', $request->clientIp)) ?>">… and to /page/about →</a></p>
-    </section>
-  </div>
+  </table>
 
   <h2>Behind the scenes</h2>
   <details open><summary>The shield's log — what it stopped or flagged, newest first</summary>
@@ -380,8 +401,8 @@ $decision = CjwNetwork\RequestShield\Shield::current();   // what the shield dec
 // Browsers hide Set-Cookie from scripts, and a redirect's details too.
 document.querySelectorAll('button.peek').forEach(function (b) {
   b.addEventListener('click', function () {
-    var out = b.nextElementSibling;
-    out.hidden = false;
+    var row = b.parentNode.parentNode.nextElementSibling, out = row.querySelector('pre');
+    row.hidden = false;
     out.textContent = '…';
     fetch(b.getAttribute('data-url'), { redirect: 'manual', cache: 'no-store', credentials: 'same-origin' }).then(function (r) {
       if (r.type === 'opaqueredirect') { out.textContent = 'a redirect (3xx) -- a browser does not let a script read its headers; click the link'; return; }

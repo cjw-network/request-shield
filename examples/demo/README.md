@@ -14,6 +14,10 @@ feature. **Show the answer** next to each fetches it in the background and
 shows status and headers — also for answers the page itself never sees
 (404, 400, 429):
 
+The page lists every test in a numbered table — 1.1, 1.2, … — grouped by what
+it shows; each number is a link to its row (`…/demo/#t3-2`), so tests can be
+named in a conversation or an issue. Among them:
+
 | Link | What happens |
 |---|---|
 | `/`, `/page/about` | passes; a cache may keep the page |

@@ -80,6 +80,8 @@ $examples = function (string $prefix): void {
             truthy(strpos($r['body'], 'request-shield demo') !== false, 'the page itself');
             truthy(strpos($r['body'], 'href="' . $prefix . '/challenge"') !== false, 'links start where the demo lives');
             truthy(strpos($r['body'], 'action="' . $prefix . '/edit"') !== false, 'so does the form');
+            truthy(preg_match('#<tr id="t3-1">\s*<td class="no"><a href="\#t3-1">3\.1</a></td>#', $r['body']) === 1, 'one numbered row per test, with its own anchor');
+            truthy(strpos($r['body'], '<tr class="group"><th colspan="4">7 · Forms (POST)</th></tr>') !== false, 'grouped, the groups numbered');
             truthy(strpos($r['body'], 'href="' . $prefix . '/rules?method=GET&amp;url=' . rawurlencode($prefix . '/.env') . '&amp;ip=127.0.0.1#check">See the path') !== false, 'each example links to its path on the rules page');
             $rules = $get('GET', '/rules?method=GET&url=' . rawurlencode($prefix . '/files/%2e%2e/secret') . '&ip=127.0.0.1');
             truthy(strpos($rules['body'], 'This visitor gets a broken request (400)') !== false, 'and the rules page checks exactly that address, encoding and all');
