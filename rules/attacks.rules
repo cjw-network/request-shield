@@ -1,0 +1,49 @@
+# Built into cjw-network/request-shield, on request: "include @attacks".
+#
+# Attack patterns in the address's query string and in the headers -- the
+# automated attacks every site gets: SQL injection, cross-site scripting, code
+# and shell injection, file inclusion, Log4Shell, attack tools, known exploit
+# paths. After the OWASP Core Rule Set's first level (paranoia level 1): only
+# patterns that practically never appear in a real visitor's request. Written
+# for this library, not copied from the CRS.
+#
+# Matched after the shield normalised the value: decoded (twice), lower case,
+# SQL comments and white space as one space -- "UnIoN/**/SeLeCt" and "%2527"
+# do not get past. Answer: 403. Form contents (POST bodies) are not looked at:
+# the site must handle those itself.
+#
+# Test first: in the log (set log ...; log-level stop) every hit names its
+# rule; one that hits a real page can be taken back ("unblock [ATK-XSS-URL@1]")
+# or opened where it is needed ("unblock [ATK-XSS-TAG@1] at /admin/** for …").
+
+ids ATK required
+version 2026.09.1
+
+# --- SQL injection -----------------------------------------------------------
+[ATK-SQL-UNION@1]   block query union(\s+(all|distinct))?\s+select\b                                     # SQL injection: UNION SELECT
+[ATK-SQL-TIME@1]    block query \b(sleep|benchmark|pg_sleep)\s*\(\s*\d|waitfor\s+delay\s+'                 # SQL injection that makes the database wait: sleep(5), benchmark(), waitfor delay
+[ATK-SQL-TAUT@1]    block query ['"]\s*(or|and|\|\||&&)\s+['"]?\d+['"]?\s*(=|like|<|>)\s*['"]?\d+|['"]\s*(or|and)\s+['"][a-z0-9_]+['"]\s*=\s*['"][a-z0-9_]+['"]?\s*(--|#|$)   # SQL injection: ' or '1'='1, " or 1=1 --
+[ATK-SQL-SCHEMA@1]  block query \binformation_schema\b|\bmysql\.user\b|\bsqlite_master\b|\bpg_(shadow|catalog)\b    # SQL injection reading the database's own tables
+[ATK-SQL-STACK@1]   block query ;\s*(drop|truncate|alter)\s+table\b|;\s*(shutdown|exec(\s+|ute\s+)xp_)                # SQL injection: a second statement -- ; drop table
+
+# --- cross-site scripting ----------------------------------------------------
+[ATK-XSS-TAG@1]     block query <\s*(script|iframe|object|embed|applet|base|meta)\b                            # cross-site scripting: <script>, <iframe> in the address
+[ATK-XSS-EVENT@1]   block query <[^>]*\bon(error|load|mouseover|focus|blur|click|toggle|begin|animationstart|pointerenter)\s*=   # cross-site scripting: an event handler in a tag, <img onerror=...>
+[ATK-XSS-URL@1]     block query (^|[=&])\s*(javascript|vbscript|livescript)\s*:|(^|[=&])\s*data\s*:\s*text/html      # cross-site scripting: a parameter that is a javascript: address
+
+# --- code and shell injection -------------------------------------------------
+[ATK-PHP@1]         block query <\?(php|=)|\b(base64_decode|gzinflate|str_rot13|shell_exec|passthru|proc_open|popen|pcntl_exec)\s*\(|\b(eval|assert)\s*\(\s*(\$|base64|gz|str_|\$_)     # PHP code in the address: <?php, eval(base64_decode(...))
+[ATK-SHELL@1]       block query (;|\||&&|`|\$\()\s*(cat|head|tail|more|less)\s+/|(;|\||&&|`|\$\()\s*(wget|curl|fetch)\s+\S*://|(;|\||&&|`|\$\()\s*(bash|sh|nc|ncat|python3?|perl)\s+-|/bin/(ba|z|k)?sh\b|\$\(\s*(id|whoami|uname)\b    # shell commands in the address: ; cat /etc/passwd, | wget http://…, $(id)
+
+# --- file inclusion ------------------------------------------------------------
+[ATK-LFI@1]         block query (\.\./){2}|(\.\.\\){2}|/etc/(passwd|shadow|group|hosts)\b|/proc/self/|\b(boot|win)\.ini\b|\bc:\\windows\\    # reading the server's files: ../../, /etc/passwd
+[ATK-WRAPPER@1]     block query \b(php|phar|zip|data|expect|glob|file)://                                        # PHP stream wrappers in the address: php://filter, phar://, data://
+
+# --- Log4Shell and template injection, anywhere ------------------------------------
+[ATK-JNDI@1]        block anywhere \$\{[^}]{0,40}(jndi|j\$\{|:-j)|\$\{(env|sys|java|date|base64):              # Log4Shell: ${jndi:ldap://…}, anywhere in the request
+
+# --- attack tools -----------------------------------------------------------------------
+[ATK-UA-TOOLS@1]    block header User-Agent \b(sqlmap|nikto|nmap|masscan|zgrab|zmeu|jorgee|wpscan|nuclei|acunetix|nessus|openvas|netsparker|dirbuster|gobuster|ffuf|wfuzz|havij|commix|fimap)\b   # attack tools by their name: sqlmap, nikto, nuclei, wpscan …
+
+# --- known exploit paths (OWASP A06: outdated components) ------------------------------------
+[ATK-EXPLOIT@1]     block **/eval-stdin.php /HNAP1 /boaform/** /GponForm/** /_ignition/execute-solution /.aws/** /.ssh/** **/wp-file-manager/lib/php/connector.minimal.php /cgi-mod/** /mifs/**   # paths of well-known exploits: PHPUnit eval-stdin, routers, Laravel Ignition, stored keys
