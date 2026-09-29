@@ -167,6 +167,9 @@ $fullUrl = $request->scheme . '://' . (is_string($arrived['HTTP_HOST'] ?? null) 
 $requestLine = ($arrived['REQUEST_METHOD'] ?? 'GET') . ' ' . ($arrived['REQUEST_URI'] ?? '/') . ' ' . ($arrived['SERVER_PROTOCOL'] ?? 'HTTP/1.1');
 
 $title = $path === '/challenge' ? 'You passed the browser check' : ($content !== null ? $content[0] : 'request-shield demo');
+if ($path === '/challenge') {
+    $content = ['You passed the browser check', 'Your browser just solved a small task in the background, sent the answer back and got a pass — that is all a visitor ever notices: a moment of "One moment, please". The steps below show what happened.'];
+}
 header('Content-Type: text/html; charset=utf-8');
 // What PHP sends (the web server adds Date, Server and the like).
 $responseLines = array_map(static function (string $line) use ($short): array {
@@ -218,6 +221,7 @@ $responseLines = array_map(static function (string $line) use ($short): array {
   pre.answer { font-size: 13px; white-space: pre-wrap; word-break: break-all; }
   details { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: .7rem 1.1rem; margin-bottom: .6rem; }
   summary { cursor: pointer; font-weight: 600; }
+  ol.happened { padding-left: 1.3rem; margin: .3rem 0; } ol.happened li { margin: .35rem 0; }
 </style>
 </head>
 <body>
@@ -231,6 +235,16 @@ $responseLines = array_map(static function (string $line) use ($short): array {
   <p class="lead">This page is protected by <strong>cjw-network/request-shield</strong>: every request is checked before this page's code runs. Click an example — or see <a href="<?= $e($url('/rules')) ?>">all active rules in plain words</a>, and try any address there.</p>
 
   <?php if ($content !== null): ?><p class="card"><?= $e($content[1]) ?></p><?php endif ?>
+  <?php if ($path === '/challenge'): ?>
+  <section class="card"><h3>What just happened</h3><ol class="happened">
+    <li>You opened <code>/challenge</code>, where every visitor is checked (<code>[DEMO-LOGIN] challenge **/challenge</code>). Without a pass, the shield sent — instead of this page — a small page with a task, signed so it cannot be forged: <em>find the number n for which sha256(code + n) gives this result</em>.</li>
+    <li>That page's script tried numbers until it found n — on average some tens of thousands of attempts, a fraction of a second — put the answer in a cookie and loaded the page again.</li>
+    <li>The shield checked the answer (one calculation, well under a millisecond; every answer counts only once) and handed out the pass cookie <code>rs_pass</code>.</li>
+    <li>With the pass you get through straight away<?= $passLeft !== null ? ' — for ' . (int) $passLeft . ' more seconds here (<code>set pass-ttl 1m</code>; a real site: an hour)' : '' ?>. After that, or after <a href="<?= $e($url('/reset')) ?>">Reset my pass</a>, the check comes again.</li>
+  </ol>
+  <p class="note"><strong>What it brings:</strong> a scraper or bot that runs no JavaScript never gets past step 1 — the site renders nothing for it. One with a real browser engine pays computing time for every pass. Search engines are recognised and never checked. Nothing goes to a third party. More: <code>docs/explained/browser-check.md</code>.</p>
+  </section>
+  <?php endif ?>
 
   <?php $state = $decision === null ? 'note' : ($decision->action === 'allow' ? 'pass' : 'note'); ?>
   <div class="verdict <?= $state ?>"><span class="icon"><?= $state === 'pass' ? '✓' : '!' ?></span><div>

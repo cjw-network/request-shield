@@ -23,7 +23,7 @@ else:
   but never stored.
 - **Floods are slowed down** — whoever asks too often has to wait; suspicious
   clients prove they are a real browser with an invisible check, no puzzles to
-  click.
+  click ([how the browser check works, in plain words](docs/explained/browser-check.md)).
 - **Doors stay shut** — an admin area only for your office, a form only where
   it belongs.
 - **Search engines stay welcome** — Google, Bing and others are recognised and

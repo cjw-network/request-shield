@@ -1,5 +1,7 @@
 # The browser challenge (proof of work)
 
+*In plain words, for site owners: [the browser check, explained](../explained/browser-check.md).*
+
 ## What it does
 
 A client past a budget's `challengeAt` gets, instead of the page, a small page

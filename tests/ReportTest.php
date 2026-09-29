@@ -121,6 +121,7 @@ return [
             truthy(strpos($html, '<script>alert(1)') === false && strpos($html, '<script>x') === false, 'nothing from a request or the log is markup');
             truthy(strpos($html, 'This visitor gets no access (403)') !== false, 'the verdict');
             truthy(strpos($html, '/wp-admin/**') !== false, 'rules as written');
+            truthy(strpos($html, 'How does it work — and what does it bring?') !== false, 'the browser check explained');
             truthy(strpos($html, 'hidden files and folders: .env, .git') !== false, 'the built-ins in words');
             truthy(strpos($html, '/admin/** — only for 192.0.2.0/24') !== false, 'the restricted area');
             truthy(preg_match('#site\.rules:3</code></td><td class="hits"[^>]*><span class="badge">1×</span>#', $html) === 1, 'how often the rule decided');

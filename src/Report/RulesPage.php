@@ -106,6 +106,9 @@ final class RulesPage
                 }
                 $h .= '</table>';
             }
+            if ($heading === 'Browser check') {
+                $h .= self::BROWSER_CHECK;
+            }
             $h .= '</section>';
         }
 
@@ -256,6 +259,21 @@ final class RulesPage
         return intdiv($seconds, 3600) . ' h ago';
     }
 
+    /** The browser check in plain words (docs/explained/browser-check.md has more). */
+    private const BROWSER_CHECK = '<details class="explain"><summary>How does it work — and what does it bring?</summary>'
+        . '<p>Instead of the page, a visitor who asks too often (or opens a page where everyone is checked) gets a small page for a moment: '
+        . '<em>"One moment, please"</em>. Its script solves a small arithmetic task — a real browser needs a fraction of a second, nothing to click — '
+        . 'and gets a <strong>pass</strong> for the time shown above. Search engines are recognised and never checked.</p>'
+        . '<ol><li>The shield sends a task, signed so it cannot be forged: find the number that gives a certain result.</li>'
+        . '<li>The browser tries numbers until it finds it — some tens of thousands of attempts, invisible.</li>'
+        . '<li>It sends the answer back; the shield checks it in well under a millisecond, and every answer counts only once.</li>'
+        . '<li>A signed cookie is the pass: the next pages go straight through.</li></ol>'
+        . '<p><strong>What it brings:</strong> simple bots and scrapers run no JavaScript and never get past the small page — the site renders nothing for them. '
+        . 'Bots with a real browser engine pay computing time for every pass, and more the more aggressive they are. '
+        . 'Real visitors see it at most once in a while. Nothing comes from or goes to a third party: no Google, no Cloudflare, no tracking.</p>'
+        . '<p><strong>What it does not do:</strong> it is no CAPTCHA against people, and an attacker with many real browsers gets through — slower and at their own cost.</p>'
+        . '</details>';
+
     private const CSS = <<<'CSS'
 :root{--bg:#f6f7f9;--fg:#1d2127;--muted:#5b6470;--card:#fff;--line:#dfe3e8;--accent:#2f62c9;--ok:#1e7b43;--okbg:#e6f4ea;--warn:#8a5a00;--warnbg:#fdf3dc;--no:#a3361f;--nobg:#fbe9e5;--skip:#8a929c}
 @media (prefers-color-scheme:dark){:root{--bg:#15181c;--fg:#e7e9ec;--muted:#a0a8b3;--card:#1d2127;--line:#2d333b;--accent:#7aa2ff;--ok:#5fcf8a;--okbg:#17301f;--warn:#f0c060;--warnbg:#3a2f15;--no:#ff8a70;--nobg:#3d1f19;--skip:#6b737d}}
@@ -277,6 +295,7 @@ button{padding:.45rem 1rem;border:0;border-radius:6px;background:var(--accent);c
 ol.steps{list-style:none;margin:0;padding:0}ol.steps li{display:flex;gap:.7rem;padding:.45rem 0;border-top:1px solid var(--line)}ol.steps li:first-child{border-top:0}
 .icon{flex:0 0 1.5rem;height:1.5rem;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:#fff}
 .pass .icon{background:var(--ok)}.note .icon{background:var(--warn)}.stop .icon{background:var(--no)}.skip .icon{background:var(--skip)}.skip{color:var(--skip)}
+details.explain{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.6rem}details.explain summary{cursor:pointer;font-weight:600;color:var(--accent)}details.explain ol{padding-left:1.3rem}
 table.recent .icon{width:1.3rem;height:1.3rem;display:inline-flex;font-size:.75rem}
 @media (max-width:40rem){td.meta,td.hits{white-space:normal}table.recent th:nth-child(2),table.recent td:nth-child(2){display:none}}
 CSS;

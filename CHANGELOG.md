@@ -55,6 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   update changed it. `replace [ID@n] <rule>` swaps a rule in one line and keeps
   its ID. The built-in rules have `version 2026.09.1` and `rules/CHANGELOG.md`
   (proposal 0005).
+- The browser check explained in plain words (`docs/explained/browser-check.md`),
+  on the active rules page and, after passing it, in the demo.
 - Proposal 0004: modes (`off`, `monitor`, `enforce`, `strict`), `monitor` for
   single rules, a fresh check per path.
 - `challenge.alwaysPaths`: paths every visitor has to pass the browser check

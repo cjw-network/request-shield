@@ -159,6 +159,7 @@ $challenge = function (string $prefix): void {
             $r = $get('GET', '/challenge', ['Cookie' => $rs['cookie'] . '=' . $payload]);
             same(200, $r['status'], 'solved');
             truthy(strpos($r['body'], 'You passed the browser check') !== false, 'the page behind the check');
+            truthy(strpos($r['body'], 'What just happened') !== false, 'and what just happened, step by step');
             $pass = $r['cookies']['rs_pass'] ?? '';
             truthy($pass !== '', 'pass cookie');
             same(200, $get('GET', '/challenge', ['Cookie' => 'rs_pass=' . $pass])['status'], 'with the pass: straight through');
