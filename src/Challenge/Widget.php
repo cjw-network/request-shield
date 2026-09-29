@@ -36,9 +36,18 @@ final class Widget
         $h = '<div data-request-shield' . ($start !== 'input' ? ' data-start="' . $e($start) . '"' : '') . '></div>';
         if (!$script) {
             $script = true;
-            $h .= '<script src="' . $e($path . '/widget.js') . '" defer></script>';
+            // Versioned: the browser keeps the script a day, and a changed one
+            // must reach it at once.
+            $h .= '<script src="' . $e($path . '/widget.js?v=' . self::version()) . '" defer></script>';
         }
         return $h;
+    }
+
+    /** A short hash of the script, for its address. */
+    public static function version(): string
+    {
+        static $v = null;
+        return $v ??= substr(hash('sha256', self::script()), 0, 10);
     }
 
     /** widget.js: the solver of the check page, and the box. */

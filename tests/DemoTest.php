@@ -250,7 +250,7 @@ $widget = function (string $prefix): void {
         }
         withDemo(function (callable $get) use ($prefix): void {
             $r = $get('GET', '/contact');
-            truthy(strpos($r['body'], '<div data-request-shield></div><script src="' . $prefix . '/request-shield/widget.js" defer></script>') !== false, 'the placeholder and the script');
+            truthy(strpos($r['body'], '<div data-request-shield></div><script src="' . $prefix . '/request-shield/widget.js?v=' . \CjwNetwork\RequestShield\Challenge\Widget::version() . '" defer></script>') !== false, 'the placeholder and the script, versioned');
             $js = $get('GET', '/request-shield/widget.js');
             same(200, $js['status']);
             truthy(strpos(implode("\n", $js['headers']), 'Content-Type: text/javascript') !== false && strpos($js['body'], 'data-request-shield') !== false, 'the script');
