@@ -1,0 +1,9 @@
+# Apache (and LiteSpeed): every path goes to index.php, so the shield sees
+# /.env and the like too. Without mod_rewrite the demo still works, as
+# .../index.php/challenge.
+DirectoryIndex index.php
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^index\.php(/|$) - [L]
+    RewriteRule ^ index.php [L]
+</IfModule>

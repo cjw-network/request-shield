@@ -12,7 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page; a POST without a pass gets 429
   ([docs](docs/features/browser-challenge.md)).
 - A demo site, `examples/demo/`: one example per feature, the check included;
-  `php -S 127.0.0.1:8080 examples/demo/router.php`. Tested end to end.
+  `php -S 127.0.0.1:8080 examples/demo/router.php`, or in any subdirectory
+  of a web server, with rewrite rules (`.htaccess`) or as `index.php/…`; its
+  counters and secret stay outside the document root. Tested end to end, at
+  the root and in a subdirectory.
 - PHP 8.0 support (the Red Hat Enterprise Linux 9 baseline): no `readonly`
   properties at runtime any more — public ones are marked `@readonly`, which
   PHPStan enforces —, no string-key unpacking, `array_is_list()` and `xxh128`

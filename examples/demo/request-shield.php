@@ -14,8 +14,11 @@ return [
 
     // What may be cached: the front page and /page/<name>, with ?page=<n>.
     // Anything else is answered, but marked "allow-uncached".
+    // The patterns match the end of the path, so the demo works in any
+    // directory (/demo/page/about, /demo/index.php/page/about). A real site
+    // anchors them at its own base: '#^/(page/[a-z0-9-]+)?$#'.
     'cacheable' => [
-        'paths' => ['#^/(page/[a-z0-9-]+)?$#'],
+        'paths' => ['#/(index\.php/?)?(page/[a-z0-9-]+)?$#'],
         'query' => ['page'],
     ],
 
@@ -31,13 +34,14 @@ return [
 
     'challenge' => [
         // Always checked, whatever the budget says -- as a login page would be.
-        'alwaysPaths' => ['#^/challenge$#'],
+        'alwaysPaths' => ['#/challenge$#'],
         'difficulty' => ['min' => 50000, 'max' => 300000],
         'searchEngines' => false,
     ],
 
-    // Counters and the generated secret next to the demo (or where the tests say).
-    'storeDir' => getenv('REQUEST_SHIELD_DEMO_VAR') ?: __DIR__ . '/var',
+    // Counters and the generated secret: outside the document root, never in
+    // a directory a web server might hand out (or where the tests say).
+    'storeDir' => getenv('REQUEST_SHIELD_DEMO_VAR') ?: rtrim(sys_get_temp_dir(), '/') . '/request-shield-demo',
 
     // X-Request-Shield: <decision> <reason> on every response, to watch it work.
     'debugHeader' => true,

@@ -5,7 +5,8 @@
  *
  *   php -S 127.0.0.1:8080 examples/demo/router.php
  *
- * and open http://127.0.0.1:8080/
+ * and open http://127.0.0.1:8080/ -- or put the repository under a web server's
+ * document root and open .../examples/demo/ (index.php/... without rewrite rules).
  *
  * @copyright Copyright (C) 2026 JAC Systeme GmbH, CJW Network
  * @license MIT, see LICENSE
@@ -25,13 +26,25 @@ use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Shield;
 
 $decision = Shield::current();
-$path = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
 $e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
+
+// Where the demo lives: at the root (PHP's built-in server with router.php),
+// or in any subdirectory of a web server -- with rewrite rules (.htaccess:
+// /demo/challenge) or without them (/demo/index.php/challenge). $front is
+// what every link starts with, $path the demo's own path after it.
+$uri = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
+$script = (string) ($_SERVER['SCRIPT_NAME'] ?? '');
+$front = '';
+if (substr($script, -10) === '/index.php') {
+    $front = strncmp($uri, $script, strlen($script)) === 0 ? $script : substr($script, 0, -10);
+}
+$path = '/' . ltrim((string) substr($uri, strlen($front)), '/');
+$url = static fn (string $local): string => $front . $local;
 
 // "Forget my pass": delete the pass cookie, to see the check again.
 if ($path === '/reset') {
     setcookie('rs_pass', '', ['expires' => 1, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
-    header('Location: /', true, 303);
+    header('Location: ' . $url('/'), true, 303);
     exit;
 }
 
@@ -98,8 +111,8 @@ header('Content-Type: text/html; charset=utf-8');
   <div class="card">
     <table>
       <tr><th>Request</th><td><strong>What the shield does</strong></td></tr>
-      <?php foreach ($tests as [$url, $what, $expect]): ?>
-        <tr><th><a href="<?= $e($url) ?>"><?= $e($what) ?></a><br><code><?= $e($url) ?></code></th><td><?= $e($expect) ?></td></tr>
+      <?php foreach ($tests as [$local, $what, $expect]): ?>
+        <tr><th><a href="<?= $e($url($local)) ?>"><?= $e($what) ?></a><br><code><?= $e($local) ?></code></th><td><?= $e($expect) ?></td></tr>
       <?php endforeach ?>
       <tr><th>Reload any page 20 times</th><td>the invisible check (more than 20 requests a minute), then past 60 a short pause (429)</td></tr>
     </table>
@@ -110,7 +123,7 @@ header('Content-Type: text/html; charset=utf-8');
     <?php if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'): ?>
       <p>You sent: <strong><?= $e((string) ($_POST['message'] ?? '')) ?></strong> — a POST is answered, but never cached.</p>
     <?php endif ?>
-    <form method="post" action="/page/form"><input type="text" name="message" placeholder="Type something"><button type="submit">Send</button></form>
+    <form method="post" action="<?= $e($url('/page/form')) ?>"><input type="text" name="message" placeholder="Type something"><button type="submit">Send</button></form>
   </div>
 
   <h2>How this page includes the shield</h2>
