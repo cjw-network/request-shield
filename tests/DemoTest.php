@@ -276,6 +276,15 @@ $widget = function (string $prefix): void {
             $r = $get('POST', '/contact', ['Content-Type' => $type], $body);
             same(429, $r['status'], 'an answer counts once');
             truthy(strpos($r['body'], 'Please go back and send the form again') !== false, 'files cannot come back: asked to send again');
+            // A used answer in a form without files: the check page, which sends the
+            // form again -- without the old answer, or it would be refused again and again.
+            $r = $get('POST', '/contact', [], 'message=stale&rs_solution=' . rawurlencode($payload));
+            truthy(strpos($r['body'], 'name="message" value="stale"') !== false, 'the form is carried');
+            truthy(strpos($r['body'], 'name="rs_solution"') === false, 'but not the used answer');
+            preg_match('/var RS=(\{.*?\});\(function/s', $r['body'], $m);
+            $rs = json_decode($m[1] ?? 'null', true);
+            [$fresh] = solveInNode($rs['c']);
+            same(200, $get('POST', '/contact', ['Cookie' => $rs['cookie'] . '=' . $fresh], 'message=stale')['status'], 'sent again with the new answer: through');
             // With the pass: the endpoint says so, the form goes through without an answer
             $j = json_decode($get('GET', '/request-shield/challenge', ['Cookie' => "rs_pass=$pass"])['body'], true);
             same(true, $j['passed']);

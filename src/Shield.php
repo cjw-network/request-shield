@@ -478,9 +478,11 @@ final class Shield
             return;
         }
         $now = microtime(true);
+        // The answer out of the form first: a used one must not be sent again with it.
+        $solution = $this->postedSolution();
         $resend = $request->method === 'GET' || $request->method === 'HEAD' ? null : self::resendFields($request);
         $r = $this->gate()->resolve(Decision::challenge('app'), Decision::allowUncached('app'), $request, $now,
-            ['forced' => true, 'fresh' => $fresh, 'resend' => $resend, 'solution' => $this->postedSolution()]);
+            ['forced' => true, 'fresh' => $fresh, 'resend' => $resend, 'solution' => $solution]);
         if (!headers_sent()) {
             foreach ($r['cookies'] as $cookie) {
                 header('Set-Cookie: ' . $cookie, false);

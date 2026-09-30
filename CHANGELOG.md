@@ -143,7 +143,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - A form the check page sent again after solving was refused its answer (the
   answer comes in a cookie, which a POST was allowed only for `requirePass()`
   and a spent budget), got the check page again and, on the third try, "The
-  check did not succeed". The check page's own resent form counts now.
+  check did not succeed". The check page's own resent form counts now. And
+  `requirePass()` carried a used answer of the check inside the form (a
+  reload of the page the form was sent to sends it again) into the resent
+  form, where it won over the new one -- the same loop. It is taken out first
+  now.
 - Fake search engine crawlers could make requests wait where DNS does not
   answer (a DMZ): each new address claiming to be Googlebot started a DNS
   lookup that waited for the resolver's timeout. At most `dns-lookups` new
