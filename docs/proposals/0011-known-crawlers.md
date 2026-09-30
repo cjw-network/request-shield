@@ -43,6 +43,56 @@ The default settings check nobody (600 requests a minute, no `challenge-at`),
 so a site that changes nothing already lets well-behaved AI crawlers through.
 The gap is where a site checks.
 
+## The crawlers that matter now (checked 2026-09-30)
+
+**SEO** — being found in search engines' results. **GEO** (generative engine
+optimisation) — being read, quoted and linked in AI answers: ChatGPT search,
+Perplexity, Claude, Google's AI Overviews and Gemini, Microsoft Copilot. Both
+depend on the crawlers below reaching the site.
+
+Checked on each operator's own page on 2026-09-30. Crawlers come and go and
+lists move: the shipped list is re-checked for every release, and each entry
+names its source.
+
+### Search engines (SEO — and for GEO too)
+
+| Crawler | Operator | Also feeds | How to verify |
+|---|---|---|---|
+| `Googlebot` (and `GoogleOther`, `Google-InspectionTool`) | Google | AI Overviews, AI Mode | DNS: `googlebot.com`, `google.com`, `googleusercontent.com`; address lists: `common-crawlers.json`, `special-crawlers.json`, `user-triggered-fetchers*.json` |
+| `bingbot` | Microsoft | Copilot, and the searches built on Bing's index | DNS: `search.msn.com`; list: `bing.com/toolbox/bingbot.json` (Microsoft advises DNS) |
+| `Applebot` | Apple | Siri, Spotlight, Safari suggestions | DNS: `applebot.apple.com`; list: `search.developer.apple.com/applebot.json` |
+| `DuckDuckBot` | DuckDuckGo | | list: `duckduckgo.com/duckduckbot.json` |
+| `YandexBot`, `Baiduspider`, `SeznamBot`, `Qwantbot` | Yandex, Baidu, Seznam, Qwant | | DNS (as today) — for sites with visitors in those markets |
+
+### AI crawlers (GEO)
+
+| Crawler | Operator | Kind | How to verify |
+|---|---|---|---|
+| `OAI-SearchBot` | OpenAI | AI search: ChatGPT's search results | list: `openai.com/searchbot.json` |
+| `ChatGPT-User` | OpenAI | fetches a page when a user asks | list: `openai.com/chatgpt-user.json` |
+| `GPTBot` | OpenAI | training | list: `openai.com/gptbot.json` |
+| `Claude-SearchBot` | Anthropic | AI search | list: `claude.com/crawling/bots.json` |
+| `Claude-User` | Anthropic | fetches a page when a user asks | the same list |
+| `ClaudeBot` | Anthropic | training | the same list |
+| `PerplexityBot` | Perplexity | AI search (says: not for training) | list: `perplexity.com/perplexitybot.json` |
+| `Perplexity-User` | Perplexity | fetches a page when a user asks — **ignores robots.txt**, says Perplexity | list: `perplexity.com/perplexity-user.json` |
+| `DuckAssistBot` | DuckDuckGo | AI answers | list: `duckduckgo.com/duckassistbot.json` |
+| `Amazonbot` | Amazon | Alexa and Amazon's AI | DNS: `crawl.amazonbot.amazon` |
+| `CCBot` | Common Crawl | an open archive many AI models are trained on | DNS on its own address ranges (IPv4) |
+| `meta-externalfetcher`, `meta-externalagent` | Meta | user actions, training | Meta names allow-listing by address; the source of its addresses is to be checked before listing |
+| `MistralAI-User` | Mistral | fetches a page when a user asks | no published way to verify found — not listed until there is one |
+
+**Not crawlers, but switches in `robots.txt`:** `Google-Extended` (whether Google
+may use pages for Gemini's training and grounding — AI Overviews are fed by
+`Googlebot` itself) and `Applebot-Extended` (the same for Apple's models;
+it does not crawl). The shield has nothing to verify there; they belong in the
+site's `robots.txt`.
+
+**Crawlers without a way to verify them** — for example ones known only by the
+name they send — are not on the list: they stay ordinary visitors. A site that
+does not want them refuses them by name (`block header User-Agent …`) or in
+`robots.txt`.
+
 ## Design
 
 ### The list
@@ -56,12 +106,16 @@ version 2026.10.1
 
 [CRAWL-GOOGLE@1]   crawler search  ua /Googlebot|GoogleOther/  dns .googlebot.com .google.com      # Google
 [CRAWL-BING@1]     crawler search  ua /bingbot/                 dns .search.msn.com                # Bing
-[CRAWL-GPTBOT@1]   crawler ai      ua /GPTBot/                  ranges @gptbot                     # OpenAI's crawler
+[CRAWL-OAISEARCH@1] crawler ai-search   ua /OAI-SearchBot/  ranges https://openai.com/searchbot.json     # ChatGPT search
+[CRAWL-GPTBOT@1]    crawler ai-training ua /GPTBot/         ranges https://openai.com/gptbot.json        # OpenAI's training crawler
 …
 ```
 
-- `search` or `ai` (a crawler for AI training, search or answers); more kinds if
-  needed.
+- The kind: `search` (a search engine), `ai-search` (AI search and answers),
+  `ai-user` (fetches a page when a user asks — often not bound by
+  `robots.txt`, since a person asked), `ai-training` (collects for training).
+  The kinds matter because sites decide differently: many want to be found and
+  quoted (`search`, `ai-search`, `ai-user`) and weigh training separately.
 - Verified by **DNS** (reverse and forward, as the search engines are today)
   or by **address ranges** the operator publishes.
 - Which operators publish what has to be checked for every entry before it is
@@ -75,8 +129,10 @@ comes from. Without an update, the ranges shipped with the release are used.
 ### The policy
 
 ```text
-crawlers search allow          # the default, as today
-crawlers ai     allow          # proposed default: see below
+crawlers search      allow     # the default, as today
+crawlers ai-search   allow     # proposed default: see below
+crawlers ai-user     allow
+crawlers ai-training allow     # a site that does not want training: check, block -- or robots.txt
 crawler  CRAWL-GPTBOT block    # one crawler differently
 ```
 
@@ -105,12 +161,27 @@ someone only claimed to be it.
 
 ## Open questions
 
-1. The default for AI crawlers: `allow` (the pages are public; a crawler at a
-   normal pace costs little; being found in AI answers is wanted by many) or
-   `check` (as today where a site checks)? Proposed: `allow`.
+1. The defaults per kind: `allow` for all four (the pages are public; a crawler
+   at a normal pace costs little; being found and quoted in AI answers is what
+   many sites want; training is decided in `robots.txt` by most) — or `check`
+   for `ai-training` by default?
 2. Which crawlers go on the first list — only those whose operators publish a
    way to verify them?
 3. `crawlers update`: shipped ranges plus an update command (proposed), or
    ranges only from the update, or only DNS where an operator offers it?
 4. Should a verified crawler get a budget of its own (its operator crawls from
    many addresses, each counted on its own today)?
+
+## Sources (checked 2026-09-30)
+
+- Google: [verifying Google's crawlers](https://developers.google.com/search/docs/crawling-indexing/verifying-googlebot), [AI features and your website](https://developers.google.com/search/docs/appearance/ai-features)
+- Microsoft: [how to verify Bingbot](https://www.bing.com/webmasters/help/how-to-verify-bingbot-3905dc26)
+- Apple: [about Applebot](https://support.apple.com/en-us/119829)
+- DuckDuckGo: [DuckDuckBot](https://duckduckgo.com/duckduckgo-help-pages/results/duckduckbot), [DuckAssistBot](https://duckduckgo.com/duckduckgo-help-pages/results/duckassistbot)
+- OpenAI: [OpenAI's crawlers](https://developers.openai.com/api/docs/bots)
+- Anthropic: [does Anthropic crawl the web](https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler)
+- Perplexity: [Perplexity crawlers](https://docs.perplexity.ai/guides/bots)
+- Amazon: [about Amazonbot](https://developer.amazon.com/amazonbot)
+- Common Crawl: [CCBot](https://commoncrawl.org/ccbot)
+- Meta: [Meta web crawlers](https://developers.facebook.com/documentation/sharing/webmasters/web-crawlers)
+- Mistral: [Mistral crawlers](https://docs.mistral.ai/robots)
