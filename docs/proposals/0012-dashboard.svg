@@ -1,0 +1,57 @@
+<svg class="rsd" role="img" viewBox="0 0 780 430" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>The dashboard: tiles for requests, refused, checked and crawlers; a small world map of where refused requests come from; the mode and the active rules; the same page embedded in a CMS backend, the Qbix dashboard, or opened on its own</title>
+<style>.rsd{font:13px/1.2 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .frame{fill:#f6f7f9;stroke:#c9ced6}.rsd .okbox{fill:#e6f4ea;stroke:#1e7b43}.rsd .warnbox{fill:#fdf3dc;stroke:#b07400}.rsd .nobox{fill:#fbe9e5;stroke:#a3361f}.rsd .qbox{fill:#eef3fd;stroke:#2f62c9}.rsd .dot{fill:#c9ced6}.rsd .hot{fill:#a3361f;fill-opacity:.55}.rsd .bar{fill:#1e7b43}.rsd .barw{fill:#b07400}.rsd .barn{fill:#a3361f}.rsd .tag{fill:#2f62c9}.rsd .w{fill:#fff;font-weight:700}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .frame{fill:#15181c;stroke:#3a414b}.rsd .okbox{fill:#17301f}.rsd .warnbox{fill:#3a2f15}.rsd .nobox{fill:#3d1f19}.rsd .qbox{fill:#1b2740;stroke:#7aa2ff}.rsd .dot{fill:#3a414b}.rsd .tag{fill:#7aa2ff}.rsd .arrow{stroke:#a0a8b3}}</style>
+<defs><marker id="rs12-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>
+<rect class="frame" x="10" y="10" width="520" height="340" rx="12" stroke-width="1.5"/>
+<text class="t" x="28" y="36" font-weight="700">request-shield — today</text>
+<rect class="tag" x="400" y="22" width="112" height="20" rx="10"/><text class="w" x="456" y="36" text-anchor="middle" font-size="11">mode: enforce</text>
+<rect class="okbox" x="28" y="52" width="112" height="58" rx="8" stroke-width="1.2"/>
+<text class="t" x="84" y="78" text-anchor="middle" font-weight="700" font-size="17">48,210</text>
+<text class="m" x="84" y="98" text-anchor="middle" font-size="11">requests passed</text>
+<rect class="nobox" x="150" y="52" width="112" height="58" rx="8" stroke-width="1.2"/>
+<text class="t" x="206" y="78" text-anchor="middle" font-weight="700" font-size="17">312</text>
+<text class="m" x="206" y="98" text-anchor="middle" font-size="11">refused</text>
+<rect class="warnbox" x="272" y="52" width="112" height="58" rx="8" stroke-width="1.2"/>
+<text class="t" x="328" y="78" text-anchor="middle" font-weight="700" font-size="17">41</text>
+<text class="m" x="328" y="98" text-anchor="middle" font-size="11">browser checks</text>
+<rect class="qbox" x="394" y="52" width="118" height="58" rx="8" stroke-width="1.2"/>
+<text class="t" x="453" y="78" text-anchor="middle" font-weight="700" font-size="17">1,930</text>
+<text class="m" x="453" y="98" text-anchor="middle" font-size="11">known crawlers</text>
+<rect class="box" x="28" y="122" width="236" height="120" rx="8" stroke-width="1.2"/>
+<text class="m" x="40" y="140" font-size="11">refused, by country</text>
+<g class="dot">
+<circle cx="60" cy="170" r="2.2"/><circle cx="68" cy="166" r="2.2"/><circle cx="76" cy="170" r="2.2"/><circle cx="84" cy="174" r="2.2"/><circle cx="72" cy="178" r="2.2"/><circle cx="80" cy="186" r="2.2"/><circle cx="92" cy="200" r="2.2"/><circle cx="96" cy="210" r="2.2"/><circle cx="100" cy="220" r="2.2"/>
+<circle cx="128" cy="162" r="2.2"/><circle cx="136" cy="160" r="2.2"/><circle cx="144" cy="162" r="2.2"/><circle cx="132" cy="170" r="2.2"/><circle cx="140" cy="170" r="2.2"/><circle cx="136" cy="186" r="2.2"/><circle cx="140" cy="196" r="2.2"/><circle cx="144" cy="206" r="2.2"/>
+<circle cx="160" cy="160" r="2.2"/><circle cx="170" cy="158" r="2.2"/><circle cx="180" cy="160" r="2.2"/><circle cx="190" cy="162" r="2.2"/><circle cx="200" cy="166" r="2.2"/><circle cx="176" cy="170" r="2.2"/><circle cx="188" cy="174" r="2.2"/><circle cx="200" cy="180" r="2.2"/><circle cx="210" cy="176" r="2.2"/><circle cx="218" cy="210" r="2.2"/><circle cx="226" cy="214" r="2.2"/>
+</g>
+<circle class="hot" cx="140" cy="164" r="9"/><circle class="hot" cx="190" cy="166" r="6"/><circle class="hot" cx="70" cy="170" r="5"/>
+<text class="m" x="40" y="232" font-size="11">1 NL 104 · 2 US 71 · 3 CN 38</text>
+<rect class="box" x="276" y="122" width="236" height="120" rx="8" stroke-width="1.2"/>
+<text class="m" x="288" y="140" font-size="11">last 48 hours</text>
+<g>
+<rect class="bar" x="290" y="190" width="10" height="40"/><rect class="bar" x="304" y="182" width="10" height="48"/><rect class="bar" x="318" y="176" width="10" height="54"/><rect class="bar" x="332" y="186" width="10" height="44"/><rect class="bar" x="346" y="170" width="10" height="60"/><rect class="bar" x="360" y="178" width="10" height="52"/><rect class="bar" x="374" y="184" width="10" height="46"/><rect class="bar" x="388" y="166" width="10" height="64"/><rect class="bar" x="402" y="174" width="10" height="56"/><rect class="bar" x="416" y="180" width="10" height="50"/><rect class="bar" x="430" y="160" width="10" height="70"/><rect class="bar" x="444" y="172" width="10" height="58"/><rect class="bar" x="458" y="178" width="10" height="52"/><rect class="bar" x="472" y="168" width="10" height="62"/><rect class="bar" x="486" y="176" width="10" height="54"/>
+<rect class="barn" x="430" y="150" width="10" height="10"/><rect class="barn" x="388" y="160" width="10" height="6"/><rect class="barw" x="346" y="164" width="10" height="6"/>
+</g>
+<rect class="box" x="28" y="254" width="484" height="82" rx="8" stroke-width="1.2"/>
+<text class="m" x="40" y="272" font-size="11">active rules, how often they decided today</text>
+<text class="t" x="40" y="292" font-size="12">Addresses only attackers ask for · SCAN-HIDDEN</text><text class="t" x="496" y="292" text-anchor="end" font-size="12">290×</text>
+<text class="t" x="40" y="310" font-size="12">Pace: "requests" 600/min, the check from 300</text><text class="t" x="496" y="310" text-anchor="end" font-size="12">41×</text>
+<text class="t" x="40" y="328" font-size="12">Watched (monitor): block /old-api/**</text><text class="t" x="496" y="328" text-anchor="end" font-size="12">7×</text>
+<text class="t" x="560" y="36" font-weight="700">Where it opens</text>
+<rect class="box" x="560" y="52" width="210" height="58" rx="8" stroke-width="1.2"/>
+<text class="t" x="574" y="76" font-weight="700" font-size="12">In the CMS backend</text>
+<text class="m" x="574" y="96" font-size="11">Panel::render() — the CMS logs in</text>
+<rect class="box" x="560" y="122" width="210" height="58" rx="8" stroke-width="1.2"/>
+<text class="t" x="574" y="146" font-weight="700" font-size="12">In the Qbix dashboard</text>
+<text class="m" x="574" y="166" font-size="11">a tab, or JSON via /Q/stats</text>
+<rect class="box" x="560" y="192" width="210" height="58" rx="8" stroke-width="1.2"/>
+<text class="t" x="574" y="216" font-weight="700" font-size="12">On its own</text>
+<text class="m" x="574" y="236" font-size="11">a path, password and address rule</text>
+<rect class="box" x="560" y="262" width="210" height="58" rx="8" stroke-width="1.2"/>
+<text class="t" x="574" y="286" font-weight="700" font-size="12">As data</text>
+<text class="m" x="574" y="306" font-size="11">JSON API with a read-only token</text>
+<path class="arrow" d="M536 180 H554" marker-end="url(#rs12-a)"/>
+<text class="m" x="10" y="378" font-size="12">Counted while requests pass (a fraction of a microsecond with APCu); the page never parses the log.</text>
+<text class="m" x="10" y="396" font-size="12">Countries from an optional local database, only for refused requests; no address is ever sent anywhere.</text>
+<text class="m" x="10" y="414" font-size="12">Off by default: set stats on, set panel-path … — the passing request stays as fast as today.</text>
+</svg>

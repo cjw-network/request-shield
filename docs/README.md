@@ -32,8 +32,19 @@
   [0008 match blocks](proposals/0008-match-blocks.md) (first step implemented) ·
   [0009 typed query parameters](proposals/0009-typed-query-parameters.md) (implemented) ·
   [0010 the browser check inside the form](proposals/0010-browser-check-in-the-form.md) (implemented) ·
-  [0011 known crawlers](proposals/0011-known-crawlers.md) (implemented)
+  [0011 known crawlers](proposals/0011-known-crawlers.md) (implemented) ·
+  [0012 a dashboard](proposals/0012-dashboard.md) (draft) ·
+  [0013 IP lists](proposals/0013-ip-lists.md) (draft) ·
+  [0014 crawler statistics](proposals/0014-crawler-statistics.md) (draft) ·
+  [0015 page statistics](proposals/0015-page-statistics.md) (draft) ·
+  [0016 the rule advisor](proposals/0016-rule-advisor.md) (draft)
   (0002, a single-file build, is reserved)
+- **Roadmap for 0012–0016** (the reasons in [0012](proposals/0012-dashboard.md#roadmap-for-00120016)):
+  counters and crawler statistics first (they answer "did GPTBot crawl the
+  site, or was it refused?"), then the dashboard read-only, then the IP lists
+  (its first write), the rule advisor, page statistics, and the optional
+  language model last. Each is off by default and costs a passing request
+  nothing until switched on.
 - **Architecture decisions**:
   [0001 run in PHP first](adr/0001-run-in-php-before-the-application.md) ·
   [0002 uncached, not refused](adr/0002-outside-the-definition-is-uncached-not-refused.md) ·

@@ -1,0 +1,44 @@
+<svg class="rsd" role="img" viewBox="0 0 780 380" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>The dashboard or the command line writes list files in store-dir; they hold only list lines; compiled with the rules; a request from a kept-out address gets 403 first, one from a let-in address is never counted or checked</title>
+<style>.rsd{font:13px/1.2 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .c{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .okbox{fill:#e6f4ea;stroke:#1e7b43}.rsd .nobox{fill:#fbe9e5;stroke:#a3361f}.rsd .qbox{fill:#eef3fd;stroke:#2f62c9}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}.rsd .go{stroke:#1e7b43}.rsd .no{stroke:#a3361f}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .okbox{fill:#17301f}.rsd .nobox{fill:#3d1f19}.rsd .qbox{fill:#1b2740;stroke:#7aa2ff}.rsd .arrow{stroke:#a0a8b3}}</style>
+<defs><marker id="rs13-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>
+<rect class="box" x="10" y="20" width="190" height="56" rx="10" stroke-width="1.5"/>
+<text class="t" x="105" y="44" text-anchor="middle" font-weight="700">Dashboard</text>
+<text class="m" x="105" y="62" text-anchor="middle" font-size="12">add, remove, for a week</text>
+<rect class="box" x="10" y="92" width="190" height="56" rx="10" stroke-width="1.5"/>
+<text class="t" x="105" y="116" text-anchor="middle" font-weight="700">Command line</text>
+<text class="m" x="105" y="134" text-anchor="middle" font-size="12">deny 203.0.113.7 --for 7d</text>
+<path class="arrow" d="M200 48 H240 V84 H262" marker-end="url(#rs13-a)"/>
+<path class="arrow" d="M200 120 H240 V84 H262" marker-end="url(#rs13-a)"/>
+<rect class="qbox" x="266" y="30" width="264" height="108" rx="10" stroke-width="1.5"/>
+<text class="t" x="282" y="54" font-weight="700">List files in store-dir</text>
+<text class="t c" x="282" y="76">deny 203.0.113.7 until 2026-10-07</text>
+<text class="t c" x="282" y="94">exempt 192.0.2.50</text>
+<text class="m" x="282" y="118" font-size="12">only list lines — never other rules</text>
+<path class="arrow" d="M530 84 H556" marker-end="url(#rs13-a)"/>
+<rect class="box" x="560" y="30" width="210" height="108" rx="10" stroke-width="1.5"/>
+<text class="t" x="576" y="54" font-weight="700">Compiled with the rules</text>
+<text class="m" x="576" y="76" font-size="12">once, like every rule file;</text>
+<text class="m" x="576" y="94" font-size="12">thousands of entries:</text>
+<text class="m" x="576" y="112" font-size="12">a binary search, ~1 µs</text>
+<rect class="box" x="10" y="186" width="190" height="56" rx="10" stroke-width="1.5"/>
+<text class="t" x="105" y="210" text-anchor="middle" font-weight="700">A request</text>
+<text class="m" x="105" y="228" text-anchor="middle" font-size="12">from some address</text>
+<path class="arrow" d="M200 214 H262" marker-end="url(#rs13-a)"/>
+<rect class="qbox" x="266" y="186" width="250" height="56" rx="10" stroke-width="1.5"/>
+<text class="t" x="391" y="210" text-anchor="middle" font-weight="700">On a list? — checked first</text>
+<text class="m" x="391" y="228" text-anchor="middle" font-size="12">before method, path, anything</text>
+<path class="arrow no" d="M391 242 V262 H150 V282" marker-end="url(#rs13-a)"/>
+<path class="arrow go" d="M391 242 V282" marker-end="url(#rs13-a)"/>
+<path class="arrow" d="M391 262 H640 V282" marker-end="url(#rs13-a)"/>
+<rect class="nobox" x="40" y="286" width="220" height="60" rx="10" stroke-width="1.5"/>
+<text class="t" x="150" y="310" text-anchor="middle" font-weight="700">Kept out: 403</text>
+<text class="m" x="150" y="330" text-anchor="middle" font-size="12">the site never sees it</text>
+<rect class="okbox" x="281" y="286" width="220" height="60" rx="10" stroke-width="1.5"/>
+<text class="t" x="391" y="310" text-anchor="middle" font-weight="700">Let in</text>
+<text class="m" x="391" y="330" text-anchor="middle" font-size="12">never counted, never checked</text>
+<rect class="box" x="530" y="286" width="220" height="60" rx="10" stroke-width="1.5"/>
+<text class="t" x="640" y="310" text-anchor="middle" font-weight="700">Neither</text>
+<text class="m" x="640" y="330" text-anchor="middle" font-size="12">the rules as always</text>
+<text class="m" x="10" y="370" font-size="12">Let in means no pace limit and no browser check — still refused when it asks for .env or sends an attack.</text>
+</svg>

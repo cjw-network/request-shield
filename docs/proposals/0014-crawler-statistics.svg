@@ -1,0 +1,34 @@
+<svg class="rsd" role="img" viewBox="0 0 780 360" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>A table of crawlers: GPTBot 1,204 visits, all verified, let through, last seen 10 minutes ago; ClaudeBot refused by the site's policy; 153 requests only claimed to be Googlebot and were treated as ordinary visitors; beside it one log file per crawler</title>
+<style>.rsd{font:13px/1.2 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .c{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .line{stroke:#dfe3e8}.rsd .ok{fill:#1e7b43}.rsd .no{fill:#a3361f}.rsd .warn{fill:#b07400}.rsd .qbox{fill:#eef3fd;stroke:#2f62c9}.rsd .spark{stroke:#2f62c9;stroke-width:1.6;fill:none}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .line{stroke:#3a414b}.rsd .qbox{fill:#1b2740;stroke:#7aa2ff}.rsd .spark{stroke:#7aa2ff}}</style>
+<rect class="box" x="10" y="14" width="520" height="276" rx="12" stroke-width="1.5"/>
+<text class="t" x="26" y="40" font-weight="700">Crawlers — last 7 days</text>
+<text class="m" x="26" y="66" font-size="11">crawler</text><text class="m" x="190" y="66" font-size="11">visits</text><text class="m" x="250" y="66" font-size="11">verified</text><text class="m" x="320" y="66" font-size="11">the shield did</text><text class="m" x="440" y="66" font-size="11">trend</text>
+<line class="line" x1="26" y1="74" x2="514" y2="74"/>
+<text class="t" x="26" y="96">Googlebot</text><text class="t" x="190" y="96">3,881</text><text class="ok" x="250" y="96">100 %</text><text class="ok" x="320" y="96">let through</text>
+<path class="spark" d="M440 98 l10 -6 l10 2 l10 -8 l10 4 l10 -3 l10 -5"/>
+<text class="t" x="26" y="124">OAI-SearchBot</text><text class="t" x="190" y="124">214</text><text class="ok" x="250" y="124">100 %</text><text class="ok" x="320" y="124">let through</text>
+<path class="spark" d="M440 126 l10 -2 l10 -4 l10 3 l10 -6 l10 2 l10 -4"/>
+<text class="t" x="26" y="152">GPTBot</text><text class="t" x="190" y="152">1,204</text><text class="ok" x="250" y="152">100 %</text><text class="no" x="320" y="152">refused (policy)</text>
+<path class="spark" d="M440 154 l10 -8 l10 4 l10 -2 l10 -6 l10 5 l10 -3"/>
+<text class="t" x="26" y="180">ClaudeBot</text><text class="t" x="190" y="180">387</text><text class="ok" x="250" y="180">100 %</text><text class="warn" x="320" y="180">told to wait: 12</text>
+<path class="spark" d="M440 182 l10 -3 l10 1 l10 -5 l10 2 l10 -2 l10 -1"/>
+<line class="line" x1="26" y1="194" x2="514" y2="194"/>
+<text class="t" x="26" y="216">"Googlebot", not its address</text><text class="t" x="250" y="216">153</text><text class="m" x="320" y="216">ordinary visitors</text>
+<text class="m" x="26" y="252" font-size="12">"ChatGPT's search came 214 times and got every page.</text>
+<text class="m" x="26" y="270" font-size="12">GPTBot was refused 1,204 times, as set."</text>
+<rect class="qbox" x="556" y="14" width="214" height="276" rx="12" stroke-width="1.5"/>
+<text class="t" x="572" y="40" font-weight="700">One log per crawler</text>
+<text class="m" x="572" y="60" font-size="11">set crawler-log …/crawlers</text>
+<text class="t c" x="572" y="92">CRAWL-GOOGLE/</text>
+<text class="t c" x="586" y="110">2026-09-30.log</text>
+<text class="t c" x="572" y="134">CRAWL-OAI-SEARCH/</text>
+<text class="t c" x="586" y="152">2026-09-30.log</text>
+<text class="t c" x="572" y="176">CRAWL-GPTBOT/</text>
+<text class="t c" x="586" y="194">2026-09-30.log</text>
+<text class="m" x="572" y="228" font-size="12">what, when, verified,</text>
+<text class="m" x="572" y="246" font-size="12">what the shield did —</text>
+<text class="m" x="572" y="264" font-size="12">only crawlers, 30 days</text>
+<text class="m" x="10" y="318" font-size="12">Verified by the address (0011), counted per day; a crawler request costs one cached check and two or three counters.</text>
+<text class="m" x="10" y="338" font-size="12">Nobody but crawlers is logged here; addresses of crawlers that only borrow a name are masked.</text>
+</svg>

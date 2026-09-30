@@ -1,0 +1,40 @@
+<svg class="rsd" role="img" viewBox="0 0 780 380" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>Counters and the log feed the advisor; it writes suggestions in plain words, each with its rule line and what it would have changed; try in monitor, then enforce; an optional language model sees only aggregated patterns, never addresses, and its ideas go the same way</title>
+<style>.rsd{font:13px/1.2 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .c{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .okbox{fill:#e6f4ea;stroke:#1e7b43}.rsd .qbox{fill:#eef3fd;stroke:#2f62c9}.rsd .warnbox{fill:#fdf3dc;stroke:#b07400}.rsd .dash{fill:none;stroke:#5b6470;stroke-dasharray:5 4}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}.rsd .tag{fill:#2f62c9}.rsd .w{fill:#fff;font-weight:700}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .okbox{fill:#17301f}.rsd .qbox{fill:#1b2740;stroke:#7aa2ff}.rsd .warnbox{fill:#3a2f15}.rsd .dash{stroke:#a0a8b3}.rsd .arrow{stroke:#a0a8b3}.rsd .tag{fill:#7aa2ff}}</style>
+<defs><marker id="rs16-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>
+<rect class="box" x="10" y="24" width="190" height="92" rx="10" stroke-width="1.5"/>
+<text class="t" x="26" y="48" font-weight="700">What it sees</text>
+<text class="m" x="26" y="68" font-size="12">counters per rule,</text>
+<text class="m" x="26" y="84" font-size="12">request rates, unknown</text>
+<text class="m" x="26" y="100" font-size="12">parameters, monitor lines</text>
+<path class="arrow" d="M200 70 H212" marker-end="url(#rs16-a)"/>
+<rect class="qbox" x="216" y="24" width="554" height="92" rx="10" stroke-width="1.5"/>
+<text class="t" x="232" y="48" font-weight="700">"37 requests looked for a WordPress login — this site has none."</text>
+<text class="t c" x="232" y="72">include @wordpress</text>
+<text class="m" x="232" y="94" font-size="12">would have refused 37 requests: 37 bots, 0 people, 0 crawlers</text>
+<rect class="tag" x="636" y="84" width="118" height="20" rx="10"/><text class="w" x="695" y="98" text-anchor="middle" font-size="11">try in monitor</text>
+<rect class="box" x="216" y="130" width="554" height="68" rx="10" stroke-width="1.5"/>
+<text class="t" x="232" y="154" font-weight="700">"No real visitor went above 45 requests a minute; the limit is 600."</text>
+<text class="t c" x="232" y="178">limit requests 120/min challenge-at 60</text>
+<rect class="tag" x="636" y="168" width="118" height="20" rx="10"/><text class="w" x="695" y="182" text-anchor="middle" font-size="11">try in monitor</text>
+<path class="arrow" d="M390 198 V226" marker-end="url(#rs16-a)"/>
+<rect class="warnbox" x="216" y="230" width="260" height="56" rx="10" stroke-width="1.5"/>
+<text class="t" x="232" y="254" font-weight="700">Watched (monitor)</text>
+<text class="m" x="232" y="272" font-size="12">logged as it would decide, a week</text>
+<path class="arrow" d="M476 258 H508" marker-end="url(#rs16-a)"/>
+<rect class="okbox" x="512" y="230" width="258" height="56" rx="10" stroke-width="1.5"/>
+<text class="t" x="528" y="254" font-weight="700">Enforced</text>
+<text class="m" x="528" y="272" font-size="12">no false hit: remove "monitor"</text>
+<rect class="dash" x="10" y="150" width="186" height="136" rx="10" stroke-width="1.5"/>
+<text class="t" x="26" y="174" font-weight="700">Optional: a model</text>
+<text class="m" x="26" y="194" font-size="12">off by default; sees only</text>
+<text class="m" x="26" y="210" font-size="12">path shapes and counts —</text>
+<text class="m" x="26" y="226" font-size="12">never addresses; its ideas</text>
+<text class="m" x="26" y="242" font-size="12">must parse, must not hit</text>
+<text class="m" x="26" y="258" font-size="12">real visitors, and start</text>
+<text class="m" x="26" y="274" font-size="12">in monitor</text>
+<path class="arrow" d="M196 166 H212" marker-end="url(#rs16-a)"/>
+<text class="m" x="10" y="318" font-size="12">Deterministic first: rules of thumb over the site's own traffic, each with the rule line and what it would have changed.</text>
+<text class="m" x="10" y="338" font-size="12">Nothing is enforced without a person: try in monitor, read the result, then enforce — or undo.</text>
+<text class="m" x="10" y="358" font-size="12">Suggestions are made on demand, never on a request: the passing request pays only for the counters.</text>
+</svg>

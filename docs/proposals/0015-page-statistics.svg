@@ -1,0 +1,38 @@
+<svg class="rsd" role="img" viewBox="0 0 780 350" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>A request passes the shield and the site answers; at the end, if the answer was a page (200, HTML), one counter: this path, today, person or crawler; kept in a daily file; shown on the dashboard and through a JSON API; no cookie, no address</title>
+<style>.rsd{font:13px/1.2 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .c{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .okbox{fill:#e6f4ea;stroke:#1e7b43}.rsd .qbox{fill:#eef3fd;stroke:#2f62c9}.rsd .warnbox{fill:#fdf3dc;stroke:#b07400}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .okbox{fill:#17301f}.rsd .qbox{fill:#1b2740;stroke:#7aa2ff}.rsd .warnbox{fill:#3a2f15}.rsd .arrow{stroke:#a0a8b3}}</style>
+<defs><marker id="rs15-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>
+<rect class="box" x="10" y="24" width="140" height="56" rx="10" stroke-width="1.5"/>
+<text class="t" x="80" y="48" text-anchor="middle" font-weight="700">A request</text>
+<text class="m" x="80" y="66" text-anchor="middle" font-size="12">GET /news/x</text>
+<path class="arrow" d="M150 52 H182" marker-end="url(#rs15-a)"/>
+<rect class="okbox" x="186" y="24" width="150" height="56" rx="10" stroke-width="1.5"/>
+<text class="t" x="261" y="48" text-anchor="middle" font-weight="700">The shield</text>
+<text class="m" x="261" y="66" text-anchor="middle" font-size="12">person or crawler?</text>
+<path class="arrow" d="M336 52 H368" marker-end="url(#rs15-a)"/>
+<rect class="box" x="372" y="24" width="140" height="56" rx="10" stroke-width="1.5"/>
+<text class="t" x="442" y="48" text-anchor="middle" font-weight="700">The site</text>
+<text class="m" x="442" y="66" text-anchor="middle" font-size="12">answers the page</text>
+<path class="arrow" d="M512 52 H544" marker-end="url(#rs15-a)"/>
+<rect class="qbox" x="548" y="24" width="222" height="56" rx="10" stroke-width="1.5"/>
+<text class="t" x="659" y="48" text-anchor="middle" font-weight="700">At the end: a page?</text>
+<text class="m" x="659" y="66" text-anchor="middle" font-size="12">200, HTML, GET — then count</text>
+<path class="arrow" d="M659 80 V112" marker-end="url(#rs15-a)"/>
+<rect class="box" x="438" y="116" width="332" height="84" rx="10" stroke-width="1.5"/>
+<text class="t" x="454" y="140" font-weight="700">One counter — nothing else</text>
+<text class="t c" x="454" y="162">/news/x · 2026-09-30 · people +1</text>
+<text class="m" x="454" y="184" font-size="12">no query, no address, no cookie, no script</text>
+<path class="arrow" d="M438 158 H402" marker-end="url(#rs15-a)"/>
+<rect class="box" x="10" y="116" width="388" height="84" rx="10" stroke-width="1.5"/>
+<text class="t" x="26" y="140" font-weight="700">Pages — last 7 days</text>
+<text class="t" x="26" y="162" font-size="12">/news/new-opening-hours</text><text class="t" x="262" y="162" font-size="12" text-anchor="end">1,212</text><text class="m" x="380" y="162" font-size="12" text-anchor="end">+ 88 crawlers</text>
+<text class="t" x="26" y="182" font-size="12">/contact</text><text class="t" x="262" y="182" font-size="12" text-anchor="end">431</text><text class="m" x="380" y="182" font-size="12" text-anchor="end">+ 12 crawlers</text>
+<rect class="box" x="10" y="220" width="250" height="56" rx="10" stroke-width="1.5"/>
+<text class="t" x="26" y="244" font-weight="700">JSON for the CMS</text>
+<text class="m" x="26" y="262" font-size="12">"read 212 times this week"</text>
+<rect class="warnbox" x="280" y="220" width="490" height="56" rx="10" stroke-width="1.5"/>
+<text class="t" x="296" y="244" font-weight="700">Not seen: pages a cache answers before PHP</text>
+<text class="m" x="296" y="262" font-size="12">CDN, Varnish, full-page cache — unless the cache counts through the shield</text>
+<text class="m" x="10" y="306" font-size="12">Views, not visitors: which page, how often, by people or by crawlers. Off by default — set page-stats on.</text>
+<text class="m" x="10" y="326" font-size="12">About a microsecond per page with APCu; assets, APIs and refusals are never counted.</text>
+</svg>
