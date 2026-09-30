@@ -1,6 +1,7 @@
 # Documentation
 
 - **Explained** — for site owners, in plain words:
+  [the parts and their switches](explained/parts.md) ·
   [the browser check](explained/browser-check.md)
 - **Features** — what each part does, use cases, configuration, cost, limits:
   [trusted proxies](features/trusted-proxies.md) ·

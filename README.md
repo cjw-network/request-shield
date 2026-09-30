@@ -36,6 +36,9 @@ else:
   often each one decided, and what happens to any address you try, step by
   step.
 
+All parts at a glance, each with the one line that switches it:
+[the parts of request-shield](docs/explained/parts.md).
+
 No extra server, no subscription, no data sent to anyone: one PHP library —
 upload, include, done.
 

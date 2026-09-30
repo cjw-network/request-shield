@@ -1,0 +1,57 @@
+<svg class="rsd" role="img" viewBox="0 0 780 744" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>The parts of request-shield in the order a request meets them: at the door (hard checks, website names, blocked addresses, forms, areas, known parameters, attack patterns), pace and the browser check (cache definition, pace per visitor, browser check, known crawlers), how hard and what you see (mode, log, statistics, pages and commands) -- each with the one line that switches it, and whether it is on by default</title>
+<style>.rsd{font:13px/1.2 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .c{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;fill:#2f62c9}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .g{fill:#eef1f5}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}.rsd .on{fill:#1e7b43}.rsd .off{fill:none;stroke:#8a93a0;stroke-width:1.6}.rsd .tool{fill:#2f62c9}.rsd .h{fill:#1d2127;font-weight:700;font-size:12px;letter-spacing:.02em}@media (prefers-color-scheme:dark){.rsd .t,.rsd .h{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .c{fill:#7aa2ff}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .g{fill:#171a1e}.rsd .arrow{stroke:#a0a8b3}.rsd .on{fill:#4cc38a}.rsd .off{stroke:#6b7480}.rsd .tool{fill:#7aa2ff}}</style>
+<defs><marker id="rsp-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>
+<text class="t" x="30" y="26" font-weight="700" font-size="15">The parts of request-shield — and the line that switches each</text>
+<circle class="on" cx="36" cy="46" r="6"/><text class="m" x="48" y="50" font-size="12">on by default</text>
+<circle class="off" cx="148" cy="46" r="5.5"/><text class="m" x="160" y="50" font-size="12">off until you switch it on</text>
+<circle class="tool" cx="330" cy="46" r="6"/><text class="m" x="342" y="50" font-size="12">a page or command to look at it</text>
+<text class="m" x="760" y="50" font-size="12" text-anchor="end">each line goes into your rule file</text>
+<path class="arrow" d="M14 84 V708" marker-end="url(#rsp-a)"/>
+<text class="m" font-size="11" transform="translate(10 400) rotate(-90)" text-anchor="middle">a request passes from top to bottom</text>
+<rect class="g" x="24" y="64" width="744" height="274" rx="10"/>
+<text class="h" x="36" y="81">1 · AT THE DOOR — refused before your site even starts</text>
+<rect class="box" x="30" y="90" width="239" height="72" rx="9" stroke-width="1.3"/><circle class="on" cx="253" cy="106" r="6"/>
+<text class="t" x="42" y="112" font-weight="700">Hard checks</text><text class="m" x="42" y="130" font-size="12">broken, oversized, disguised</text><text class="c" x="42" y="150">always on · set max-uri …</text>
+<rect class="box" x="279" y="90" width="239" height="72" rx="9" stroke-width="1.3"/><circle class="off" cx="502" cy="106" r="5.5"/>
+<text class="t" x="291" y="112" font-weight="700">Website names</text><text class="m" x="291" y="130" font-size="12">only your domains, others: not found</text><text class="c" x="291" y="150">host www.example.org</text>
+<rect class="box" x="528" y="90" width="239" height="72" rx="9" stroke-width="1.3"/><circle class="on" cx="751" cy="106" r="6"/>
+<text class="t" x="540" y="112" font-weight="700">Blocked addresses</text><text class="m" x="540" y="130" font-size="12">what only scanners ask for: .env, …</text><text class="c" x="540" y="150">include @wordpress</text>
+<rect class="box" x="30" y="172" width="239" height="72" rx="9" stroke-width="1.3"/><circle class="off" cx="253" cy="188" r="5.5"/>
+<text class="t" x="42" y="194" font-weight="700">Forms where they belong</text><text class="m" x="42" y="212" font-size="12">a form sent only to your form pages</text><text class="c" x="42" y="232">allow POST /contact</text>
+<rect class="box" x="279" y="172" width="239" height="72" rx="9" stroke-width="1.3"/><circle class="off" cx="502" cy="188" r="5.5"/>
+<text class="t" x="291" y="194" font-weight="700">Areas for some addresses</text><text class="m" x="291" y="212" font-size="12">the admin area only from the office</text><text class="c" x="291" y="232">restrict /admin/** to …</text>
+<rect class="box" x="528" y="172" width="239" height="72" rx="9" stroke-width="1.3"/><circle class="off" cx="751" cy="188" r="5.5"/>
+<text class="t" x="540" y="194" font-weight="700">Known parameters</text><text class="m" x="540" y="212" font-size="12">only the ?parameters your site uses</text><text class="c" x="540" y="232">query page int · query strict</text>
+<rect class="box" x="30" y="254" width="239" height="72" rx="9" stroke-width="1.3"/><circle class="off" cx="253" cy="270" r="5.5"/>
+<text class="t" x="42" y="276" font-weight="700">Attack patterns</text><text class="m" x="42" y="294" font-size="12">SQL injection, XSS and co.</text><text class="c" x="42" y="314">include @attacks</text>
+<text class="m" x="291" y="286" font-size="12">A refused request never reaches your site:</text>
+<text class="m" x="291" y="304" font-size="12">"not found" (404), "no access" (403) — the log</text>
+<text class="m" x="291" y="322" font-size="12">names the line. unblock … takes a block back.</text>
+<rect class="g" x="24" y="350" width="744" height="192" rx="10"/>
+<text class="h" x="36" y="367">2 · PACE AND THE BROWSER CHECK — the answer depends on the visitor</text>
+<rect class="box" x="30" y="376" width="239" height="72" rx="9" stroke-width="1.3"/><circle class="on" cx="253" cy="392" r="6"/>
+<text class="t" x="42" y="398" font-weight="700">What a cache may keep</text><text class="m" x="42" y="416" font-size="12">made-up addresses: never kept</text><text class="c" x="42" y="436">cache-path / /page/*</text>
+<rect class="box" x="279" y="376" width="239" height="72" rx="9" stroke-width="1.3"/><circle class="on" cx="502" cy="392" r="6"/>
+<text class="t" x="291" y="398" font-weight="700">Pace per visitor</text><text class="m" x="291" y="416" font-size="12">too many requests: please wait</text><text class="c" x="291" y="436">limit requests 600/min</text>
+<rect class="box" x="528" y="376" width="239" height="72" rx="9" stroke-width="1.3"/><circle class="off" cx="751" cy="392" r="5.5"/>
+<text class="t" x="540" y="398" font-weight="700">Browser check</text><text class="m" x="540" y="416" font-size="12">an invisible check, no puzzles</text><text class="c" x="540" y="436">challenge /login</text>
+<rect class="box" x="30" y="458" width="239" height="72" rx="9" stroke-width="1.3"/><circle class="on" cx="253" cy="474" r="6"/>
+<text class="t" x="42" y="480" font-weight="700">Known crawlers</text><text class="m" x="42" y="498" font-size="12">Google, Bing, AI bots: let in</text><text class="c" x="42" y="518">crawlers ai-training block</text>
+<text class="m" x="291" y="484" font-size="12">The check comes where you ask for it: past a pace</text>
+<text class="m" x="291" y="502" font-size="12">(limit … challenge-at 300), on a page (challenge …),</text>
+<text class="m" x="291" y="520" font-size="12">or inside a form (set widget-path /request-shield).</text>
+<rect class="g" x="24" y="554" width="744" height="192" rx="10"/>
+<text class="h" x="36" y="571">3 · HOW HARD — AND WHAT YOU SEE</text>
+<rect class="box" x="30" y="580" width="239" height="72" rx="9" stroke-width="1.3"/><circle class="on" cx="253" cy="596" r="6"/>
+<text class="t" x="42" y="602" font-weight="700">Mode</text><text class="m" x="42" y="620" font-size="12">watch first, strict under attack</text><text class="c" x="42" y="640">set mode monitor</text>
+<rect class="box" x="279" y="580" width="239" height="72" rx="9" stroke-width="1.3"/><circle class="off" cx="502" cy="596" r="5.5"/>
+<text class="t" x="291" y="602" font-weight="700">Log</text><text class="m" x="291" y="620" font-size="12">what was refused, and by which line</text><text class="c" x="291" y="640">set log /var/log/shield.log</text>
+<rect class="box" x="528" y="580" width="239" height="72" rx="9" stroke-width="1.3"/><circle class="off" cx="751" cy="596" r="5.5"/>
+<text class="t" x="540" y="602" font-weight="700">Statistics</text><text class="m" x="540" y="620" font-size="12">people, crawlers, pages not found</text><text class="c" x="540" y="640">set stats on</text>
+<rect class="box" x="30" y="662" width="239" height="72" rx="9" stroke-width="1.3"/><circle class="tool" cx="253" cy="678" r="6"/>
+<text class="t" x="42" y="684" font-weight="700">Look at it</text><text class="m" x="42" y="702" font-size="12">rules page, statistics page</text><text class="c" x="42" y="722">bin/request-shield stats</text>
+<text class="m" x="291" y="688" font-size="12">Modes: off, monitor (only logs), enforce</text>
+<text class="m" x="291" y="706" font-size="12">(the default), strict. One rule watched: monitor …</text>
+<text class="m" x="291" y="724" font-size="12">One log per crawler: set crawler-log &lt;dir&gt;.</text>
+</svg>
