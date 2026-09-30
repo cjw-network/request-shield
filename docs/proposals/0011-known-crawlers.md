@@ -146,6 +146,31 @@ A request that **claims** to be a known crawler but does not come from its
 addresses is an ordinary visitor — and the log says so (*"claims to be GPTBot;
 the address does not match"*).
 
+### Without internet: a DMZ
+
+The server the shield runs on need not reach the internet at all:
+
+- **Address lists are checked locally** — a comparison, no network. They come
+  with each release; `php bin/request-shield crawlers update` runs where there
+  is internet (a build server, CI, an admin's machine) and writes a file that
+  is deployed with the site like any other. The server in the DMZ never calls
+  out.
+- **`set crawler-verify ranges`** — verify by address lists only, never by DNS.
+  Recognised then: Google, Microsoft (Bing), Apple, DuckDuckGo, OpenAI,
+  Anthropic, Perplexity — everyone on the list who publishes addresses.
+- **Crawlers verifiable only by DNS** (Amazonbot, CCBot, Yandex, Baidu, …) are
+  not recognised without DNS: they stay ordinary visitors — safe, and only
+  relevant where the site checks.
+- Where DNS is used, at most `dns-lookups` new lookups a minute (already
+  built, default 30): DNS that does not answer never makes requests wait.
+- `crawlers update` shows how old the lists are; `bin/request-shield check`
+  warns when they are older than, say, 30 days, so a site in a DMZ notices
+  that its lists need a new deploy.
+
+```text
+set crawler-verify ranges          # ranges | dns | both (default: both)
+```
+
 ### Cost
 
 A request whose user agent names no known crawler: one expression over the
