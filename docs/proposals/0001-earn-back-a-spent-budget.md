@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Accepted** 2026-09-30 (decisions below), not yet implemented |
 | Proposed | 2026-09-28 |
 | Affects | budgets, the challenge, the responder |
 
@@ -14,6 +14,28 @@ resets the client's counter for that budget: the client "pays" for the next
 `limit` requests with a little CPU. That works for GET pages (as the browser
 check does now), for **form posts** (the challenge page re-submits the form)
 and for **API calls** (a machine-readable challenge in a header).
+
+## In one picture
+
+![Past the limit: a pause by default; where the site switches it on, an invisible check -- solved, the counter starts again](0001-earn-back-a-spent-budget.svg)
+
+## Decisions (with Felix, 2026-09-30) — and why
+
+| Question | Decision | What it brings |
+|---|---|---|
+| Past the limit, by default? | **A pause (429)**, as today. The check only where a site switches it on, per budget: `limit posts 20/min on-exceeded challenge` | An update changes nothing on its own; APIs, apps and monitoring keep getting the answer every tool understands (429 with `Retry-After`); a pause is the cheapest answer under attack. Where people are behind the requests (pages, forms), the site chooses the check. |
+| After a solved check? | **The counter starts again** (a whole new `limit`) | Simple and fair for a person: one check, and they go on. What keeps a bot from living off it is the next line. |
+| Harder each time? | **×2 per solve within an hour**, at most `difficulty-max`; after an hour without a solve, back to the start | A person solves once or twice and hardly notices (≈ 0.1 s, then 0.2 s); a bot that keeps coming back pays more each time (≈ 1–2 s on a phone at the default maximum). Stricter sites raise `difficulty-max`. |
+| What is an "API"? | **JSON** (`Accept` or `Content-Type` `application/json`, `*+json`), plus the paths a site names: `api-path /api/**` | JSON clients get the task as a header they can solve; the path is the surest sign a site knows. Browsers and simple tools (`*/*`) are not mistaken for APIs. |
+
+In plain words, for whom what changes when a site switches the check on:
+
+| Who | Before (a pause) | With the check |
+|---|---|---|
+| A person who clicked a lot | waits until the minute is over | a moment of "One moment, please", then on |
+| A simple bot (no JavaScript) | waits, then carries on | stays out: it cannot solve the check |
+| A bot with a browser engine | waits, then carries on | pays computing time, twice as much each time |
+| An API client (JSON) | 429, `Retry-After` | the task in a header; solved, it goes on |
 
 ## Motivation
 
@@ -29,6 +51,10 @@ and for **API calls** (a machine-readable challenge in a header).
 
 ### Budget setting
 
+```text
+limit posts 20/min on-exceeded challenge          # rule file; without "on-exceeded": a pause (429)
+```
+
 ```php
 'budgets' => [
     'posts' => ['limit' => 20, 'window' => 60, 'onExceeded' => 'challenge'],   // default: 'throttle'
@@ -41,9 +67,10 @@ and for **API calls** (a machine-readable challenge in a header).
   (`Store::reset(key)`, one write) and is bound to client, budget and
   challenge, and single-use as today.
 - **Escalation:** a second counter per client and budget counts solves per
-  hour; the difficulty doubles with each (`maxnumber × 2^solves`, capped at a
-  configured maximum). One legitimate user solves once or twice; sustained
-  abuse becomes exponentially more expensive.
+  hour; the difficulty doubles with each (`maxnumber × 2^solves`, at most
+  `difficulty-max`); an hour without a solve starts it again. One legitimate
+  user solves once or twice; sustained abuse becomes exponentially more
+  expensive.
 
 ### Browsers: GET
 
@@ -52,20 +79,19 @@ reloads.
 
 ### Browsers: form posts
 
-The challenge page carries the posted fields as hidden inputs and, once
-solved, submits them again to the same URL with the solution cookie set:
+Built since this was proposed, and reused here:
 
-- only `application/x-www-form-urlencoded` and `multipart/form-data` without
-  files, up to a size limit (e.g. 64 KB); a post with files gets 429 with a
-  message, since a browser cannot re-send a file it no longer has;
-- every field is HTML-escaped; the target is always the request's own URL
-  (no open redirect);
-- CSRF tokens stay valid: same session, same form data.
+- the check page carries the posted fields and sends them again once solved
+  ([0006](0006-the-site-asks-for-the-check.md): escaped fields, the request's
+  own URL, the form token unchanged, no files, up to 256 KB);
+- the check inside the form ([0010](0010-browser-check-in-the-form.md)): a
+  form with the box sends its answer along, so even a form with files goes
+  straight through.
 
 ### APIs
 
-For a request that does not accept `text/html` (or matches a configured API
-path):
+For a request that asks for or sends JSON (`application/json`, `*+json`), or
+matches a path named with `api-path`:
 
 ```http
 HTTP/1.1 429 Too Many Requests
@@ -99,7 +125,6 @@ Nothing on the passing path. A reset is one store write; a challenge as today
 
 ## Open questions
 
-1. Default `onExceeded`: stay `throttle` (safe) or `challenge`?
-2. Reset the counter fully, or credit a fixed number of requests?
-3. Escalation factor and cap.
-4. Which content types count as "API" by default.
+None left: decided on 2026-09-30 (above). As proposed they were: the default
+`onExceeded`; a full reset or a credit; the escalation's factor and cap; what
+counts as an API.

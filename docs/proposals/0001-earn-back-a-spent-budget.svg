@@ -1,0 +1,38 @@
+<svg class="rsd" role="img" viewBox="0 0 760 360" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>Past the limit: a pause by default, or -- where the site switches it on -- an invisible check that frees the counter</title>
+<style>.rsd{font:13px/1.2 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}.rsd .go{stroke:#1e7b43}.rsd .okbox{fill:#e6f4ea;stroke:#1e7b43}.rsd .warnbox{fill:#fdf3dc;stroke:#b07400}.rsd .nobox{fill:#fbe9e5;stroke:#a3361f}.rsd .tag{fill:#2f62c9}.rsd .w{fill:#fff;font-weight:700}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .arrow{stroke:#a0a8b3}.rsd .okbox{fill:#17301f}.rsd .warnbox{fill:#3a2f15}.rsd .nobox{fill:#3d1f19}.rsd .tag{fill:#7aa2ff}}</style>
+<defs><marker id="rs1-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>
+<rect class="box" x="10" y="30" width="150" height="56" rx="10" stroke-width="1.5"/>
+<text class="t" x="85" y="54" text-anchor="middle" font-weight="700">A visitor</text>
+<text class="m" x="85" y="72" text-anchor="middle" font-size="12">pages and forms</text>
+<path class="arrow" d="M160 58 H216" marker-end="url(#rs1-a)"/>
+<rect class="box" x="220" y="30" width="190" height="56" rx="10" stroke-width="1.5"/>
+<text class="t" x="315" y="54" text-anchor="middle" font-weight="700">Counted per visitor</text>
+<text class="m" x="315" y="72" text-anchor="middle" font-size="12">e.g. 20 forms a minute</text>
+<path class="arrow go" d="M410 58 H566" marker-end="url(#rs1-a)"/>
+<text class="m" x="488" y="50" text-anchor="middle" font-size="12">within the limit</text>
+<rect class="okbox" x="570" y="30" width="180" height="56" rx="10" stroke-width="1.5"/>
+<text class="t" x="660" y="54" text-anchor="middle" font-weight="700">The page</text>
+<text class="m" x="660" y="72" text-anchor="middle" font-size="12">as always</text>
+<path class="arrow" d="M315 86 V120 H180 V156" marker-end="url(#rs1-a)"/>
+<path class="arrow" d="M315 120 H600 V156" marker-end="url(#rs1-a)"/>
+<text class="m" x="322" y="112" font-size="12">past the limit</text>
+<rect class="nobox" x="30" y="160" width="220" height="64" rx="10" stroke-width="1.5"/>
+<rect class="tag" x="42" y="150" width="68" height="18" rx="9"/><text class="w" x="76" y="163" text-anchor="middle" font-size="11">default</text>
+<text class="t" x="140" y="188" text-anchor="middle" font-weight="700">A pause</text>
+<text class="m" x="140" y="208" text-anchor="middle" font-size="12">"please try again in 45 s"</text>
+<rect class="warnbox" x="420" y="160" width="220" height="64" rx="10" stroke-width="1.5"/>
+<rect class="tag" x="432" y="150" width="126" height="18" rx="9"/><text class="w" x="495" y="163" text-anchor="middle" font-size="11">where switched on</text>
+<text class="t" x="530" y="188" text-anchor="middle" font-weight="700">An invisible check</text>
+<text class="m" x="530" y="208" text-anchor="middle" font-size="12">a moment, nothing to click</text>
+<path class="arrow go" d="M640 192 H690 V240 H540 V262" marker-end="url(#rs1-a)"/>
+<rect class="okbox" x="420" y="266" width="240" height="56" rx="10" stroke-width="1.5"/>
+<text class="t" x="540" y="290" text-anchor="middle" font-weight="700">The counter starts again</text>
+<text class="m" x="540" y="308" text-anchor="middle" font-size="12">and the visitor goes on</text>
+<text class="m" x="690" y="258" font-size="12">solved</text>
+<text class="m" x="30" y="262" font-size="12">Waiting is the cheapest answer and what</text>
+<text class="m" x="30" y="279" font-size="12">every API and tool understands (429).</text>
+<text class="m" x="30" y="304" font-size="12">Each further check within an hour takes</text>
+<text class="m" x="30" y="321" font-size="12">twice as long: fine for a person, costly</text>
+<text class="m" x="30" y="338" font-size="12">for a bot that keeps coming back.</text>
+</svg>
