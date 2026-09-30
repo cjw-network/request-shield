@@ -81,6 +81,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   old days are summed into month files (kept for good, or `stats-months`);
   `stats --from=… --to=… --by=day|week|month|year --crawler=<ID>`
   ([docs](docs/features/statistics.md)).
+- The statistics page, `Report\StatsPage::render()`: tiles with the last 48
+  hours, stacked bars for who came (people, crawlers, bots) and what the
+  shield did, the answers as a ring, a bar per crawler, sitemaps, pages not
+  found with their referrers, rules and bot families -- inline SVG and CSS, dark
+  mode, English and German, refreshing itself every minute. The demo shows it
+  at `/stats` (and has a `sitemap.xml`; unknown pages answer 404).
+- Sitemaps in the statistics: which exist (the site's answer) and which
+  verified crawler read which, how often and when last.
+- Statistics at scale: housekeeping (flush, roll-up) runs after the response
+  (PHP-FPM, LiteSpeed); every limited list stays small under a flood of
+  made-up addresses; each statistics directory has its own APCu names (sites on
+  one PHP-FPM pool no longer count into each other); a report reads only the
+  days it shows. Measured: exact counts under 32 parallel requests, -5 to -10 %
+  throughput with APCu at ~6,000 requests a second.
 
 ### Changed
 - The query string is parsed once per request, for every check that reads it.

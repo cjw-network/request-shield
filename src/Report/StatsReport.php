@@ -148,9 +148,9 @@ final class StatsReport
                 $readers[(string) $id] = ['count' => (int) ($c['count'] ?? 0), 'last' => $read['last']['sitemap:' . $path . '@' . $id][0] ?? null];
             }
             uasort($readers, static fn (array $a, array $b): int => $b['count'] <=> $a['count']);
-            $statuses = $x['statuses'] ?? [];
-            ksort($statuses);
-            $maps[(string) $path] = ['statuses' => array_combine(array_map('strval', array_keys($statuses)), array_values($statuses)), 'crawlers' => $readers];
+            $answers = $x['statuses'] ?? [];
+            ksort($answers);
+            $maps[(string) $path] = ['statuses' => array_combine(array_map('strval', array_keys($answers)), array_values($answers)), 'crawlers' => $readers];
         }
         ksort($maps);
         $notFound = [];

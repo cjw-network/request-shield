@@ -147,7 +147,12 @@ return [
             preg_match_all('/a:allow\*(\d+)/', $line, $m);
             same(2, array_sum(array_map('intval', $m[1])), 'on disk, as name*count lines (the first count flushed already): ' . $line);
             truthy(strpos($line, 'l:CRAWL-X|' . STATS_T0 . '|192.0.2.1') !== false, 'the last visit on disk too');
-            same(0, apcu_fetch('rshield:stat:2026093010:a:allow'), 'and out of APCu');
+            same(0, apcu_fetch('rshield:stat:' . substr(md5($dir), 0, 8) . ':2026093010:a:allow'), 'and out of APCu');
+            // Two sites on one PHP-FPM pool (one APCu): each counts its own.
+            $other = new Stats($dir . '-other', true, 7, 400, null, 30, 60);
+            $other->count(['a:reject'], STATS_T0 + 2);
+            same([0, 1], [statsDay($st, STATS_T0)['a:reject'] ?? 0, statsDay($other, STATS_T0)['a:reject'] ?? 0], 'sites apart');
+            exec('rm -rf ' . escapeshellarg($dir . '-other'));
             $st->count(['a:allow'], STATS_T0 + 2);
             same(3, statsDay($st, STATS_T0)['a:allow'] ?? 0, 'APCu and the file together, nothing twice');
             foreach (new APCUIterator('/^rshield:stat/') as $k => $_) {
@@ -321,6 +326,7 @@ return [
             truthy(json_encode($r) !== false, 'JSON for a CMS');
             $st->count(['sm:/sitemap.xml|200', 'smc:/sitemap.xml|CRAWL-GOOGLE', 'l:sitemap:/sitemap.xml@CRAWL-GOOGLE|' . (STATS_T0 + 5) . '|-', 'sm:/old-sitemap.xml|404'], STATS_T0 + 5);
             $maps = StatsReport::build($s, $st, 7, STATS_T0 + 10);
+            same(['200' => 1, '403' => 1, '404' => 1], array_combine(array_map('strval', array_keys($maps['statuses'])), $maps['statuses']), 'the sitemaps leave the answers as they are');
             same(['/old-sitemap.xml' => ['statuses' => ['404' => 1], 'crawlers' => []], '/sitemap.xml' => ['statuses' => ['200' => 1], 'crawlers' => ['CRAWL-GOOGLE' => ['count' => 1, 'last' => STATS_T0 + 5]]]], $maps['sitemaps']);
             $words = implode("\n", $maps['sentences']);
             truthy(strpos($words, '/old-sitemap.xml was asked for 1× but does not exist (404).') !== false && strpos($words, 'CRAWL-GOOGLE read /sitemap.xml 1×, last on') !== false, $words);

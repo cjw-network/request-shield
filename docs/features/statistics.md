@@ -15,6 +15,10 @@ With `set stats on` the shield counts, per hour, while requests pass:
 - **not-found** — pages the site answered with 404 or 410 (the top 50 a day), and
   **where the links to them are**: a page of the site itself (a broken link to
   fix) or another site's host;
+- **sitemaps** — every request for a sitemap (`sitemap.xml`, `sitemap_index.xml`,
+  `sitemap-news.xml`, … also `.gz`) with the site's answer (which exist: 200,
+  which not: 404), and which verified crawler read which, how often and when last
+  — useful after a content update: has Googlebot read the new sitemap yet?
 - **bots** — other clients that say they are tools, not browsers, by family:
   `python`, `curl`, `wget`, `go`, `java`, `node`, `php`, `perl`, `headless`,
   `scrapy`, `empty` (no User-Agent), `other`.
@@ -50,6 +54,23 @@ In short:
 
 `--days=30` for a longer look, `--json` for a CMS or a dashboard. The rules page
 shows each known crawler's last 7 days next to its row.
+
+## The statistics page
+
+![](../explained/stats-page.png)
+
+`Report\StatsPage::render($settings, ['action' => '/stats'])` prints the page:
+tiles with a curve of the last 48 hours (requests, people, crawlers, bots,
+checked, refused, not found), stacked bars per hour, day, week or month for
+**who came** (people, crawlers, bots) and **what the shield did**, the answers
+as a ring, the sentences, a bar per crawler (let through, checked, refused, only
+claimed), the sitemaps, pages not found with their referrers, the rules and the
+bot families. Charts are inline SVG and CSS — no script library, no external
+file; a tooltip on every bar; dark mode; **English and German** (the browser's
+language, or `'lang' => 'de'`); it refreshes itself every minute
+(`'fragment' => true` returns only the content). Print it where only the site's
+people see it — behind the CMS's login, or at a path restricted to some
+addresses. The demo has it at `/stats`.
 
 ## Days, weeks, months, years
 
@@ -146,6 +167,43 @@ Measured with OPcache, a request passing the shield (µs):
   the file store for budgets pays the same. APCu is the store to use.
 - The hourly roll-up and a flush run once per interval, in one request.
 - A site's 404s cost one or two counters more, at the end of the request.
+
+## Large sites and intranets
+
+Measured on this workstation (a busy desktop, 8 threads; PHP 8.4 in a
+container, nginx + PHP-FPM), the shield alone, no application behind it:
+
+| | requests a second | 99 % of requests within |
+|---|---|---|
+| statistics off | 5,600–6,400 | 15 ms |
+| on, APCu | 5,300–5,800 (−5 to −10 %) | 18 ms |
+| on, files | 5,000–5,400 (−10 to −15 %) | 17 ms |
+
+- **Exact under load:** 62,000 requests, 32 at a time, counted 62,000 times —
+  with APCu (flushing to disk every 5 seconds during the test) and with files.
+- **Per request:** a few microseconds with APCu. At 1,000 requests a second that
+  is well under 1 % of one CPU core — beside an application that needs
+  10–200 ms a page, nothing. The number of users does not matter (an intranet
+  with 100,000 people): nothing is kept per visitor, only per hour and kind.
+- **Memory:** a few thousand APCu entries an hour (about 1 MB): every list
+  with a limit (pages, pages not found, referrers, sitemaps) stops at it, also
+  under a flood of made-up addresses.
+- **Housekeeping after the answer:** the flush (every minute) and the roll-up
+  (every hour) look through all of APCu — 22 ms / 38 ms with 100,000 other
+  entries, 48 ms / 107 ms with 500,000. They run after the visitor has the
+  page (PHP-FPM, LiteSpeed), so nobody waits for them.
+- **Files at high load:** about 14 bytes a request — at 1,000 requests a second
+  some 50 MB an hour, whose roll-up takes about 4 seconds of CPU once an hour
+  (after the answer). It works, but **above some 50 requests a second use APCu**
+  (the default store `auto` does when APCu is there).
+- **Several servers:** with APCu each server counts its own; they write into
+  the day files of a shared `store-dir` under a file lock — on NFS, whose locks
+  are unreliable, give each server its own `store-dir` (adding them up there is
+  planned).
+- **Several sites on one PHP-FPM pool:** each statistics directory has its own
+  APCu names, so the sites do not count into each other.
+- **Reading:** the page of a week reads 7 day files (~20 ms), of a year 365
+  (~120 ms).
 
 ## Privacy
 

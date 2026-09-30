@@ -36,7 +36,8 @@ namespace CjwNetwork\RequestShield;
  */
 final class Stats
 {
-    private const PREFIX = 'rshield:stat:';
+    /** "rshield:stat:<site>:" -- each statistics directory its own, so sites on one PHP-FPM pool (one APCu) stay apart. */
+    private string $prefix;
 
     /** Pages kept per crawler and hour (and in a day's totals), pages not found, referrers per page not found; the rest count as "(other)". */
     public const PAGES = 50;
@@ -56,6 +57,7 @@ final class Stats
         private int $flush = 60,
         private int $months = 0,
     ) {
+        $this->prefix = 'rshield:stat:' . substr(md5($dir), 0, 8) . ':';
     }
 
     /** The counters of these settings: in store-dir/stats, with APCu where the store would use it. */
@@ -82,7 +84,7 @@ final class Stats
             foreach ($keys as $k) {
                 if (strncmp($k, 'l:', 2) === 0) {
                     [$id, $rest] = explode('|', substr($k, 2), 2) + ['', ''];
-                    apcu_store(self::PREFIX . 'last:' . $id, $rest, 86400 * 8);
+                    apcu_store($this->prefix . 'last:' . $id, $rest, 86400 * 8);
                     continue;
                 }
                 if (self::group($k) !== null) {
@@ -91,22 +93,22 @@ final class Stats
                         continue;
                     }
                 }
-                apcu_inc(self::PREFIX . $hour . ':' . $k, 1, $ok, 86400 * 8);
+                apcu_inc($this->prefix . $hour . ':' . $k, 1, $ok, 86400 * 8);
             }
             $closed = self::$closedHour;
             // Once per process and hour: has the finished hour been rolled up?
             if ((self::$checked[$this->dir] ?? null) !== $closed) {
                 self::$checked[$this->dir] = $closed;
-                if (apcu_fetch(self::PREFIX . 'rolled') !== $closed) {
-                    $this->roll($now);
+                if (apcu_fetch($this->prefix . 'rolled') !== $closed) {
+                    $this->later(fn () => $this->roll($now));
                 }
             }
             // Every $flush seconds one request writes what APCu holds to the
             // hour's file: a restart of PHP-FPM loses at most that much.
             if ($this->flush > 0 && $now - (self::$flushed[$this->dir] ?? 0.0) >= $this->flush) {
                 self::$flushed[$this->dir] = $now;
-                if (apcu_add(self::PREFIX . 'flush', 1, $this->flush)) {
-                    $this->flush();
+                if (apcu_add($this->prefix . 'flush', 1, $this->flush)) {
+                    $this->later(fn () => $this->flush());
                 }
             }
             return;
@@ -121,9 +123,31 @@ final class Stats
         if ((self::$checked[$this->dir] ?? null) !== $closed) {
             self::$checked[$this->dir] = $closed;
             if (!is_file($this->dir . '/rolled-' . $closed)) {
-                $this->roll($now);
+                $this->later(fn () => $this->roll($now));
             }
         }
+    }
+
+    /**
+     * Housekeeping (roll-up, flush) after the visitor has the answer: on
+     * PHP-FPM (fastcgi_finish_request) and LiteSpeed the request is finished
+     * first, so a large hour's roll-up (seconds at 1,000 requests a second in
+     * file mode) never makes anyone wait. On the command line: at once.
+     */
+    private function later(\Closure $work): void
+    {
+        if (PHP_SAPI === 'cli') {
+            $work();
+            return;
+        }
+        register_shutdown_function(static function () use ($work): void {
+            if (function_exists('fastcgi_finish_request')) {
+                fastcgi_finish_request();
+            } elseif (function_exists('litespeed_finish_request')) {
+                litespeed_finish_request();
+            }
+            $work();
+        });
     }
 
     private static ?int $hourN = null;
@@ -178,20 +202,20 @@ final class Stats
             return $key;
         }
         [$group, $limit, $other] = $g;
-        if (apcu_exists(self::PREFIX . $hour . ':' . $key)) {
+        if (apcu_exists($this->prefix . $hour . ':' . $key)) {
             return $key;                    // admitted already
         }
         // A missing page's referrers only for missing pages that made the list:
         // random paths must not open a group each.
-        if (strncmp($key, 'nr:', 3) === 0 && !apcu_exists(self::PREFIX . $hour . ':n:' . substr($group, 3))) {
+        if (strncmp($key, 'nr:', 3) === 0 && !apcu_exists($this->prefix . $hour . ':n:' . substr($group, 3))) {
             return '';
         }
-        $counter = self::PREFIX . 'pages:' . $hour . ':' . md5((string) $group);
+        $counter = $this->prefix . 'pages:' . $hour . ':' . md5((string) $group);
         $taken = apcu_fetch($counter);
         if (is_int($taken) && $taken >= $limit) {
             return (string) $other;         // full: no more guard keys (a flood of random paths stays small)
         }
-        if (apcu_add(self::PREFIX . 'seen:' . $hour . ':' . md5($key), 1, 86400 * 8)) {
+        if (apcu_add($this->prefix . 'seen:' . $hour . ':' . md5($key), 1, 86400 * 8)) {
             // Seen for the first time this hour: one of the first, or "(other)".
             return apcu_inc($counter, 1, $ok, 86400 * 8) > $limit ? (string) $other : $key;
         }
@@ -219,8 +243,8 @@ final class Stats
             return;
         }
         $lines = [];
-        foreach (new \APCUIterator('/^' . preg_quote(self::PREFIX, '/') . '(\d{10}|last):(.+)$/') as $key => $entry) {
-            if (!is_array($entry) || !preg_match('/^' . preg_quote(self::PREFIX, '/') . '(\d{10}|last):(.+)$/', (string) $key, $m)) {
+        foreach (new \APCUIterator('/^' . preg_quote($this->prefix, '/') . '(\d{10}|last):(.+)$/') as $key => $entry) {
+            if (!is_array($entry) || !preg_match('/^' . preg_quote($this->prefix, '/') . '(\d{10}|last):(.+)$/', (string) $key, $m)) {
                 continue;
             }
             $value = $entry['value'] ?? null;
@@ -281,9 +305,20 @@ final class Stats
                 }
                 self::save($file, $d);
             }
+            // Every crawler's last visit in one small file: a report of a week
+            // need not open every day file of the year to find it.
+            if ($last !== []) {
+                $all = self::load($this->dir . '/last.json');
+                foreach ($last as $id => $seen) {
+                    if ($seen[0] > ($all['last'][$id][0] ?? 0)) {
+                        $all['last'][$id] = $seen;
+                    }
+                }
+                self::save($this->dir . '/last.json', ['hours' => [], 'total' => [], 'last' => $all['last']]);
+            }
             $this->expire($now);
             if ($this->apcu) {
-                apcu_store(self::PREFIX . 'rolled', $closed, 86400 * 8);
+                apcu_store($this->prefix . 'rolled', $closed, 86400 * 8);
             } else {
                 foreach (glob($this->dir . '/rolled-*') ?: [] as $old) {
                     @unlink($old);
@@ -308,7 +343,7 @@ final class Stats
         $hours = [];
         $last = [];
         if ($this->apcu) {
-            $pattern = '/^' . preg_quote(self::PREFIX, '/') . '(\d{10}|last):(.+)$/';
+            $pattern = '/^' . preg_quote($this->prefix, '/') . '(\d{10}|last):(.+)$/';
             foreach (new \APCUIterator($pattern) as $key => $entry) {
                 if (!is_array($entry) || !preg_match($pattern, (string) $key, $m)) {
                     continue;
@@ -330,7 +365,7 @@ final class Stats
                 }
             }
             if ($take) {
-                foreach (new \APCUIterator('/^' . preg_quote(self::PREFIX, '/') . '(seen|pages):(\d{10}):/') as $key => $entry) {
+                foreach (new \APCUIterator('/^' . preg_quote($this->prefix, '/') . '(seen|pages):(\d{10}):/') as $key => $entry) {
                     if (preg_match('/:(\d{10}):/', (string) $key, $m) && ($until === null || $m[1] <= $until)) {
                         apcu_delete((string) $key);
                     }
@@ -452,16 +487,17 @@ final class Stats
             }
         }
         ksort($months);
+        $last = self::load($this->dir . '/last.json')['last'];
         foreach (glob($this->dir . '/d-*.json') ?: [] as $file) {
             $day = substr(basename($file, '.json'), 2);
+            if ($day < $fromDay || $day > $toDay) {
+                continue;               // only the days asked for are opened
+            }
             $d = self::load($file);
             foreach ($d['last'] as $id => $seen) {
                 if ($seen[0] > ($last[$id][0] ?? 0)) {
                     $last[$id] = $seen;
                 }
-            }
-            if ($day < $fromDay || $day > $toDay) {
-                continue;
             }
             $days[$day] = $d['total'];
             foreach ($d['hours'] as $h => $counts) {
