@@ -105,7 +105,7 @@ server and PHP slots, just very briefly.
   Varnish.
 
 Documentation: [docs/](docs/README.md) — features, use cases, proposals,
-architecture decisions. Changes: [CHANGELOG.md](CHANGELOG.md).
+architecture decisions. Privacy and the GDPR: [docs/privacy.md](docs/privacy.md). Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## Installation
 

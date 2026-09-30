@@ -1,0 +1,34 @@
+<svg class="rsd" role="img" viewBox="0 0 780 420" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>Twelve questions in four groups: are search and AI crawlers reading the site (visits per page, never-visited pages, freshness after publishing, crawlers refused by mistake); do people arrive from them (AI referrals, search referrals, landing pages, campaigns); is anything broken (404s and who links to them, redirects, slow pages); who reads it (mobile share); each a tile or small table, with day, week, month and year, filters by crawler, page and kind, and a JSON endpoint</title>
+<style>.rsd{font:13px/1.2 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .okbox{fill:#e6f4ea;stroke:#1e7b43}.rsd .warnbox{fill:#fdf3dc;stroke:#b07400}.rsd .nobox{fill:#fbe9e5;stroke:#a3361f}.rsd .qbox{fill:#eef3fd;stroke:#2f62c9}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .okbox{fill:#17301f}.rsd .warnbox{fill:#3a2f15}.rsd .nobox{fill:#3d1f19}.rsd .qbox{fill:#1b2740;stroke:#7aa2ff}}</style>
+<text class="t" x="20" y="26" font-weight="700">What the dashboard answers — one tile or one small table each</text>
+<rect class="qbox" x="20" y="44" width="360" height="130" rx="10" stroke-width="1.5"/>
+<text class="t" x="36" y="68" font-weight="700">Do crawlers read the site? (SEO, GEO)</text>
+<text class="m" x="36" y="92" font-size="12">1  which pages, how often — per crawler, per kind</text>
+<text class="m" x="36" y="112" font-size="12">2  which pages never (the sitemap, the CMS's pages)</text>
+<text class="m" x="36" y="132" font-size="12">3  refused or checked by mistake</text>
+<text class="m" x="36" y="152" font-size="12">6  how soon after publishing</text>
+<rect class="okbox" x="400" y="44" width="360" height="130" rx="10" stroke-width="1.5"/>
+<text class="t" x="416" y="68" font-weight="700">Do people arrive from them?</text>
+<text class="m" x="416" y="92" font-size="12">4  from AI assistants — to which pages</text>
+<text class="m" x="416" y="112" font-size="12">7  from search engines — landing pages</text>
+<text class="m" x="416" y="132" font-size="12">12 from campaigns (utm) — to which pages</text>
+<text class="m" x="416" y="152" font-size="12">11 on phones, tablets or desktops</text>
+<rect class="nobox" x="20" y="190" width="360" height="110" rx="10" stroke-width="1.5"/>
+<text class="t" x="36" y="214" font-weight="700">Is anything broken?</text>
+<text class="m" x="36" y="238" font-size="12">5  pages not found — and who links to them</text>
+<text class="m" x="36" y="258" font-size="12">10 redirects crawlers follow, chains</text>
+<text class="m" x="36" y="278" font-size="12">8  slow pages (server time, for people and crawlers)</text>
+<rect class="warnbox" x="400" y="190" width="360" height="110" rx="10" stroke-width="1.5"/>
+<text class="t" x="416" y="214" font-weight="700">What the crawlers were told</text>
+<text class="m" x="416" y="238" font-size="12">9  robots.txt: changed when, read by whom</text>
+<text class="m" x="416" y="264" font-size="12">not here: heatmaps, funnels, goals, search terms</text>
+<text class="m" x="416" y="282" font-size="12">(Search Console has the terms)</text>
+<rect class="box" x="20" y="318" width="740" height="84" rx="10" stroke-width="1.5"/>
+<text class="t" x="36" y="342" font-weight="700">Spans:</text>
+<text class="m" x="110" y="342" font-size="12">today · 7 days · 30 days · 12 months (hours 7 days, days 400 days, months for good)</text>
+<text class="t" x="36" y="364" font-weight="700">Filters:</text>
+<text class="m" x="110" y="364" font-size="12">crawler or kind · a page or a prefix · people, crawlers, bots</text>
+<text class="t" x="36" y="386" font-weight="700">JSON:</text>
+<text class="m" x="110" y="386" font-size="12">one endpoint per question, for a widget next to each page in the CMS</text>
+</svg>

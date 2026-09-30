@@ -19,6 +19,8 @@
   [known crawlers](features/known-crawlers.md) ·
   [statistics](features/statistics.md) ·
   [settings](features/settings.md)
+- **Privacy** — what the shield processes about visitors, feature by feature,
+  and the GDPR: [privacy and the GDPR](privacy.md)
 - **Use cases** — scenarios end to end:
   [shared hosting DoS guard](use-cases/shared-hosting-dos-guard.md) ·
   [page cache pollution](use-cases/page-cache-pollution.md) ·
@@ -39,7 +41,9 @@
   [0014 crawler statistics](proposals/0014-crawler-statistics.md) (implemented, dashboard tab to come) ·
   [0015 page statistics](proposals/0015-page-statistics.md) (draft) ·
   [0016 the rule advisor](proposals/0016-rule-advisor.md) (draft) ·
-  [0017 detecting cross-site scripting](proposals/0017-detecting-xss.md) (draft)
+  [0017 detecting cross-site scripting](proposals/0017-detecting-xss.md) (draft) ·
+  [0018 audience statistics](proposals/0018-audience-statistics.md) (draft) ·
+  [0019 the SEO and GEO dashboard](proposals/0019-seo-geo-dashboard.md) (draft)
   (0002, a single-file build, is reserved)
 - **Roadmap for 0012–0016** (the reasons in [0012](proposals/0012-dashboard.md#roadmap-for-00120016)):
   counters and crawler statistics first (they answer "did GPTBot crawl the

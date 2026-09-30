@@ -14,7 +14,9 @@ shield already knows who is who. No cookies, no scripts in the page, no
 addresses kept, no profile of anyone: only "this path, this day, this many".
 A dashboard tab and a JSON API answer simple questions: *which pages are read
 most, did the new page get visitors, how many views yesterday?* It does not
-pretend to be an analytics suite.
+pretend to be an analytics suite. *Where visitors come from and on which
+devices* — from the headers of the same page views — is
+[0018](0018-audience-statistics.md).
 
 ## In one picture
 
@@ -73,8 +75,10 @@ Without APCu, one appended line per page view, summed at the roll-up. Kept
   Where such a cache sits in front, the numbers are a lower bound — unless the
   cache runs the shield (the Qbix server, a PHP early exit) and counts its
   hits too (a hook: `Stats::page($path, $who)`).
-- **No visitors, sessions, sources, devices:** counting *people* would need
-  an identifier; this proposal counts *views*. A daily, salted, in-memory
+- **No visitors, no sessions:** counting *people* would need an identifier;
+  this proposal counts *views*. Sources (search engines, AI assistants, other
+  sites), devices and browsers, from the headers alone, are
+  [0018](0018-audience-statistics.md). A daily, salted, in-memory
   count of distinct visitors is possible (like privacy-friendly analytics
   tools), but it is an open question below, off by default.
 
@@ -101,7 +105,8 @@ Without APCu, one appended line per page view, summed at the roll-up. Kept
    (simpler, but counts 404s and redirects)? *Recommendation: at the end.*
 2. Distinct visitors per day with a daily rotating salt, never stored?
    *Recommendation: not in the first step; views answer the simple questions,
-   and it keeps the privacy statement one sentence long.*
+   and it keeps the privacy statement one sentence long.* (Weighed in detail
+   in [0018](0018-audience-statistics.md#unique-visitors-without-cookies--later-maybe-opt-in).)
 3. Paths outside the cacheable definition: "other" (proposed) or counted?
    *Recommendation: "other" when a definition exists — it is the site's own
    list of real pages.*
