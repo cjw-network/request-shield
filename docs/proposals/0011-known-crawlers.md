@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Accepted** 2026-09-30 (decisions below), not yet implemented |
 | Proposed | 2026-09-30 |
 | Affects | the browser check, budgets, rule files, the rules page |
 
@@ -184,7 +184,16 @@ A group "Crawlers": each known crawler, its kind, the site's policy for it,
 and — from the log — how often it came in the last 24 hours, and how often
 someone only claimed to be it.
 
-## Open questions
+## Decisions (2026-09-30) — and why
+
+| Question | Decision | Why |
+|---|---|---|
+| Defaults per kind | **`allow` for all four** (`search`, `ai-search`, `ai-user`, `ai-training`) | Found and quoted everywhere; crawlers at a normal pace get the pages. Whether a site feeds training is decided in `robots.txt`, as most do — the shield decides nothing else by accident. |
+| Which crawlers on the list? | **Only those an operator lets verify** (published addresses or DNS) | Only real ones get through; a borrowed name gets nothing. Others stay ordinary visitors. |
+| Address lists | **Shipped with each release, plus `crawlers update`** | Works offline (a DMZ), stays current where the update runs. |
+| A budget of its own for a verified crawler? | **Not in the first step** | Counting per address is enough so far; a shared budget per operator later, if logs show the need. |
+
+## Open questions (as proposed)
 
 1. The defaults per kind: `allow` for all four (the pages are public; a crawler
    at a normal pace costs little; being found and quoted in AI answers is what

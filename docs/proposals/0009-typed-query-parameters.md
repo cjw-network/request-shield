@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Accepted** 2026-09-30 (decisions below), not yet implemented |
 | Proposed | 2026-09-29 |
 | Affects | rule files, the order of the checks, the attack rules (0007), the Exponential adapter |
 
@@ -123,7 +123,16 @@ their own. A built-in list of such tags (`@tracking`, shipped like
 `@wordpress`) would help; `strict` should be tried with `monitor` first
 ([0004](0004-modes-monitor-and-strict.md)): the log shows what would be refused.
 
-## Open questions
+## Decisions (2026-09-30) — and why
+
+| Question | Decision | Why |
+|---|---|---|
+| `query strict`: 404 or 400? | **404** | Says nothing about a filter at work, like the blocked paths; the log names the rule for whoever debugs. |
+| A tracking list? | **Shipped**: `include @tracking` (`utm_*`, `fbclid`, `gclid`, `msclkid`, …), versioned like the other built-in rules | With `strict`, marketing links keep working; maintained in one place instead of forgotten by each site. |
+| A value not of its type, without `strict`? | **Scanned as `text`** by the attack rules | A wrong type is often the attack itself; the cost is for those values only. |
+| `cache-query` and `query` as one? | **No, two rules** | A known parameter need not be cacheable (a search term); the docs show them side by side. |
+
+## Open questions (as proposed)
 
 1. `query strict` answering 404, or 400 (a malformed request)? 404 says less.
 2. A shipped list of tracking tags (`include @tracking`), or each site its own?

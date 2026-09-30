@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Accepted** 2026-09-30 (decisions below), not yet implemented |
 | Proposed | 2026-09-29 |
 | Affects | Shield::protect(), rule files, the log |
 
@@ -83,7 +83,16 @@ pass. No state: the cookie's issue time is signed.
 requests that would have been stopped (as the log today). `strict`: none per
 request (other numbers only).
 
-## Open questions
+## Decisions (2026-09-30) — and why
+
+| Question | Decision | Why |
+|---|---|---|
+| Does `monitor` count the budgets? | **Yes**, as `enforce` would | The log then shows exactly what `enforce` would do — the point of the mode. |
+| `strict`'s values | **As proposed**: the check from a quarter of each limit, a pass for 15 minutes, uncached addresses count double, the difficulty from twice `difficulty-min` | `strict` is for an attack and is switched off after it; milder values would protect less when it matters. |
+| `strict` by itself under attack? | **No, a manual switch** for now | Predictable; an automatic switch risks false alarms (a newsletter goes out, visitors get checked). A detector later, once `monitor` shows what a sensible threshold is. |
+| `max-age` where? | **Per `challenge` line**: `challenge /login max-age 5m` | Clear and where it applies; no extra concept. |
+
+## Open questions (as proposed)
 
 1. Should `monitor` also skip the budgets' counting (to not affect the numbers
    once switched to `enforce`), or count as `enforce` would (proposed: count)?
