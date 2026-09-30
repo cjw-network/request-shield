@@ -23,7 +23,8 @@ questions *which pages, from where, on which devices, broken links, crawlers*
 — and it sees more page views than a script-based tool, because nothing is
 blocked. It cannot answer questions that need a visit or a person to be
 followed (sessions, bounce rate, funnels, goals); it does not fingerprint and
-does not try to.
+does not try to. Which questions the dashboard answers with it, for SEO and
+GEO — and what time per visit would cost — is [0019](0019-seo-geo-dashboard.md).
 
 ## In one picture
 
