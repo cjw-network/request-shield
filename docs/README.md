@@ -18,6 +18,8 @@
   [modes: monitor and strict](features/modes.md) ·
   [known crawlers](features/known-crawlers.md) ·
   [settings](features/settings.md)
+- **Privacy** — what the shield processes about visitors, feature by feature,
+  and the GDPR: [privacy and the GDPR](privacy.md)
 - **Use cases** — scenarios end to end:
   [shared hosting DoS guard](use-cases/shared-hosting-dos-guard.md) ·
   [page cache pollution](use-cases/page-cache-pollution.md) ·

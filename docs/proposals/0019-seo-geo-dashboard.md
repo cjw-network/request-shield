@@ -112,6 +112,73 @@ and AI assistants do not see it; server time (#8), what crawlers read (#1–#3)
 and what they send back (#4, #7) are the numbers that move rankings and
 citations.
 
+## Recognising a visitor without a cookie
+
+Could the shield tell visitors apart — or recognise one coming back — without
+a cookie? Four ways, weighed honestly. *All legal statements here: to be
+confirmed by the site's data protection officer; not legal advice.*
+
+### Address + browser string
+
+- **What it really counts:** combinations of an address and a User-Agent — not
+  people. Many people share one address: offices, schools, hotels, and above
+  all mobile networks, where carrier-grade NAT puts hundreds or thousands of
+  customers behind one IPv4 address. The other way round, one person has
+  several: a phone on mobile data and on Wi-Fi, a laptop at home and at work;
+  IPv6 privacy addresses change daily or more often (the shield counts IPv6 per
+  /64, which helps for one connection but not across networks). And a browser
+  string is shared by everyone with the same browser version on the same
+  system — the most common strings by a large share of all visitors, and
+  browsers are reducing the User-Agent further (frozen, shortened strings).
+- **Accuracy:** no dependable figure applies to every site; it depends on how
+  many visitors come from mobile networks and companies. Qualitatively: a
+  daily count of distinct combinations undercounts people behind shared
+  addresses and overcounts people who switch networks — fine as a trend, wrong
+  as an exact number, and useless for recognising *one* person over days.
+- **Least intrusive form:** the daily-salted hash of 0018 — kept only in memory
+  for one day, never written, the salt gone at midnight. The hash of an address
+  is still personal data while it exists; with aggregation, a one-day life and
+  no other use, many readings accept legitimate interest (Art. 6(1)(f) GDPR).
+
+### The shield's own pass cookie
+
+The pass cookie (`rs_pass`, set after the browser check, bound to the client's
+address group and browser) *could* recognise a returning browser. It exists for
+**security**: to spare a checked browser the check again. Using it for
+statistics would change its purpose (purpose limitation, Art. 5(1)(b) GDPR)
+and would very likely turn a cookie that needs no consent — because it is
+strictly necessary for the security of the service the visitor asked for —
+into one that does. **Recommendation: never use it for statistics.** The
+dashboard counts passes and checks, never pass holders.
+
+### "A small check" that reads the device — fingerprinting
+
+A script that reads device properties — canvas or WebGL rendering, installed
+fonts, screen, audio processing, time zone — and combines them into an
+identifier is **browser fingerprinting**. It reads information from the
+visitor's device, which § 25 TDDDG and Art. 5(3) of the ePrivacy Directive
+allow only with consent, unless strictly necessary for the requested service;
+tracking is not. The EDPB's Guidelines 2/2023 on the technical scope of
+Art. 5(3) read that article broadly — reaching also some information a browser
+sends by itself when it is collected to track; how far is contested and still
+moving. Besides the law: fingerprinting is what privacy-minded browsers
+actively fight, and it would betray the trust the shield's check depends on.
+The shield's proof of work reads nothing from the device — it computes a hash
+and sends back a number. **Recommendation: never fingerprint.**
+
+### Summary
+
+| Method | Accuracy for "visitors" | Cost | Likely legal basis | Consent (§ 25 TDDDG)? | Recommendation |
+|---|---|---|---|---|---|
+| Page views only (0015) | exact — for views | ~1 µs | legitimate interest (aggregates) | no, in many readings | **the default** |
+| Daily-salted hash of address + User-Agent, in memory | rough trend; under- and overcounts | a hash + an APCu entry per visitor and day | legitimate interest, if aggregated, one day, no other use | no, in many readings — contested | opt-in, later |
+| A statistics cookie of its own | good (per browser) | a cookie per visitor | consent | **yes** | not in the shield |
+| The pass cookie for statistics | good for checked browsers only | none | purpose would change | would need it | **never** |
+| Fingerprinting ("a small check" reading the device) | high, until browsers counter it | a script, a request | consent | **yes** | **never** |
+
+*To be confirmed by the site's data protection officer; not legal advice.* The
+shield's privacy notes in general: [Privacy and the GDPR](../privacy.md).
+
 ## Cost
 
 | | Per request |
