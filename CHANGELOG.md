@@ -107,6 +107,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   refused / checked / told to wait", `stats --sort=blocked`, `'sort'`), the list
   shows the pages the shield stopped most -- also ones nobody ever saw, like
   `/wp-login.php`. The Protection view starts there.
+- **Rules & setup**, a fourth view of the statistics page (`/rs/rules`,
+  `'view' => 'rules'`; `Report\SetupPage`): the way of a request through the
+  shield, every check in order, on or off, with what it answers; every rule in
+  words with its ID, where it is written and how often it decided; every
+  technical setting (the secret never shown); in English and German. The
+  Protection view's rules now say what each does and where it is written, and
+  link there. The rules page's groups (`RulesPage::groups(…, $lang)`), the mode
+  and `Describe::duration()`/`span()` speak German too.
 - `set stats-depth 1…4` (default 2): how many folder levels a section's views
   are counted for exactly -- 3 where a language or siteaccess takes the first
   level (`/de/news/2026/`). Each level has its own limit of 200 sections an

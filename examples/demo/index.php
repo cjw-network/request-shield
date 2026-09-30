@@ -220,6 +220,7 @@ $groups = [
         ['/rs/dashboard', 'Statistics: the dashboard', 'everything at a glance: who came, what the shield did, pages, crawlers, rules (this machine only)'],
         ['/rs/stats', 'Statistics: visitors & pages', 'for editors: people, crawlers, bots; the most visited pages and sections, broken links, sitemaps'],
         ['/rs/shield', 'Statistics: protection', 'for admins: what the shield did, the answers, the rules, bots'],
+        ['/rs/rules', 'Statistics: rules & setup', 'the way of a request through the shield, every rule in words, every technical setting (this machine only)'],
         ['/rs/stats?lang=de', 'Statistik auf Deutsch', 'the same page in German (it also follows your browser\'s language)'],
         ['/rs/stats?path=' . rawurlencode($url('/page/')), 'Statistics: one subtree', 'the "path starts with" filter: views of one section, by people, crawlers, bots'],
     ],

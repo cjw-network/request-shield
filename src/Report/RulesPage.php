@@ -151,23 +151,25 @@ final class RulesPage
      * The rules, grouped the way a site owner thinks about them. Each row: its
      * text for people (the rule's description, else what it does), the rule
      * as written when a description stands in front, its ID, where it is
-     * written, and the ID the log counts it under.
+     * written, and the ID the log counts it under. In English or German ($lang);
+     * the rules' own descriptions stay as written.
      *
      * @param array<string, int> $claims crawler ID => how often a request named it without coming from it (the log)
      * @param array<string, array{kind: string, policy: string, name: string, seen: int, verified: int, claimed: int, allowed: int, checked: int, refused: int, throttled: int, robots: int, pages: array<string, int>, last: array{0: int, 1: string}|null}>|null $counted what each crawler did in the last days (StatsReport), when counted
      * @return list<array{0: string, 1: string, 2: list<array{text: string, detail: ?string, id: ?string, where: ?string, log: ?string}>}>
      */
-    public static function groups(Settings $s, array $claims = [], ?array $counted = null): array
+    public static function groups(Settings $s, array $claims = [], ?array $counted = null, string $lang = 'en'): array
     {
+        $w = static fn (string $en, string ...$a): string => vsprintf($lang === 'de' ? (self::DE[$en] ?? $en) : $en, $a);
         $o = static fn (string $setting, string $what): ?string => $s->origin($setting, $what);
-        $row = static function (string $says, ?string $id, ?string $log = null) use ($s): array {
+        $row = static function (string $says, ?string $id, ?string $log = null) use ($s, $w): array {
             $text = $id !== null ? $s->origin('text', $id) : null;
             $where = $id !== null ? $s->origin('at', $id) : null;
             if ($where !== null && $s->origin('rev', (string) $id) !== null) {
-                $where .= ' · revision ' . $s->origin('rev', (string) $id);
+                $where .= $w(' · revision %s', (string) $s->origin('rev', (string) $id));
             }
             if ($id !== null && $s->origin('area', $id) !== null) {
-                $where = ($where ?? $id) . ' · in match ' . $s->origin('area', $id);
+                $where = ($where ?? $id) . $w(' · in match %s', (string) $s->origin('area', $id));
             }
             return ['text' => $text ?? $says, 'detail' => $text !== null ? $says : null, 'id' => $id, 'where' => $where, 'log' => $log ?? $id];
         };
@@ -182,18 +184,18 @@ final class RulesPage
             $says = $pattern($p);
             $where = $id !== null ? $s->origin('at', $id) : null;
             if ($where !== null && $s->origin('rev', (string) $id) !== null) {
-                $where .= ' · revision ' . $s->origin('rev', (string) $id);
+                $where .= $w(' · revision %s', (string) $s->origin('rev', (string) $id));
             }
             $rows[] = ['text' => $text ?? $says, 'detail' => $text !== null && $text !== $says ? $says : null, 'id' => $id ?? \CjwNetwork\RequestShield\Config::setName($p),
                 'where' => $where, 'log' => $id ?? \CjwNetwork\RequestShield\Config::setName($p) ?? "blockedPaths[$i]"];
         }
         foreach ($s->blockExceptions as $x) {
-            $what = $x['patterns'] === null ? 'every block above' : implode('; ', array_map(static fn (string $p): string => Describe::rule($s, 'blockedPaths', $p), $x['patterns']));
-            $rows[] = $row('Open at ' . implode(', ', array_map($pattern, $x['paths'])) . ': ' . $what
-                . ($x['ips'] !== [] ? ' — only for ' . implode(', ', $x['ips']) : ' — ⚠ for everyone: make sure only admins reach it'),
+            $what = $x['patterns'] === null ? $w('every block above') : implode('; ', array_map(static fn (string $p): string => Describe::rule($s, 'blockedPaths', $p), $x['patterns']));
+            $rows[] = $row($w('Open at %s: %s', implode(', ', array_map($pattern, $x['paths'])), $what)
+                . ($x['ips'] !== [] ? $w(' — only for %s', implode(', ', $x['ips'])) : $w(' — ⚠ for everyone: make sure only admins reach it')),
                 $o('blockExceptions', $x['paths'][0] ?? ''), '');
         }
-        $g[] = ['Addresses only attackers ask for', $rows === [] ? 'None are refused.' : 'Refused with "not found" (404) before the site sees them:', $rows];
+        $g[] = [$w('Addresses only attackers ask for'), $rows === [] ? $w('None are refused.') : $w('Refused with "not found" (404) before the site sees them:'), $rows];
 
         $rows = [];
         foreach ($s->contentRules as $n => $r) {
@@ -202,7 +204,7 @@ final class RulesPage
                 $text = $id !== null ? $s->origin('text', $id) : null;
                 $where = $id !== null ? $s->origin('at', $id) : null;
                 if ($where !== null && $s->origin('rev', (string) $id) !== null) {
-                    $where .= ' · revision ' . $s->origin('rev', (string) $id);
+                    $where .= $w(' · revision %s', (string) $s->origin('rev', (string) $id));
                 }
                 // The written form already says where it looks: "query …", "header:user-agent …".
                 $says = $pattern($p);
@@ -211,7 +213,7 @@ final class RulesPage
             }
         }
         if ($rows !== []) {
-            $g[] = ['Attack patterns in the request', 'Refused with "no access" (403), matched on the normalised values:', $rows];
+            $g[] = [$w('Attack patterns in the request'), $w('Refused with "no access" (403), matched on the normalised values:'), $rows];
         }
 
         $rows = [];
@@ -219,35 +221,35 @@ final class RulesPage
             $names = [];
             foreach ($q['exact'] + $q['globs'] as $name => $type) {
                 $shown = strncmp((string) $name, '#^', 2) === 0 ? str_replace('.*', '*', substr((string) $name, 2, -2)) : (string) $name;
-                $names[] = stripslashes($shown) . ' (' . (strncmp($type, '#', 1) === 0 ? 'pattern' : $type) . ')';
+                $names[] = stripslashes($shown) . ' (' . (strncmp($type, '#', 1) === 0 ? $w('pattern') : $type) . ')';
             }
             $first = (string) array_key_first($q['exact'] + $q['globs']);
-            $key = strncmp($first, '#^', 2) === 0 ? $first : $first;
-            $rows[] = $row(implode(', ', $names) . ($q['paths'] !== null ? ' — at ' . implode(', ', array_map($pattern, $q['paths'])) : ''),
-                $o('query', array_key_exists($first, $q['exact']) ? $first : $key), "queryParams[$n]");
+            $rows[] = $row(implode(', ', $names) . ($q['paths'] !== null ? $w(' — at %s', implode(', ', array_map($pattern, $q['paths']))) : ''),
+                $o('query', $first), "queryParams[$n]");
         }
         if ($rows !== [] || $s->queryStrict) {
-            $g[] = ['Known parameters', $s->queryStrict ? 'Any other parameter, or a value not of its type, gets "not found" (404):'
-                : 'Values of these types are not scanned by the attack patterns; any other parameter is answered, but not cached:', $rows];
+            $g[] = [$w('Known parameters'), $s->queryStrict ? $w('Any other parameter, or a value not of its type, gets "not found" (404):')
+                : $w('Values of these types are not scanned by the attack patterns; any other parameter is answered, but not cached:'), $rows];
         }
 
         $rows = [];
         foreach ($s->restricted as $n => $r) {
             foreach ($r['paths'] as $p) {
-                $rows[] = $row($pattern($p) . ' — only for ' . implode(', ', $r['ips']), $o('restricted', $p), $o('restricted', $p) ?? "restricted[$n]");
+                $rows[] = $row($pattern($p) . $w(' — only for %s', implode(', ', $r['ips'])), $o('restricted', $p), $o('restricted', $p) ?? "restricted[$n]");
             }
         }
-        $g[] = ['Areas for certain visitors', $rows === [] ? 'No area is restricted.' : 'Everyone else gets "no access" (403):', $rows];
+        $g[] = [$w('Areas for certain visitors'), $rows === [] ? $w('No area is restricted.') : $w('Everyone else gets "no access" (403):'), $rows];
 
         $rows = [];
         foreach ($s->methodPaths as $m => $patterns) {
-            $rows[] = $row($m . ' only at: ' . implode(', ', array_map($pattern, $patterns)), $o('methodPaths', $m), $o('methodPaths', $m) ?? "methodPaths.$m");
+            $rows[] = $row($w('%s only at: %s', (string) $m, implode(', ', array_map($pattern, $patterns))), $o('methodPaths', $m), $o('methodPaths', $m) ?? "methodPaths.$m");
         }
-        $g[] = ['Where forms may be sent', 'Accepted kinds of request: ' . implode(', ', $s->methods) . ($rows === [] ? '; forms may be sent anywhere.' : '; anywhere else "not allowed here" (405):'), $rows];
+        $g[] = [$w('Where forms may be sent'), $w('Accepted kinds of request: %s', implode(', ', $s->methods)) . ($rows === [] ? $w('; forms may be sent anywhere.') : $w('; anywhere else "not allowed here" (405):')), $rows];
 
-        $g[] = ['Website names and sizes', ($s->hosts === [] ? 'Any website name is accepted. ' : 'The site answers as ' . implode(', ', $s->hosts) . '; any other name gets "not found". ')
-            . "Addresses up to $s->maxUri characters and $s->maxQueryParameters parameters, headers up to " . round($s->maxHeaderBytes / 1024) . ' KB; disguised addresses and attempts to leave the site\'s folder are refused.',
-            $s->hosts === [] ? [] : [$row('Website names: ' . implode(', ', $s->hosts), $o('hosts', '*'), $o('hosts', '*') ?? 'hosts')]];
+        $g[] = [$w('Website names and sizes'), ($s->hosts === [] ? $w('Any website name is accepted. ') : $w('The site answers as %s; any other name gets "not found". ', implode(', ', $s->hosts)))
+            . $w('Addresses up to %s characters and %s parameters, headers up to %s KB; disguised addresses and attempts to leave the site\'s folder are refused.',
+                (string) $s->maxUri, (string) $s->maxQueryParameters, (string) round($s->maxHeaderBytes / 1024)),
+            $s->hosts === [] ? [] : [$row($w('Website names: %s', implode(', ', $s->hosts)), $o('hosts', '*'), $o('hosts', '*') ?? 'hosts')]];
 
         // One row per rule: a cache-path line often lists several paths.
         $byRule = [];
@@ -258,53 +260,55 @@ final class RulesPage
         foreach ($byRule as $id => $paths) {
             $rows[] = $row(implode('  ', $paths), $id !== '' ? $id : null, '');
         }
-        $query = $s->cacheableQuery === null ? 'with any parameters' : ($s->cacheableQuery === [] ? 'without parameters' : 'only with the parameter' . (count($s->cacheableQuery) > 1 ? 's ' : ' ') . implode(', ', array_map(static fn (string $q): string => "\"$q\"", $s->cacheableQuery)));
-        $g[] = ['What a cache may keep', ($s->cacheablePaths === null ? 'Every address, ' : 'These addresses, ') . $query
-            . '. Anything else is answered by the site, but not kept — so made-up addresses cannot fill a cache.', $rows];
+        $query = $s->cacheableQuery === null ? $w('with any parameters') : ($s->cacheableQuery === [] ? $w('without parameters')
+            : $w(count($s->cacheableQuery) > 1 ? 'only with the parameters %s' : 'only with the parameter %s', implode(', ', array_map(static fn (string $q): string => "\"$q\"", $s->cacheableQuery))));
+        $g[] = [$w('What a cache may keep'), ($s->cacheablePaths === null ? $w('Every address, %s.', $query) : $w('These addresses, %s.', $query))
+            . $w(' Anything else is answered by the site, but not kept — so made-up addresses cannot fill a cache.'), $rows];
 
         $rows = [];
         foreach ($s->budgets as $b) {
-            $then = $b->earnBack ? ', then the check — solved, the counter starts again' : ', then a pause';
+            $then = $b->earnBack ? $w(', then the check — solved, the counter starts again') : $w(', then a pause');
+            $per = Describe::duration($b->window, $lang);
             $rows[] = $row($b->onDemand
-                ? "\"$b->name\": at most $b->limit per " . Describe::duration($b->window) . ', counted by the site itself (searches, failed sign-ins, cache misses)' . $then
-                : "\"$b->name\": $b->limit requests per " . Describe::duration($b->window) . ($b->challengeAt !== null ? ", the browser check from $b->challengeAt" : '') . $then,
+                ? $w('"%s": at most %s per %s, counted by the site itself (searches, failed sign-ins, cache misses)', $b->name, (string) $b->limit, $per) . $then
+                : $w('"%s": %s requests per %s', $b->name, (string) $b->limit, $per) . ($b->challengeAt !== null ? $w(', the browser check from %s', (string) $b->challengeAt) : '') . $then,
                 $o('budgets', $b->name), $o('budgets', $b->name) ?? "budgets.$b->name");
         }
-        $g[] = ['Pace per visitor', 'Counted per address (IPv6: per /' . $s->ipv6Prefix . ' network)'
-            . ($s->exemptIps === [] ? '.' : '; never counted: ' . implode(', ', $s->exemptIps) . '.'), $rows];
+        $g[] = [$w('Pace per visitor'), $w('Counted per address (IPv6: per /%s network)', (string) $s->ipv6Prefix)
+            . ($s->exemptIps === [] ? '.' : $w('; never counted: %s.', implode(', ', $s->exemptIps))), $rows];
 
         $rows = [];
         foreach ($s->challenge->alwaysPaths as $p) {
             $age = $s->challenge->alwaysMaxAge[$p] ?? null;
-            $rows[] = $row('always checked: ' . $pattern($p) . ($age !== null ? ' — a pass from the last ' . Describe::span($age) : ''),
+            $rows[] = $row($w('always checked: %s', $pattern($p)) . ($age !== null ? $w(' — a pass from the last %s', Describe::span($age, $lang)) : ''),
                 $o('challenge.alwaysPaths', $p), $o('challenge.alwaysPaths', $p) ?? 'challenge.alwaysPaths');
         }
         foreach ($s->challenge->exemptPaths as $p) {
-            $rows[] = $row('never checked: ' . $pattern($p), $o('challenge.exemptPaths', $p), '');
+            $rows[] = $row($w('never checked: %s', $pattern($p)), $o('challenge.exemptPaths', $p), '');
         }
-        $g[] = ['Browser check', 'An invisible check that a real browser passes in a moment; a passed check is valid for ' . Describe::span($s->challenge->passTtl)
-            . ($s->crawlers !== [] ? '. Known crawlers (search engines, AI crawlers) are recognised by their address, see below.' : '.'), $rows];
+        $g[] = [$w('Browser check'), $w('An invisible check that a real browser passes in a moment; a passed check is valid for %s', Describe::span($s->challenge->passTtl, $lang))
+            . ($s->crawlers !== [] ? $w('. Known crawlers (search engines, AI crawlers) are recognised by their address, see below.') : '.'), $rows];
 
         $rows = [];
-        $kinds = ['search' => 'search engine', 'ai-search' => 'AI search', 'ai-user' => 'fetches what a person asks for', 'ai-training' => 'collects for AI training'];
-        $policies = ['allow' => 'let through (never the browser check)', 'check' => 'checked like any visitor', 'block' => 'refused (403)'];
+        $kinds = ['search' => $w('search engine'), 'ai-search' => $w('AI search'), 'ai-user' => $w('fetches what a person asks for'), 'ai-training' => $w('collects for AI training')];
+        $policies = ['allow' => $w('let through (never the browser check)'), 'check' => $w('checked like any visitor'), 'block' => $w('refused (403)')];
         foreach ($s->crawlers as $id => $x) {
             $how = [];
             if ($x['ranges'] !== [] && $s->crawlerVerify !== 'dns') {
                 $dates = array_filter(array_map(static fn (array $l): string => substr((string) ($l['created'] ?? ''), 0, 10), $x['lists']));
-                $how[] = 'its published address list (' . count($x['ranges']) . ' ranges' . ($dates !== [] ? ', of ' . min($dates) : '') . ')';
+                $how[] = $w('its published address list (%s ranges', (string) count($x['ranges'])) . ($dates !== [] ? $w(', of %s', min($dates)) : '') . ')';
             }
             if ($x['dns'] !== [] && $s->crawlerVerify !== 'ranges') {
                 $how[] = 'DNS (' . implode(', ', $x['dns']) . ')';
             }
             $claimed = $claims[$id] ?? 0;
             $rows[] = $row(($kinds[$x['kind']] ?? $x['kind']) . ': ' . ($policies[$x['policy']] ?? $x['policy'])
-                . ' — verified by ' . ($how === [] ? 'nothing here (crawler-verify ' . $s->crawlerVerify . '): an ordinary visitor' : implode(' or ', $how))
-                . ($claimed > 0 ? " · {$claimed}× only claimed in 24 h" : '') . self::counted($counted[$id] ?? null), (string) $id, '');
+                . ($how === [] ? $w(' — verified by nothing here (crawler-verify %s): an ordinary visitor', $s->crawlerVerify) : $w(' — verified by %s', implode($w(' or '), $how)))
+                . ($claimed > 0 ? $w(' · %s× only claimed in 24 h', (string) $claimed) : '') . self::counted($counted[$id] ?? null), (string) $id, '');
         }
         if ($rows !== []) {
-            $g[] = ['Known crawlers', 'Search engines and AI crawlers that behave are recognised by where they come from — the name a request sends proves nothing. '
-                . 'One that only borrows a name is an ordinary visitor (the log notes it: claimed=…). Change it per kind or crawler: crawlers ai-training block, crawler CRAWL-GPTBOT check.', $rows];
+            $g[] = [$w('Known crawlers'), $w('Search engines and AI crawlers that behave are recognised by where they come from — the name a request sends proves nothing. ')
+                . $w('One that only borrows a name is an ordinary visitor (the log notes it: claimed=…). Change it per kind or crawler: crawlers ai-training block, crawler CRAWL-GPTBOT check.'), $rows];
         }
 
         $rows = [];
@@ -312,28 +316,76 @@ final class RulesPage
             $rows[] = $row('monitor ' . $rule, (string) $rid);
         }
         if ($rows !== []) {
-            $g[] = ['Watched, not enforced', 'Rules marked "monitor": checked on every request and logged as they would decide ("monitor-reject" …), but nobody is refused. When the log shows no false hits, remove the word.', $rows];
+            $g[] = [$w('Watched, not enforced'), $w('Rules marked "monitor": checked on every request and logged as they would decide ("monitor-reject" …), but nobody is refused. When the log shows no false hits, remove the word.'), $rows];
         }
 
-        $g[] = ['Proxies and the log', ($s->trustedProxies === [] ? 'No proxy: the visitor\'s address is taken from the connection. ' : 'The visitor\'s real address is believed only from ' . implode(', ', $s->trustedProxies) . '. ')
-            . ($s->logFile === null ? 'No log.' : "Log: level \"$s->logLevel\", addresses " . ($s->logIp === 'full' ? 'in full' : 'anonymised') . '.'), []];
+        $g[] = [$w('Proxies and the log'), ($s->trustedProxies === [] ? $w('No proxy: the visitor\'s address is taken from the connection. ') : $w('The visitor\'s real address is believed only from %s. ', implode(', ', $s->trustedProxies)))
+            . ($s->logFile === null ? $w('No log.') : $w('Log: level "%s", addresses %s.', $s->logLevel, $s->logIp === 'full' ? $w('in full') : $w('anonymised'))), []];
         return $g;
     }
 
+    /** groups() in German: the English text => its translation (%s: the same values). */
+    private const DE = [
+        ' · revision %s' => ' · Revision %s', ' · in match %s' => ' · im match %s', 'every block above' => 'jede Sperre oben',
+        'Open at %s: %s' => 'Offen unter %s: %s', ' — only for %s' => ' — nur für %s', ' — ⚠ for everyone: make sure only admins reach it' => ' — ⚠ für alle: nur Admins dürfen dorthin kommen',
+        'Addresses only attackers ask for' => 'Adressen, die nur Angreifer aufrufen', 'None are refused.' => 'Keine wird abgewiesen.',
+        'Refused with "not found" (404) before the site sees them:' => 'Abgewiesen mit „nicht gefunden“ (404), bevor die Website sie sieht:',
+        'Attack patterns in the request' => 'Angriffsmuster in der Anfrage', 'Refused with "no access" (403), matched on the normalised values:' => 'Abgewiesen mit „kein Zugriff“ (403), geprüft auf den normalisierten Werten:',
+        'pattern' => 'Muster', ' — at %s' => ' — unter %s', 'Known parameters' => 'Bekannte Parameter',
+        'Any other parameter, or a value not of its type, gets "not found" (404):' => 'Jeder andere Parameter oder ein Wert nicht seines Typs bekommt „nicht gefunden“ (404):',
+        'Values of these types are not scanned by the attack patterns; any other parameter is answered, but not cached:' => 'Werte dieser Typen prüfen die Angriffsmuster nicht; jeder andere Parameter wird beantwortet, aber nicht gecacht:',
+        'Areas for certain visitors' => 'Bereiche für bestimmte Besucher', 'No area is restricted.' => 'Kein Bereich ist beschränkt.', 'Everyone else gets "no access" (403):' => 'Alle anderen bekommen „kein Zugriff“ (403):',
+        '%s only at: %s' => '%s nur unter: %s', 'Where forms may be sent' => 'Wohin Formulare dürfen', 'Accepted kinds of request: %s' => 'Erlaubte Arten von Anfragen: %s',
+        '; forms may be sent anywhere.' => '; Formulare dürfen überallhin.', '; anywhere else "not allowed here" (405):' => '; überall sonst „hier nicht erlaubt“ (405):',
+        'Website names and sizes' => 'Namen und Größen', 'Any website name is accepted. ' => 'Jeder Name der Website wird angenommen. ',
+        'The site answers as %s; any other name gets "not found". ' => 'Die Website antwortet als %s; jeder andere Name bekommt „nicht gefunden“. ',
+        'Addresses up to %s characters and %s parameters, headers up to %s KB; disguised addresses and attempts to leave the site\'s folder are refused.' => 'Adressen bis %s Zeichen und %s Parameter, Header bis %s KB; getarnte Adressen und Versuche, den Ordner der Website zu verlassen, werden abgewiesen.',
+        'Website names: %s' => 'Namen der Website: %s', 'with any parameters' => 'mit beliebigen Parametern', 'without parameters' => 'ohne Parameter',
+        'only with the parameters %s' => 'nur mit den Parametern %s', 'only with the parameter %s' => 'nur mit dem Parameter %s', 'What a cache may keep' => 'Was ein Cache behalten darf',
+        'Every address, %s.' => 'Jede Adresse, %s.', 'These addresses, %s.' => 'Diese Adressen, %s.',
+        ' Anything else is answered by the site, but not kept — so made-up addresses cannot fill a cache.' => ' Alles andere beantwortet die Website, aber es wird nicht behalten — so können erfundene Adressen keinen Cache füllen.',
+        ', then the check — solved, the counter starts again' => ', dann der Check — gelöst, beginnt der Zähler neu', ', then a pause' => ', dann eine Pause',
+        '"%s": at most %s per %s, counted by the site itself (searches, failed sign-ins, cache misses)' => '„%s“: höchstens %s pro %s, gezählt von der Website selbst (Suchen, fehlgeschlagene Anmeldungen, Cache-Fehlgriffe)',
+        '"%s": %s requests per %s' => '„%s“: %s Anfragen pro %s', ', the browser check from %s' => ', der Browser-Check ab %s', 'Pace per visitor' => 'Tempo pro Besucher',
+        'Counted per address (IPv6: per /%s network)' => 'Gezählt pro Adresse (IPv6: pro /%s-Netz)', '; never counted: %s.' => '; nie gezählt: %s.',
+        'always checked: %s' => 'immer geprüft: %s', ' — a pass from the last %s' => ' — ein Pass aus den letzten %s', 'never checked: %s' => 'nie geprüft: %s', 'Browser check' => 'Browser-Check',
+        'An invisible check that a real browser passes in a moment; a passed check is valid for %s' => 'Ein unsichtbarer Check, den ein echter Browser in einem Moment besteht; ein bestandener Check gilt %s',
+        '. Known crawlers (search engines, AI crawlers) are recognised by their address, see below.' => '. Bekannte Crawler (Suchmaschinen, KI-Crawler) werden an ihrer Adresse erkannt, siehe unten.',
+        'search engine' => 'Suchmaschine', 'AI search' => 'KI-Suche', 'fetches what a person asks for' => 'holt, was eine Person fragt', 'collects for AI training' => 'sammelt für KI-Training',
+        'let through (never the browser check)' => 'durchgelassen (nie der Browser-Check)', 'checked like any visitor' => 'geprüft wie jeder Besucher', 'refused (403)' => 'abgewiesen (403)',
+        'its published address list (%s ranges' => 'seine veröffentlichte Adressliste (%s Bereiche', ', of %s' => ', vom %s', ' or ' => ' oder ',
+        ' — verified by nothing here (crawler-verify %s): an ordinary visitor' => ' — hier durch nichts bestätigt (crawler-verify %s): ein gewöhnlicher Besucher', ' — verified by %s' => ' — bestätigt über %s',
+        ' · %s× only claimed in 24 h' => ' · %s× nur behauptet in 24 h', 'Known crawlers' => 'Bekannte Crawler',
+        'Search engines and AI crawlers that behave are recognised by where they come from — the name a request sends proves nothing. ' => 'Suchmaschinen und KI-Crawler, die sich benehmen, werden daran erkannt, woher sie kommen — der Name, den eine Anfrage schickt, beweist nichts. ',
+        'One that only borrows a name is an ordinary visitor (the log notes it: claimed=…). Change it per kind or crawler: crawlers ai-training block, crawler CRAWL-GPTBOT check.' => 'Wer sich nur einen Namen leiht, ist ein gewöhnlicher Besucher (das Log vermerkt es: claimed=…). Ändern pro Art oder Crawler: crawlers ai-training block, crawler CRAWL-GPTBOT check.',
+        'Watched, not enforced' => 'Beobachtet, nicht durchgesetzt',
+        'Rules marked "monitor": checked on every request and logged as they would decide ("monitor-reject" …), but nobody is refused. When the log shows no false hits, remove the word.' => 'Regeln mit „monitor“: bei jeder Anfrage geprüft und so geloggt, wie sie entscheiden würden („monitor-reject“ …), aber niemand wird abgewiesen. Zeigt das Log keine Fehltreffer, das Wort entfernen.',
+        'Proxies and the log' => 'Proxys und Log', 'No proxy: the visitor\'s address is taken from the connection. ' => 'Kein Proxy: die Adresse des Besuchers kommt aus der Verbindung. ',
+        'The visitor\'s real address is believed only from %s. ' => 'Die echte Adresse des Besuchers wird nur von %s geglaubt. ', 'No log.' => 'Kein Log.',
+        'Log: level "%s", addresses %s.' => 'Log: Stufe „%s“, Adressen %s.', 'in full' => 'vollständig', 'anonymised' => 'anonymisiert',
+    ];
+
     /** The mode in plain words, or null for the usual one (enforce, nothing watched). */
-    public static function mode(Settings $s): ?string
+    public static function mode(Settings $s, string $lang = 'en'): ?string
     {
+        $de = $lang === 'de';
         $watched = count($s->origins['monitor'] ?? []);
-        $also = $watched > 0 ? " $watched " . ($watched === 1 ? 'rule is' : 'rules are') . ' only watched (monitor): logged as they would decide, not enforced.' : '';
+        $also = $watched === 0 ? '' : ($de ? " $watched " . ($watched === 1 ? 'Regel wird' : 'Regeln werden') . ' nur beobachtet (monitor): geloggt, wie sie entscheiden würden, nicht durchgesetzt.'
+            : " $watched " . ($watched === 1 ? 'rule is' : 'rules are') . ' only watched (monitor): logged as they would decide, not enforced.');
         switch ($s->mode) {
             case 'off':
-                return 'The shield is switched off (set mode off): nothing is checked, counted or logged.';
+                return $de ? 'Der Schutz ist abgeschaltet (set mode off): nichts wird geprüft, gezählt oder geloggt.'
+                    : 'The shield is switched off (set mode off): nothing is checked, counted or logged.';
             case 'monitor':
-                return 'Monitor mode (set mode monitor): every rule is checked and counted, and the log shows what it would have decided'
+                return $de ? 'Beobachtungsmodus (set mode monitor): jede Regel wird geprüft und gezählt, das Log zeigt, was sie entschieden hätte'
+                    . ' — niemand wird abgewiesen, nichts Abgewiesenes gecacht. Auf enforce umstellen, wenn das Log keine Fehltreffer zeigt.'
+                    : 'Monitor mode (set mode monitor): every rule is checked and counted, and the log shows what it would have decided'
                     . ' — nobody is refused, nothing refused is cached. Switch to enforce when the log shows no false hits.';
             case 'strict':
-                return 'Strict mode (set mode strict), for a site under attack: the browser check from a quarter of each limit, a pass for '
-                    . Describe::span($s->challenge->passTtl) . ', addresses a cache must not keep count twice.' . $also;
+                return ($de ? 'Strenger Modus (set mode strict), für eine Website unter Angriff: der Browser-Check ab einem Viertel jedes Limits, ein Pass für '
+                    . Describe::span($s->challenge->passTtl, 'de') . ', Adressen, die ein Cache nicht behalten darf, zählen doppelt.'
+                    : 'Strict mode (set mode strict), for a site under attack: the browser check from a quarter of each limit, a pass for '
+                    . Describe::span($s->challenge->passTtl) . ', addresses a cache must not keep count twice.') . $also;
         }
         return $also === '' ? null : trim($also);
     }

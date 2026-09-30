@@ -254,7 +254,7 @@ final class StatsReport
                 'pages' => array_slice($top, 0, 10, true), 'last' => $read['last'][$id] ?? null];
         }
         return ['from' => $from, 'to' => $to, 'days' => $days, 'by' => $by, 'periods' => $periods, 'totals' => $totals, 'monitor' => $monitor, 'daily' => $daily, 'hourly' => $hourly,
-            'rules' => array_slice($rules, 0, 20, true), 'crawlers' => $out, 'bots' => $bots, 'statuses' => $statuses, 'notFound' => $notFound, 'sitemaps' => $maps, 'pages' => $views, 'folders' => $folders, 'subtree' => $subtree, 'sort' => $sort,
+            'rules' => $rules, 'crawlers' => $out, 'bots' => $bots, 'statuses' => $statuses, 'notFound' => $notFound, 'sitemaps' => $maps, 'pages' => $views, 'folders' => $folders, 'subtree' => $subtree, 'sort' => $sort,
             'sentences' => array_merge(self::sentences($out, $days, $o['lang'] ?? 'en'), self::maps($maps, $days, $o['lang'] ?? 'en'), self::missing($notFound, $days, $o['lang'] ?? 'en'))];
     }
 

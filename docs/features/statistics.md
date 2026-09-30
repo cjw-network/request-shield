@@ -72,11 +72,11 @@ shows each known crawler's last 7 days next to its row.
 ![](../explained/stats-page.png)
 
 **Where it lives:** `set dashboard-path /rs` (the default; `/admin/rs` if the site
-wants it behind its admin area) gives three addresses — **`/rs/dashboard`**
-(everything), **`/rs/stats`** (visitors and pages) and **`/rs/shield`** (the
-protection). The path names the view; the filters stay GET parameters
+wants it behind its admin area) gives four addresses — **`/rs/dashboard`**
+(everything), **`/rs/stats`** (visitors and pages), **`/rs/shield`** (the
+protection) and **`/rs/rules`** (rules & setup, below). The path names the view; the filters stay GET parameters
 (`?days=30&by=week&lang=de&path=/news/&crawler=CRAWL-GOOGLE`, `format=json`).
-`StatsPage::links($settings)` returns the three addresses, `StatsPage::viewFor(
+`StatsPage::links($settings)` returns the four addresses, `StatsPage::viewFor(
 $settings, $path)` which view a path is (capitals and a trailing slash do not
 matter) — a site or a CMS routes them to `StatsPage::render()`, behind its
 login or restricted to some addresses (`restrict /rs/** to 192.0.2.0/24`):
@@ -93,7 +93,8 @@ the overview (`'view' => 'all'`) and two for different people: **Visitors & page
 default — for editors: people, crawlers, pages not found, who came, the most
 visited pages and sections with the subtree filter, broken links, sitemaps,
 what the crawlers did) and **Protection** (`'view' => 'shield'` — for admins:
-requests, bots, checked, refused, what the shield did, the pages it stopped most, the answers, the rules,
+requests, bots, checked, refused, what the shield did, the pages it stopped most, the answers, the rules
+that decided most — each with what it does, where it is written and a link to it —,
 bot families). A CMS can put each where it belongs, one view without tabs
 (`'tabs' => false`): the site's in the editors' dashboard, the shield's in the
 admin area. In detail:
@@ -107,7 +108,28 @@ file; a tooltip on every bar; dark mode; **English and German** (the browser's
 language, or `'lang' => 'de'`); it refreshes itself every minute
 (`'fragment' => true` returns only the content). Print it where only the site's
 people see it — behind the CMS's login, or at a path restricted to some
-addresses. The demo has it at `/stats`.
+addresses. The demo has it at `/rs/…`.
+
+**Rules & setup** (`'view' => 'rules'`, `/rs/rules`) is for whoever runs the
+shield and wants every technical detail in one place:
+
+- **the way of a request** — every check in the order the shield runs it
+  (visitor's address, kind of request, sizes, disguised addresses, website
+  names, blocked addresses, where forms may go, restricted areas, known
+  crawlers, known parameters, attack patterns, what a cache may keep, pace per
+  visitor, browser check, log and statistics), each marked on or off, with what
+  it answers (404, 403, 405, the check …) and how it is set;
+- **every rule in words** — grouped as a site owner thinks of them, with its
+  ID (an anchor: `/rs/rules#rule-DEMO-PACE`, the Protection view links there),
+  where it is written (file, line, revision) and how often it decided in the
+  period shown;
+- **every technical setting** — mode, proxies, limits, counters and store,
+  browser check (the secret only as "set" or "not set" — never its value),
+  known crawlers, statistics, log, the rule files and rule sets read.
+
+It shows how the site is protected and its paths on the server: the same
+login or `restrict` as the other views. `Report\SetupPage::render($settings,
+$lang, $decided)` prints only this part, for a CMS's own admin page.
 
 ## Days, weeks, months, years
 

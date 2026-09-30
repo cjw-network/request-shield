@@ -114,6 +114,8 @@ $examples = function (string $prefix): void {
             truthy(strpos($r['body'], '/rs/shield?days=7') !== false && strpos($r['body'], 'class="tab on"') !== false, 'tabs: one address per view');
             same(200, $get('GET', '/RS/shield')['status'], 'in capitals too');
             same(200, $get('GET', '/rs/stats?days=7&by=day&lang=de&path=%2Fpage%2F')['status'], 'the filter, as its form sends it (query strict in the demo)');
+            $rules = $get('GET', '/rs/rules?lang=de');
+            truthy($rules['status'] === 200 && strpos($rules['body'], 'Der Weg einer Anfrage') !== false && strpos($rules['body'], 'DEMO-PACE') !== false, 'rules & setup');
             $r = $get('GET', '/.env');
             same(404, $r['status'], 'scanner path');
             truthy(strpos($r['body'], '<a href="' . $prefix . '/">To the home page</a>') !== false, 'the shield\'s own page leads back to the demo');

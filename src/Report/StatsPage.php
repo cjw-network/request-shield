@@ -39,7 +39,7 @@ final class StatsPage
             'all' => 'all crawlers', 'kind.search' => 'search', 'kind.ai-search' => 'AI search', 'kind.ai-user' => 'AI, for a person', 'kind.ai-training' => 'AI training',
             'noStats' => 'No statistics: switch them on with "set stats on" in the rule file.', 'sitemaps' => 'Sitemaps', 'noMaps' => 'No sitemap was asked for.',
             'noReader' => 'not read by a verified crawler', 'times' => '×', 'top' => 'Most visited pages', 'noPages' => 'No page views counted yet (set stats … pages).', 'sections' => 'Most visited sections', 'topBlocked' => 'Pages the shield stopped most', 'sectionsBlocked' => 'Sections the shield stopped most', 'noBlocked' => 'The shield stopped no page in this period.', 'sortBy' => 'sorted by', 'blocked' => 'stopped', 'byViews' => 'views', 'byBlocked' => 'stopped (all)',
-            'tabAll' => 'Overview', 'tabSite' => 'Visitors & pages', 'tabShield' => 'Protection', 'filter' => 'Filter', 'pathStarts' => 'path starts with', 'subtree' => 'Subtree', 'views' => 'views', 'exact' => 'exact', 'approx' => 'the sum of its most visited pages', 'clear' => 'all pages', 'per' => 'per', 'hour' => 'hour', 'day' => 'day', 'week' => 'week', 'month' => 'month', 'year' => 'year',
+            'tabAll' => 'Overview', 'tabSite' => 'Visitors & pages', 'tabShield' => 'Protection', 'tabRules' => 'Rules & setup', 'ruleDetails' => 'all rules and settings', 'builtIn' => 'the fixed checks: kind of request, sizes, disguised addresses', 'filter' => 'Filter', 'pathStarts' => 'path starts with', 'subtree' => 'Subtree', 'views' => 'views', 'exact' => 'exact', 'approx' => 'the sum of its most visited pages', 'clear' => 'all pages', 'per' => 'per', 'hour' => 'hour', 'day' => 'day', 'week' => 'week', 'month' => 'month', 'year' => 'year',
         ],
         'de' => [
             'title' => 'Statistik', 'today' => '24 Stunden', 'd7' => '7 Tage', 'd30' => '30 Tage', 'm12' => '12 Monate',
@@ -51,7 +51,7 @@ final class StatsPage
             'all' => 'alle Crawler', 'kind.search' => 'Suche', 'kind.ai-search' => 'KI-Suche', 'kind.ai-user' => 'KI, für eine Person', 'kind.ai-training' => 'KI-Training',
             'noStats' => 'Keine Statistik: mit "set stats on" in der Regeldatei einschalten.', 'sitemaps' => 'Sitemaps', 'noMaps' => 'Keine Sitemap wurde abgefragt.',
             'noReader' => 'von keinem bestätigten Crawler gelesen', 'times' => '×', 'top' => 'Meistbesuchte Seiten', 'noPages' => 'Noch keine Seitenaufrufe gezählt (set stats … pages).', 'sections' => 'Meistbesuchte Bereiche', 'topBlocked' => 'Am häufigsten blockierte Seiten', 'sectionsBlocked' => 'Am häufigsten blockierte Bereiche', 'noBlocked' => 'Der Schutz hat in diesem Zeitraum keine Seite blockiert.', 'sortBy' => 'sortiert nach', 'blocked' => 'blockiert', 'byViews' => 'Aufrufe', 'byBlocked' => 'blockiert (alle)',
-            'tabAll' => 'Übersicht', 'tabSite' => 'Besucher & Seiten', 'tabShield' => 'Schutz', 'filter' => 'Filtern', 'pathStarts' => 'Pfad beginnt mit', 'subtree' => 'Unterbaum', 'views' => 'Aufrufe', 'exact' => 'genau', 'approx' => 'Summe seiner meistbesuchten Seiten', 'clear' => 'alle Seiten', 'per' => 'pro', 'hour' => 'Stunde', 'day' => 'Tag', 'week' => 'Woche', 'month' => 'Monat', 'year' => 'Jahr',
+            'tabAll' => 'Übersicht', 'tabSite' => 'Besucher & Seiten', 'tabShield' => 'Schutz', 'tabRules' => 'Regeln & Aufbau', 'ruleDetails' => 'alle Regeln und Einstellungen', 'builtIn' => 'die festen Prüfungen: Art der Anfrage, Größen, getarnte Adressen', 'filter' => 'Filtern', 'pathStarts' => 'Pfad beginnt mit', 'subtree' => 'Unterbaum', 'views' => 'Aufrufe', 'exact' => 'genau', 'approx' => 'Summe seiner meistbesuchten Seiten', 'clear' => 'alle Seiten', 'per' => 'pro', 'hour' => 'Stunde', 'day' => 'Tag', 'week' => 'Woche', 'month' => 'Monat', 'year' => 'Jahr',
         ],
     ];
 
@@ -78,7 +78,7 @@ final class StatsPage
         $by = $o['by'] ?? ($days === 1 ? 'hour' : ($days > 62 ? 'month' : 'day'));
         $crawler = $o['crawler'] ?? null;
         $path = isset($o['path']) && $o['path'] !== '' ? '/' . ltrim((string) $o['path'], '/') : null;
-        $view = in_array($o['view'] ?? 'site', ['site', 'shield', 'all'], true) ? ($o['view'] ?? 'site') : 'site';
+        $view = in_array($o['view'] ?? 'site', ['site', 'shield', 'all', 'rules'], true) ? ($o['view'] ?? 'site') : 'site';
         // The pages by views, or by what the shield stopped (the protection's view starts there).
         $sorts = ['views', 'blocked', 'refused', 'checked', 'throttled'];
         $sortDefault = $view === 'shield' ? 'blocked' : 'views';
@@ -91,7 +91,7 @@ final class StatsPage
         // the path names the view, GET parameters filter. Without links: ?view=.
         $links = [];
         foreach ((array) ($o['links'] ?? []) as $v => $u) {
-            if (in_array($v, ['all', 'site', 'shield'], true) && $u !== '') {
+            if (in_array($v, ['all', 'site', 'shield', 'rules'], true) && $u !== '') {
                 $links[$v] = $u;
             }
         }
@@ -127,8 +127,8 @@ final class StatsPage
 
         // The tabs: visitors and pages (editors) -- protection (admins). An
         // embedding page can show one only ('tabs' => false).
-        $tabs = $links !== [] ? array_intersect_key(['all' => $t['tabAll'], 'site' => $t['tabSite'], 'shield' => $t['tabShield']], $links)
-            : ['site' => $t['tabSite'], 'shield' => $t['tabShield']];
+        $tabs = $links !== [] ? array_intersect_key(['all' => $t['tabAll'], 'site' => $t['tabSite'], 'shield' => $t['tabShield'], 'rules' => $t['tabRules']], $links)
+            : ['site' => $t['tabSite'], 'shield' => $t['tabShield'], 'rules' => $t['tabRules']];
         $h = '';
         if (($o['tabs'] ?? true) && count($tabs) > 1) {
             $h .= '<nav class="tabs">';
@@ -148,6 +148,12 @@ final class StatsPage
         }
         $h .= '<a class="pill" href="' . $e($query(['days' => $days, 'by' => $by === 'hour' ? 'day' : $by, 'format' => 'json'])) . '">JSON</a></div></div>';
         $h .= '<p class="sub">' . $e(self::date($r['from'], $lang) . ' – ' . self::date($r['to'], $lang)) . ($crawler !== null ? ' · ' . $e($crawler) . ' · <a href="' . $e($query(['days' => $days, 'by' => $by, 'lang' => $lang])) . '">' . $e($t['all']) . '</a>' : '') . '</p>';
+        if ($view === 'rules') {
+            // Rules & setup: the way of a request, every rule, every setting.
+            $h .= SetupPage::render($s, $lang, $r['rules']);
+            $h .= '<p class="foot">' . $e($t['updated'] . ' ' . date($lang === 'de' ? 'd.m.Y H:i:s' : 'Y-m-d H:i:s', $now)) . '</p>';
+            return ($o['fragment'] ?? false) ? $h : self::page($h, $o['title'] ?? $t['title'], $lang, $o, $e);
+        }
 
         $tiles = [
             'requests' => $tile('requests', $total, 'req', array_map(static fn (int $a, int $b, int $c, int $d, int $x): int => $a + $b + $c + $d + $x, self::curve($hours, 'passed'), self::curve($hours, 'uncached'), self::curve($hours, 'checked'), self::curve($hours, 'throttled'), self::curve($hours, 'refused'))),
@@ -266,9 +272,17 @@ final class StatsPage
             }
             $missing[] = ['<code>' . $e((string) $path) . '</code>' . ($from !== [] ? '<br><span class="note">' . $e($t['linked'] . ' ' . implode(', ', $from)) . '</span>' : ''), $x['count']];
         }
+        // The rules that decided most: their ID (a link to the rule in "Rules & setup"), what they do, where written.
         $rules = [];
+        $setup = $links['rules'] ?? ($links === [] ? $action : null);
         foreach (array_slice($r['rules'], 0, 10, true) as $rule => $c) {
-            $rules[] = ['<code>' . $e((string) $rule) . '</code>', $c];
+            $info = SetupPage::rule($s, (string) $rule);
+            $fixed = $info['id'] === 'built-in';          // method, sizes, disguised addresses: steps, not rules
+            $info['text'] ??= $fixed ? $t['builtIn'] : null;
+            $id = '<code>' . $e($info['id']) . '</code>';
+            $href = $setup !== null ? ($links !== [] ? $setup . '?' . http_build_query(['days' => $days, 'lang' => $lang]) : $query(['view' => 'rules', 'days' => $days, 'lang' => $lang])) . ($fixed ? '#way' : '#rule-' . SetupPage::anchor($info['id'])) : null;
+            $rules[] = [($href !== null ? '<a href="' . $e($href) . '">' . $id . '</a>' : $id)
+                . ($info['text'] !== null ? '<br>' . $e($info['text']) : '') . ($info['where'] !== null ? '<br><span class="note">' . $e($info['where']) . '</span>' : ''), $c];
         }
         $bots = [];
         foreach ($r['bots'] as $family => $c) {
@@ -276,6 +290,7 @@ final class StatsPage
         }
         $missingBlock = '<section class="card"><h2>' . $e($t['missing']) . '</h2>' . self::bars($missing, $lang, $t['nothing']) . '</section>';
         $rulesBlock = '<section class="card"><h2>' . $e($t['rules']) . '</h2>' . self::bars($rules, $lang, $t['nothing'])
+            . ($setup !== null ? '<p class="note"><a href="' . $e($links !== [] ? $setup . '?' . http_build_query(['days' => $days, 'lang' => $lang]) : $query(['view' => 'rules', 'days' => $days, 'lang' => $lang])) . '">' . $e($t['ruleDetails']) . ' →</a></p>' : '')
             . '<h2>' . $e($t['botfam']) . '</h2>' . self::bars($bots, $lang, $t['nothing']) . '</section>';
         // Two views: the site's (for editors: visitors, pages, links, crawlers,
         // sitemaps) and the shield's (for admins: what it did, answers, rules, bots).
@@ -300,19 +315,20 @@ final class StatsPage
     }
 
     /**
-     * The addresses of the three views under the settings' dashboard-path:
+     * The addresses of the four views under the settings' dashboard-path:
      * the dashboard (everything), stats (visitors and pages), shield (the
-     * protection) -- for 'links', and for a site's routes.
+     * protection), rules (the way of a request, every rule and setting) --
+     * for 'links', and for a site's routes.
      *
-     * @return array{all: string, site: string, shield: string}
+     * @return array{all: string, site: string, shield: string, rules: string}
      */
     public static function links(Settings $s, string $prefix = ''): array
     {
         $base = $prefix . $s->dashboardPath;
-        return ['all' => $base . '/dashboard', 'site' => $base . '/stats', 'shield' => $base . '/shield'];
+        return ['all' => $base . '/dashboard', 'site' => $base . '/stats', 'shield' => $base . '/shield', 'rules' => $base . '/rules'];
     }
 
-    /** Which view a path asks for (all, site, shield), or null; capitals do not matter. */
+    /** Which view a path asks for (all, site, shield, rules), or null; capitals do not matter. */
     public static function viewFor(Settings $s, string $path): ?string
     {
         $p = strtolower(rtrim($path, '/'));
@@ -616,7 +632,7 @@ h1{font-size:26px;margin:8px 0 4px}h2{font-size:16px;margin:0 0 10px}h2 small{co
 .crow{display:grid;grid-template-columns:minmax(160px,260px) 1fr auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}.crow:last-of-type{border-bottom:0}
 .cname a{font-weight:600;text-decoration:none}.kind{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--bg);color:var(--m);border:1px solid var(--line)}
 .hbar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--bg)}.hbar i{display:block;height:100%}
-.hbar .through{background:var(--through)}.hbar .checked{background:var(--checked)}.hbar .refused{background:var(--refused)}.hbar .throttled{background:var(--throttled)}.stop{color:var(--refused);font-weight:600}.filter select{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg)}.filter label.sort{flex:0 0 auto}.hbar .claimed{background:repeating-linear-gradient(45deg,var(--claimed) 0 4px,transparent 4px 7px)}
+.hbar .through{background:var(--through)}.hbar .checked{background:var(--checked)}.hbar .refused{background:var(--refused)}.way{list-style:none;margin:8px 0 0;padding:0}.way li{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}.way .step{flex:0 0 26px;height:26px;border-radius:13px;background:var(--a);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px}.way li.off{opacity:.55}.way li.off .step{background:var(--m)}.way .state{font-size:12px;padding:1px 7px;border-radius:9px;background:var(--bg)}.way li.on .state{color:var(--crawlers)}.rgroup{font-size:15px;margin:18px 0 2px}.rtable{width:100%;border-collapse:collapse}.rtable td{padding:6px 8px 6px 0;border-bottom:1px solid var(--line);vertical-align:top}.rtable td.rmeta{white-space:nowrap;font-size:13px}.rtable tr:target{background:var(--bg)}code.rule{font-size:12px;color:var(--m)}table.settings{width:100%;border-collapse:collapse;margin:2px 0 6px}table.settings th{width:38%;text-align:left;font-weight:400;color:var(--m);padding:5px 12px 5px 0;border-bottom:1px solid var(--line);vertical-align:top}table.settings td{padding:5px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.setupnote{padding:8px 12px;border-radius:8px;background:var(--card);border-left:4px solid var(--a)}.setupnote.warn{border-left-color:var(--bots)}@media (max-width:640px){.rtable td.rmeta{white-space:normal}table.settings th,table.settings td{display:block;width:auto;border:0;padding:2px 0}table.settings td{padding-bottom:8px;border-bottom:1px solid var(--line)}}.hbar .throttled{background:var(--throttled)}.stop{color:var(--refused);font-weight:600}.filter select{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg)}.filter label.sort{flex:0 0 auto}.hbar .claimed{background:repeating-linear-gradient(45deg,var(--claimed) 0 4px,transparent 4px 7px)}
 .prow{display:grid;grid-template-columns:1fr auto;grid-template-areas:"name num" "bar bar";gap:3px 12px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line)}.prow:last-of-type{border-bottom:0}
 .prow .pname{grid-area:name;min-width:0}.prow .cnum{grid-area:num}.prow .hbar{grid-area:bar}.hbar.thin{height:6px;border-radius:3px}
 .hbar .people{background:var(--people)}.hbar .crawlers{background:var(--crawlers)}.hbar .bots{background:var(--bots)}

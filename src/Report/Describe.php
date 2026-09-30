@@ -53,23 +53,25 @@ final class Describe
         return self::builtIn($pattern) ?? 'regex ' . trim((string) preg_replace('/^#|#i?$/', '', $pattern));
     }
 
-    public static function duration(int $seconds): string
+    /** "minute", "10 seconds": a unit, or so many of it (German: "Minute", "10 Sekunden"). */
+    public static function duration(int $seconds, string $lang = 'en'): string
     {
-        $units = [86400 => 'day', 3600 => 'hour', 60 => 'minute', 1 => 'second'];
-        foreach ($units as $size => $unit) {
-            if ($seconds % $size === 0) {
+        $units = $lang === 'de' ? [86400 => ['Tag', 'Tage'], 3600 => ['Stunde', 'Stunden'], 60 => ['Minute', 'Minuten'], 1 => ['Sekunde', 'Sekunden']]
+            : [86400 => ['day', 'days'], 3600 => ['hour', 'hours'], 60 => ['minute', 'minutes'], 1 => ['second', 'seconds']];
+        foreach ($units as $size => [$one, $many]) {
+            if ($seconds % $size === 0 && $seconds > 0) {
                 $n = intdiv($seconds, $size);
-                return $n === 1 ? $unit : "$n {$unit}s";
+                return $n === 1 ? $one : "$n $many";
             }
         }
-        return "$seconds seconds";
+        return "$seconds " . ($lang === 'de' ? 'Sekunden' : 'seconds');
     }
 
     /** "1 minute", "2 hours": a length of time rather than a unit. */
-    public static function span(int $seconds): string
+    public static function span(int $seconds, string $lang = 'en'): string
     {
-        $d = self::duration($seconds);
-        return ctype_digit($d[0]) ? $d : "1 $d";
+        $d = self::duration($seconds, $lang);
+        return ctype_digit($d[0]) ? $d : ($lang === 'de' ? ($seconds % 86400 === 0 ? 'einen ' : 'eine ') : '1 ') . $d;
     }
 
     /** What a visitor gets, in one sentence. */

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use CjwNetwork\RequestShield\Decision;
+use CjwNetwork\RequestShield\Report\Describe;
 use CjwNetwork\RequestShield\Report\RulesPage;
 use CjwNetwork\RequestShield\Report\StatsReport;
 use CjwNetwork\RequestShield\Request;
@@ -71,10 +72,10 @@ return [
         same([false, null], [Settings::from([])->statsEnabled, Settings::from([])->crawlerLogDir], 'off by default');
         // Where the pages live: dashboard-path, something in front of it allowed.
         $page = \CjwNetwork\RequestShield\Report\StatsPage::class;
-        same(['all' => '/rs/dashboard', 'site' => '/rs/stats', 'shield' => '/rs/shield'], $page::links(Settings::from([])), 'the default: /rs');
+        same(['all' => '/rs/dashboard', 'site' => '/rs/stats', 'shield' => '/rs/shield', 'rules' => '/rs/rules'], $page::links(Settings::from([])), 'the default: /rs');
         $admin = Settings::from(['dashboardPath' => '/admin/rs']);
-        same(['all' => '/admin/rs/dashboard', 'site' => '/admin/rs/stats', 'shield' => '/admin/rs/shield'], $page::links($admin));
-        same(['all', 'site', 'shield', null, null], [$page::viewFor($admin, '/admin/rs/dashboard'), $page::viewFor($admin, '/Admin/RS/stats/'), $page::viewFor($admin, '/admin/rs/shield'),
+        same(['all' => '/admin/rs/dashboard', 'site' => '/admin/rs/stats', 'shield' => '/admin/rs/shield', 'rules' => '/admin/rs/rules'], $page::links($admin));
+        same(['all', 'site', 'shield', 'rules', null, null], [$page::viewFor($admin, '/admin/rs/dashboard'), $page::viewFor($admin, '/Admin/RS/stats/'), $page::viewFor($admin, '/admin/rs/shield'), $page::viewFor($admin, '/admin/rs/rules'),
             $page::viewFor($admin, '/rs/stats'), $page::viewFor($admin, '/admin/rs/other')], 'which view a path is: capitals and a trailing slash do not matter');
         foreach (['admin/rs', '/a b', '/x/../y', ''] as $bad) {
             try {
@@ -496,6 +497,46 @@ return [
         } finally {
             proc_terminate($proc);
             proc_close($proc);
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+'rules & setup: the way of a request, every rule in words (English, German), every setting -- never the secret; the protection view explains its rules' => function (): void {
+        $dir = statsDir();
+        try {
+            $secret = str_repeat('never-show-me-', 3);
+            file_put_contents("$dir/site.rules", "set store-dir $dir/store\nset stats on\nset secret $secret\nset log $dir/shield.log\n"
+                . "[T-AREA]  restrict **/intern/** to 10.0.0.0/8       # the intranet only\n"
+                . "[T-OLD]   block **/old-admin/**                     # the old admin area\n"
+                . "[T-PACE]  limit requests 30/min challenge-at 10     # per visitor: 30 a minute\n");
+            $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
+            $page = \CjwNetwork\RequestShield\Report\SetupPage::class;
+            $en = $page::render($s, 'en', ['T-AREA' => 4, 'T-OLD' => 2]);
+            $de = $page::render($s, 'de', ['T-AREA' => 4]);
+            truthy(strpos($en, 'The way of a request') !== false && strpos($en, 'Areas for certain visitors</b> <span class="state">on') !== false
+                && strpos($en, 'Website names</b> <span class="state">off') !== false, 'the way: every step, on or off');
+            truthy(strpos($en, 'id="rule-T-AREA"') !== false && strpos($en, 'the intranet only') !== false && strpos($en, 'site.rules:5') !== false && strpos($en, '4×') !== false,
+                'a rule: its ID as an anchor, its description, where it is written, how often it decided');
+            truthy(strpos($en, '&quot;requests&quot;: 30 requests per minute, the browser check from 10, then a pause') !== false, 'a budget in words');
+            truthy(strpos($de, 'Der Weg einer Anfrage') !== false && strpos($de, 'Bereiche für bestimmte Besucher') !== false
+                && strpos($de, '„requests“: 30 Anfragen pro Minute, der Browser-Check ab 10, dann eine Pause') !== false && strpos($de, 'Alle anderen bekommen „kein Zugriff“ (403):') !== false, 'in German');
+            truthy(strpos($en, 'Technical settings') !== false && strpos($en, "<th>store directory</th><td><code>$dir/store</code>") !== false && strpos($en, 'set (never shown)') !== false, 'the settings');
+            truthy(strpos($en . $de, $secret) === false, 'the secret is never shown');
+            same(['id' => 'T-AREA', 'text' => 'the intranet only', 'where' => 'site.rules:5'], $page::rule($s, 'site.rules:5'), 'a rule counted by its place: found by it');
+            same(['id' => 'T-OLD', 'text' => 'the old admin area', 'where' => 'site.rules:6'], $page::rule($s, 'T-OLD'));
+            same(['Minute', '10 Sekunden', 'einen Tag', 'eine Stunde'], [Describe::duration(60, 'de'), Describe::duration(10, 'de'), Describe::span(86400, 'de'), Describe::span(3600, 'de')]);
+            same('Addresses only attackers ask for', RulesPage::groups($s)[0][0], 'the rules page stays English');
+            // The statistics page: a fourth view, and the protection view explains its rules.
+            $st = Stats::of($s);
+            $st->count(['a:reject', 'r:T-AREA', 'r:built-in', 's:403'], STATS_T0);
+            $links = \CjwNetwork\RequestShield\Report\StatsPage::links($s);
+            $view = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'view' => 'rules', 'links' => $links]);
+            truthy(strpos($view, 'class="tab on" href="/rs/rules?days=7&amp;lang=de">Regeln &amp; Aufbau') !== false && strpos($view, 'Der Weg einer Anfrage') !== false, 'the view "Regeln & Aufbau"');
+            $shield = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'view' => 'shield', 'links' => $links]);
+            truthy(strpos($shield, 'href="/rs/rules?days=7&amp;lang=de#rule-T-AREA"><code>T-AREA</code></a><br>the intranet only<br><span class="note">site.rules:5') !== false,
+                'the protection view: a rule with what it does, where, and a link to it');
+            truthy(strpos($shield, '#way"><code>built-in</code></a><br>die festen Prüfungen') !== false, 'the fixed checks, explained');
+            truthy(strpos(\CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'view' => 'shield', 'action' => '/stats']), 'view=rules') !== false, 'without addresses: ?view=rules');
+        } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
