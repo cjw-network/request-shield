@@ -88,13 +88,17 @@ server and PHP slots, just very briefly.
 - **0.1.0:** the core.
 - **0.2.0:** the browser challenge (proof of work), settings checked once and
   compiled for OPcache, documentation, CI.
-- **Unreleased:** rule files, access rules, rule IDs, the log, the active
-  rules page, the demo.
-- **Next:** modes — monitor first, strict under attack
-  ([proposal 0004](docs/proposals/0004-modes-monitor-and-strict.md)); earning back a spent budget with a challenge, for forms and APIs
-  ([proposal 0001](docs/proposals/0001-earn-back-a-spent-budget.md)); adapters
-  for Exponential, WordPress and Ibexa; exporting the rules to nginx, Apache
-  and Varnish.
+- **0.3.0:** rule files, access rules, rule IDs, the log, the active rules
+  page, attack rules, match blocks, the check inside the form, earning back a
+  spent budget (forms and APIs), the demo; PHP 8.0.
+- **Next:** typed query parameters
+  ([proposal 0009](docs/proposals/0009-typed-query-parameters.md)); modes —
+  monitor first, strict under attack
+  ([proposal 0004](docs/proposals/0004-modes-monitor-and-strict.md)); known
+  crawlers, AI crawlers included
+  ([proposal 0011](docs/proposals/0011-known-crawlers.md)); adapters for
+  Exponential, WordPress and Ibexa; exporting the rules to nginx, Apache and
+  Varnish.
 
 Documentation: [docs/](docs/README.md) — features, use cases, proposals,
 architecture decisions. Changes: [CHANGELOG.md](CHANGELOG.md).

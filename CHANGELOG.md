@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-09-30
+
 ### Added
 - Rule files: the settings one rule per line (`host`, `trust`, `block`,
   `cache-path`, `limit`, `challenge`, `restrict`, `allow`, `set`, `include`,
@@ -172,8 +174,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   own name; it is an error now.
 - `trace` and the rules page's check had no step for the attack rules: a
   refused request looked unblocked there.
-
-### Fixed
 - The file store could lose a count on the very first hits of a new
   directory: processes creating it at the same moment made a recursive
   `mkdir()` fail in one of them. It now tries again (reproduced: 1 of 240 runs
@@ -237,6 +237,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `Shield::consume()`, APCu, file and memory stores, `bootstrap.php` for
   `auto_prepend_file`.
 
-[Unreleased]: https://github.com/cjw-network/request-shield/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/cjw-network/request-shield/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/cjw-network/request-shield/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/cjw-network/request-shield/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/cjw-network/request-shield/releases/tag/v0.1.0
