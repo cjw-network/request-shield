@@ -4,7 +4,7 @@
 |---|---|
 | Status | **Draft** |
 | Proposed | 2026-09-30 |
-| Affects | rule files (a new `deny` rule, list files), the dashboard ([0012](0012-dashboard.md)), the command line |
+| Affects | rule files (new rules `deny` and `ban`, list files), the store, the dashboard ([0012](0012-dashboard.md)), the command line |
 
 ## Summary
 
@@ -15,6 +15,11 @@ dashboard or the command line, each entry with a reason and, if wanted, an
 end date. Stored as small **list files** the shield reads like its other
 rules: compiled once, checked in the same pass as today, so a passing request
 pays nothing for them.
+
+And, as the last rung when checks and pauses have not helped: **automatic,
+temporary bans** — a client that keeps going past its limits, or keeps asking
+for what only attackers ask for, gets nothing but a short "wait" for a while,
+longer each time it comes back.
 
 ## In one picture
 
@@ -90,6 +95,64 @@ list fed by a fail2ban-style script stays fast.
   addresses in `trust`, and ranges wider than /16 (IPv4) or /32 (IPv6) unless
   confirmed.
 
+## Automatic, temporary bans: the last rung
+
+The shield already answers a client that is too fast with a ladder: the browser
+check past `challenge-at`, a pause (or, with `on-exceeded challenge`, a check
+that frees the counter and doubles in difficulty, [0001](0001-earn-back-a-spent-budget.md))
+past the limit. A bot that neither solves nor waits keeps coming anyway. The
+last rung: **for a while, nothing but a short answer.**
+
+![The ladder: normal pace through; past challenge-at the browser check; past the limit a pause or a check that frees the counter, harder each time; still going, a temporary ban -- 429 with Retry-After, longer each time, ending by itself; never for the allow list, trusted proxies or verified crawlers](0013-bans.svg)
+
+```text
+[SITE-BAN]   ban after 5 limits in 10m     for 15m     # repeatedly past a limit: a pause, a spent check
+[SITE-SCAN]  ban after 20 refusals in 5m   for 1h      # a scanner: blocked paths, attack patterns
+[SITE-POW]   ban after 10 checks in 10m    for 15m     # the check shown again and again, never solved
+[SITE-LOGIN] ban after 10 logins in 15m    for 30m     # a budget the site counts (consume('logins'))
+set ban-growth 2                                       # a repeat offender: twice as long each time
+set ban-max 1d                                         # at most
+```
+
+- **What counts** — clear signals only: a request past a limit (throttled or a
+  spent check); a refusal for a blocked path or an attack pattern; a check page
+  shown without being solved; an on-demand budget past its limit (failed
+  sign-ins, via `Shield::active()->consume()`). Each is one counter per client
+  in the store, counted only when it happens — a passing request counts nothing.
+- **Where it is kept** — in the store (APCu, or the files in store-dir), with
+  its end time: it ends by itself, nothing to clean up. With `ban-growth` the
+  next ban within a day lasts twice as long, up to `ban-max`.
+- **The answer** — **429 Too Many Requests with `Retry-After`**, checked at the
+  very start (right after `deny`): honest ("wait 15 minutes"), understood by a
+  person behind the same address, and well-behaved tools stop by themselves. A
+  banned client costs one lookup and a few bytes; no rule, no page of the site.
+- **Never banned** — the allow list (`exempt`), trusted proxies (`trust`) and
+  verified crawlers ([0011](0011-known-crawlers.md); they keep getting the
+  pause they understand). Clients are counted as for the budgets: IPv4 by
+  address, IPv6 by its /64.
+- **Watch first** — `monitor ban …` ([0004](0004-modes-monitor-and-strict.md))
+  logs whom a ban would have hit (`monitor-ban`) and bans nobody; in `set mode
+  monitor` no ban is enforced either.
+- **Seen and lifted** — the log writes `ban 429 "…" rule=SITE-SCAN until 10:45`;
+  the dashboard lists the active bans with their rule and end, and one click
+  (or `bin/request-shield unlist 203.0.113.7`) lifts one — as for the deny list.
+- **A ban and the deny list** give the same kind of refusal; a ban comes from
+  the store and ends by itself, a deny entry from a person and a file. The
+  dashboard offers "keep out for good" next to a ban that keeps coming back.
+- **Several servers** — with APCu a ban holds per server; with the file store
+  on a shared disk, for all of them. For the firewall level, the log line can
+  feed fail2ban, which bans before a request reaches the web server — cheaper
+  still, and a good second line.
+
+**Risks, and what limits them.** Many people can share one address — an office,
+a school, a mobile carrier's network. One bot there would ban everyone behind
+it. Hence: off by default, only clear signals, short durations that grow only
+for repeat offenders, `monitor ban` first, 429 with the time to wait (never a
+silent 403), and the dashboard's list of active bans. Behind a load balancer the
+client address must be right ([trusted proxies](../features/trusted-proxies.md)),
+or the balancer would be the one counted — which the shield refuses for
+trusted proxies anyway.
+
 ## Cost
 
 | | Per request |
@@ -99,6 +162,8 @@ list fed by a fail2ban-style script stays fast.
 | thousands of entries | a binary search, ~1 µs |
 | expiry | one integer comparison |
 | a denied client | refused before any other check: less than any other refusal |
+| bans switched on | one store lookup per request (APCu ~0.2 µs, the file store ~1–2 µs); counting only when a limit, refusal or unsolved check happens |
+| a banned client | that lookup and a short answer — nothing else runs |
 
 ## Privacy
 
@@ -106,7 +171,9 @@ The lists hold addresses — personal data under the GDPR when they belong to
 people. The reason and the end date make the purpose and the retention
 explicit; entries without an end date are listed on the dashboard as
 "permanent" so they are reviewed. The list files stay outside the document
-root (in store-dir by default) and are created 0640.
+root (in store-dir by default) and are created 0640. A ban holds an address
+only for its duration (at most `ban-max`) and for a stated purpose (defence
+against an attack); the counters behind it expire with their windows.
 
 ## Open questions
 
@@ -118,6 +185,12 @@ root (in store-dir by default) and are created 0640.
 3. Answer to a denied client: 403 (proposed), or drop the connection
    (not possible from PHP), or 404? *Recommendation: 403 with the usual short
    page; the reason stays out of it.*
-4. Should repeated refusals put an address on the deny list by themselves
-   (an automatic ban)? *Recommendation: not in this step; the rule advisor
-   ([0016](0016-rule-advisor.md)) can suggest it, a person decides.*
+4. Automatic bans: as proposed — off by default, only the four signals above,
+   15 minutes to an hour, growing ×2 for repeat offenders up to a day?
+   *Recommendation: yes; a site switches them on per signal, `monitor ban`
+   first.*
+5. A ban's answer: 429 with `Retry-After` (proposed) or 403? *Recommendation:
+   429 — it says how long, and people behind a shared address understand it.*
+6. Should a ban that keeps returning be offered for the deny list?
+   *Recommendation: offered on the dashboard and by the rule advisor
+   ([0016](0016-rule-advisor.md)); a person decides.*

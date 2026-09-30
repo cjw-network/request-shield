@@ -1,0 +1,45 @@
+<svg class="rsd" role="img" viewBox="0 0 780 390" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>A learning run marks the requests of one person or of the site's end-to-end tests with a token; the shield records their shape -- paths, methods, parameter names and types, never values; the advisor suggests rules from it; the recorded run is replayed against every change of the rules: none of your clicks refused, before enforce</title>
+<style>.rsd{font:13px/1.2 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .c{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}.rsd .okbox{fill:#e6f4ea;stroke:#1e7b43}.rsd .warnbox{fill:#fdf3dc;stroke:#b07400}.rsd .qbox{fill:#eef3fd;stroke:#2f62c9}.rsd .tag{fill:#2f62c9}.rsd .w{fill:#fff;font-weight:700}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .arrow{stroke:#a0a8b3}.rsd .okbox{fill:#17301f}.rsd .warnbox{fill:#3a2f15}.rsd .qbox{fill:#1b2740;stroke:#7aa2ff}.rsd .tag{fill:#7aa2ff}}</style>
+<defs><marker id="rs16l-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>
+<rect class="box" x="10" y="30" width="176" height="110" rx="10" stroke-width="1.5"/>
+<rect class="tag" x="22" y="20" width="18" height="18" rx="9"/><text class="w" x="31" y="33" text-anchor="middle" font-size="11">1</text>
+<text class="t" x="98" y="58" text-anchor="middle" font-weight="700">A learning run</text>
+<text class="m" x="98" y="80" text-anchor="middle" font-size="12">you click through the site,</text>
+<text class="m" x="98" y="96" text-anchor="middle" font-size="12">or your end-to-end tests</text>
+<text class="m" x="98" y="122" text-anchor="middle" font-size="12">marked by a token</text>
+<path class="arrow" d="M186 85 H206" marker-end="url(#rs16l-a)"/>
+<rect class="qbox" x="210" y="30" width="176" height="110" rx="10" stroke-width="1.5"/>
+<rect class="tag" x="222" y="20" width="18" height="18" rx="9"/><text class="w" x="231" y="33" text-anchor="middle" font-size="11">2</text>
+<text class="t" x="298" y="58" text-anchor="middle" font-weight="700">Its shape recorded</text>
+<text class="m" x="298" y="80" text-anchor="middle" font-size="12">paths as patterns, forms,</text>
+<text class="m" x="298" y="96" text-anchor="middle" font-size="12">parameter names, types</text>
+<text class="m" x="298" y="122" text-anchor="middle" font-size="12">never the values</text>
+<path class="arrow" d="M386 85 H406" marker-end="url(#rs16l-a)"/>
+<rect class="warnbox" x="410" y="30" width="176" height="110" rx="10" stroke-width="1.5"/>
+<rect class="tag" x="422" y="20" width="18" height="18" rx="9"/><text class="w" x="431" y="33" text-anchor="middle" font-size="11">3</text>
+<text class="t" x="498" y="58" text-anchor="middle" font-weight="700">Rules suggested</text>
+<text class="t c" x="498" y="80" text-anchor="middle">allow POST /contact</text>
+<text class="t c" x="498" y="96" text-anchor="middle">query page int</text>
+<text class="t c" x="498" y="112" text-anchor="middle">query strict</text>
+<text class="m" x="498" y="130" text-anchor="middle" font-size="12">tried in monitor first</text>
+<path class="arrow" d="M586 85 H606" marker-end="url(#rs16l-a)"/>
+<rect class="okbox" x="610" y="30" width="160" height="110" rx="10" stroke-width="1.5"/>
+<rect class="tag" x="622" y="20" width="18" height="18" rx="9"/><text class="w" x="631" y="33" text-anchor="middle" font-size="11">4</text>
+<text class="t" x="690" y="58" text-anchor="middle" font-weight="700">Replay</text>
+<text class="m" x="690" y="80" text-anchor="middle" font-size="12">your clicks, simulated,</text>
+<text class="m" x="690" y="96" text-anchor="middle" font-size="12">through the new rules</text>
+<text class="t" x="690" y="124" text-anchor="middle" font-size="12">"none refused"</text>
+<path class="arrow" d="M690 140 V172 H98 V150" marker-end="url(#rs16l-a)"/>
+<text class="m" x="394" y="190" text-anchor="middle" font-size="12">every change of the rules, before enforce or strict, after an update — in seconds, also in CI</text>
+<rect class="box" x="10" y="214" width="760" height="76" rx="10" stroke-width="1.5"/>
+<text class="t" x="26" y="238" font-weight="700">Good for what is allowed:</text>
+<text class="m" x="232" y="238" font-size="12">query strict, allow, restrict — a clean run is the best source for them.</text>
+<text class="t" x="26" y="262" font-weight="700">Not for limits:</text>
+<text class="m" x="232" y="262" font-size="12">one person is no crowd — limits come from monitor mode or the defaults.</text>
+<text class="m" x="232" y="280" font-size="12">No run clicks everything: afterwards some days of monitor with real traffic.</text>
+<text class="t" x="26" y="318" font-weight="700">The token only marks:</text>
+<text class="m" x="212" y="318" font-size="12">it never lets a request past a check, it expires, one run at a time.</text>
+<text class="t" x="26" y="342" font-weight="700">Only shapes are kept:</text>
+<text class="m" x="212" y="342" font-size="12">no values, no visitors' addresses — your own run, nobody else's.</text>
+</svg>
