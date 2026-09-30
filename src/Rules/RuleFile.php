@@ -366,6 +366,9 @@ final class RuleFile
             case 'challenge-exempt':
                 $this->patterns('challenge.exemptPaths', $args, $at, false);
                 return;
+            case 'api-path':
+                $this->patterns('challenge.apiPaths', $args, $at, false);
+                return;
             case 'limit':
                 $this->limit($args, $at);
                 return;
@@ -406,7 +409,7 @@ final class RuleFile
                 return;
         }
         throw new RuleFileException("$at: unknown rule \"$keyword\"" . self::suggest($keyword,
-            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'limit', 'no-limit', 'set', 'include']));
+            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'api-path', 'limit', 'no-limit', 'set', 'include']));
     }
 
     /**
@@ -651,6 +654,7 @@ final class RuleFile
             case 'challenge':
             case 'challenge-exempt':
             case 'cache-path':
+            case 'api-path':
                 $noPaths();
                 return $path;
             case 'block':
@@ -1072,7 +1076,7 @@ final class RuleFile
     /** @param list<string> $args  <name> <n>/<sec|min|hour|day> [challenge-at <n>] [on-demand] */
     private function limit(array $args, string $at): void
     {
-        $usage = 'limit <name> <n>/<sec|min|hour|day> [challenge-at <n>] [on-demand]';
+        $usage = 'limit <name> <n>/<sec|min|hour|day> [challenge-at <n>] [on-demand] [on-exceeded challenge|throttle]';
         $name = array_shift($args);
         $rate = array_shift($args);
         if ($name === null || $rate === null || !preg_match('/^[A-Za-z0-9_-]+$/', $name)) {
@@ -1088,6 +1092,8 @@ final class RuleFile
             $a = array_shift($args);
             if ($a === 'on-demand') {
                 $budget['onDemand'] = true;
+            } elseif ($a === 'on-exceeded' && in_array($args[0] ?? '', ['challenge', 'throttle'], true)) {
+                $budget['onExceeded'] = (string) array_shift($args);
             } elseif ($a === 'challenge-at' && isset($args[0]) && ctype_digit($args[0])) {
                 $budget['challengeAt'] = (int) array_shift($args);
             } else {

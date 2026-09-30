@@ -148,11 +148,12 @@ final class Inspector
                 . ($b->challengeAt !== null ? ", browser check from $b->challengeAt" : '');
             $d = null;
             if (!$exempt && $count > $b->limit) {
-                $d = Decision::throttle($b->name, 1);
+                $d = $b->earnBack ? Decision::spent($b->name, 1) : Decision::throttle($b->name, 1);
             } elseif (!$exempt && $b->challengeAt !== null && $count > $b->challengeAt) {
                 $d = Decision::challenge($b->name);
             }
-            $step("Pace: \"$b->name\"", $d, $pace, static fn (Decision $d): string => $pace . ($d->action === Decision::THROTTLE ? ' — too many: wait' : ' — past the check'));
+            $step("Pace: \"$b->name\"", $d, $pace, static fn (Decision $d): string => $pace . ($d->action === Decision::THROTTLE ? ' — too many: wait'
+                : ($d->spent ? ' — too many: the check, then the counter starts again' : ' — past the check')));
         }
         $always = null;
         foreach ($s->challenge->alwaysPaths as $p) {

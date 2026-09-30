@@ -282,6 +282,84 @@ $widget = function (string $prefix): void {
         }, $prefix);
 };
 
+$earnBack = function (string $prefix): void {
+        if (!function_exists('proc_open')) {
+            skip('no proc_open');
+        }
+        if (nodeBinary() === null) {
+            skip('no node on this machine');
+        }
+        withDemo(function (callable $get) use ($prefix): void {
+            $task = static function (array $r): array {
+                preg_match('/var RS=(\{.*?\});\(function/s', $r['body'], $m);
+                return json_decode($m[1] ?? 'null', true)['c'] ?? [];
+            };
+            // The API: 5 calls, then the task as JSON; solved, the call goes through and the counter starts again
+            for ($i = 1; $i <= 5; $i++) {
+                same(200, $get('GET', '/api/status', ['Accept' => 'application/json'])['status'], "call $i");
+            }
+            $r = $get('GET', '/api/status', ['Accept' => 'application/json']);
+            same(429, $r['status'], 'call 6: past the budget');
+            $body = json_decode($r['body'], true);
+            same(['rate_limited', 'Request-Shield-Solution'], [$body['error'], $body['solution']], 'JSON, and where the solution goes');
+            truthy(preg_match('/Request-Shield-Challenge: \S+/', implode("\n", $r['headers'])) === 1 && preg_match('/Retry-After: \d+/', implode("\n", $r['headers'])) === 1, 'the task in a header, and how long to wait instead');
+            same(50000, $body['challenge']['maxnumber'], 'the first time: difficulty-min');
+            [$solution] = solveInNode($body['challenge']);
+            $r = $get('GET', '/api/status', ['Accept' => 'application/json', 'Request-Shield-Solution' => $solution]);
+            same(200, $r['status'], 'solved: through');
+            for ($i = 1; $i <= 5; $i++) {
+                same(200, $get('GET', '/api/status', ['Accept' => 'application/json'])['status'], "the counter started again: call $i");
+            }
+            same(429, $get('GET', '/api/status', ['Accept' => 'application/json', 'Request-Shield-Solution' => $solution])['status'], 'the same solution twice: no');
+            $again = json_decode($get('GET', '/api/status', ['Accept' => 'application/json'])['body'], true);
+            same(100000, $again['challenge']['maxnumber'], 'the second time within the hour: twice as hard');
+            // The edit form: 3 a minute, the 4th gets the check with the form, which comes back after it
+            for ($i = 1; $i <= 3; $i++) {
+                same(200, $get('POST', '/edit', [], 'message=edit' . $i)['status'], "edit $i");
+            }
+            $r = $get('POST', '/edit', ['Accept-Language' => 'de'], 'message=' . rawurlencode('the fourth'));
+            same(429, $r['status'], 'edit 4: the check');
+            truthy(strpos($r['body'], '<input type="hidden" name="message" value="the fourth">') !== false, 'the form comes along');
+            [$solution] = solveInNode($task($r));
+            $r = $get('POST', '/edit', ['Cookie' => 'rs_solution=' . $solution], 'message=' . rawurlencode('the fourth'));
+            same(200, $r['status'], 'sent again with the solution: through');
+            truthy(strpos($r['body'], 'Saved: &quot;the fourth&quot;') !== false, 'the form arrived');
+            $pass = $r['cookies']['rs_pass'] ?? '';
+            same(200, $get('POST', '/edit', ['Cookie' => "rs_pass=$pass"], 'message=next')['status'], 'the counter started again');
+        }, $prefix);
+};
+
+$pace = function (string $prefix): void {
+        if (!function_exists('proc_open')) {
+            skip('no proc_open');
+        }
+        if (nodeBinary() === null) {
+            skip('no node on this machine');
+        }
+        withDemo(function (callable $get) use ($prefix): void {
+            $task = static function (array $r): array {
+                preg_match('/var RS=(\{.*?\});\(function/s', $r['body'], $m);
+                return json_decode($m[1] ?? 'null', true)['c'] ?? [];
+            };
+            for ($i = 1; $i <= 20; $i++) {
+                $get('GET', '/page/about');
+            }
+            [$solution] = solveInNode($task($get('GET', '/page/about')));
+            $pass = $get('GET', '/page/about', ['Cookie' => "rs_solution=$solution"])['cookies']['rs_pass'] ?? '';
+            truthy($pass !== '', 'past 20: the check, and a pass');
+            for ($i = 23; $i <= 60; $i++) {
+                $get('GET', '/page/about', ['Cookie' => "rs_pass=$pass"]);
+            }
+            $r = $get('GET', '/page/about', ['Cookie' => "rs_pass=$pass", 'Accept-Language' => 'de']);
+            same(429, $r['status'], 'past 60: the pass does not get past it');
+            same('challenge requests; rule=DEMO-PACE', $r['shield']);
+            truthy(strpos($r['body'], 'Sie haben in kurzer Zeit viele Anfragen gesendet') !== false, 'says why, in the visitor\'s language');
+            [$solution] = solveInNode($task($r));
+            same(200, $get('GET', '/page/about', ['Cookie' => "rs_pass=$pass; rs_solution=$solution"])['status'], 'solved: through');
+            same(200, $get('GET', '/page/about', ['Cookie' => "rs_pass=$pass"])['status'], 'and the counter started again');
+        }, $prefix);
+};
+
 $sub = '/examples/demo/index.php';
 return [
     'the demo: every example link does what the page says' => fn () => $examples(''),
@@ -296,4 +374,7 @@ return [
     'the demo in a subdirectory: the site asks for the check' => fn () => $appChallenges($sub),
     'the demo: the check inside the form -- task, answer in the form, a file straight through' => fn () => $widget(''),
     'the demo in a subdirectory: the check inside the form' => fn () => $widget($sub),
+    'the demo: earn a spent budget back -- an API with a header, a form sent again, twice as hard the second time' => fn () => $earnBack(''),
+    'the demo: past 60 requests a minute, a check no pass gets past -- solved, the counter starts again' => fn () => $pace(''),
+    'the demo in a subdirectory: earn a spent budget back' => fn () => $earnBack($sub),
 ];

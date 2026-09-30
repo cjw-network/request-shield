@@ -54,6 +54,13 @@ final class FileStore implements Store
         return SlidingWindow::estimate($current, $this->size($this->path($key, $window, $slot - 1)), $weight);
     }
 
+    public function reset(string $key, int $window, float $now): void
+    {
+        [$slot] = SlidingWindow::position($window, $now);
+        @unlink($this->path($key, $window, $slot));
+        @unlink($this->path($key, $window, $slot - 1));
+    }
+
     public function peek(string $key, int $window, float $now): float
     {
         [$slot, $weight] = SlidingWindow::position($window, $now);

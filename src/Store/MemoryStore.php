@@ -24,6 +24,13 @@ final class MemoryStore implements Store
         return SlidingWindow::estimate($this->counts[$k . $slot], $this->counts[$k . ($slot - 1)] ?? 0, $weight);
     }
 
+    public function reset(string $key, int $window, float $now): void
+    {
+        [$slot] = SlidingWindow::position($window, $now);
+        $k = $window . ':' . $key . ':';
+        unset($this->counts[$k . $slot], $this->counts[$k . ($slot - 1)]);
+    }
+
     public function peek(string $key, int $window, float $now): float
     {
         [$slot, $weight] = SlidingWindow::position($window, $now);

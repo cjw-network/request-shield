@@ -40,7 +40,14 @@ match **/files/** {
   [DEMO-FILES]      unblock [SCAN-HIDDEN@1] [SCAN-BACKUP@1] for 127.0.0.1 ::1   # the admin's file reader may open hidden files and backups, from this machine
 }
 
-[DEMO-PACE]         limit requests 60/min challenge-at 20          # per visitor: browser check past 20 requests a minute, a pause past 60
+[DEMO-PACE]         limit requests 60/min challenge-at 20 on-exceeded challenge   # per visitor: the browser check past 20 requests a minute; past 60 a check that frees the counter (instead of a pause)
+
+# Budgets the pages count themselves (on-demand), earned back with the check:
+# the edit form 3 times a minute (index.php: consume('edits', answer: true)),
+# the API 5 calls a minute -- an API gets the task as JSON in a header.
+[DEMO-EDITS]        limit edits 3/min on-demand on-exceeded challenge          # the edit form: 3 a minute, then the check -- and the form is sent again
+[DEMO-CALLS]        limit calls 5/min on-demand on-exceeded challenge          # the API: 5 calls a minute, then the task in a header
+[DEMO-APIPATH]      api-path **/api/**                                         # the API's addresses: a check there is JSON, not a page
 [DEMO-LOGIN]        challenge   **/challenge                       # a page where every visitor is checked, as a login would be
 
 # The demo runs on your own machine: count localhost too (a real site exempts

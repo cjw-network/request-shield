@@ -237,9 +237,10 @@ final class RulesPage
 
         $rows = [];
         foreach ($s->budgets as $b) {
+            $then = $b->earnBack ? ', then the check — solved, the counter starts again' : ', then a pause';
             $rows[] = $row($b->onDemand
-                ? "\"$b->name\": at most $b->limit per " . Describe::duration($b->window) . ', counted by the site itself (searches, failed sign-ins, cache misses)'
-                : "\"$b->name\": $b->limit requests per " . Describe::duration($b->window) . ($b->challengeAt !== null ? ", the browser check from $b->challengeAt" : '') . ', then a pause',
+                ? "\"$b->name\": at most $b->limit per " . Describe::duration($b->window) . ', counted by the site itself (searches, failed sign-ins, cache misses)' . $then
+                : "\"$b->name\": $b->limit requests per " . Describe::duration($b->window) . ($b->challengeAt !== null ? ", the browser check from $b->challengeAt" : '') . $then,
                 $o('budgets', $b->name), $o('budgets', $b->name) ?? "budgets.$b->name");
         }
         $g[] = ['Pace per visitor', 'Counted per address (IPv6: per /' . $s->ipv6Prefix . ' network)'

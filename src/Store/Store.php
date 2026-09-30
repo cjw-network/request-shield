@@ -28,4 +28,7 @@ interface Store
 
     /** The estimate without counting a request. */
     public function peek(string $key, int $window, float $now): float;
+
+    /** Forgets what was counted for $key in this window and the one before: a fresh start. */
+    public function reset(string $key, int $window, float $now): void;
 }

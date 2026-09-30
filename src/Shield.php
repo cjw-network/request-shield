@@ -179,6 +179,10 @@ final class Shield
             unset($_SERVER['HTTP_FORWARDED']);
         }
 
+        if (!$decision->passes() && ($settled['json'] ?? null) !== null) {
+            echo (new Responder())->api($decision, $settled['json'], $s->debugHeader, $rule);
+            exit;
+        }
         if (!$decision->passes()) {
             $c = $s->challenge;
             (new Responder())->send($decision, $request, $s->debugHeader, $settled['page'], $rule,
@@ -332,15 +336,54 @@ final class Shield
      * The request after the budgets: a challenged request goes through the
      * gate (pass cookie, solution, crawler, exempt path, or the page).
      *
-     * @return array{decision: Decision, cookies: list<string>, page: ?string, passed: bool}
+     * @return array{decision: Decision, cookies: list<string>, page: ?string, json: ?array{algorithm: string, challenge: string, maxnumber: int, salt: string, signature: string}, passed: bool}
      */
     public function settle(Decision $decision, Request $request, float $now): array
     {
         if ($decision->action !== Decision::CHALLENGE) {
-            return ['decision' => $decision, 'cookies' => [], 'page' => null, 'passed' => false];
+            return ['decision' => $decision, 'cookies' => [], 'page' => null, 'json' => null, 'passed' => false];
         }
-        $r = $this->gate()->resolve($decision, $this->base, $request, $now, ['solution' => $this->postedSolution()]);
+        $r = $this->gate()->resolve($decision, $this->base, $request, $now, $this->gateOptions($decision, $request));
         return $r + ['passed' => $r['decision']->passes()];
+    }
+
+    /**
+     * How the gate answers this request: an API gets the task as JSON; a
+     * spent budget's form comes back after the check; its solution starts
+     * the budget's counter again.
+     *
+     * @return array{solution: ?string, api: bool, earn: array{window: int}|null, resend: array{action: string, fields: list<array{0: string, 1: string}>}|false|null}
+     */
+    private function gateOptions(Decision $d, Request $request): array
+    {
+        $api = $this->isApi($request);
+        $budget = $d->spent ? ($this->settings->budgets[$d->reason] ?? null) : null;
+        return [
+            'solution' => $this->postedSolution(),
+            'api' => $api,
+            'earn' => $budget !== null ? ['window' => $budget->window] : null,
+            'resend' => $d->spent && !$api && $request->method !== 'GET' && $request->method !== 'HEAD' ? self::resendFields($request) : null,
+        ];
+    }
+
+    /**
+     * Whether a request is an API's: it asks for or sends JSON, or its path is
+     * one the site named (api-path). A check is then a header, not a page.
+     */
+    public function isApi(Request $request): bool
+    {
+        $sent = $this->request === $request ? ($_SERVER['CONTENT_TYPE'] ?? '') : '';
+        foreach ([(string) $request->header('accept'), is_string($sent) ? $sent : ''] as $type) {
+            if ($type !== '' && preg_match('#application/(?:[\w.+-]+\+)?json#i', $type) === 1 && stripos($type, 'text/html') === false) {
+                return true;
+            }
+        }
+        foreach ($this->settings->challenge->apiPaths as $p) {
+            if (@preg_match($p, $request->matchPath()) === 1) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -449,15 +492,23 @@ final class Shield
     }
 
     /** Answers with the check page (or a status page) instead of the application's. */
-    private function stop(Decision $d, Request $request, ?string $page, float $now, bool $echo = true): string
+    /** @param array{algorithm: string, challenge: string, maxnumber: int, salt: string, signature: string}|null $json the task for an API */
+    private function stop(Decision $d, Request $request, ?string $page, float $now, bool $echo = true, ?array $json = null, bool $log = true): string
     {
         $s = $this->settings;
         $rule = $this->explain($d, $request);
-        if ($s->logFile !== null && Log::wants($s->logLevel, $d)) {
+        if ($log && $s->logFile !== null && Log::wants($s->logLevel, $d)) {
             Log::write($s, $request, $d, $rule, $now);
         }
         while ($echo && ob_get_level() > 0) {
             ob_end_clean();                 // nothing of the application's page
+        }
+        if ($json !== null) {
+            $body = (new Responder())->api($d, $json, $s->debugHeader, $rule);
+            if ($echo) {
+                echo $body;
+            }
+            return $body;
         }
         $c = $s->challenge;
         $texts = Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts);
@@ -567,7 +618,7 @@ final class Shield
      * cache miss, a failed sign-in -- and says what the client has earned.
      * Budgets marked 'onDemand' => true in the configuration are only counted here.
      */
-    public function consume(string $budget, ?Request $request = null, ?float $now = null): Decision
+    public function consume(string $budget, ?Request $request = null, ?float $now = null, bool $answer = false): Decision
     {
         $b = $this->settings->budgets[$budget] ?? null;
         $request ??= $this->request;
@@ -576,8 +627,32 @@ final class Shield
         }
         $now ??= microtime(true);
         $d = $this->budgetRule($b)->check($request, $now) ?? Decision::allow();
+        // A spent budget that lets its client earn it back: a solution sent
+        // with this request (the form again, an API's header) starts it again.
+        if ($d->spent) {
+            $r = $this->gate()->resolve($d, Decision::allowUncached($budget), $request, $now, $this->gateOptions($d, $request));
+            if (!headers_sent()) {
+                foreach ($r['cookies'] as $cookie) {
+                    header('Set-Cookie: ' . $cookie, false);
+                }
+            }
+            if ($r['decision']->passes()) {
+                return $r['decision'];
+            }
+            if ($answer) {
+                $this->stop($r['decision'], $request, $r['page'], $now, true, $r['json']);
+                exit;
+            }
+            return $d;
+        }
         if ($this->settings->logFile !== null && $d->action !== Decision::ALLOW && Log::wants($this->settings->logLevel, $d)) {
             Log::write($this->settings, $request, $d, $this->explain($d, $request), $now);
+        }
+        // answer: true -- the shield answers a refusal itself (a pause, the
+        // check) and the request ends here: Shield::active()?->consume('posts', answer: true)
+        if ($answer && !$d->passes()) {
+            $this->stop($d, $request, null, $now, true, null, false);
+            exit;
         }
         return $d;
     }
@@ -585,7 +660,7 @@ final class Shield
     private function budgetRule(Budget $b): BudgetRule
     {
         return new BudgetRule($this->store, $b->name, $b->limit, $b->window, $b->challengeAt,
-            $this->settings->exemptIps, $this->settings->ipv6Prefix);
+            $this->settings->exemptIps, $this->settings->ipv6Prefix, $b->earnBack);
     }
 
     private function gate(): Gate

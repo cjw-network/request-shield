@@ -30,4 +30,9 @@ final class PeekStore implements Store
     {
         return $this->store->peek($key, $window, $now);
     }
+
+    /** Only looks: forgets nothing. */
+    public function reset(string $key, int $window, float $now): void
+    {
+    }
 }

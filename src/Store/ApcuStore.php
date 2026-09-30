@@ -37,6 +37,13 @@ final class ApcuStore implements Store
         return SlidingWindow::estimate($current, self::count($k . ($slot - 1)), $weight);
     }
 
+    public function reset(string $key, int $window, float $now): void
+    {
+        [$slot] = SlidingWindow::position($window, $now);
+        $k = $this->prefix . $window . ':' . $key . ':';
+        apcu_delete([$k . $slot, $k . ($slot - 1)]);
+    }
+
     public function peek(string $key, int $window, float $now): float
     {
         [$slot, $weight] = SlidingWindow::position($window, $now);

@@ -21,7 +21,7 @@
   [scrapers and bots](use-cases/scraping-and-bots.md) ·
   [behind a load balancer](use-cases/behind-a-load-balancer.md)
 - **Proposals** — planned features, open for discussion (status in each):
-  [0001 earn back a spent budget](proposals/0001-earn-back-a-spent-budget.md) (accepted) ·
+  [0001 earn back a spent budget](proposals/0001-earn-back-a-spent-budget.md) (implemented) ·
   [0003 human-readable rule files](proposals/0003-human-readable-rule-files.md) (implemented) ·
   [0004 modes: monitor and strict](proposals/0004-modes-monitor-and-strict.md) ·
   [0005 versioned rule sets](proposals/0005-versioned-rule-sets.md) (implemented) ·

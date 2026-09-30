@@ -78,6 +78,11 @@ if ($path === '/search') {
         $content = ['Search', $query === '' ? 'Type something to search for.' : 'No results for "' . $query . '" -- this is a demo. The answer is never cached: q is not in cache-query.'];
     }
 } elseif ($path === '/edit') {
+    // 3 edits a minute, counted here; past that the shield answers itself --
+    // the check, then this form is sent again -- and this request ends there.
+    if ($method === 'POST' && $shield !== null) {
+        $shield->consume('edits', null, null, true);
+    }
     $content = ['Edit form', $method === 'POST' ? 'Saved: "' . (string) ($_POST['message'] ?? '') . '" -- a POST is allowed here (allow POST **/edit) and never cached.' : 'A POST is allowed on this page only.'];
 } elseif (strncmp($path, '/admin/', 7) === 0) {
     $content = ['Admin area', 'Only the office network (192.0.2.0/24) gets here.'];
@@ -116,6 +121,11 @@ if ($path === '/search') {
         'home' => $url('/'), 'homeLabel' => 'request-shield demo']);
     exit;
 } elseif ($path === '/api/status') {
+    // 5 calls a minute; past that: 429 with the task as JSON and in the header
+    // Request-Shield-Challenge -- solved, the call is repeated with Request-Shield-Solution.
+    if ($shield !== null) {
+        $shield->consume('calls', null, null, true);
+    }
     header('Content-Type: application/json');
     echo json_encode(['ok' => true, 'note' => 'the API answers only this machine (restrict **/api/** to 127.0.0.1 ::1)']), "\n";
     exit;
@@ -170,11 +180,12 @@ $groups = [
     'Browser check and pace' => [
         ['/challenge', 'A page that always checks the browser', 'the invisible check once, then the page (valid for 1 minute here)'],
         ['/reset', 'Forget my pass', 'the check comes back on /challenge'],
-        [null, 'Reload any page 20 times', 'the invisible check (more than 20 requests a minute), past 60 a short pause (429)'],
+        [null, 'Reload any page 20 times', 'the invisible check (more than 20 requests a minute); past 60 a check that frees the counter — no pause'],
     ],
     'Forms (POST)' => [
         ['/edit', 'Send a form where one belongs', 'accepted: allow POST **/edit', 'POST'],
         ['/page/about', 'Send a form where none belongs', '"not allowed here" (405) — a bot posting wherever it finds a URL', 'POST'],
+        ['/edit', 'Send the edit form a 4th time within a minute', 'the check instead of a pause — then the form is sent again, the counter starts over', 'POST'],
     ],
 ];
 

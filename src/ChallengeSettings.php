@@ -20,6 +20,7 @@ final class ChallengeSettings
      * @param list<string> $exemptPaths
      * @param array<string, string> $texts
      * @param list<string> $alwaysPaths
+     * @param list<string> $apiPaths
      */
     private function __construct(
         /** @readonly */
@@ -54,6 +55,8 @@ final class ChallengeSettings
         public ?string $widgetPath = null,
         /** @readonly the widget's difficulty (maxnumber): the visitor is still typing */
         public int $widgetDifficulty = 25000,
+        /** @readonly paths of the site's API: a check there is sent as a header, not as a page */
+        public array $apiPaths = [],
     ) {
     }
 
@@ -109,6 +112,7 @@ final class ChallengeSettings
             self::home($c),
             self::widgetPath($c),
             max(1000, Settings::int($c, 'widgetDifficulty', 'challenge.widgetDifficulty', 25000)),
+            Settings::strings($c, 'apiPaths', 'challenge.apiPaths'),
         );
     }
 

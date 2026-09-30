@@ -39,13 +39,15 @@ final class Gate
 
     /**
      * @param Decision $base what every check but the budgets decided (cacheable or not)
-     * @param array{forced?: bool, fresh?: ?int, resend?: array{action: string, fields: list<array{0: string, 1: string}>}|false|null, solution?: ?string} $o
+     * @param array{forced?: bool, fresh?: ?int, resend?: array{action: string, fields: list<array{0: string, 1: string}>}|false|null, solution?: ?string, api?: bool, earn?: array{window: int}|null} $o
      *   forced: the application asks for the check (Shield::requirePass()): exempt paths do not count;
      *   fresh: only a pass issued in the last so many seconds counts;
      *   resend: a form sent without a pass, to be sent again after the check (false: it cannot be);
-     *   solution: an answer the check inside the form sent in a hidden field
-     * @return array{decision: Decision, cookies: list<string>, page: ?string}
-     *         cookies are complete Set-Cookie header values
+     *   solution: an answer the check inside the form sent in a hidden field;
+     *   api: answer with the task as JSON (json in the result), the solution from Request-Shield-Solution;
+     *   earn: for a spent budget (Decision::spent), its window: a solution starts its counter again
+     * @return array{decision: Decision, cookies: list<string>, page: ?string, json: ?array{algorithm: string, challenge: string, maxnumber: int, salt: string, signature: string}}
+     *         cookies are complete Set-Cookie header values; json: the task for an API
      */
     public function resolve(Decision $challenged, Decision $base, Request $request, float $now, array $o = []): array
     {
@@ -54,6 +56,13 @@ final class Gate
         $posted = $o['solution'] ?? null;
         $fresh = $o['fresh'] ?? null;
         $resend = $o['resend'] ?? null;
+        $api = $o['api'] ?? false;
+        $earn = $o['earn'] ?? null;
+        // A budget past its limit that lets its client earn it back: no pass
+        // gets past it -- only a solution made for this budget, which starts
+        // its counter again.
+        $spent = $challenged->spent;
+        $budget = $challenged->reason;
         $bucket = IpAddress::bucket($request->clientIp, $this->ipv6Prefix);
         $ua = (string) $request->header('user-agent');
         $pass = new PassCookie($this->secret, $this->config->bindUserAgent);
@@ -61,48 +70,68 @@ final class Gate
         $solutionName = $this->config->solutionCookie;
         $secure = $request->scheme === 'https';
 
-        if ($pass->valid($request->cookie($passName), $bucket, $ua, $now)
+        if (!$spent && $pass->valid($request->cookie($passName), $bucket, $ua, $now)
             && ($fresh === null || $pass->expires((string) $request->cookie($passName)) - $this->config->passTtl >= $now - $fresh)) {
-            return ['decision' => $base, 'cookies' => [], 'page' => null];
+            return ['decision' => $base, 'cookies' => [], 'page' => null, 'json' => null];
         }
 
-        // A solution comes with the reload of a page -- or, for a form the
-        // application asked the check for, with the form sent again.
-        $solution = $posted ?? $request->cookie($solutionName);
-        if ($solution !== null && ($request->method === 'GET' || $request->method === 'HEAD' || $forced || $posted !== null)) {
-            $cookies = [self::cookie($solutionName, '', 0, $secure)];
-            if ((new ProofOfWork($this->secret))->verify($solution, $bucket, $now) && $this->firstUse($solution, $now)) {
+        // A solution comes with the reload of a page, a form sent again, the
+        // check inside the form (a field), or an API's header.
+        $solution = $posted ?? ($api ? $request->header('request-shield-solution') : null) ?? $request->cookie($solutionName);
+        $cookies = [];
+        if ($solution !== null && ($request->method === 'GET' || $request->method === 'HEAD' || $forced || $posted !== null || $spent || $api)) {
+            if ($request->cookie($solutionName) !== null) {
+                $cookies[] = self::cookie($solutionName, '', 0, $secure);
+            }
+            $pow = new ProofOfWork($this->secret);
+            if ($pow->verify($solution, $bucket, $now) && (!$spent || ProofOfWork::budgetOf($solution) === $budget) && $this->firstUse($solution, $now)) {
+                if ($spent && $earn !== null && $this->store !== null) {
+                    $this->store->reset($budget . ':' . $bucket, $earn['window'], $now);
+                    $this->store->hit('solved:' . $budget . ':' . $bucket, 3600, $now);
+                }
                 $ttl = $this->config->passTtl;
                 $cookies[] = self::cookie($passName, $pass->issue($bucket, $ua, (int) $now + $ttl), $ttl, $secure);
                 // The page this request gets is for a challenged client:
                 // answered, but kept out of every cache.
-                return ['decision' => Decision::allowUncached('challenge solved'), 'cookies' => $cookies, 'page' => null];
+                return ['decision' => Decision::allowUncached('challenge solved'), 'cookies' => $cookies, 'page' => null, 'json' => null];
             }
             // A wrong or stale solution: a new challenge below, without the old cookie.
-        } else {
-            $cookies = [];
         }
 
         if ($this->searchEngines !== null && $this->searchEngines->verified($request->clientIp, $ua)) {
-            return ['decision' => $base, 'cookies' => $cookies, 'page' => null];
+            // A crawler cannot solve the check: past a limit, the pause it understands.
+            return $spent
+                ? ['decision' => Decision::throttle($budget, $challenged->retryAfter), 'cookies' => $cookies, 'page' => null, 'json' => null]
+                : ['decision' => $base, 'cookies' => $cookies, 'page' => null, 'json' => null];
         }
-        foreach ($forced ? [] : $this->config->exemptPaths as $pattern) {
+        foreach ($forced || $spent ? [] : $this->config->exemptPaths as $pattern) {
             if (@preg_match($pattern, $request->path) === 1) {
-                return ['decision' => $base, 'cookies' => $cookies, 'page' => null];
+                return ['decision' => $base, 'cookies' => $cookies, 'page' => null, 'json' => null];
             }
         }
-        if ($request->method !== 'GET' && $request->method !== 'HEAD' && $resend === null) {
-            return ['decision' => Decision::throttle($challenged->reason, 10), 'cookies' => $cookies, 'page' => null];
+        if ($request->method !== 'GET' && $request->method !== 'HEAD' && $resend === null && !$api) {
+            return ['decision' => Decision::throttle($budget, max(10, $challenged->retryAfter)), 'cookies' => $cookies, 'page' => null, 'json' => null];
         }
 
-        $min = $this->config->difficultyMin;
-        $maxNumber = (int) round($min + ($this->config->difficultyMax - $min) * $challenged->level);
-        $expires = (int) $now + $this->config->solutionTtl;
-        $challenge = (new ProofOfWork($this->secret))->create($bucket, $maxNumber, $expires);
         $c = $this->config;
+        if ($spent) {
+            // Harder with every solve in the hour: from difficulty-min, doubled,
+            // at most difficulty-max.
+            $solves = $this->store !== null ? (int) floor($this->store->peek('solved:' . $budget . ':' . $bucket, 3600, $now)) : 0;
+            $maxNumber = (int) min($c->difficultyMax, $c->difficultyMin * 2 ** min($solves, 20));
+        } else {
+            $maxNumber = (int) round($c->difficultyMin + ($c->difficultyMax - $c->difficultyMin) * $challenged->level);
+        }
+        $challenge = (new ProofOfWork($this->secret))->create($bucket, $maxNumber, (int) $now + $c->solutionTtl, $spent ? $budget : null);
+        if ($api) {
+            return ['decision' => $challenged, 'cookies' => $cookies, 'page' => null, 'json' => $challenge];
+        }
         $texts = \CjwNetwork\RequestShield\Texts::all(\CjwNetwork\RequestShield\Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts);
+        if ($spent && $resend === null) {
+            $texts['text'] = $texts['spent'];
+        }
         $page = ChallengePage::render($challenge, $solutionName, $secure, $texts, $resend, $c->home);
-        return ['decision' => $challenged, 'cookies' => $cookies, 'page' => $page];
+        return ['decision' => $challenged, 'cookies' => $cookies, 'page' => $page, 'json' => null];
     }
 
     /**

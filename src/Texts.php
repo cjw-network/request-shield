@@ -23,7 +23,7 @@ namespace CjwNetwork\RequestShield;
 final class Texts
 {
     /** The keys a site can set. */
-    public const KEYS = ['title', 'text', 'noscript', 'nocookies', 'failed', 'try-again', 'sending', 'send-again', 'resend-lost', 'back', 'home', 'widget-checking', 'widget-checked', 'widget-failed',
+    public const KEYS = ['title', 'text', 'noscript', 'nocookies', 'failed', 'try-again', 'sending', 'send-again', 'resend-lost', 'back', 'home', 'widget-checking', 'widget-checked', 'widget-failed', 'spent',
         'bad-request', 'no-access', 'not-found', 'not-allowed', 'too-long', 'too-many', 'too-large', 'error'];
 
     public const BUILT_IN = [
@@ -42,6 +42,7 @@ final class Texts
             'widget-checking' => 'Checking your browser …',
             'widget-checked' => 'Browser checked',
             'widget-failed' => 'Your browser will be checked when you send the form.',
+            'spent' => 'You sent many requests in a short time. After a quick check of your browser you can go on.',
             'bad-request' => 'Bad Request',
             'no-access' => 'Forbidden',
             'not-found' => 'Not Found',
@@ -66,6 +67,7 @@ final class Texts
             'widget-checking' => 'Ihr Browser wird geprüft …',
             'widget-checked' => 'Browser geprüft',
             'widget-failed' => 'Ihr Browser wird beim Senden geprüft.',
+            'spent' => 'Sie haben in kurzer Zeit viele Anfragen gesendet. Nach einer kurzen Prüfung Ihres Browsers geht es weiter.',
             'bad-request' => 'Ungültige Anfrage',
             'no-access' => 'Kein Zugriff',
             'not-found' => 'Nicht gefunden',

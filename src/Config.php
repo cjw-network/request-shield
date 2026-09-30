@@ -76,6 +76,9 @@ final class Config
                 // widgetDifficulty: lower than the check page's -- the visitor types.
                 'widgetPath' => null,
                 'widgetDifficulty' => 25000,
+                // The site's API: a check there (past a limit, say) is sent as JSON with
+                // a Request-Shield-Challenge header; JSON requests count as API anyway.
+                'apiPaths' => [],
                 // Own texts: 'title' for every language, 'de.title' for one
                 // (keys: Texts::KEYS).
                 'texts' => [],

@@ -24,6 +24,8 @@ final class Budget
         public ?int $challengeAt,
         /** @readonly */
         public bool $onDemand,
+        /** @readonly past the limit: false a pause (429), true the browser check that frees the counter */
+        public bool $earnBack = false,
     ) {
     }
 
@@ -44,7 +46,18 @@ final class Budget
             max(1, Settings::int($b, 'window', "budgets.$name.window", 60)),
             $challengeAt !== null && $challengeAt > 0 ? $challengeAt : null,
             Settings::bool($b, 'onDemand', "budgets.$name.onDemand"),
+            self::onExceeded($b, $name),
         );
+    }
+
+    /** @param array<mixed> $b */
+    private static function onExceeded(array $b, string $name): bool
+    {
+        $v = Settings::string($b, 'onExceeded', "budgets.$name.onExceeded", 'throttle');
+        if ($v !== 'throttle' && $v !== 'challenge') {
+            throw Settings::wrong("budgets.$name.onExceeded", 'throttle (a pause, the default) or challenge (the check that frees the counter)');
+        }
+        return $v === 'challenge';
     }
 
     /** @return array<string, mixed> */

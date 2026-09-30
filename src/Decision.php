@@ -47,6 +47,8 @@ final class Decision
         public int $retryAfter = 0,
         /** @readonly */
         public float $level = 0.0,
+        /** A budget past its limit that lets its client earn it back (onExceeded: challenge). */
+        public bool $spent = false,
     ) {
     }
 
@@ -64,6 +66,17 @@ final class Decision
     public static function challenge(string $reason, float $level = 0.0): self
     {
         return new self(self::CHALLENGE, 429, $reason, 0, max(0.0, min(1.0, $level)));
+    }
+
+    /**
+     * A budget past its limit that asks for the browser check instead of a
+     * pause: solved, the client's counter for it starts again. No pass cookie
+     * gets past it -- only a solution made for this budget. $retryAfter: the
+     * pause a client could wait instead (APIs).
+     */
+    public static function spent(string $budget, int $retryAfter): self
+    {
+        return new self(self::CHALLENGE, 429, $budget, max(1, $retryAfter), 1.0, true);
     }
 
     public static function throttle(string $reason, int $retryAfter): self
@@ -91,6 +104,9 @@ final class Decision
     /** The more restrictive of two decisions. */
     public function stricter(self $other): self
     {
-        return (self::RANK[$other->action] ?? 0) > (self::RANK[$this->action] ?? 0) ? $other : $this;
+        $a = self::RANK[$this->action] ?? 0;
+        $b = self::RANK[$other->action] ?? 0;
+        // A spent budget's check outranks a plain one: a pass does not get past it.
+        return $b > $a || ($b === $a && $other->spent && !$this->spent) ? $other : $this;
     }
 }

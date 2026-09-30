@@ -25,6 +25,32 @@ class Responder
         }
     }
 
+    /**
+     * The check for an API: 429, the task as JSON and in a header; the client
+     * solves it and repeats the request with Request-Shield-Solution -- or
+     * waits Retry-After, where there is one.
+     *
+     * @param array{algorithm: string, challenge: string, maxnumber: int, salt: string, signature: string} $challenge
+     */
+    public function api(Decision $decision, array $challenge, bool $debugHeader = false, ?string $rule = null): string
+    {
+        $json = (string) json_encode($challenge, JSON_UNESCAPED_SLASHES);
+        if (!headers_sent()) {
+            http_response_code(429);
+            header('Content-Type: application/json; charset=utf-8');
+            header('Cache-Control: no-store');
+            header('Request-Shield-Challenge: ' . rtrim(strtr(base64_encode($json), '+/', '-_'), '='));
+            if ($decision->retryAfter > 0) {
+                header('Retry-After: ' . $decision->retryAfter);
+            }
+            if ($debugHeader) {
+                header('X-Request-Shield: ' . $decision->action . ' ' . $decision->reason . ($rule !== null ? '; rule=' . $rule : ''));
+            }
+        }
+        return (string) json_encode(['error' => $decision->spent ? 'rate_limited' : 'challenge', 'retryAfter' => $decision->retryAfter ?: null,
+            'challenge' => $challenge, 'solution' => 'Request-Shield-Solution'], JSON_UNESCAPED_SLASHES);
+    }
+
     public function headers(Decision $decision, bool $debugHeader = false, ?string $rule = null): void
     {
         if (headers_sent()) {

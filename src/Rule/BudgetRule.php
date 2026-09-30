@@ -31,6 +31,7 @@ final class BudgetRule implements Rule
         private ?int $challengeAt = null,
         private array $exempt = [],
         private int $ipv6Prefix = 64,
+        private bool $earnBack = false,
     ) {
     }
 
@@ -41,7 +42,10 @@ final class BudgetRule implements Rule
         }
         $count = $this->store->hit($this->name . ':' . IpAddress::bucket($request->clientIp, $this->ipv6Prefix), $this->window, $now);
         if ($count > $this->limit) {
-            return Decision::throttle($this->name, (int) ceil($this->window * ($count - $this->limit) / $this->limit));
+            $wait = (int) ceil($this->window * ($count - $this->limit) / $this->limit);
+            // Earn it back (onExceeded: challenge): the check, and solved, the
+            // counter starts again; otherwise a pause.
+            return $this->earnBack ? Decision::spent($this->name, $wait) : Decision::throttle($this->name, $wait);
         }
         if ($this->challengeAt !== null && $this->challengeAt > 0 && $count > $this->challengeAt) {
             $span = max(1, $this->limit - $this->challengeAt);

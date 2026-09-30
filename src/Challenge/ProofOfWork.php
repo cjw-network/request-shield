@@ -35,10 +35,13 @@ final class ProofOfWork
     /**
      * @return array{algorithm: string, challenge: string, maxnumber: int, salt: string, signature: string}
      */
-    public function create(string $bucket, int $maxNumber, int $expires): array
+    public function create(string $bucket, int $maxNumber, int $expires, ?string $budget = null): array
     {
         $maxNumber = max(1000, $maxNumber);
-        $salt = bin2hex(random_bytes(12)) . '?expires=' . $expires . '&c=' . $this->tag($bucket);
+        // The salt is covered by the signature (the challenge is made from it):
+        // a solution stays bound to its client -- and, for a spent budget, to it.
+        $salt = bin2hex(random_bytes(12)) . '?expires=' . $expires . '&c=' . $this->tag($bucket)
+            . ($budget !== null ? '&b=' . rawurlencode($budget) : '');
         $challenge = hash('sha256', $salt . random_int(0, $maxNumber));
         return [
             'algorithm' => self::ALGORITHM,
@@ -86,6 +89,21 @@ final class ProofOfWork
     }
 
     /** The challenge a payload answers (to use a solution only once), or null. */
+    /** The budget a solution was made for (a spent budget's check), or null. */
+    public static function budgetOf(string $payload): ?string
+    {
+        $b64 = strtr($payload, '-_', '+/');
+        $json = base64_decode($b64 . str_repeat('=', (4 - strlen($b64) % 4) % 4), true);
+        $data = is_string($json) && strlen($json) < 2048 ? json_decode($json, true) : null;
+        $salt = is_array($data) && is_string($data['salt'] ?? null) ? $data['salt'] : '';
+        $query = strpos($salt, '?');
+        if ($query === false) {
+            return null;
+        }
+        parse_str(substr($salt, $query + 1), $params);
+        return isset($params['b']) && is_string($params['b']) ? $params['b'] : null;
+    }
+
     public static function challengeOf(string $payload): ?string
     {
         $b64 = strtr($payload, '-_', '+/');

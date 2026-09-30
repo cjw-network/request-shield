@@ -273,4 +273,80 @@ return [
             same(0, $code, 'widget.js is valid JavaScript: ' . implode("\n", $out));
         }
     },
+    'a spent budget: no pass gets past it, only its own solution -- which starts the counter again, twice as hard each time' => function (): void {
+        $store = new \CjwNetwork\RequestShield\Store\MemoryStore();
+        $c = ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 5000], 'exemptPaths' => ['#^/api/#']]);
+        $gate = new Gate($c, SECRET, null, 64, $store);
+        $bucket = \CjwNetwork\RequestShield\IpAddress::bucket('203.0.113.7');
+        $spent = Decision::spent('posts', 30);
+        $earn = ['earn' => ['window' => 60]];
+        // a pass from an ordinary check
+        $r = $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/'), 1.0);
+        preg_match('/var RS=(\{.*?\});\(function/s', (string) $r['page'], $m);
+        $plain = solveInPhp(json_decode($m[1], true)['c']);
+        $pass = cookieValue($gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', ['rs_solution' => $plain]), 1.0)['cookies'], 'rs_pass');
+        same(Decision::CHALLENGE, $gate->resolve($spent, Decision::allow(), creq('/x', ['rs_pass' => $pass]), 2.0, $earn)['decision']->action, 'a pass does not get past a spent budget');
+        same(Decision::CHALLENGE, $gate->resolve($spent, Decision::allow(), creq('/api/x'), 2.0, $earn)['decision']->action, 'nor an exempt path');
+        // its own task, bound to it
+        for ($i = 0; $i < 5; $i++) {
+            $store->hit('posts:' . $bucket, 60, 3.0);
+        }
+        $r = $gate->resolve($spent, Decision::allow(), creq('/x'), 3.0, $earn);
+        preg_match('/var RS=(\{.*?\});\(function/s', (string) $r['page'], $m);
+        $task = json_decode($m[1], true)['c'];
+        same(1000, $task['maxnumber'], 'the first time: difficulty-min');
+        truthy(strpos($task['salt'], '&b=posts') !== false, 'bound to the budget');
+        $other = (new \CjwNetwork\RequestShield\Challenge\ProofOfWork(SECRET))->create($bucket, 1000, 100, 'searches');
+        same(Decision::CHALLENGE, $gate->resolve($spent, Decision::allow(), creq('/x', ['rs_solution' => solveInPhp($other)]), 3.0, $earn)['decision']->action, 'another budget\'s solution does not count');
+        $plain2 = (new \CjwNetwork\RequestShield\Challenge\ProofOfWork(SECRET))->create($bucket, 1000, 100);
+        same(Decision::CHALLENGE, $gate->resolve($spent, Decision::allow(), creq('/x', ['rs_solution' => solveInPhp($plain2)]), 3.0, $earn)['decision']->action, 'nor an ordinary one');
+        $r = $gate->resolve($spent, Decision::allow(), creq('/x', ['rs_solution' => solveInPhp($task)]), 4.0, $earn);
+        same(Decision::ALLOW_UNCACHED, $r['decision']->action, 'its own solution: through');
+        same(0.0, $store->peek('posts:' . $bucket, 60, 4.0), 'and the counter starts again');
+        $r = $gate->resolve($spent, Decision::allow(), creq('/x'), 5.0, $earn);
+        preg_match('/var RS=(\{.*?\});\(function/s', (string) $r['page'], $m);
+        same(2000, json_decode($m[1], true)['c']['maxnumber'], 'the second time within the hour: twice as hard');
+        for ($i = 0; $i < 5; $i++) {
+            $store->hit('solved:posts:' . $bucket, 3600, 6.0);
+        }
+        $r = $gate->resolve($spent, Decision::allow(), creq('/x'), 6.0, $earn);
+        preg_match('/var RS=(\{.*?\});\(function/s', (string) $r['page'], $m);
+        same(5000, json_decode($m[1], true)['c']['maxnumber'], 'at most difficulty-max');
+        // an API: the task as JSON; a POST without its form: a pause
+        $api = $gate->resolve($spent, Decision::allow(), creq('/x', [], 'POST'), 7.0, $earn + ['api' => true]);
+        same([null, true], [$api['page'], is_array($api['json'])], 'an API gets the task as JSON');
+        same(Decision::THROTTLE, $gate->resolve($spent, Decision::allow(), creq('/x', [], 'POST'), 7.0, $earn)['decision']->action, 'a POST whose form cannot come back: a pause');
+        same(30, $gate->resolve($spent, Decision::allow(), creq('/x', [], 'POST'), 7.0, $earn)['decision']->retryAfter, 'as long as the budget says');
+    },
+    'decisions: a spent budget outranks a plain check; the budget rule gives it only when asked' => function (): void {
+        same(true, Decision::challenge('requests')->stricter(Decision::spent('posts', 5))->spent);
+        same(true, Decision::spent('posts', 5)->stricter(Decision::challenge('requests'))->spent);
+        same(Decision::THROTTLE, Decision::spent('posts', 5)->stricter(Decision::throttle('x', 5))->action);
+        $store = new \CjwNetwork\RequestShield\Store\MemoryStore();
+        $pause = new \CjwNetwork\RequestShield\Rule\BudgetRule($store, 'a', 2, 60);
+        $earn = new \CjwNetwork\RequestShield\Rule\BudgetRule($store, 'b', 2, 60, null, [], 64, true);
+        $req = creq('/');
+        for ($i = 0; $i < 2; $i++) {
+            $pause->check($req, 1.0);
+            $earn->check($req, 1.0);
+        }
+        same(Decision::THROTTLE, $pause->check($req, 1.0)->action, 'by default a pause');
+        truthy($earn->check($req, 1.0)->spent, 'on-exceeded challenge: the check that frees the counter');
+    },
+    'stores: reset forgets a key\'s count' => function (): void {
+        $dir = sys_get_temp_dir() . '/rshield-reset-' . getmypid() . '-' . mt_rand();
+        $stores = ['memory' => new \CjwNetwork\RequestShield\Store\MemoryStore(), 'file' => new \CjwNetwork\RequestShield\Store\FileStore($dir, 0.0)];
+        if (\CjwNetwork\RequestShield\Store\ApcuStore::usable()) {
+            $stores['apcu'] = new \CjwNetwork\RequestShield\Store\ApcuStore('rshield-test-' . mt_rand() . ':');
+        }
+        foreach ($stores as $name => $store) {
+            $store->hit('k', 60, 119.0);
+            $store->hit('k', 60, 121.0);
+            $store->hit('other', 60, 121.0);
+            $store->reset('k', 60, 121.0);
+            same(0.0, $store->peek('k', 60, 121.0), "$name: this window and the one before");
+            same(1.0, $store->peek('other', 60, 121.0), "$name: other keys stay");
+        }
+        exec('rm -rf ' . escapeshellarg($dir));
+    },
 ];

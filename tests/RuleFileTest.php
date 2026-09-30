@@ -671,4 +671,17 @@ return [
         $s = rulesFrom("ids SITE\nmatch /admin/** {\n  [SITE-ADM] restrict to 192.0.2.1\n}\nmatch /admin/** {\n  replace [SITE-ADM] restrict to 192.0.2.0/24\n}\n");
         same([['paths' => ['#^/admin(?:/.*)?$#i'], 'ips' => ['192.0.2.0/24']]], $s->restricted);
     },
+    'on-exceeded and api-path in rule files' => function (): void {
+        $s = rulesFrom("limit posts 20/min on-exceeded challenge\nlimit calls 5/min on-demand on-exceeded throttle\napi-path /api/**\nmatch /v2/** {\n  api-path\n}\n");
+        same([true, false], [$s->budgets['posts']->earnBack, $s->budgets['calls']->earnBack]);
+        same(false, $s->budgets['requests']->earnBack, 'the default: a pause');
+        same(['#^/api(?:/.*)?$#', '#^/v2(?:/.*)?$#'], $s->challenge->apiPaths);
+        rulesFail(['site.rules' => "limit posts 20/min on-exceeded never\n"], 'site.rules:1', 'on-exceeded challenge|throttle');
+        try {
+            Settings::from(['budgets' => ['x' => ['limit' => 1, 'onExceeded' => 'wait']]]);
+            throw new TestFailure('accepted onExceeded wait');
+        } catch (InvalidArgumentException $e) {
+            truthy(strpos($e->getMessage(), 'budgets.x.onExceeded') !== false, $e->getMessage());
+        }
+    },
 ];

@@ -57,7 +57,8 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `unblock [<what>] at <paths> [for <addresses>]` | `blockExceptions` | blocked paths let through at some paths only (an admin's file reader) ([access rules](access-rules.md#exceptions-an-admins-file-reader)) |
 | `cache-path <paths>` | `cacheable.paths` | what a cache may keep; `any`: every path (default) |
 | `cache-query <names>` | `cacheable.query` | parameters a cached URL may have; `any` (default), `none` |
-| `limit <name> <n>/<unit> [challenge-at <n>] [on-demand]` | `budgets` | units `s`, `sec`, `min`, `hour`, `day`, also `20/10s` |
+| `limit <name> <n>/<unit> [challenge-at <n>] [on-demand] [on-exceeded challenge]` | `budgets` | units `s`, `sec`, `min`, `hour`, `day`, also `20/10s`; `on-exceeded challenge`: past the limit the check that frees the counter instead of a pause ([budgets](budgets.md#past-the-limit-a-pause-or-earn-it-back)) |
+| `api-path <paths>` | `challenge.apiPaths` | the site's API: a check there is JSON with a header, not a page |
 | `no-limit <name>` | `budgets` | switch a budget off, the default one too |
 | `challenge <paths>` | `challenge.alwaysPaths` | always check the browser there |
 | `challenge-exempt <paths>` | `challenge.exemptPaths` | never challenge there (APIs, feeds) |

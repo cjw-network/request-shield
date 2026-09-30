@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Accepted** 2026-09-30 (decisions below), not yet implemented |
+| Status | **Implemented** 2026-09-30 (see [budgets](../features/budgets.md#past-the-limit-a-pause-or-earn-it-back)) |
 | Proposed | 2026-09-28 |
 | Affects | budgets, the challenge, the responder |
 

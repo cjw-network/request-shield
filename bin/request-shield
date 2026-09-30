@@ -169,7 +169,7 @@ foreach ($settings->cacheablePaths ?? [] as $p) {
 }
 echo $line('cache-query ' . ($settings->cacheableQuery === null ? 'any' : ($settings->cacheableQuery === [] ? 'none' : implode(' ', $settings->cacheableQuery))), $o('cacheable.query', '*'));
 foreach ($settings->budgets as $b) {
-    echo $line("limit $b->name $b->limit/{$b->window}s" . ($b->challengeAt !== null ? " challenge-at $b->challengeAt" : '') . ($b->onDemand ? ' on-demand' : ''), $o('budgets', $b->name));
+    echo $line("limit $b->name $b->limit/{$b->window}s" . ($b->challengeAt !== null ? " challenge-at $b->challengeAt" : '') . ($b->onDemand ? ' on-demand' : '') . ($b->earnBack ? ' on-exceeded challenge' : ''), $o('budgets', $b->name));
 }
 foreach ($settings->challenge->alwaysPaths as $p) {
     echo $line('challenge regex ' . $regex($p), $o('challenge.alwaysPaths', $p));

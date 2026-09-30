@@ -88,6 +88,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `allow POST`, `challenge`, `block`, `unblock [ID] for …`, nested blocks,
   blocks by regex. Exactly the rules written out: the same settings, the same
   cost; the rules page shows each rule's area.
+- Earn a spent budget back (proposal 0001): `limit … on-exceeded challenge`
+  (`'onExceeded' => 'challenge'`) — past the limit the browser check instead of a
+  pause; solved, the counter for that budget starts again; no pass gets past it,
+  only a solution bound to the budget; twice as hard per solve within an hour,
+  from `difficulty-min` up to `difficulty-max`. Forms come back after the
+  check; APIs (JSON, `api-path`) get the task as JSON and in
+  `Request-Shield-Challenge`, answered with `Request-Shield-Solution`; verified
+  crawlers get the pause. `consume($budget, answer: true)` lets the shield
+  answer a refusal itself. The default stays the pause. `Store` has `reset()`
+  (an interface change for own stores).
 - Proposal 0004: modes (`off`, `monitor`, `enforce`, `strict`), `monitor` for
   single rules, a fresh check per path.
 - `challenge.alwaysPaths`: paths every visitor has to pass the browser check
