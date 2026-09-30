@@ -18,7 +18,7 @@
 <text class="m" x="398" y="112" font-size="12">yes, verified</text>
 <rect class="box" x="230" y="128" width="320" height="56" rx="10" stroke-width="1.5"/>
 <text class="t" x="390" y="152" text-anchor="middle" font-weight="700">What does the site want?</text>
-<text class="m" x="390" y="170" text-anchor="middle" font-size="12">per kind (search, AI) or per crawler</text>
+<text class="m" x="390" y="170" text-anchor="middle" font-size="12">by kind of crawler, or one by one</text>
 <path class="arrow" d="M390 184 V206 H130 V234" marker-end="url(#rs11-a)"/>
 <path class="arrow" d="M390 206 V234" marker-end="url(#rs11-a)"/>
 <path class="arrow" d="M390 206 H650 V234" marker-end="url(#rs11-a)"/>
@@ -39,5 +39,5 @@
 <text class="m" x="650" y="299" text-anchor="middle" font-size="12">robots.txt</text>
 <text class="m" x="20" y="350" font-size="12">A crawler at a normal pace costs the site little — and being found in search and AI answers</text>
 <text class="m" x="20" y="368" font-size="12">is what many sites want. The name alone proves nothing: only the address lets it through.</text>
-<text class="m" x="20" y="394" font-size="12">Proposed defaults: search engines allow (as today), AI crawlers allow.</text>
+<text class="m" x="20" y="394" font-size="12">Proposed defaults: allow for search engines (as today) and for AI crawlers.</text>
 </svg>
