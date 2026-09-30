@@ -28,8 +28,9 @@ final class ChallengePage
      * @param array{action: string, fields: list<array{0: string, 1: string}>}|false|null $resend
      *   a form that was sent without a pass: its fields, to send it again after the check;
      *   false when it cannot be (files, too large): the visitor is asked to send it again
+     * @param string|null $logo the site's logo for the ring's middle (ChallengeLogo, checked when the settings were read); null: a plain shield
      */
-    public static function render(array $challenge, string $cookieName, bool $secure, array $texts = [], $resend = null, ?string $home = null): string
+    public static function render(array $challenge, string $cookieName, bool $secure, array $texts = [], $resend = null, ?string $home = null, ?string $logo = null): string
     {
         $t = $texts + \CjwNetwork\RequestShield\Texts::all('en');
         if ($resend !== null) {
@@ -49,18 +50,39 @@ final class ChallengePage
 
         return '<!doctype html><html lang="' . $e($t['lang']) . '"><head><meta charset="utf-8">'
             . '<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">'
-            . '<title>' . $e($t['title']) . '</title><style>'
-            . 'body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font:16px/1.5 system-ui,sans-serif;background:#f6f7f9;color:#222}'
-            . 'main{max-width:28rem;padding:2rem;text-align:center}.home{margin-top:2rem;font-size:.9rem}.home a{color:inherit;opacity:.7}h1{font-size:1.3rem;margin:0 0 .5rem}'
-            . '#p{height:4px;background:#dde1e6;border-radius:2px;margin-top:1.2rem;overflow:hidden}#b{height:100%;width:0;background:#3b6fd4;transition:width .2s}'
-            . '@media(prefers-color-scheme:dark){body{background:#16181c;color:#e6e6e6}#p{background:#2b3038}}'
-            . '</style></head><body><main><h1>' . $e($t['title']) . '</h1><p id="m">' . $e($t['text']) . '</p>'
-            . '<noscript><p><strong>' . $e($t['noscript']) . '</strong></p></noscript><div id="p"><div id="b"></div></div>'
+            . '<title>' . $e($t['title']) . '</title><style>' . self::CSS . '</style></head><body><main>'
+            . '<svg id="r" viewBox="0 0 120 120" width="120" height="120" aria-hidden="true" focusable="false">'
+            . '<circle class="t" cx="60" cy="60" r="52"/><circle id="b" class="f" cx="60" cy="60" r="52" transform="rotate(-90 60 60)"/>'
+            . '<g class="o"><circle cx="60" cy="8" r="5"/></g>'
+            . '<g class="l">' . ($logo ?? ChallengeLogo::DEFAULT) . '</g>'
+            . '<g class="s"><circle cx="60" cy="60" r="27"/><circle class="e" cx="50" cy="54" r="3.2"/><circle class="e" cx="70" cy="54" r="3.2"/><path d="M47 66q13 12 26 0"/></g>'
+            . '<g class="x"><path d="M60 43v20"/><circle cx="60" cy="75" r="3.4"/></g></svg>'
+            . '<h1>' . $e($t['title']) . '</h1><p id="m">' . $e($t['text']) . '</p>'
+            . '<noscript><p><strong>' . $e($t['noscript']) . '</strong></p></noscript>'
             . self::resendForm($resend, $t, $e)
             . ($home !== null ? '<p class="home"><a href="' . $e($home) . '">' . $e($t['home']) . '</a></p>' : '')
             . '</main>'
             . '<script>var RS=' . $config . ';' . self::SCRIPT . '</script></body></html>';
     }
+
+    /**
+     * The ring fills with the solver's progress while a dot circles the logo;
+     * done, the logo gives way to a smile; failed, a calm "!". Without
+     * JavaScript nothing moves (the dot only circles once the script runs).
+     * With prefers-reduced-motion: no circling, no fading -- the ring fills.
+     */
+    private const CSS = ':root{--bg:#f6f7f9;--fg:#222;--acc:#3b6fd4;--trk:#dde1e6;--ok:#1e7b43;--okbg:#e6f4ea;--warn:#a86b00}'
+        . '@media(prefers-color-scheme:dark){:root{--bg:#16181c;--fg:#e6e6e6;--acc:#7aa2ff;--trk:#2b3038;--ok:#6fcf97;--okbg:#17301f;--warn:#e0b050}}'
+        . 'body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font:16px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--fg)}'
+        . 'main{max-width:28rem;padding:2rem;text-align:center}.home{margin-top:2rem;font-size:.9rem}.home a{color:inherit;opacity:.7}h1{font-size:1.3rem;margin:.8rem 0 .5rem}'
+        . '#r{display:block;margin:0 auto;color:var(--acc);overflow:visible}.t,.f,#r .s path,#r .x path{fill:none;stroke-linecap:round}'
+        . '.t{stroke:var(--trk);stroke-width:6}.f{stroke:var(--acc);stroke-width:6;stroke-dasharray:326.7;stroke-dashoffset:326.7;transition:stroke-dashoffset .25s,stroke .3s}'
+        . '#r .o circle{fill:var(--acc);opacity:0}.o{transform-origin:60px 60px}#r.run .o circle{opacity:.9}.run .o{animation:rs-o 1.4s linear infinite}@keyframes rs-o{to{transform:rotate(1turn)}}'
+        . '.l,.s,.x{transform-origin:60px 60px;transition:opacity .3s,transform .3s}.s,.x{opacity:0;transform:scale(.6)}'
+        . '#r .s circle{fill:var(--okbg);stroke:var(--ok);stroke-width:3.5}#r .s .e{fill:var(--ok);stroke:none}#r .s path{stroke:var(--ok);stroke-width:3.5}'
+        . '#r .x path{stroke:var(--warn);stroke-width:6}#r .x circle{fill:var(--warn)}'
+        . '.ok .l,.no .l{opacity:0;transform:scale(.6)}.ok .s,.no .x{opacity:1;transform:none}.ok .f{stroke:var(--ok)}.no .f{stroke:var(--warn)}.ok .o,.no .o{display:none}'
+        . '@media(prefers-reduced-motion:reduce){.run .o{animation:none}#r.run .o circle{opacity:0}.l,.s,.x,.f{transition:none}}';
 
     /**
      * The form that was sent, as hidden fields: the script sends it again once
@@ -139,7 +161,13 @@ final class ChallengePage
   R.payload = payload;
   // Without a task (the widget, tests in Node): only the solver above.
   if (typeof document === 'undefined' || !R.c) { return; }
-  var m = document.getElementById('m'), bar = document.getElementById('b');
+  var m = document.getElementById('m'), ring = document.getElementById('r'), bar = document.getElementById('b');
+  // The ring: its arc fills with the progress; "run" (circling), "ok" (a smile), "no" (a calm "!").
+  // Only looks: a page without the ring (a site's own) still checks.
+  function show(p) { if (bar && bar.style) { bar.style.strokeDashoffset = (326.7 * (1 - p)).toFixed(1); } }
+  function state(s) { if (ring && ring.setAttribute) { ring.setAttribute('class', s); } }
+  function failed(text) { m.textContent = text; state('no'); }
+  state('run');
   // Against a loop -- a check that never takes: after three attempts at the
   // same address within a minute, stop and say so. Only those count: checks
   // passed before, other pages, time gone by do not.
@@ -149,16 +177,21 @@ final class ChallengePage
     if (last && last.u === here && now - last.t < 60000) { tries = last.n; }
     sessionStorage.setItem('rs-tries', JSON.stringify({ u: here, n: tries + 1, t: now }));
   } catch (e) {}
-  if (tries >= 3) { m.textContent = R.failed; try { sessionStorage.removeItem('rs-tries'); } catch (e) {} return; }
+  if (tries >= 3) { failed(R.failed); try { sessionStorage.removeItem('rs-tries'); } catch (e) {} return; }
   solve(R.c, function (number, took) {
-    if (number < 0) { m.textContent = R.failed; return; }
+    if (number < 0) { failed(R.failed); return; }
     document.cookie = R.cookie + '=' + payload(R.c, number, took) + '; path=/; max-age=300; SameSite=Lax' + (R.secure ? '; Secure' : '');
-    if (document.cookie.indexOf(R.cookie + '=') < 0) { m.textContent = R.nocookies; return; }
-    bar.style.width = '100%';
-    if (R.resend) { document.getElementById('resend').submit(); return; }
-    if (R.back) { var b = document.getElementById('back'); b.hidden = false; return; }
-    location.reload();
-  }, function (p) { bar.style.width = Math.round(p * 100) + '%'; });
+    if (document.cookie.indexOf(R.cookie + '=') < 0) { failed(R.nocookies); return; }
+    show(1);
+    state('ok');
+    // The smile starts at once; the page it goes to loads meanwhile (a browser
+    // keeps showing this one until the next arrives): two frames, no waiting.
+    setTimeout(function () {
+      if (R.resend) { document.getElementById('resend').submit(); return; }
+      if (R.back) { var b = document.getElementById('back'); b.hidden = false; return; }
+      location.reload();
+    }, 40);
+  }, show);
 })(RS);
 JS;
 }

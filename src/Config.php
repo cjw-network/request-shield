@@ -76,6 +76,11 @@ final class Config
                 // widgetDifficulty: lower than the check page's -- the visitor types.
                 'widgetPath' => null,
                 'widgetDifficulty' => 25000,
+                // The picture in the middle of the check page's ring: a path to an SVG
+                // file of the site's own (checked strictly and inlined when the
+                // settings are read -- use a rule file or Settings::load(), so that
+                // happens once, not per request); null: a plain shield.
+                'logo' => null,
                 // The site's API: a check there (past a limit, say) is sent as JSON with
                 // a Request-Shield-Challenge header; JSON requests count as API anyway.
                 'apiPaths' => [],

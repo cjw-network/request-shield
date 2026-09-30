@@ -45,6 +45,38 @@ it expires (the hard `limit` still applies).
 - Without JavaScript or cookies the page says what is missing; after three
   failed attempts in a tab it stops instead of looping.
 
+## How it looks
+
+A ring around the site's logo: while the browser works, the ring fills with
+its progress and a dot circles the logo; when it is done, the logo gives way to
+a smile, and the page goes on at once (a browser keeps showing it until the
+next one arrives, so the smile is seen while that loads — nobody waits for an
+animation). If the check cannot finish (no cookies, a loop), a calm "!" in
+amber, with the reason below. Dark mode follows the visitor's system;
+`prefers-reduced-motion` stops the circling and the fading — the ring still
+fills. Without JavaScript nothing moves.
+
+```text
+set challenge-logo logo.svg       # the site's own logo in the middle (default: a plain shield)
+```
+
+- Inline SVG and CSS only: no image, no font, no extra request. The page grew
+  from 6.2 KB (3.1 KB gzip) to 8.7 KB (4.1 KB gzip); building it takes as long
+  as before (~11 µs, PHP 8.1 with OPcache).
+- The logo file is read **once, when the settings are compiled**, checked and
+  inlined — never per request (with settings from a PHP array, `Settings::load()`
+  keeps it that way; `protect([...])` would read it each time).
+- It must be the site's own and trusted. It is checked strictly anyway, since
+  an SVG can carry scripts: at most 16 KB, well-formed XML with `<svg>` at its
+  root, no DOCTYPE, no `<script>`, `<foreignObject>`, `<iframe>`, `<object>`,
+  `<embed>` or `<style>` (it would style the whole page — `svgo
+  --enable=inlineStyles` turns one into attributes), no `on…=` handlers, links
+  only to `#…` inside it, no `javascript:`, no `url()` other than `url(#…)`,
+  no `@import`, no animation that changes a link. A refused logo is an error
+  naming the line (`site.rules:4: challenge-logo: the logo is refused -- …`).
+  Its IDs get a prefix, so it never takes over the page's own; it is scaled
+  into the ring by its `viewBox` (or `width`/`height`).
+
 
 ## No internet needed — and a DMZ
 
