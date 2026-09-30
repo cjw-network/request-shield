@@ -11,7 +11,7 @@
  *   php bin/request-shield reload site.rules [--source=<glob>]...
  *   php bin/request-shield trace  site.rules "GET https://www.example.org/wp-login.php" [--ip=<address>] [--ua=<User-Agent>]
  *   php bin/request-shield crawlers site.rules [update] [--force]
- *   php bin/request-shield stats site.rules [--days=7 | --from=2026-01-01 --to=2026-09-30] [--by=day|week|month|year] [--crawler=<ID>] [--json]
+ *   php bin/request-shield stats site.rules [--days=7 | --from=2026-01-01 --to=2026-09-30] [--by=day|week|month|year] [--crawler=<ID>] [--path=/news/] [--json]
  *
  * check:  reads every file, reports the first error with file and line, and
  *         warns about rule files anyone else could change.
@@ -65,6 +65,8 @@ foreach ($args as $a) {
         $period['by'] = $m[1];
     } elseif (strncmp($a, '--crawler=', 10) === 0) {
         $period['crawler'] = substr($a, 10);
+    } elseif (strncmp($a, '--path=', 7) === 0) {
+        $period['path'] = '/' . ltrim(substr($a, 7), '/');
     } elseif (strncmp($a, '--ua=', 5) === 0) {
         $ua = substr($a, 5);
     } elseif (strncmp($a, '--ip=', 5) === 0) {
@@ -81,7 +83,7 @@ if (!in_array($command, ['check', 'show', 'reload', 'trace', 'crawlers', 'stats'
     fwrite(STDERR, "usage: request-shield check|show|reload <main.rules> [--source=<glob>]...\n"
         . "       request-shield trace <main.rules> \"GET https://www.example.org/path\" [--ip=<address>] [--ua=<User-Agent>] [--source=<glob>]...\n"
         . "       request-shield crawlers <main.rules> [update] [--force]\n"
-        . "       request-shield stats <main.rules> [--days=7 | --from=YYYY-MM-DD --to=YYYY-MM-DD] [--by=day|week|month|year] [--crawler=<ID>] [--json]\n");
+        . "       request-shield stats <main.rules> [--days=7 | --from=YYYY-MM-DD --to=YYYY-MM-DD] [--by=day|week|month|year] [--crawler=<ID>] [--path=/news/] [--json]\n");
     exit(2);
 }
 if (substr($file, -6) !== '.rules') {
@@ -123,7 +125,7 @@ if ($command === 'stats') {
         fwrite(STDERR, "no crawler {$period['crawler']} -- see bin/request-shield crawlers " . basename($file) . "\n");
         exit(2);
     }
-    /** @var array{from?: string, to?: string, by?: string, crawler?: string} $period */
+    /** @var array{from?: string, to?: string, by?: string, crawler?: string, path?: string} $period */
     $r = StatsReport::build($settings, null, $days, null, $period);
     if ($json) {
         echo json_encode($r, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
@@ -153,6 +155,25 @@ if ($command === 'stats') {
         echo "\nRules that decided most:\n";
         foreach (array_slice($r['rules'], 0, 10, true) as $rule => $v) {
             echo '  ' . str_pad($n($v), 8, ' ', STR_PAD_LEFT) . "  $rule\n";
+        }
+    }
+    if ($r['subtree'] !== null) {
+        $st = $r['subtree'];
+        echo "\nSubtree {$st['path']}: " . $n($st['total']) . ' views (people ' . $n($st['people']) . ', crawlers ' . $n($st['crawlers']) . ', bots ' . $n($st['bots']) . ')'
+            . ($st['exact'] ? '' : ' -- the sum of its most visited pages') . "\n";
+    }
+    if ($r['folders'] !== []) {
+        echo "\nMost visited sections       total   people crawlers    bots\n";
+        foreach (array_slice($r['folders'], 0, 10, true) as $folder => $v) {
+            echo '  ' . str_pad((string) $folder, 24) . str_pad($n($v['total']), 8, ' ', STR_PAD_LEFT) . str_pad($n($v['people']), 9, ' ', STR_PAD_LEFT)
+                . str_pad($n($v['crawlers']), 9, ' ', STR_PAD_LEFT) . str_pad($n($v['bots']), 8, ' ', STR_PAD_LEFT) . "\n";
+        }
+    }
+    if ($r['pages'] !== []) {
+        echo "\nMost visited pages          total   people crawlers    bots\n";
+        foreach (array_slice($r['pages'], 0, 10, true) as $path => $v) {
+            echo '  ' . str_pad((string) $path, 24) . str_pad($n($v['total']), 8, ' ', STR_PAD_LEFT) . str_pad($n($v['people']), 9, ' ', STR_PAD_LEFT)
+                . str_pad($n($v['crawlers']), 9, ' ', STR_PAD_LEFT) . str_pad($n($v['bots']), 8, ' ', STR_PAD_LEFT) . "\n";
         }
     }
     if ($r['notFound'] !== []) {

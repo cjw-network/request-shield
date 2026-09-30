@@ -19,6 +19,11 @@ With `set stats on` the shield counts, per hour, while requests pass:
   `sitemap-news.xml`, … also `.gz`) with the site's answer (which exist: 200,
   which not: 404), and which verified crawler read which, how often and when last
   — useful after a content update: has Googlebot read the new sitemap yet?
+- **pages** — the most visited pages (a view: GET, 200, HTML; the path without
+  its query), by **people, crawlers and bots**, the top 100 an hour for each;
+  and their first two folders (`/news/`, `/news/2026/`), so a **subtree's**
+  views are exact: `stats --path=/news/`, or "path starts with" on the page —
+  like AWStats, without a log to read;
 - **bots** — other clients that say they are tools, not browsers, by family:
   `python`, `curl`, `wget`, `go`, `java`, `node`, `php`, `perl`, `headless`,
   `scrapy`, `empty` (no User-Agent), `other`.
@@ -59,7 +64,15 @@ shows each known crawler's last 7 days next to its row.
 
 ![](../explained/stats-page.png)
 
-`Report\StatsPage::render($settings, ['action' => '/stats'])` prints the page:
+`Report\StatsPage::render($settings, ['action' => '/stats'])` prints the page, in
+**two views** with tabs between them: **Visitors & pages** (`'view' => 'site'`, the
+default — for editors: people, crawlers, pages not found, who came, the most
+visited pages and sections with the subtree filter, broken links, sitemaps,
+what the crawlers did) and **Protection** (`'view' => 'shield'` — for admins:
+requests, bots, checked, refused, what the shield did, the answers, the rules,
+bot families). A CMS can put each where it belongs, one view without tabs
+(`'tabs' => false`): the site's in the editors' dashboard, the shield's in the
+admin area. In detail:
 tiles with a curve of the last 48 hours (requests, people, crawlers, bots,
 checked, refused, not found), stacked bars per hour, day, week or month for
 **who came** (people, crawlers, bots) and **what the shield did**, the answers
@@ -97,7 +110,7 @@ $ php bin/request-shield stats site.rules --from=2026-01-01 --to=2026-12-31 --by
 
 ```text
 set stats on                          # off (default) | on | the parts:
-set stats requests crawlers           #   requests, crawlers, not-found, bots
+set stats requests crawlers           #   requests, crawlers, not-found, bots, pages
 set stats-hours 7                     # days the hours are kept (default 7)
 set stats-days 400                    # days the day totals are kept (default 400), then summed into months
 set stats-months 0                    # months kept (default 0: for good)

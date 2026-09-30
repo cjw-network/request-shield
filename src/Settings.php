@@ -143,8 +143,8 @@ final class Settings
         public int $crawlerLogDays = 30,
         /** @readonly whether the crawler logs keep the query string */
         public bool $crawlerLogQuery = true,
-        /** @var list<string> @readonly what is counted: requests, crawlers, not-found, bots */
-        public array $statsParts = ['requests', 'crawlers', 'not-found', 'bots'],
+        /** @var list<string> @readonly what is counted: requests, crawlers, not-found, bots, pages */
+        public array $statsParts = ['requests', 'crawlers', 'not-found', 'bots', 'pages'],
         /** @readonly with APCu, seconds between writes of the counts to disk (0: only hourly) */
         public int $statsFlush = 60,
         /** @readonly months the month totals are kept (0: for good) */
@@ -679,7 +679,7 @@ final class Settings
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 
     /** What the statistics can count (set stats <parts>). */
-    public const STATS_PARTS = ['requests', 'crawlers', 'not-found', 'bots'];
+    public const STATS_PARTS = ['requests', 'crawlers', 'not-found', 'bots', 'pages'];
 
     /**
      * The settings of a file, checked only when it changed. A ".rules" file

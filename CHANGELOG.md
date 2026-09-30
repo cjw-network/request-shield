@@ -96,6 +96,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   days it shows. Measured: exact counts under 32 parallel requests, -5 to -10 %
   throughput with APCu at ~6,000 requests a second.
 
+- The most visited pages, by people, crawlers and bots (statistics part
+  `pages`, on with `set stats on`): page views (GET, 200, HTML) per path, the
+  top 100 an hour for each kind of visitor, and their first two folders, so a
+  subtree's views are exact -- `stats --path=/news/` and a "path starts with"
+  filter on the statistics page, with "most visited sections".
+- The statistics page in two views: **Visitors & pages** for editors (the
+  default) and **Protection** for admins, with tabs -- or one of them embedded
+  on its own (`'view' => 'site'|'shield'`, `'tabs' => false`).
+
 ### Changed
 - The query string is parsed once per request, for every check that reads it.
 

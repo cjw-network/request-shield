@@ -148,11 +148,12 @@ final class Config
             // days, day totals for 'days' days. Off: nothing is counted.
             // 'parts': what is counted -- requests (actions, rules, status codes),
             // crawlers (0014), not-found (pages the site did not find, and the
-            // links to them), bots (other bots by family). 'flush': with APCu,
+            // links to them), bots (other bots by family), pages (the most visited
+            // pages, by people, crawlers, bots). 'flush': with APCu,
             // every so many seconds the counts are written to the hour's file,
             // so a restart of PHP-FPM loses at most that much (0: only hourly).
             // Days past 'days' are summed into their month, kept 'months' months (0: for good).
-            'stats' => ['enabled' => false, 'parts' => ['requests', 'crawlers', 'not-found', 'bots'], 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 60],
+            'stats' => ['enabled' => false, 'parts' => ['requests', 'crawlers', 'not-found', 'bots', 'pages'], 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 60],
             // One log file per known crawler and day (dir/CRAWL-GPTBOT/2026-09-30.log),
             // for the kinds listed ([]: all); kept 'days' days; 'query' false leaves
             // the query string out. null: none.

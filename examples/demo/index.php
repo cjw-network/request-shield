@@ -142,12 +142,13 @@ if ($path === '/search') {
     $only = isset($_GET['crawler']) && isset($shield->settings->crawlers[(string) $_GET['crawler']]) ? (string) $_GET['crawler'] : null;
     if (($_GET['format'] ?? '') === 'json') {
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(\CjwNetwork\RequestShield\Report\StatsReport::build($shield->settings, null, $days, null, ['by' => $by === null || $by === 'hour' ? 'day' : $by] + ($only !== null ? ['crawler' => $only] : [])),
+        echo json_encode(\CjwNetwork\RequestShield\Report\StatsReport::build($shield->settings, null, $days, null, ['by' => $by === null || $by === 'hour' ? 'day' : $by] + ($only !== null ? ['crawler' => $only] : [])
+            + (isset($_GET['path']) && $_GET['path'] !== '' ? ['path' => '/' . ltrim((string) $_GET['path'], '/')] : [])),
             JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         exit;
     }
     header('Content-Type: text/html; charset=utf-8');
-    echo \CjwNetwork\RequestShield\Report\StatsPage::render($shield->settings, ['action' => $url('/stats'), 'days' => $days, 'crawler' => $only,
+    echo \CjwNetwork\RequestShield\Report\StatsPage::render($shield->settings, ['action' => $url('/stats'), 'days' => $days, 'crawler' => $only, 'path' => isset($_GET['path']) ? (string) $_GET['path'] : null, 'view' => (string) ($_GET['view'] ?? 'site'),
         'lang' => (string) ($_GET['lang'] ?? 'auto'), 'accept' => $request->header('accept-language'), 'fragment' => isset($_GET['fragment']),
         'home' => $url('/'), 'homeLabel' => 'request-shield demo'] + ($by !== null ? ['by' => $by] : []));
     exit;

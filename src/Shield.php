@@ -302,11 +302,15 @@ final class Shield
             }
         }
         $crawling = in_array('crawlers', $parts, true);
+        $paging = in_array('pages', $parts, true);
         $ua = (string) $request->header('user-agent');
-        // A crawler is looked at only for its statistics or its log.
-        $id = $s->crawlers === [] || (!$crawling && $s->crawlerLogDir === null) ? null : $this->crawlers()->claims($ua);
+        // A crawler is looked at only for its statistics, the pages' visitors or its log.
+        $id = $s->crawlers === [] || (!$crawling && !$paging && $s->crawlerLogDir === null) ? null : $this->crawlers()->claims($ua);
+        // Who: a verified crawler, a bot (one that says so, or only borrows a crawler's name), or a person.
+        $who = 'people';
         if ($id !== null) {
             $verified = $this->crawlers()->verified($request->clientIp, $id);
+            $who = $verified ? 'crawlers' : 'bots';
             if ($crawling) {
                 $keys[] = "c:$id:seen";
                 $keys[] = "c:$id:" . ($verified ? 'verified' : 'claimed');
@@ -333,10 +337,13 @@ final class Shield
                     Log::line($s, $request, $verified ? $decision : $decision->claiming($id), $rule, $now, false, $verified ? $request->clientIp : null, $s->crawlerLogQuery),
                     $s->logMaxSize);
             }
-        } elseif (in_array('bots', $parts, true)) {
+        } elseif (in_array('bots', $parts, true) || $paging) {
             $family = Stats::botFamily($ua);
             if ($family !== null) {
-                $keys[] = 'o:' . $family;
+                $who = 'bots';
+                if (in_array('bots', $parts, true)) {
+                    $keys[] = 'o:' . $family;
+                }
             }
         }
         if (!$s->statsEnabled) {
@@ -346,7 +353,7 @@ final class Shield
         $stats = $this->stats;
         $requests = in_array('requests', $parts, true);
         $missing = in_array('not-found', $parts, true);
-        if (!$atEnd || (!$requests && !$missing && !$crawling)) {
+        if (!$atEnd || (!$requests && !$missing && !$crawling && !$paging)) {
             if ($requests) {
                 $keys[] = 's:' . $decision->status;          // the shield answered itself
             }
@@ -358,12 +365,20 @@ final class Shield
             }
             return;
         }
-        register_shutdown_function(static function () use ($keys, $request, $now, $stats, $requests, $missing, $crawling): void {
+        register_shutdown_function(static function () use ($keys, $request, $now, $stats, $requests, $missing, $crawling, $paging, $who): void {
             $status = http_response_code();
             if (is_int($status) && $status > 0) {
                 foreach (self::statusKeys($request, $status) as $k) {
                     if (strncmp($k, 'sm:', 3) === 0 ? $crawling : (strncmp($k, 's:', 2) === 0 ? $requests : $missing)) {
                         $keys[] = $k;
+                    }
+                }
+                // A page view: GET, 200, HTML -- counted by who came.
+                if ($paging && $status === 200 && $request->method === 'GET' && self::isHtml(headers_list())) {
+                    $keys[] = 'pg:' . $who . '|' . self::word($request->path);
+                    // Its first two folders too: how many views a subtree got, exactly.
+                    foreach (self::folders($request->path) as $folder) {
+                        $keys[] = 'pd:' . $who . '|' . self::word($folder);
                     }
                 }
             }
@@ -374,6 +389,46 @@ final class Shield
     }
 
     private ?Stats $stats = null;
+
+    /**
+     * The first two folders of a path: /news/2026/10/x -> /news/, /news/2026/;
+     * /news/ -> /news/ (its own page belongs to it).
+     *
+     * @return list<string>
+     */
+    public static function folders(string $path): array
+    {
+        $parts = explode('/', trim($path, '/'));
+        if (substr($path, -1) !== '/') {
+            array_pop($parts);                  // the page itself; a folder's own page (/news/) belongs to it
+        }
+        $out = [];
+        $prefix = '/';
+        foreach (array_slice($parts, 0, 2) as $part) {
+            if ($part === '') {
+                break;
+            }
+            $prefix .= $part . '/';
+            $out[] = $prefix;
+        }
+        return $out;
+    }
+
+    /**
+     * Whether the answer is a page: its Content-Type is HTML, or none was set
+     * (PHP's default is text/html).
+     *
+     * @param list<string> $headers headers_list()
+     */
+    public static function isHtml(array $headers): bool
+    {
+        foreach ($headers as $h) {
+            if (strncasecmp($h, 'content-type:', 13) === 0) {
+                return stripos($h, 'text/html') !== false || stripos($h, 'application/xhtml') !== false;
+            }
+        }
+        return true;
+    }
 
     /** sitemap.xml, sitemap_index.xml, sitemap-news.xml, …, also .gz, in any folder. */
     public static function isSitemap(string $path): bool

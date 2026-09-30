@@ -29,7 +29,9 @@ namespace CjwNetwork\RequestShield;
  * have done), "s:<status>" (the answer's status code), "n:<path>" (a page the
  * site did not find), "nr:<path>|<referrer>" (where a link to it was: a path
  * of the site itself, or another site's host), "sm:<sitemap>|<status>" (a
- * sitemap asked for, and the answer), "smc:<sitemap>|<crawler>" (a verified
+ * sitemap asked for, and the answer), "pg:<people|crawlers|bots>|<path>" (a
+ * page the site answered with 200 and HTML), "pd:<people|crawlers|bots>|<folder>"
+ * (its first two folders, for a subtree's views), "smc:<sitemap>|<crawler>" (a verified
  * crawler read it). "l:<crawler>|<time>|<address>" is not counted: the
  * crawler's last visit ("l:sitemap:<path>@<crawler>|…": its last read of a
  * sitemap).
@@ -43,6 +45,9 @@ final class Stats
     public const PAGES = 50;
 
     public const REFERRERS = 5;
+
+    /** The most visited pages kept per kind of visitor and hour (and in a day's totals). */
+    public const TOP = 100;
 
     /** Sitemaps kept a day (and five times as many sitemap-crawler pairs); the rest count as "(other)". */
     public const SITEMAPS = 20;
@@ -181,6 +186,14 @@ final class Stats
         if (strncmp($key, 'nr:', 3) === 0) {
             $g = substr($key, 0, (int) strpos($key, '|'));
             return [$g, self::REFERRERS, $g . '|(other)'];
+        }
+        if (strncmp($key, 'pd:', 3) === 0) {
+            $g = substr($key, 0, (int) strpos($key, '|'));
+            return [$g, self::TOP * 2, $g . '|(other)'];
+        }
+        if (strncmp($key, 'pg:', 3) === 0) {
+            $g = substr($key, 0, (int) strpos($key, '|'));
+            return [$g, self::TOP, $g . '|(other)'];
         }
         if (strncmp($key, 'sm:', 3) === 0) {
             return ['sm', self::SITEMAPS, 'sm:(other)|0'];

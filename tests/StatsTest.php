@@ -80,7 +80,7 @@ return [
                 RuleFile::read(["$dir/q.rules"]);
                 throw new TestFailure('accepted "everything"');
             } catch (\CjwNetwork\RequestShield\Rules\RuleFileException $e) {
-                truthy(strpos($e->getMessage(), 'q.rules:1: stats is on, off or what to count: requests, crawlers, not-found, bots') === 0, $e->getMessage());
+                truthy(strpos($e->getMessage(), 'q.rules:1: stats is on, off or what to count: requests, crawlers, not-found, bots, pages') === 0, $e->getMessage());
             }
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
@@ -288,6 +288,8 @@ return [
     },
     'status keys: pages not found and where the links to them are -- the site\'s own path, another site\'s host only' => function (): void {
         same(['s:200'], Shield::statusKeys(statsReq('/a'), 200));
+        same([true, true, false, true], [Shield::isHtml([]), Shield::isHtml(['Content-Type: text/html; charset=utf-8']), Shield::isHtml(['X-A: b', 'content-type: application/json']),
+            Shield::isHtml(['Content-Type: application/xhtml+xml'])], 'a page: HTML, or no Content-Type (PHP\'s default)');
         same(['s:404', 'n:/old'], Shield::statusKeys(statsReq('/old'), 404));
         same(['s:404', 'n:/old', 'nr:/old|/news/x'], Shield::statusKeys(statsReq('/old', '203.0.113.9', 'x', ['HTTP_REFERER' => 'https://www.example.org/news/x?id=7']), 404), 'a broken link on the site');
         same(['s:410', 'n:/old', 'nr:/old|other.example'], Shield::statusKeys(statsReq('/old', '203.0.113.9', 'x', ['HTTP_REFERER' => 'https://Other.Example/a/b?q=secret']), 410), 'another site: its host, nothing else');
@@ -330,13 +332,36 @@ return [
             same(['/old-sitemap.xml' => ['statuses' => ['404' => 1], 'crawlers' => []], '/sitemap.xml' => ['statuses' => ['200' => 1], 'crawlers' => ['CRAWL-GOOGLE' => ['count' => 1, 'last' => STATS_T0 + 5]]]], $maps['sitemaps']);
             $words = implode("\n", $maps['sentences']);
             truthy(strpos($words, '/old-sitemap.xml was asked for 1× but does not exist (404).') !== false && strpos($words, 'CRAWL-GOOGLE read /sitemap.xml 1×, last on') !== false, $words);
+            // The most visited pages, by who came.
+            $st->count(['pg:people|/news', 'pg:people|/news', 'pg:crawlers|/news', 'pg:bots|/', 'pg:people|/about'], STATS_T0 + 7);
+            $top = StatsReport::build($s, $st, 7, STATS_T0 + 10)['pages'];
+            same(['/news' => ['people' => 2, 'crawlers' => 1, 'bots' => 0, 'total' => 3], '/about' => ['people' => 1, 'crawlers' => 0, 'bots' => 0, 'total' => 1],
+                '/' => ['people' => 0, 'crawlers' => 0, 'bots' => 1, 'total' => 1]], $top, 'most visited first; equal: more people first');
+            // A subtree: exact where it is a counted folder, else the sum of its pages.
+            $st->count(['pg:people|/news/2026/a', 'pd:people|/news/', 'pd:people|/news/2026/', 'pg:crawlers|/news/b', 'pd:crawlers|/news/', 'pd:people|/news/'], STATS_T0 + 8);
+            $sub = StatsReport::build($s, $st, 7, STATS_T0 + 10, ['path' => '/news/']);
+            same(['path' => '/news/', 'people' => 2, 'crawlers' => 1, 'bots' => 0, 'total' => 3, 'exact' => true], $sub['subtree'], 'the folder\'s own counter');
+            same(['/news/2026/a', '/news/b'], array_keys($sub['pages']), 'only its pages (/news without the slash is not below /news/)');
+            same(['/news/2026/'], array_keys($sub['folders']), 'its sections');
+            same(false, StatsReport::build($s, $st, 7, STATS_T0 + 10, ['path' => '/news/2026/a'])['subtree']['exact'] ?? null, 'not a counted folder: the sum of the pages');
+            same(['/news/', '/news/2026/'], Shield::folders('/news/2026/10/x'));
+            same(['/news/'], Shield::folders('/news/'), 'a folder\'s own page belongs to it');
+            same([], Shield::folders('/about'));
             // The page: charts, both languages, everything escaped.
             $st->count(['n:/<script>x', 'o:curl', 'c:CRAWL-GOOGLE:seen'], STATS_T0 + 6);
-            $page = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'action' => '/stats']);
+            $page = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'action' => '/stats', 'view' => 'all']);
             truthy(strpos($page, '<html lang="de">') !== false && strpos($page, 'Wer kam') !== false && strpos($page, 'Nicht gefundene Seiten') !== false, 'German');
             truthy(substr_count($page, '<svg') >= 4 && strpos($page, 'class="chart"') !== false && strpos($page, 'class="ring"') !== false, 'the charts');
             truthy(strpos($page, '<script>x') === false && strpos($page, '&lt;script&gt;x') !== false, 'a path is never markup');
             truthy(strpos($page, 'Sitemaps') !== false && strpos($page, 'CRAWL-GOOGLE') !== false, 'sitemaps, crawlers');
+            truthy(strpos($page, 'Meistbesuchte Seiten') !== false && strpos($page, '<code>/news</code>') !== false, 'the most visited pages');
+            // Two views: for editors (visitors and pages) and for admins (the protection).
+            $site = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'action' => '/stats']);
+            $shield = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'action' => '/stats', 'view' => 'shield']);
+            truthy(strpos($site, 'Meistbesuchte Seiten') !== false && strpos($site, 'Nicht gefundene Seiten') !== false && strpos($site, 'Regeln, die am meisten entschieden') === false, 'the site view (the default): pages, links -- no rules');
+            truthy(strpos($shield, 'Regeln, die am meisten entschieden') !== false && strpos($shield, 'Was der Schutz tat') !== false && strpos($shield, 'Meistbesuchte Seiten') === false, 'the shield view: what it did, rules -- no pages');
+            truthy(strpos($site, 'class="tab on"') !== false && strpos($site, 'view=shield') !== false, 'tabs between the two');
+            truthy(strpos(\CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'tabs' => false]), 'class="tabs"') === false, 'embedded: one view, no tabs');
             $en = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'accept' => 'en-US,en;q=0.9', 'fragment' => true]);
             truthy(strpos($en, 'Who came') !== false && strpos($en, '<html') === false, 'the browser\'s language; only the content for the refresh');
             truthy(strpos(\CjwNetwork\RequestShield\Report\StatsPage::render(Settings::from([])), 'set stats on') !== false, 'without statistics: how to switch them on');
@@ -364,19 +389,21 @@ return [
             $get = static function (string $uri, string $headers = '') use ($port): void {
                 @file_get_contents("http://127.0.0.1:$port$uri", false, stream_context_create(['http' => ['header' => $headers, 'ignore_errors' => true, 'timeout' => 10]]));
             };
-            $get('/');
+            $get('/', "User-Agent: Mozilla/5.0 (X11; Linux x86_64) Firefox/136.0\r\n");
+            $get('/', "User-Agent: python-requests/2.32\r\n");
             $get('/missing-page', "Referer: http://127.0.0.1:$port/news/x\r\n");
             $get('/index.php/.env');
             $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
             exec("$bin stats " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
             $shown = implode("\n", $out);
             same(0, $code, $shown);
-            truthy(strpos($shown, '3 requests: 2 let through, 0 checked, 0 told to wait, 1 refused') !== false, $shown);
-            truthy(strpos($shown, 'answers: 200: 1, 404: 2') !== false, 'the site\'s 404 and the shield\'s');
+            truthy(strpos($shown, '4 requests: 3 let through, 0 checked, 0 told to wait, 1 refused') !== false, $shown);
+            truthy(strpos($shown, 'answers: 200: 2, 404: 2') !== false, 'the site\'s 404 and the shield\'s');
+            truthy(preg_match('~^  /\s+2\s+1\s+0\s+1$~m', $shown) === 1, 'the front page: 2 views, 1 person, 1 bot (the 404 and the refusal are no page views): ' . $shown);
             truthy(preg_match('~1\s+/missing-page\s+linked from: /news/x \(1\)~', $shown) === 1, 'the page not found and the link to it');
             $out = [];
             exec("$bin stats " . escapeshellarg("$dir/site.rules") . ' --json 2>&1', $out, $code);
-            same(3, array_sum((array) (json_decode(implode("\n", $out), true)['totals'] ?? [])), 'JSON');
+            same(4, array_sum((array) (json_decode(implode("\n", $out), true)['totals'] ?? [])), 'JSON');
             $out = [];
             exec("$bin stats " . escapeshellarg("$dir/site.rules") . ' --from=' . date('Y-m-d', time() - 86400) . ' --to=' . gmdate('Y-m-d') . ' --by=month 2>&1', $out, $code);
             truthy($code === 0 && preg_match('/^  ' . gmdate('Y-m') . '\s+\d/m', implode("\n", $out)) === 1, 'a period, by month: ' . implode("\n", $out));
