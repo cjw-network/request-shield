@@ -17,6 +17,10 @@ on shuts them out, since they run no JavaScript. This proposal adds a list of
 names**, and a **policy per site**: let them through (only the limit applies),
 check them like everyone else, or refuse them.
 
+## In one picture
+
+![A crawler says who it is; the shield checks its address -- not theirs: an ordinary visitor; verified: the site's policy decides -- through (only the limit), like everyone, or no access](0011-known-crawlers.svg)
+
 ## Motivation
 
 - Many sites want to be found in AI search and answers, not only in classic
