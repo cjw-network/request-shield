@@ -176,7 +176,9 @@ final class StatsPage
 
         // The most visited pages and sections: one bar each, by who came; a
         // subtree filter ("path starts with") with its views.
-        $keep = ['view' => $view, 'days' => $days, 'by' => $by, 'lang' => $lang] + ($crawler !== null ? ['crawler' => $crawler] : []);
+        // What the filter form carries along: the period, the language -- and the
+        // view only where no address names it (with links the path does).
+        $keep = ($links !== [] ? [] : ['view' => $view]) + ['days' => $days, 'by' => $by, 'lang' => $lang] + ($crawler !== null ? ['crawler' => $crawler] : []);
         $link = static fn (string $p): string => $query($keep + ['path' => $p]);
         $h = '';
         $h .= '<section class="card"><h2>' . $e($t['top']) . '</h2><form class="filter" method="get" action="' . $e($action) . '">';
@@ -271,7 +273,7 @@ final class StatsPage
                 . $grid($chartWhat, $answers) . $crawlersBlock . $grid($rulesBlock, $chartWho);
         } elseif ($view === 'site') {
             $h = $body . '<div class="tiles">' . $tiles['people'] . $tiles['crawlers'] . $tiles['notFound'] . '</div>' . $hint
-                . $grid($chartWho, $short) . $topBlock . $crawlersBlock . $grid($missingBlock, $sitemapsBlock);
+                . $topBlock . $grid($chartWho, $short) . $crawlersBlock . $grid($missingBlock, $sitemapsBlock);
         } else {
             $h = $body . '<div class="tiles">' . implode('', $tiles) . '</div>' . $hint . $grid($chartWho, $chartWhat) . $grid($answers, $short) . $topBlock . $crawlersBlock
                 . $sitemapsBlock . $grid($missingBlock, $rulesBlock);
@@ -329,7 +331,7 @@ final class StatsPage
             $w = static fn (int $x): string => number_format(100 * $x / $most, 2, '.', '');
             $name = '<code>' . $e((string) $p) . '</code>';
             $out .= '<div class="prow"><div class="pname">' . ($href !== null ? '<a href="' . $e($href((string) $p)) . '">' . $name . '</a>' : $name) . '</div>'
-                . '<div class="hbar" title="' . $e($n($v['people']) . ' ' . $t['people'] . ' · ' . $n($v['crawlers']) . ' ' . $t['crawlers'] . ' · ' . $n($v['bots']) . ' ' . $t['bots']) . '">'
+                . '<div class="hbar thin" title="' . $e($n($v['people']) . ' ' . $t['people'] . ' · ' . $n($v['crawlers']) . ' ' . $t['crawlers'] . ' · ' . $n($v['bots']) . ' ' . $t['bots']) . '">'
                 . '<i class="people" style="width:' . $w($v['people']) . '%"></i><i class="crawlers" style="width:' . $w($v['crawlers']) . '%"></i><i class="bots" style="width:' . $w($v['bots']) . '%"></i></div>'
                 . '<div class="cnum">' . $e($n($v['total'])) . ' <span class="note">' . $e($n($v['people']) . ' · ' . $n($v['crawlers']) . ' · ' . $n($v['bots'])) . '</span></div></div>';
         }
@@ -574,11 +576,13 @@ h1{font-size:26px;margin:8px 0 4px}h2{font-size:16px;margin:0 0 10px}h2 small{co
 .cname a{font-weight:600;text-decoration:none}.kind{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--bg);color:var(--m);border:1px solid var(--line)}
 .hbar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--bg)}.hbar i{display:block;height:100%}
 .hbar .through{background:var(--through)}.hbar .checked{background:var(--checked)}.hbar .refused{background:var(--refused)}.hbar .claimed{background:repeating-linear-gradient(45deg,var(--claimed) 0 4px,transparent 4px 7px)}
-.prow{display:grid;grid-template-columns:minmax(160px,340px) 1fr auto;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}.prow:last-of-type{border-bottom:0}
+.prow{display:grid;grid-template-columns:1fr auto;grid-template-areas:"name num" "bar bar";gap:3px 12px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line)}.prow:last-of-type{border-bottom:0}
+.prow .pname{grid-area:name;min-width:0}.prow .cnum{grid-area:num}.prow .hbar{grid-area:bar}.hbar.thin{height:6px;border-radius:3px}
 .hbar .people{background:var(--people)}.hbar .crawlers{background:var(--crawlers)}.hbar .bots{background:var(--bots)}
-@media (max-width:640px){.prow{grid-template-columns:1fr auto}.prow .hbar{grid-column:1/3;order:3}}
+
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:4px 0 10px}.tab{padding:8px 14px;text-decoration:none;color:var(--m);border-bottom:3px solid transparent;font-weight:600}.tab.on{color:var(--fg);border-color:var(--a)}
-.filter{margin:0 0 10px;font-size:14px;color:var(--m)}.filter input[type=text]{font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);width:220px}
+.filter{margin:0 0 10px;font-size:14px;color:var(--m);display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}.filter label{display:flex;gap:8px;align-items:center;flex:1 1 320px}
+.filter input[type=text]{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);flex:1;min-width:0}
 .filter button{font:inherit;padding:4px 12px;border:1px solid var(--a);border-radius:6px;background:var(--a);color:#fff;cursor:pointer}.subtree{background:var(--bg);border-radius:8px;padding:8px 10px}.sub2{margin-top:16px}
 .cnum{font-weight:700;white-space:nowrap}.cnum .note{font-weight:400;font-size:12px}
 @media (max-width:640px){.crow{grid-template-columns:1fr auto}.crow .hbar{grid-column:1/3;order:3}}

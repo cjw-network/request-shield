@@ -381,6 +381,8 @@ return [
                 'links' => ['all' => '/rs/dashboard', 'site' => '/rs/stats', 'shield' => '/rs/shield']]);
             truthy(strpos($linked, 'href="/rs/dashboard?days=7&amp;lang=en">Overview') !== false && strpos($linked, 'href="/rs/stats?days=7&amp;lang=en">Visitors') !== false, 'one address per view, three tabs');
             truthy(strpos($linked, 'view=') === false && strpos($linked, 'href="/rs/shield?days=30') !== false, 'the path names the view; the filters stay parameters');
+            $form = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]);
+            truthy(strpos($form, 'name="view"') === false && strpos($form, 'action="/rs/stats"') !== false, 'the filter form sends no view where the address names it (a site with query strict would refuse it)');
             $en = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'accept' => 'en-US,en;q=0.9', 'fragment' => true]);
             truthy(strpos($en, 'Who came') !== false && strpos($en, '<html') === false, 'the browser\'s language; only the content for the refresh');
             truthy(strpos(\CjwNetwork\RequestShield\Report\StatsPage::render(Settings::from([])), 'set stats on') !== false, 'without statistics: how to switch them on');
