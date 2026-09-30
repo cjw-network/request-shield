@@ -182,6 +182,37 @@ return [
         }
         same(['s:404', 'n:/a%2A3'], Shield::statusKeys(statsReq('/a*3'), 404), 'a "*" in a path would read as a count: escaped');
     },
+    'days, weeks, months, years: old days summed into their month, kept for good (or stats-months); the report grouped and filtered' => function (): void {
+        $dir = statsDir();
+        try {
+            $st = new Stats($dir, false, 2, 30, null, 30, 60, 0);
+            $at = static fn (string $d): float => (float) strtotime("$d 10:20 UTC");
+            $st->count(['a:allow', 'a:allow', 'c:CRAWL-GPTBOT:verified'], $at('2026-01-15'));
+            $st->count(['a:reject', 'c:CRAWL-GPTBOT:verified', 'c:CRAWL-GPTBOT:refused'], $at('2026-02-10'));
+            $st->count(['a:allow'], $at('2026-09-28'));
+            $st->count(['a:allow', 'c:CRAWL-GPTBOT:verified'], $at('2026-09-30'));
+            $st->count(['a:allow'], $at('2026-09-30') + 3600);                // rolled: January and February are older than 30 days
+            same([false, true, true], [is_file("$dir/d-20260115.json"), is_file("$dir/m-202601.json"), is_file("$dir/m-202602.json")], 'old days into their months');
+            $s = Settings::from(['storeDir' => $dir]);
+            $r = StatsReport::build($s, $st, 7, (int) $at('2026-09-30'), ['from' => '20260101', 'to' => '20260930', 'by' => 'month']);
+            same(['2026-01', '2026-02', '2026-09'], array_keys($r['periods']));
+            same([2, 0, 1], [$r['periods']['2026-01']['passed'], $r['periods']['2026-01']['refused'], $r['periods']['2026-02']['refused']]);
+            same(3, $r['periods']['2026-09']['passed'], 'the running month: its days');
+            $y = StatsReport::build($s, $st, 7, (int) $at('2026-09-30'), ['from' => '20260101', 'to' => '20260930', 'by' => 'year']);
+            same(['2026' => ['passed' => 5, 'uncached' => 0, 'checked' => 0, 'throttled' => 0, 'refused' => 1]], $y['periods'], 'a year');
+            $w = StatsReport::build($s, $st, 7, (int) $at('2026-09-30'), ['from' => '20260901', 'to' => '20260930', 'by' => 'week']);
+            same(['2026-W40'], array_keys($w['periods']), 'ISO weeks (28 and 30 September: week 40)');
+            $c = StatsReport::build($s, $st, 7, (int) $at('2026-09-30'), ['from' => '20260101', 'to' => '20260930', 'by' => 'month', 'crawler' => 'CRAWL-GPTBOT']);
+            same([['CRAWL-GPTBOT'], 1, 1, 1], [array_keys($c['crawlers']), $c['periods']['2026-01']['verified'], $c['periods']['2026-02']['refused'], $c['periods']['2026-09']['verified']], 'one crawler, per month');
+            same(3, $c['crawlers']['CRAWL-GPTBOT']['verified'], 'and in total');
+            // Months kept 3: January goes at the next roll-up.
+            $short = new Stats($dir, false, 2, 30, null, 30, 60, 3);
+            $short->count(['a:allow'], $at('2026-09-30') + 7200);
+            same([false, false], [is_file("$dir/m-202601.json"), is_file("$dir/m-202602.json")], 'stats-months 3: months before July removed');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'groups with a limit: 50 pages per crawler, 50 pages not found, 5 referrers each -- the rest as "(other)"' => function (): void {
         foreach (statsBackends() as $label => $apcu) {
             $dir = statsDir();
@@ -313,6 +344,12 @@ return [
             $out = [];
             exec("$bin stats " . escapeshellarg("$dir/site.rules") . ' --json 2>&1', $out, $code);
             same(3, array_sum((array) (json_decode(implode("\n", $out), true)['totals'] ?? [])), 'JSON');
+            $out = [];
+            exec("$bin stats " . escapeshellarg("$dir/site.rules") . ' --from=' . date('Y-m-d', time() - 86400) . ' --to=' . gmdate('Y-m-d') . ' --by=month 2>&1', $out, $code);
+            truthy($code === 0 && preg_match('/^  ' . gmdate('Y-m') . '\s+\d/m', implode("\n", $out)) === 1, 'a period, by month: ' . implode("\n", $out));
+            $out = [];
+            exec("$bin stats " . escapeshellarg("$dir/site.rules") . ' --crawler=CRAWL-NOBODY 2>&1', $out, $code);
+            same(2, $code, 'an unknown crawler');
             file_put_contents("$dir/off.rules", "set store-dir $dir/store\n");
             $out = [];
             exec("$bin stats " . escapeshellarg("$dir/off.rules") . ' 2>&1', $out, $code);

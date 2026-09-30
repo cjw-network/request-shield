@@ -20,7 +20,9 @@ namespace CjwNetwork\RequestShield;
  * one short line to the hour's file (lock-free, O_APPEND). The first request
  * after an hour is over moves the finished hours into one small JSON file per
  * day (<dir>/d-<yyyymmdd>.json); hours are kept for $hours days, the day's
- * totals for $days days.
+ * totals for $days days -- then they are added to their month's file
+ * (<dir>/m-<yyyymm>.json), kept for $months months (0: for good), so a year
+ * is twelve small files.
  *
  * A counter's name ("what"): "a:<action>", "r:<rule>", "c:<crawler>:<event>",
  * "p:<crawler>:<path>", "o:<bot family>", "m:<action>" (what monitor mode would
@@ -46,6 +48,7 @@ final class Stats
         private ?string $crawlerLog = null,
         private int $crawlerLogDays = 30,
         private int $flush = 60,
+        private int $months = 0,
     ) {
     }
 
@@ -53,7 +56,7 @@ final class Stats
     public static function of(Settings $s): self
     {
         $apcu = $s->store === 'apcu' || ($s->store === 'auto' && Store\ApcuStore::usable());
-        return new self($s->storeDir . '/stats', $apcu, $s->statsHours, $s->statsDays, $s->crawlerLogDir, $s->crawlerLogDays, $s->statsFlush);
+        return new self($s->storeDir . '/stats', $apcu, $s->statsHours, $s->statsDays, $s->crawlerLogDir, $s->crawlerLogDays, $s->statsFlush, $s->statsMonths);
     }
 
     /**
@@ -352,6 +355,21 @@ final class Stats
         foreach (glob($this->dir . '/d-*.json') ?: [] as $file) {
             $day = substr(basename($file, '.json'), 2);
             if ($day < $keepDays) {
+                // Into its month, then gone: the month keeps the total.
+                $d = self::load($file);
+                $total = $d['total'];
+                foreach ($d['hours'] as $counts) {
+                    $total = self::add($total, $counts);
+                }
+                $monthFile = $this->dir . '/m-' . substr($day, 0, 6) . '.json';
+                $m = self::load($monthFile);
+                $last = $m['last'];
+                foreach ($d['last'] as $id => $seen) {
+                    if ($seen[0] > ($last[$id][0] ?? 0)) {
+                        $last[$id] = $seen;
+                    }
+                }
+                self::save($monthFile, ['hours' => [], 'total' => self::cap(self::add($m['total'], $total)), 'last' => $last, 'days' => array_values(array_unique(array_merge($m['days'], [$day])))]);
                 @unlink($file);
             } elseif ($day < $keepHours) {
                 $d = self::load($file);
@@ -361,6 +379,14 @@ final class Stats
                         $total = self::add($total, $counts);
                     }
                     self::save($file, ['hours' => [], 'total' => self::cap($total), 'last' => $d['last']]);
+                }
+            }
+        }
+        if ($this->months > 0) {
+            $keepMonths = gmdate('Ym', (int) strtotime(gmdate('Y-m-01', (int) $now) . ' -' . $this->months . ' months'));
+            foreach (glob($this->dir . '/m-*.json') ?: [] as $file) {
+                if (substr(basename($file, '.json'), 2) < $keepMonths) {
+                    @unlink($file);
                 }
             }
         }
@@ -379,13 +405,25 @@ final class Stats
      * day's totals, the hours still kept, every crawler's last visit. The
      * running hour included.
      *
-     * @return array{days: array<string, array<string, int>>, hours: array<string, array<string, int>>, last: array<string, array{0: int, 1: string}>}
+     * Days older than $days are only in their month's total ("months": yyyymm =>
+     * counts, for every month file the range touches).
+     *
+     * @return array{days: array<string, array<string, int>>, hours: array<string, array<string, int>>, months: array<string, array<string, int>>, last: array<string, array{0: int, 1: string}>}
      */
     public function read(string $fromDay, string $toDay): array
     {
         $days = [];
         $hours = [];
         $last = [];
+        $months = [];
+        foreach (glob($this->dir . '/m-*.json') ?: [] as $file) {
+            $month = substr(basename($file, '.json'), 2);
+            if ($month >= substr($fromDay, 0, 6) && $month <= substr($toDay, 0, 6)) {
+                $months[$month] = self::load($file)['total'];
+                ksort($months[$month]);
+            }
+        }
+        ksort($months);
         foreach (glob($this->dir . '/d-*.json') ?: [] as $file) {
             $day = substr(basename($file, '.json'), 2);
             $d = self::load($file);
@@ -427,7 +465,7 @@ final class Stats
             ksort($counts);
         }
         unset($counts);
-        return ['days' => $days, 'hours' => $hours, 'last' => $last];
+        return ['days' => $days, 'hours' => $hours, 'months' => $months, 'last' => $last];
     }
 
     /**
@@ -473,13 +511,18 @@ final class Stats
         return $counts;
     }
 
-    /** @return array{hours: array<string, array<string, int>>, total: array<string, int>, last: array<string, array{0: int, 1: string}>} */
+    /**
+     * A day's or a month's file (a month: the days summed into it).
+     *
+     * @return array{hours: array<string, array<string, int>>, total: array<string, int>, last: array<string, array{0: int, 1: string}>, days: list<string>}
+     */
     private static function load(string $file): array
     {
         $d = @json_decode((string) @file_get_contents($file), true);
         $d = is_array($d) ? $d : [];
-        /** @var array{hours: array<string, array<string, int>>, total: array<string, int>, last: array<string, array{0: int, 1: string}>} */
-        return ['hours' => is_array($d['hours'] ?? null) ? $d['hours'] : [], 'total' => is_array($d['total'] ?? null) ? $d['total'] : [], 'last' => is_array($d['last'] ?? null) ? $d['last'] : []];
+        /** @var array{hours: array<string, array<string, int>>, total: array<string, int>, last: array<string, array{0: int, 1: string}>, days: list<string>} */
+        return ['hours' => is_array($d['hours'] ?? null) ? $d['hours'] : [], 'total' => is_array($d['total'] ?? null) ? $d['total'] : [],
+            'last' => is_array($d['last'] ?? null) ? $d['last'] : [], 'days' => is_array($d['days'] ?? null) ? array_values(array_filter($d['days'], 'is_string')) : []];
     }
 
     /** @param array<string, mixed> $d */

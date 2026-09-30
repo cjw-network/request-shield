@@ -24,18 +24,48 @@ use CjwNetwork\RequestShield\Stats;
 final class StatsReport
 {
     /**
-     * @return array{from: string, to: string, days: int, totals: array<string, int>, monitor: array<string, int>,
+     * The last $days days, or a period: $o['from'] and $o['to'] (yyyymmdd),
+     * grouped by $o['by'] (day, week, month, year) into 'periods', and
+     * $o['crawler'] to look at one crawler only. Days older than the stats
+     * keep them are only in their month's total: counted under the month.
+     *
+     * @param array{from?: string, to?: string, by?: string, crawler?: string} $o
+     * @return array{from: string, to: string, days: int, by: string, periods: array<string, array<string, int>>, totals: array<string, int>, monitor: array<string, int>,
      *   daily: array<string, array<string, int>>, hourly: array<string, array<string, int>>, rules: array<string, int>,
      *   crawlers: array<string, array{kind: string, policy: string, name: string, seen: int, verified: int, claimed: int, allowed: int, checked: int, refused: int, throttled: int, robots: int, pages: array<string, int>, last: array{0: int, 1: string}|null}>, bots: array<string, int>, statuses: array<string, int>,
      *   notFound: array<string, array{count: int, referrers: array<string, int>}>, sentences: list<string>}
      */
-    public static function build(Settings $s, ?Stats $stats = null, int $days = 7, ?int $now = null): array
+    public static function build(Settings $s, ?Stats $stats = null, int $days = 7, ?int $now = null, array $o = []): array
     {
         $now ??= time();
         $days = max(1, $days);
-        $from = gmdate('Ymd', $now - ($days - 1) * 86400);
-        $to = gmdate('Ymd', $now);
+        $to = $o['to'] ?? gmdate('Ymd', $now);
+        $from = $o['from'] ?? gmdate('Ymd', (int) strtotime($to . ' UTC') - ($days - 1) * 86400);
+        $days = (int) round(((int) strtotime($to . ' UTC') - (int) strtotime($from . ' UTC')) / 86400) + 1;
+        $by = in_array($o['by'] ?? 'day', ['day', 'week', 'month', 'year'], true) ? ($o['by'] ?? 'day') : 'day';
+        $only = $o['crawler'] ?? null;
         $read = ($stats ?? Stats::of($s))->read($from, $to);
+        // Days and, where the days are gone, their months: each with the period it belongs to.
+        $sets = [];
+        foreach ($read['days'] as $day => $counts) {
+            $t = (int) strtotime($day . ' UTC');
+            $sets[] = [['day' => gmdate('Y-m-d', $t), 'week' => gmdate('o-\\WW', $t), 'month' => gmdate('Y-m', $t), 'year' => gmdate('Y', $t)][$by], $counts];
+        }
+        foreach ($read['months'] as $month => $counts) {
+            $t = (int) strtotime($month . '01 UTC');
+            $sets[] = [['day' => gmdate('Y-m', $t) . ' (month)', 'week' => gmdate('Y-m', $t) . ' (month)', 'month' => gmdate('Y-m', $t), 'year' => gmdate('Y', $t)][$by], $counts];
+        }
+        $periods = [];
+        foreach ($sets as [$label, $counts]) {
+            $b = self::buckets($counts);
+            if ($only !== null) {
+                foreach (['seen', 'verified', 'claimed', 'allowed', 'checked', 'refused', 'throttled'] as $e) {
+                    $b[$e] = $counts["c:$only:$e"] ?? 0;
+                }
+            }
+            $periods[$label] = Stats::add($periods[$label] ?? [], $b);
+        }
+        ksort($periods);
 
         $totals = [];
         $monitor = [];
@@ -49,6 +79,8 @@ final class StatsReport
         $referrers = [];
         foreach ($read['days'] as $day => $counts) {
             $daily[(string) $day] = self::buckets($counts);
+        }
+        foreach ($sets as [, $counts]) {
             foreach ($counts as $k => $n) {
                 [$type, $rest] = explode(':', (string) $k, 2) + ['', ''];
                 switch ($type) {
@@ -106,6 +138,9 @@ final class StatsReport
 
         $out = [];
         foreach ($s->crawlers as $id => $x) {
+            if ($only !== null && $id !== $only) {
+                continue;
+            }
             $c = $crawlers[$id] ?? [];
             $top = $pages[$id] ?? [];
             arsort($top);
@@ -114,7 +149,7 @@ final class StatsReport
                 'checked' => $c['checked'] ?? 0, 'refused' => $c['refused'] ?? 0, 'throttled' => $c['throttled'] ?? 0, 'robots' => $c['robots'] ?? 0,
                 'pages' => array_slice($top, 0, 10, true), 'last' => $read['last'][$id] ?? null];
         }
-        return ['from' => $from, 'to' => $to, 'days' => $days, 'totals' => $totals, 'monitor' => $monitor, 'daily' => $daily, 'hourly' => $hourly,
+        return ['from' => $from, 'to' => $to, 'days' => $days, 'by' => $by, 'periods' => $periods, 'totals' => $totals, 'monitor' => $monitor, 'daily' => $daily, 'hourly' => $hourly,
             'rules' => array_slice($rules, 0, 20, true), 'crawlers' => $out, 'bots' => $bots, 'statuses' => $statuses, 'notFound' => $notFound,
             'sentences' => array_merge(self::sentences($out, $days), self::missing($notFound, $days))];
     }

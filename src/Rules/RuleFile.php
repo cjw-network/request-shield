@@ -68,6 +68,7 @@ final class RuleFile
         'log' => ['log.file', 'path'],
         'stats' => ['stats', 'stats'],
         'stats-flush' => ['stats.flush', 'seconds'],
+        'stats-months' => ['stats.months', 'int'],
         'stats-hours' => ['stats.hours', 'int'],
         'stats-days' => ['stats.days', 'int'],
         'crawler-log' => ['crawlerLog.dir', 'path'],

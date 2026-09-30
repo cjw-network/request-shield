@@ -67,7 +67,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   days: every time refused (as set: block)" and "Broken link: /news/x links to
   /old, which was not found". Optional: one log per known crawler and day
   (`set crawler-log <dir>`). About +7 µs a request with APCu in the container
-  (+27 µs with files, one appended line) ([docs](docs/features/statistics.md)).
+  (+27 µs with files, one appended line). Days, weeks, months and years:
+  old days are summed into month files (kept for good, or `stats-months`);
+  `stats --from=… --to=… --by=day|week|month|year --crawler=<ID>`
+  ([docs](docs/features/statistics.md)).
 
 ### Changed
 - The query string is parsed once per request, for every check that reads it.

@@ -51,13 +51,35 @@ In short:
 `--days=30` for a longer look, `--json` for a CMS or a dashboard. The rules page
 shows each known crawler's last 7 days next to its row.
 
+## Days, weeks, months, years
+
+```text
+$ php bin/request-shield stats site.rules --from=2026-01-01 --to=2026-09-30 --by=month
+                       cacheable     uncached      checked       waited      refused
+  2026-01                 41,203        2,110          188            4          610
+  2026-02                 38,950        1,987          201            0          702
+  …
+$ php bin/request-shield stats site.rules --from=2026-01-01 --to=2026-12-31 --by=month --crawler=CRAWL-GPTBOT
+                          visits  let through      checked      refused      claimed
+  2026-01                    812            0            0          812           14
+```
+
+- `--by=day|week|month|year` (weeks as ISO weeks, `2026-W40`), `--from`/`--to`
+  for any period, `--crawler=<ID>` for one crawler; with `--json` the same as
+  `periods` for a CMS.
+- Hours are kept `stats-hours` days (7), days `stats-days` days (400); then a
+  day is added to its month's file (`m-<yyyymm>.json`), kept `stats-months`
+  months (default 0: for good). A year is twelve small files — but a period
+  that reaches back past `stats-days` is only there by whole months.
+
 ## Switching it on — and parts of it
 
 ```text
 set stats on                          # off (default) | on | the parts:
 set stats requests crawlers           #   requests, crawlers, not-found, bots
 set stats-hours 7                     # days the hours are kept (default 7)
-set stats-days 400                    # days the day totals are kept (default 400)
+set stats-days 400                    # days the day totals are kept (default 400), then summed into months
+set stats-months 0                    # months kept (default 0: for good)
 set stats-flush 60s                   # with APCu: written to disk this often (default 60 s, 0: only hourly)
 ```
 
@@ -101,7 +123,8 @@ $report = CjwNetwork\RequestShield\Report\StatsReport::build($settings, null, 7)
 echo json_encode($report);
 ```
 
-`StatsReport::build()` returns the totals, each day and the last 48 hours as
+`StatsReport::build($settings, null, 7, null, ['from' => '20260101', 'to' => '20260930', 'by' => 'month', 'crawler' => 'CRAWL-GPTBOT'])`
+for a period, grouped and filtered (`periods`). It returns the totals, each day and the last 48 hours as
 five numbers (passed, uncached, checked, throttled, refused), the rules that
 decided most, the status codes, the pages not found with their referrers, each
 crawler (with its pages and last visit), the other bots, and the sentences.

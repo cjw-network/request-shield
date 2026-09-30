@@ -11,7 +11,7 @@
  *   php bin/request-shield reload site.rules [--source=<glob>]...
  *   php bin/request-shield trace  site.rules "GET https://www.example.org/wp-login.php" [--ip=<address>] [--ua=<User-Agent>]
  *   php bin/request-shield crawlers site.rules [update] [--force]
- *   php bin/request-shield stats site.rules [--days=7] [--json]
+ *   php bin/request-shield stats site.rules [--days=7 | --from=2026-01-01 --to=2026-09-30] [--by=day|week|month|year] [--crawler=<ID>] [--json]
  *
  * check:  reads every file, reports the first error with file and line, and
  *         warns about rule files anyone else could change.
@@ -51,6 +51,7 @@ $force = false;
 $ua = null;
 $days = 7;
 $json = false;
+$period = [];
 foreach ($args as $a) {
     if ($a === '--force') {
         $force = true;
@@ -58,6 +59,12 @@ foreach ($args as $a) {
         $json = true;
     } elseif (strncmp($a, '--days=', 7) === 0) {
         $days = max(1, (int) substr($a, 7));
+    } elseif (preg_match('/^--(from|to)=(\d{4})-(\d{2})-(\d{2})$/', $a, $m) === 1) {
+        $period[$m[1]] = $m[2] . $m[3] . $m[4];
+    } elseif (preg_match('/^--by=(day|week|month|year)$/', $a, $m) === 1) {
+        $period['by'] = $m[1];
+    } elseif (strncmp($a, '--crawler=', 10) === 0) {
+        $period['crawler'] = substr($a, 10);
     } elseif (strncmp($a, '--ua=', 5) === 0) {
         $ua = substr($a, 5);
     } elseif (strncmp($a, '--ip=', 5) === 0) {
@@ -74,7 +81,7 @@ if (!in_array($command, ['check', 'show', 'reload', 'trace', 'crawlers', 'stats'
     fwrite(STDERR, "usage: request-shield check|show|reload <main.rules> [--source=<glob>]...\n"
         . "       request-shield trace <main.rules> \"GET https://www.example.org/path\" [--ip=<address>] [--ua=<User-Agent>] [--source=<glob>]...\n"
         . "       request-shield crawlers <main.rules> [update] [--force]\n"
-        . "       request-shield stats <main.rules> [--days=7] [--json]\n");
+        . "       request-shield stats <main.rules> [--days=7 | --from=YYYY-MM-DD --to=YYYY-MM-DD] [--by=day|week|month|year] [--crawler=<ID>] [--json]\n");
     exit(2);
 }
 if (substr($file, -6) !== '.rules') {
@@ -112,7 +119,12 @@ if ($command === 'stats') {
         fwrite(STDERR, "no statistics: switch them on with \"set stats on\" in the rule file\n");
         exit(1);
     }
-    $r = StatsReport::build($settings, null, $days);
+    if (isset($period['crawler']) && !isset($settings->crawlers[$period['crawler']])) {
+        fwrite(STDERR, "no crawler {$period['crawler']} -- see bin/request-shield crawlers " . basename($file) . "\n");
+        exit(2);
+    }
+    /** @var array{from?: string, to?: string, by?: string, crawler?: string} $period */
+    $r = StatsReport::build($settings, null, $days, null, $period);
     if ($json) {
         echo json_encode($r, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
         exit(0);
@@ -120,7 +132,7 @@ if ($command === 'stats') {
     $n = static fn (int $v): string => number_format($v);
     $t = $r['totals'];
     $all = array_sum($t);
-    echo "Last $days day(s), " . substr($r['from'], 0, 4) . '-' . substr($r['from'], 4, 2) . '-' . substr($r['from'], 6) . ' to ' . substr($r['to'], 0, 4) . '-' . substr($r['to'], 4, 2) . '-' . substr($r['to'], 6) . ":\n\n";
+    echo ($period === [] ? "Last $days day(s), " : '') . substr($r['from'], 0, 4) . '-' . substr($r['from'], 4, 2) . '-' . substr($r['from'], 6) . ' to ' . substr($r['to'], 0, 4) . '-' . substr($r['to'], 4, 2) . '-' . substr($r['to'], 6) . ":\n\n";
     echo '  ' . $n($all) . ' requests: ' . $n(($t['allow'] ?? 0) + ($t['allow-uncached'] ?? 0)) . ' let through, ' . $n($t['challenge'] ?? 0) . ' checked, '
         . $n($t['throttle'] ?? 0) . ' told to wait, ' . $n($t['reject'] ?? 0) . " refused\n";
     if ($r['monitor'] !== []) {
@@ -128,6 +140,14 @@ if ($command === 'stats') {
     }
     if ($r['statuses'] !== []) {
         echo '  answers: ' . implode(', ', array_map(static fn (string $c, int $v): string => "$c: $v", array_map('strval', array_keys($r['statuses'])), $r['statuses'])) . "\n";
+    }
+    if (isset($period['by']) || isset($period['crawler'])) {
+        $cols = isset($period['crawler']) ? ['verified' => 'visits', 'allowed' => 'let through', 'checked' => 'checked', 'refused' => 'refused', 'claimed' => 'claimed']
+            : ['passed' => 'cacheable', 'uncached' => 'uncached', 'checked' => 'checked', 'throttled' => 'waited', 'refused' => 'refused'];
+        echo "\n" . str_pad('', 20) . implode('', array_map(static fn (string $c): string => str_pad($c, 13, ' ', STR_PAD_LEFT), $cols)) . "\n";
+        foreach ($r['periods'] as $label => $b) {
+            echo '  ' . str_pad((string) $label, 18) . implode('', array_map(static fn (string $k): string => str_pad($n($b[$k] ?? 0), 13, ' ', STR_PAD_LEFT), array_keys($cols))) . "\n";
+        }
     }
     if ($r['rules'] !== []) {
         echo "\nRules that decided most:\n";
