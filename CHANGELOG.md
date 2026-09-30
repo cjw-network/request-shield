@@ -101,6 +101,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   top 100 an hour for each kind of visitor, and their first two folders, so a
   subtree's views are exact -- `stats --path=/news/` and a "path starts with"
   filter on the statistics page, with "most visited sections".
+- What the shield stopped, per page: refused, checked and told to wait, whoever
+  asked (the same part `pages`, the top 100 an hour for each). Each page and
+  section shows it next to its views; sorted by it ("sorted by: stopped /
+  refused / checked / told to wait", `stats --sort=blocked`, `'sort'`), the list
+  shows the pages the shield stopped most -- also ones nobody ever saw, like
+  `/wp-login.php`. The Protection view starts there.
 - The statistics page in views: an overview, **Visitors & pages** for editors
   and **Protection** for admins, with tabs -- or one of them embedded on its
   own (`'view' => 'all'|'site'|'shield'`, `'tabs' => false`). Each view has its

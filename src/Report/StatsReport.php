@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield\Report;
 
+use CjwNetwork\RequestShield\Shield;
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Stats;
 
@@ -29,15 +30,16 @@ final class StatsReport
      * $o['crawler'] to look at one crawler only. Days older than the stats
      * keep them are only in their month's total: counted under the month.
      *
-     * @param array{from?: string, to?: string, by?: string, crawler?: string, lang?: string, path?: string} $o  lang: the sentences' language, en or de;
-     *   path: only pages below it (a subtree: /news/), and how many views it had
+     * @param array{from?: string, to?: string, by?: string, crawler?: string, lang?: string, path?: string, sort?: string} $o  lang: the sentences' language, en or de;
+     *   path: only pages below it (a subtree: /news/), and how many views it had; sort: views (the default),
+     *   blocked (refused + checked + told to wait), refused, checked or throttled -- the pages and sections with most of it
      * @return array{from: string, to: string, days: int, by: string, periods: array<string, array<string, int>>, totals: array<string, int>, monitor: array<string, int>,
      *   daily: array<string, array<string, int>>, hourly: array<string, array<string, int>>, rules: array<string, int>,
      *   crawlers: array<string, array{kind: string, policy: string, name: string, seen: int, verified: int, claimed: int, allowed: int, checked: int, refused: int, throttled: int, robots: int, pages: array<string, int>, last: array{0: int, 1: string}|null}>, bots: array<string, int>, statuses: array<string, int>,
      *   notFound: array<string, array{count: int, referrers: array<string, int>}>,
      *   sitemaps: array<string, array{statuses: array<string, int>, crawlers: array<string, array{count: int, last: ?int}>}>,
-     *   pages: array<string, array{people: int, crawlers: int, bots: int, total: int}>, folders: array<string, array{people: int, crawlers: int, bots: int, total: int}>,
-     *   subtree: array{path: string, people: int, crawlers: int, bots: int, total: int, exact: bool}|null, sentences: list<string>}
+     *   pages: array<string, array{people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int}>, folders: array<string, array{people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int}>,
+     *   subtree: array{path: string, people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int, exact: bool}|null, sort: string, sentences: list<string>}
      */
     public static function build(Settings $s, ?Stats $stats = null, int $days = 7, ?int $now = null, array $o = []): array
     {
@@ -83,10 +85,13 @@ final class StatsReport
         $referrers = [];
         /** @var array<string, array{statuses?: array<string, int>, crawlers?: array<string, array{count?: int}>}> $sitemaps */
         $sitemaps = [];
-        /** @var array<string, array{people: int, crawlers: int, bots: int, total: int}> $views */
+        $zero = ['people' => 0, 'crawlers' => 0, 'bots' => 0, 'total' => 0, 'refused' => 0, 'checked' => 0, 'throttled' => 0, 'blocked' => 0];
+        /** @var array<string, array{people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int}> $views */
         $views = [];
-        /** @var array<string, array{people: int, crawlers: int, bots: int, total: int}> $folders */
+        /** @var array<string, array{people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int}> $folders */
         $folders = [];
+        /** @var array<string, array{refused: int, checked: int, throttled: int}> $stopped */
+        $stopped = [];
         foreach ($read['days'] as $day => $counts) {
             $daily[(string) $day] = self::buckets($counts);
         }
@@ -121,14 +126,22 @@ final class StatsReport
                         [$who, $path] = explode('|', $rest, 2) + ['', ''];
                         if (in_array($who, ['people', 'crawlers', 'bots'], true)) {
                             if ($type === 'pg') {
-                                $views[$path] ??= ['people' => 0, 'crawlers' => 0, 'bots' => 0, 'total' => 0];
+                                $views[$path] ??= $zero;
                                 $views[$path][$who] += $n;
                                 $views[$path]['total'] += $n;
                             } else {
-                                $folders[$path] ??= ['people' => 0, 'crawlers' => 0, 'bots' => 0, 'total' => 0];
+                                $folders[$path] ??= $zero;
                                 $folders[$path][$who] += $n;
                                 $folders[$path]['total'] += $n;
                             }
+                        }
+                        break;
+                    case 'pb':
+                        // A page the shield stopped: refused, checked or told to wait.
+                        [$how, $path] = explode('|', $rest, 2) + ['', ''];
+                        if (in_array($how, ['refused', 'checked', 'throttled'], true)) {
+                            $stopped[$path] ??= ['refused' => 0, 'checked' => 0, 'throttled' => 0];
+                            $stopped[$path][$how] += $n;
                         }
                         break;
                     case 'sm':
@@ -163,24 +176,46 @@ final class StatsReport
         ksort($statuses);
         arsort($missing);
         // The most visited pages and sections: by all, the people's number first when equal.
-        unset($views['(other)'], $folders['(other)']);
-        $order = static fn (array $a, array $b): int => [$b['total'], $b['people']] <=> [$a['total'], $a['people']];
+        unset($views['(other)'], $folders['(other)'], $stopped['(other)']);
+        // What the shield stopped, on its pages -- and on its sections (their
+        // first two folders, from the pages: blocked pages are counted one by one).
+        foreach ($stopped as $path => $x) {
+            $path = (string) $path;
+            $views[$path] = self::stop($views[$path] ?? $zero, $x);
+            foreach (Shield::folders($path) as $at) {
+                $folders[$at] = self::stop($folders[$at] ?? $zero, $x);
+            }
+        }
+        // By views (the people's number first when equal), or by what the shield stopped.
+        $sort = in_array($o['sort'] ?? 'views', ['views', 'blocked', 'refused', 'checked', 'throttled'], true) ? ($o['sort'] ?? 'views') : 'views';
+        $key = $sort === 'views' ? 'total' : $sort;
+        $order = $sort === 'views' ? static fn (array $a, array $b): int => [$b['total'], $b['people']] <=> [$a['total'], $a['people']]
+            : static fn (array $a, array $b): int => [$b[$key], $b['blocked'], $b['total']] <=> [$a[$key], $a['blocked'], $a['total']];
         // A subtree: its pages, and its views -- exact where it is a counted folder
         // (the first two levels), else the sum of its pages on the lists.
         $subtree = null;
         $prefix = $o['path'] ?? null;
         if ($prefix !== null && $prefix !== '') {
             $views = array_filter($views, static fn (string $p): bool => strncmp($p, $prefix, strlen($prefix)) === 0, ARRAY_FILTER_USE_KEY);
-            $sum = ['people' => 0, 'crawlers' => 0, 'bots' => 0, 'total' => 0];
-            $exact = isset($folders[$prefix]);
+            $sum = $zero;
+            // Views exact where the folder is counted; what was stopped always from the pages.
+            $exact = isset($folders[$prefix]) && $folders[$prefix]['total'] > 0;
             foreach ($exact ? [$folders[$prefix]] : $views as $v) {
-                foreach ($sum as $k => $_) {
+                foreach (['people', 'crawlers', 'bots', 'total'] as $k) {
+                    $sum[$k] += $v[$k];
+                }
+            }
+            foreach ($views as $v) {
+                foreach (['refused', 'checked', 'throttled', 'blocked'] as $k) {
                     $sum[$k] += $v[$k];
                 }
             }
             $subtree = ['path' => $prefix] + $sum + ['exact' => $exact];
             $folders = array_filter($folders, static fn (string $p): bool => strncmp($p, $prefix, strlen($prefix)) === 0 && $p !== $prefix, ARRAY_FILTER_USE_KEY);
         }
+        // Only what has the number sorted by: a page nobody stopped is not on the blocked list.
+        $views = array_filter($views, static fn (array $v): bool => $v[$key] > 0);
+        $folders = array_filter($folders, static fn (array $v): bool => $v[$key] > 0);
         uasort($views, $order);
         uasort($folders, $order);
         $views = array_slice($views, 0, 20, true);
@@ -219,8 +254,24 @@ final class StatsReport
                 'pages' => array_slice($top, 0, 10, true), 'last' => $read['last'][$id] ?? null];
         }
         return ['from' => $from, 'to' => $to, 'days' => $days, 'by' => $by, 'periods' => $periods, 'totals' => $totals, 'monitor' => $monitor, 'daily' => $daily, 'hourly' => $hourly,
-            'rules' => array_slice($rules, 0, 20, true), 'crawlers' => $out, 'bots' => $bots, 'statuses' => $statuses, 'notFound' => $notFound, 'sitemaps' => $maps, 'pages' => $views, 'folders' => $folders, 'subtree' => $subtree,
+            'rules' => array_slice($rules, 0, 20, true), 'crawlers' => $out, 'bots' => $bots, 'statuses' => $statuses, 'notFound' => $notFound, 'sitemaps' => $maps, 'pages' => $views, 'folders' => $folders, 'subtree' => $subtree, 'sort' => $sort,
             'sentences' => array_merge(self::sentences($out, $days, $o['lang'] ?? 'en'), self::maps($maps, $days, $o['lang'] ?? 'en'), self::missing($notFound, $days, $o['lang'] ?? 'en'))];
+    }
+
+    /**
+     * A page's or section's numbers, plus what the shield stopped there.
+     *
+     * @param array{people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int} $v
+     * @param array{refused: int, checked: int, throttled: int} $x
+     * @return array{people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int}
+     */
+    private static function stop(array $v, array $x): array
+    {
+        $v['refused'] += $x['refused'];
+        $v['checked'] += $x['checked'];
+        $v['throttled'] += $x['throttled'];
+        $v['blocked'] += $x['refused'] + $x['checked'] + $x['throttled'];
+        return $v;
     }
 
     /**

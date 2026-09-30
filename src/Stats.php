@@ -31,7 +31,8 @@ namespace CjwNetwork\RequestShield;
  * of the site itself, or another site's host), "sm:<sitemap>|<status>" (a
  * sitemap asked for, and the answer), "pg:<people|crawlers|bots>|<path>" (a
  * page the site answered with 200 and HTML), "pd:<people|crawlers|bots>|<folder>"
- * (its first two folders, for a subtree's views), "smc:<sitemap>|<crawler>" (a verified
+ * (its first two folders, for a subtree's views), "pb:<refused|checked|throttled>|<path>"
+ * (a page the shield stopped, and how), "smc:<sitemap>|<crawler>" (a verified
  * crawler read it). "l:<crawler>|<time>|<address>" is not counted: the
  * crawler's last visit ("l:sitemap:<path>@<crawler>|…": its last read of a
  * sitemap).
@@ -191,7 +192,7 @@ final class Stats
             $g = substr($key, 0, (int) strpos($key, '|'));
             return [$g, self::TOP * 2, $g . '|(other)'];
         }
-        if (strncmp($key, 'pg:', 3) === 0) {
+        if (strncmp($key, 'pg:', 3) === 0 || strncmp($key, 'pb:', 3) === 0) {
             $g = substr($key, 0, (int) strpos($key, '|'));
             return [$g, self::TOP, $g . '|(other)'];
         }

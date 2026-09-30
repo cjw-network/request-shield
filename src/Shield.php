@@ -346,6 +346,11 @@ final class Shield
                 }
             }
         }
+        // A page the shield stopped: which, and how (refused, checked, told to
+        // wait) -- whoever asked. Its query left out, as for page views.
+        if ($paging && isset(self::BLOCKED[$decision->action])) {
+            $keys[] = 'pb:' . self::BLOCKED[$decision->action] . '|' . self::word($request->path);
+        }
         if (!$s->statsEnabled) {
             return;
         }
@@ -389,6 +394,9 @@ final class Shield
     }
 
     private ?Stats $stats = null;
+
+    /** What the shield did to a page it stopped, as the statistics call it. */
+    private const BLOCKED = [Decision::REJECT => 'refused', Decision::CHALLENGE => 'checked', Decision::THROTTLE => 'throttled'];
 
     /**
      * The first two folders of a path: /news/2026/10/x -> /news/, /news/2026/;

@@ -38,7 +38,7 @@ final class StatsPage
             'allowed' => 'let through', 'last' => 'last visit', 'updated' => 'Updated', 'refresh' => 'refreshes every minute', 'hours48' => 'last 48 hours',
             'all' => 'all crawlers', 'kind.search' => 'search', 'kind.ai-search' => 'AI search', 'kind.ai-user' => 'AI, for a person', 'kind.ai-training' => 'AI training',
             'noStats' => 'No statistics: switch them on with "set stats on" in the rule file.', 'sitemaps' => 'Sitemaps', 'noMaps' => 'No sitemap was asked for.',
-            'noReader' => 'not read by a verified crawler', 'times' => '×', 'top' => 'Most visited pages', 'noPages' => 'No page views counted yet (set stats … pages).', 'sections' => 'Most visited sections',
+            'noReader' => 'not read by a verified crawler', 'times' => '×', 'top' => 'Most visited pages', 'noPages' => 'No page views counted yet (set stats … pages).', 'sections' => 'Most visited sections', 'topBlocked' => 'Pages the shield stopped most', 'sectionsBlocked' => 'Sections the shield stopped most', 'noBlocked' => 'The shield stopped no page in this period.', 'sortBy' => 'sorted by', 'blocked' => 'stopped', 'byViews' => 'views', 'byBlocked' => 'stopped (all)',
             'tabAll' => 'Overview', 'tabSite' => 'Visitors & pages', 'tabShield' => 'Protection', 'filter' => 'Filter', 'pathStarts' => 'path starts with', 'subtree' => 'Subtree', 'views' => 'views', 'exact' => 'exact', 'approx' => 'the sum of its most visited pages', 'clear' => 'all pages', 'per' => 'per', 'hour' => 'hour', 'day' => 'day', 'week' => 'week', 'month' => 'month', 'year' => 'year',
         ],
         'de' => [
@@ -50,18 +50,19 @@ final class StatsPage
             'allowed' => 'durchgelassen', 'last' => 'zuletzt', 'updated' => 'Stand', 'refresh' => 'aktualisiert sich jede Minute', 'hours48' => 'letzte 48 Stunden',
             'all' => 'alle Crawler', 'kind.search' => 'Suche', 'kind.ai-search' => 'KI-Suche', 'kind.ai-user' => 'KI, für eine Person', 'kind.ai-training' => 'KI-Training',
             'noStats' => 'Keine Statistik: mit "set stats on" in der Regeldatei einschalten.', 'sitemaps' => 'Sitemaps', 'noMaps' => 'Keine Sitemap wurde abgefragt.',
-            'noReader' => 'von keinem bestätigten Crawler gelesen', 'times' => '×', 'top' => 'Meistbesuchte Seiten', 'noPages' => 'Noch keine Seitenaufrufe gezählt (set stats … pages).', 'sections' => 'Meistbesuchte Bereiche',
+            'noReader' => 'von keinem bestätigten Crawler gelesen', 'times' => '×', 'top' => 'Meistbesuchte Seiten', 'noPages' => 'Noch keine Seitenaufrufe gezählt (set stats … pages).', 'sections' => 'Meistbesuchte Bereiche', 'topBlocked' => 'Am häufigsten blockierte Seiten', 'sectionsBlocked' => 'Am häufigsten blockierte Bereiche', 'noBlocked' => 'Der Schutz hat in diesem Zeitraum keine Seite blockiert.', 'sortBy' => 'sortiert nach', 'blocked' => 'blockiert', 'byViews' => 'Aufrufe', 'byBlocked' => 'blockiert (alle)',
             'tabAll' => 'Übersicht', 'tabSite' => 'Besucher & Seiten', 'tabShield' => 'Schutz', 'filter' => 'Filtern', 'pathStarts' => 'Pfad beginnt mit', 'subtree' => 'Unterbaum', 'views' => 'Aufrufe', 'exact' => 'genau', 'approx' => 'Summe seiner meistbesuchten Seiten', 'clear' => 'alle Seiten', 'per' => 'pro', 'hour' => 'Stunde', 'day' => 'Tag', 'week' => 'Woche', 'month' => 'Monat', 'year' => 'Jahr',
         ],
     ];
 
     /**
-     * @param array{action?: string, view?: string, tabs?: bool, links?: array<string, string>, days?: int, by?: string, crawler?: ?string, path?: ?string, lang?: string, accept?: ?string, home?: string, homeLabel?: string,
+     * @param array{action?: string, view?: string, tabs?: bool, links?: array<string, string>, days?: int, by?: string, crawler?: ?string, path?: ?string, sort?: string, lang?: string, accept?: ?string, home?: string, homeLabel?: string,
      *   title?: string, fragment?: bool, now?: int, stats?: Stats} $o
      *   action: the page's own address (links, refresh); view: site (visitors and pages, for editors), shield
      *   (what the protection did, for admins) or all (everything); links: an address per view -- 'all', 'site',
      *   'shield' => '/rs/dashboard' … -- for the tabs (without: ?view=); tabs: the tabs between them; lang: en, de, or auto (the browser's, from accept);
-     *   fragment: only the content, for the refresh
+     *   fragment: only the content, for the refresh; sort: the pages by views, or by what the shield stopped there
+     *   (blocked, refused, checked, throttled -- the protection's view starts with blocked)
      */
     public static function render(Settings $s, array $o = []): string
     {
@@ -78,6 +79,12 @@ final class StatsPage
         $crawler = $o['crawler'] ?? null;
         $path = isset($o['path']) && $o['path'] !== '' ? '/' . ltrim((string) $o['path'], '/') : null;
         $view = in_array($o['view'] ?? 'site', ['site', 'shield', 'all'], true) ? ($o['view'] ?? 'site') : 'site';
+        // The pages by views, or by what the shield stopped (the protection's view starts there).
+        $sorts = ['views', 'blocked', 'refused', 'checked', 'throttled'];
+        $sortDefault = $view === 'shield' ? 'blocked' : 'views';
+        $sort = in_array($o['sort'] ?? $sortDefault, $sorts, true) ? ($o['sort'] ?? $sortDefault) : $sortDefault;
+        // What every link carries along besides the period and the language.
+        $extra = ($crawler !== null ? ['crawler' => $crawler] : []) + ($path !== null ? ['path' => $path] : []) + ($sort !== $sortDefault ? ['sort' => $sort] : []);
         $now = $o['now'] ?? time();
         $action = $o['action'] ?? '';
         // One address per view ('links' => ['all' => '/rs/dashboard', 'site' => '/rs/stats', 'shield' => '/rs/shield']):
@@ -95,7 +102,7 @@ final class StatsPage
             $body = '<p class="note">' . $e($t['noStats']) . '</p>';
             return ($o['fragment'] ?? false) ? $body : self::page($body, $t['title'], $lang, $o, $e);
         }
-        $r = StatsReport::build($s, $o['stats'] ?? null, $days, $now, ['by' => $by === 'hour' ? 'day' : $by, 'lang' => $lang] + ($crawler !== null ? ['crawler' => $crawler] : []) + ($path !== null ? ['path' => $path] : []));
+        $r = StatsReport::build($s, $o['stats'] ?? null, $days, $now, ['by' => $by === 'hour' ? 'day' : $by, 'lang' => $lang, 'sort' => $sort] + $extra);
         // Hours: the last 48 for the small curves, today's for a "today" chart.
         $hours = [];
         for ($i = 47; $i >= 0; $i--) {
@@ -133,11 +140,11 @@ final class StatsPage
         }
         $h .= '<div class="bar"><div class="pills">';
         foreach ([[1, 'hour', 'today'], [7, 'day', 'd7'], [30, 'day', 'd30'], [365, 'month', 'm12']] as [$d, $b, $label]) {
-            $h .= '<a class="pill' . ($d === $days ? ' on' : '') . '" href="' . $e($query(['view' => $view, 'days' => $d, 'by' => $b, 'lang' => $lang] + ($crawler !== null ? ['crawler' => $crawler] : []) + ($path !== null ? ['path' => $path] : []))) . '">' . $e($t[$label]) . '</a>';
+            $h .= '<a class="pill' . ($d === $days ? ' on' : '') . '" href="' . $e($query(['view' => $view, 'days' => $d, 'by' => $b, 'lang' => $lang] + $extra)) . '">' . $e($t[$label]) . '</a>';
         }
         $h .= '</div><div class="pills">';
         foreach (['de' => 'DE', 'en' => 'EN'] as $l => $label) {
-            $h .= '<a class="pill' . ($l === $lang ? ' on' : '') . '" href="' . $e($query(['view' => $view, 'days' => $days, 'by' => $by, 'lang' => $l] + ($crawler !== null ? ['crawler' => $crawler] : []) + ($path !== null ? ['path' => $path] : []))) . '">' . $label . '</a>';
+            $h .= '<a class="pill' . ($l === $lang ? ' on' : '') . '" href="' . $e($query(['view' => $view, 'days' => $days, 'by' => $by, 'lang' => $l] + $extra)) . '">' . $label . '</a>';
         }
         $h .= '<a class="pill" href="' . $e($query(['days' => $days, 'by' => $by === 'hour' ? 'day' : $by, 'format' => 'json'])) . '">JSON</a></div></div>';
         $h .= '<p class="sub">' . $e(self::date($r['from'], $lang) . ' – ' . self::date($r['to'], $lang)) . ($crawler !== null ? ' · ' . $e($crawler) . ' · <a href="' . $e($query(['days' => $days, 'by' => $by, 'lang' => $lang])) . '">' . $e($t['all']) . '</a>' : '') . '</p>';
@@ -179,25 +186,31 @@ final class StatsPage
         // What the filter form carries along: the period, the language -- and the
         // view only where no address names it (with links the path does).
         $keep = ($links !== [] ? [] : ['view' => $view]) + ['days' => $days, 'by' => $by, 'lang' => $lang] + ($crawler !== null ? ['crawler' => $crawler] : []);
-        $link = static fn (string $p): string => $query($keep + ['path' => $p]);
+        $sorted = $sort !== $sortDefault ? ['sort' => $sort] : [];
+        $link = static fn (string $p): string => $query($keep + ['path' => $p] + $sorted);
         $h = '';
-        $h .= '<section class="card"><h2>' . $e($t['top']) . '</h2><form class="filter" method="get" action="' . $e($action) . '">';
+        $views = $sort === 'views';
+        $h .= '<section class="card"><h2>' . $e($t[$views ? 'top' : 'topBlocked']) . '</h2><form class="filter" method="get" action="' . $e($action) . '">';
         foreach ($keep as $k => $v) {
             $h .= '<input type="hidden" name="' . $e((string) $k) . '" value="' . $e((string) $v) . '">';
         }
-        $h .= '<label>' . $e($t['pathStarts']) . ' <input type="text" name="path" value="' . $e((string) $path) . '" placeholder="/news/"></label> <button type="submit">' . $e($t['filter']) . '</button>'
-            . ($path !== null ? ' <a href="' . $e($query($keep)) . '">' . $e($t['clear']) . '</a>' : '') . '</form>';
+        $h .= '<label>' . $e($t['pathStarts']) . ' <input type="text" name="path" value="' . $e((string) $path) . '" placeholder="/news/"></label> <label class="sort">' . $e($t['sortBy']) . ' <select name="sort">'
+            . implode('', array_map(static fn (string $v): string => '<option value="' . $v . '"' . ($v === $sort ? ' selected' : '') . '>'
+                . $e($t[['views' => 'byViews', 'blocked' => 'byBlocked'][$v] ?? $v]) . '</option>', $sorts)) . '</select></label> <button type="submit">' . $e($t['filter']) . '</button>'
+            . ($path !== null ? ' <a href="' . $e($query($keep + $sorted)) . '">' . $e($t['clear']) . '</a>' : '') . '</form>';
         if ($r['subtree'] !== null) {
             $st = $r['subtree'];
             $h .= '<p class="subtree"><b>' . $e($t['subtree'] . ' ' . $st['path']) . ':</b> ' . $e($n($st['total']) . ' ' . $t['views']) . ' — '
                 . $e($t['people'] . ' ' . $n($st['people']) . ' · ' . $t['crawlers'] . ' ' . $n($st['crawlers']) . ' · ' . $t['bots'] . ' ' . $n($st['bots']))
-                . ' <span class="note">(' . $e($st['exact'] ? $t['exact'] : $t['approx']) . ')</span></p>';
+                . ' <span class="note">(' . $e($st['exact'] ? $t['exact'] : $t['approx']) . ')</span>'
+                . ($st['blocked'] > 0 ? ' — <span class="stop">' . $e($n($st['blocked']) . ' ' . $t['blocked'] . ': ' . self::stopped($st, $t, $lang)) . '</span>' : '') . '</p>';
         }
-        $h .= $r['pages'] === [] ? '<p class="note">' . $e($t['noPages']) . '</p>' : self::rows($r['pages'], null, $t, $lang);
+        $h .= $r['pages'] === [] ? '<p class="note">' . $e($t[$views ? 'noPages' : 'noBlocked']) . '</p>' : self::rows($r['pages'], null, $t, $lang, $views);
         if ($r['folders'] !== []) {
-            $h .= '<h2 class="sub2">' . $e($t['sections']) . '</h2>' . self::rows($r['folders'], $link, $t, $lang);
+            $h .= '<h2 class="sub2">' . $e($t[$views ? 'sections' : 'sectionsBlocked']) . '</h2>' . self::rows($r['folders'], $link, $t, $lang, $views);
         }
-        $h .= '<p class="legend inline"><span class="dot people"></span>' . $e($t['people']) . ' <span class="dot crawlers"></span>' . $e($t['crawlers']) . ' <span class="dot bots"></span>' . $e($t['bots']) . '</p></section>';
+        $h .= '<p class="legend inline">' . ($views ? '<span class="dot people"></span>' . $e($t['people']) . ' <span class="dot crawlers"></span>' . $e($t['crawlers']) . ' <span class="dot bots"></span>' . $e($t['bots'])
+            : '<span class="dot refused"></span>' . $e($t['refused']) . ' <span class="dot checked"></span>' . $e($t['checked']) . ' <span class="dot throttled"></span>' . $e($t['throttled'])) . '</p></section>';
         $topBlock = $h;
         $h = '';
 
@@ -270,7 +283,7 @@ final class StatsPage
         $hint = '<p class="hint">' . $e($t['hours48']) . '</p>';
         if ($view === 'shield') {
             $h = $body . '<div class="tiles">' . $tiles['requests'] . $tiles['bots'] . $tiles['checked'] . $tiles['refused'] . '</div>' . $hint
-                . $grid($chartWhat, $answers) . $crawlersBlock . $grid($rulesBlock, $chartWho);
+                . $grid($chartWhat, $answers) . $topBlock . $crawlersBlock . $grid($rulesBlock, $chartWho);
         } elseif ($view === 'site') {
             $h = $body . '<div class="tiles">' . $tiles['people'] . $tiles['crawlers'] . $tiles['notFound'] . '</div>' . $hint
                 . $topBlock . $grid($chartWho, $short) . $crawlersBlock . $grid($missingBlock, $sitemapsBlock);
@@ -283,7 +296,7 @@ final class StatsPage
         if ($o['fragment'] ?? false) {
             return $h;
         }
-        return self::page($h, $o['title'] ?? $t['title'], $lang, $o + ['refresh' => $query(['view' => $view, 'days' => $days, 'by' => $by, 'lang' => $lang, 'fragment' => 1] + ($crawler !== null ? ['crawler' => $crawler] : []) + ($path !== null ? ['path' => $path] : []))], $e);
+        return self::page($h, $o['title'] ?? $t['title'], $lang, $o + ['refresh' => $query(['view' => $view, 'days' => $days, 'by' => $by, 'lang' => $lang, 'fragment' => 1] + $extra)], $e);
     }
 
     /**
@@ -312,30 +325,58 @@ final class StatsPage
     }
 
     /**
-     * Pages or sections, a bar each by who came: people, crawlers, bots.
+     * Pages or sections, a bar each: by who came (people, crawlers, bots), or
+     * by what the shield did (refused, checked, told to wait).
      *
-     * @param array<array-key, array{people: int, crawlers: int, bots: int, total: int}> $list
+     * @param array<array-key, array{people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int}> $list
      * @param (callable(string): string)|null $href a link for each (a section: its subtree)
      * @param array<string, string> $t
      */
-    private static function rows(array $list, ?callable $href, array $t, string $lang): string
+    private static function rows(array $list, ?callable $href, array $t, string $lang, bool $views = true): string
     {
         $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $n = static fn (int $v): string => StatsReport::number($v, $lang);
         $most = 1;
         foreach ($list as $v) {
-            $most = max($most, $v['total']);
+            $most = max($most, $views ? $v['total'] : $v['blocked']);
         }
         $out = '';
         foreach ($list as $p => $v) {
             $w = static fn (int $x): string => number_format(100 * $x / $most, 2, '.', '');
             $name = '<code>' . $e((string) $p) . '</code>';
-            $out .= '<div class="prow"><div class="pname">' . ($href !== null ? '<a href="' . $e($href((string) $p)) . '">' . $name . '</a>' : $name) . '</div>'
-                . '<div class="hbar thin" title="' . $e($n($v['people']) . ' ' . $t['people'] . ' · ' . $n($v['crawlers']) . ' ' . $t['crawlers'] . ' · ' . $n($v['bots']) . ' ' . $t['bots']) . '">'
-                . '<i class="people" style="width:' . $w($v['people']) . '%"></i><i class="crawlers" style="width:' . $w($v['crawlers']) . '%"></i><i class="bots" style="width:' . $w($v['bots']) . '%"></i></div>'
-                . '<div class="cnum">' . $e($n($v['total'])) . ' <span class="note">' . $e($n($v['people']) . ' · ' . $n($v['crawlers']) . ' · ' . $n($v['bots'])) . '</span></div></div>';
+            $out .= '<div class="prow"><div class="pname">' . ($href !== null ? '<a href="' . $e($href((string) $p)) . '">' . $name . '</a>' : $name) . '</div>';
+            if ($views) {
+                // Views by who came; what the shield stopped there as a note.
+                $out .= '<div class="hbar thin" title="' . $e($n($v['people']) . ' ' . $t['people'] . ' · ' . $n($v['crawlers']) . ' ' . $t['crawlers'] . ' · ' . $n($v['bots']) . ' ' . $t['bots']) . '">'
+                    . '<i class="people" style="width:' . $w($v['people']) . '%"></i><i class="crawlers" style="width:' . $w($v['crawlers']) . '%"></i><i class="bots" style="width:' . $w($v['bots']) . '%"></i></div>'
+                    . '<div class="cnum">' . $e($n($v['total'])) . ' <span class="note">' . $e($n($v['people']) . ' · ' . $n($v['crawlers']) . ' · ' . $n($v['bots'])) . '</span>'
+                    . ($v['blocked'] > 0 ? ' <span class="stop" title="' . $e(self::stopped($v, $t, $lang)) . '">' . $e($n($v['blocked']) . ' ' . $t['blocked']) . '</span>' : '') . '</div></div>';
+            } else {
+                // What the shield stopped, by how; the page's views as a note.
+                $out .= '<div class="hbar thin" title="' . $e(self::stopped($v, $t, $lang)) . '">'
+                    . '<i class="refused" style="width:' . $w($v['refused']) . '%"></i><i class="checked" style="width:' . $w($v['checked']) . '%"></i><i class="throttled" style="width:' . $w($v['throttled']) . '%"></i></div>'
+                    . '<div class="cnum"><span class="stop">' . $e($n($v['blocked'])) . '</span> <span class="note">' . $e($n($v['refused']) . ' · ' . $n($v['checked']) . ' · ' . $n($v['throttled']))
+                    . ' — ' . $e($n($v['total']) . ' ' . $t['views']) . '</span></div></div>';
+            }
         }
         return $out;
+    }
+
+    /**
+     * What the shield stopped, in words: "3 Refused · 1 Checked".
+     *
+     * @param array{refused: int, checked: int, throttled: int} $v
+     * @param array<string, string> $t
+     */
+    private static function stopped(array $v, array $t, string $lang): string
+    {
+        $out = [];
+        foreach (['refused', 'checked', 'throttled'] as $k) {
+            if ($v[$k] > 0) {
+                $out[] = StatsReport::number($v[$k], $lang) . ' ' . $t[$k];
+            }
+        }
+        return implode(' · ', $out);
     }
 
     /**
@@ -575,7 +616,7 @@ h1{font-size:26px;margin:8px 0 4px}h2{font-size:16px;margin:0 0 10px}h2 small{co
 .crow{display:grid;grid-template-columns:minmax(160px,260px) 1fr auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}.crow:last-of-type{border-bottom:0}
 .cname a{font-weight:600;text-decoration:none}.kind{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--bg);color:var(--m);border:1px solid var(--line)}
 .hbar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--bg)}.hbar i{display:block;height:100%}
-.hbar .through{background:var(--through)}.hbar .checked{background:var(--checked)}.hbar .refused{background:var(--refused)}.hbar .claimed{background:repeating-linear-gradient(45deg,var(--claimed) 0 4px,transparent 4px 7px)}
+.hbar .through{background:var(--through)}.hbar .checked{background:var(--checked)}.hbar .refused{background:var(--refused)}.hbar .throttled{background:var(--throttled)}.stop{color:var(--refused);font-weight:600}.filter select{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg)}.filter label.sort{flex:0 0 auto}.hbar .claimed{background:repeating-linear-gradient(45deg,var(--claimed) 0 4px,transparent 4px 7px)}
 .prow{display:grid;grid-template-columns:1fr auto;grid-template-areas:"name num" "bar bar";gap:3px 12px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line)}.prow:last-of-type{border-bottom:0}
 .prow .pname{grid-area:name;min-width:0}.prow .cnum{grid-area:num}.prow .hbar{grid-area:bar}.hbar.thin{height:6px;border-radius:3px}
 .hbar .people{background:var(--people)}.hbar .crawlers{background:var(--crawlers)}.hbar .bots{background:var(--bots)}

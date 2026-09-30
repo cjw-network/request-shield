@@ -23,7 +23,13 @@ With `set stats on` the shield counts, per hour, while requests pass:
   its query), by **people, crawlers and bots**, the top 100 an hour for each;
   and their first two folders (`/news/`, `/news/2026/`), so a **subtree's**
   views are exact: `stats --path=/news/`, or "path starts with" on the page —
-  like AWStats, without a log to read;
+  like AWStats, without a log to read; and the pages the shield **stopped**
+  (refused, checked, told to wait — whoever asked; the top 100 an hour for
+  each): every page shows them next to its views, and sorted by them the list
+  shows the pages stopped most — also those nobody ever saw (`/wp-login.php`).
+  `stats --sort=blocked|refused|checked|throttled`, `'sort'` on the page (the
+  Protection view starts with `blocked`); a section's numbers are the sum of its
+  pages;
 - **bots** — other clients that say they are tools, not browsers, by family:
   `python`, `curl`, `wget`, `go`, `java`, `node`, `php`, `perl`, `headless`,
   `scrapy`, `empty` (no User-Agent), `other`.
@@ -86,7 +92,7 @@ the overview (`'view' => 'all'`) and two for different people: **Visitors & page
 default — for editors: people, crawlers, pages not found, who came, the most
 visited pages and sections with the subtree filter, broken links, sitemaps,
 what the crawlers did) and **Protection** (`'view' => 'shield'` — for admins:
-requests, bots, checked, refused, what the shield did, the answers, the rules,
+requests, bots, checked, refused, what the shield did, the pages it stopped most, the answers, the rules,
 bot families). A CMS can put each where it belongs, one view without tabs
 (`'tabs' => false`): the site's in the editors' dashboard, the shield's in the
 admin area. In detail:

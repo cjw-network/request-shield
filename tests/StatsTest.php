@@ -350,15 +350,36 @@ return [
             // The most visited pages, by who came.
             $st->count(['pg:people|/news', 'pg:people|/news', 'pg:crawlers|/news', 'pg:bots|/', 'pg:people|/about'], STATS_T0 + 7);
             $top = StatsReport::build($s, $st, 7, STATS_T0 + 10)['pages'];
-            same(['/news' => ['people' => 2, 'crawlers' => 1, 'bots' => 0, 'total' => 3], '/about' => ['people' => 1, 'crawlers' => 0, 'bots' => 0, 'total' => 1],
-                '/' => ['people' => 0, 'crawlers' => 0, 'bots' => 1, 'total' => 1]], $top, 'most visited first; equal: more people first');
+            $z = ['refused' => 0, 'checked' => 0, 'throttled' => 0, 'blocked' => 0];
+            same(['/news' => ['people' => 2, 'crawlers' => 1, 'bots' => 0, 'total' => 3] + $z, '/about' => ['people' => 1, 'crawlers' => 0, 'bots' => 0, 'total' => 1] + $z,
+                '/' => ['people' => 0, 'crawlers' => 0, 'bots' => 1, 'total' => 1] + $z], $top, 'most visited first; equal: more people first');
             // A subtree: exact where it is a counted folder, else the sum of its pages.
             $st->count(['pg:people|/news/2026/a', 'pd:people|/news/', 'pd:people|/news/2026/', 'pg:crawlers|/news/b', 'pd:crawlers|/news/', 'pd:people|/news/'], STATS_T0 + 8);
             $sub = StatsReport::build($s, $st, 7, STATS_T0 + 10, ['path' => '/news/']);
-            same(['path' => '/news/', 'people' => 2, 'crawlers' => 1, 'bots' => 0, 'total' => 3, 'exact' => true], $sub['subtree'], 'the folder\'s own counter');
+            same(['path' => '/news/', 'people' => 2, 'crawlers' => 1, 'bots' => 0, 'total' => 3] + $z + ['exact' => true], $sub['subtree'], 'the folder\'s own counter');
             same(['/news/2026/a', '/news/b'], array_keys($sub['pages']), 'only its pages (/news without the slash is not below /news/)');
             same(['/news/2026/'], array_keys($sub['folders']), 'its sections');
             same(false, StatsReport::build($s, $st, 7, STATS_T0 + 10, ['path' => '/news/2026/a'])['subtree']['exact'] ?? null, 'not a counted folder: the sum of the pages');
+            // What the shield stopped, on each page: shown with its views, and a list of its own.
+            $st->count(['pb:refused|/wp-login.php', 'pb:refused|/wp-login.php', 'pb:refused|/wp-login.php', 'pb:checked|/news/b', 'pb:throttled|/news/b', 'pb:refused|/news', 'pb:nonsense|/x'], STATS_T0 + 9);
+            $all = StatsReport::build($s, $st, 7, STATS_T0 + 10);
+            same(['refused' => 1, 'checked' => 0, 'throttled' => 0, 'blocked' => 1], array_intersect_key($all['pages']['/news'], $z), 'a visited page shows what was stopped there');
+            same(false, isset($all['pages']['/wp-login.php']), 'sorted by views: a page nobody saw is not on the list');
+            $stop = StatsReport::build($s, $st, 7, STATS_T0 + 10, ['sort' => 'blocked']);
+            same(['/wp-login.php', '/news/b', '/news'], array_keys($stop['pages']), 'most stopped first; only pages the shield stopped');
+            same([3, 0], [$stop['pages']['/wp-login.php']['refused'], $stop['pages']['/wp-login.php']['total']], 'refused three times, never seen');
+            same(['/news/' => 2], array_map(static fn (array $v): int => $v['blocked'], $stop['folders']), 'sections: from their pages');
+            same(['/news/b', '/news/2026/a'], array_keys(StatsReport::build($s, $st, 7, STATS_T0 + 10, ['sort' => 'throttled', 'path' => '/news/'])['pages'] + ['/news/2026/a' => 1]), 'by one kind, in a subtree');
+            same([2, 1, 1], [($x = StatsReport::build($s, $st, 7, STATS_T0 + 10, ['path' => '/news/'])['subtree'])['blocked'] ?? 0, $x['checked'] ?? 0, $x['throttled'] ?? 0], 'the subtree: what was stopped in it');
+            same('views', StatsReport::build($s, $st, 7, STATS_T0 + 10, ['sort' => '<x>'])['sort'], 'an unknown order: by views');
+            $blockedPage = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'view' => 'shield', 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]);
+            truthy(strpos($blockedPage, 'Am häufigsten blockierte Seiten') !== false && strpos($blockedPage, '<code>/wp-login.php</code>') !== false
+                && strpos($blockedPage, '<option value="blocked" selected>') !== false, 'the protection\'s view: the pages stopped most');
+            truthy(strpos($blockedPage, 'href="/rs/shield?days=30&amp;by=day&amp;lang=de"') !== false, 'its own order is not carried in the links');
+            $viewsPage = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]);
+            truthy(strpos($viewsPage, '1 blockiert</span>') !== false && strpos($viewsPage, '<code>/wp-login.php</code>') === false, 'the editors\' view: by views, with what was stopped');
+            truthy(strpos(\CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'en', 'sort' => 'refused', 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]),
+                'href="/rs/stats?days=30&amp;by=day&amp;lang=en&amp;sort=refused"') !== false, 'another order is carried in the links');
             same(['/news/', '/news/2026/'], Shield::folders('/news/2026/10/x'));
             same(['/news/'], Shield::folders('/news/'), 'a folder\'s own page belongs to it');
             same([], Shield::folders('/about'));
@@ -414,17 +435,21 @@ return [
             $get('/', "User-Agent: python-requests/2.32\r\n");
             $get('/missing-page', "Referer: http://127.0.0.1:$port/news/x\r\n");
             $get('/index.php/.env');
+            $get('/index.php/.env');
             $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
             exec("$bin stats " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
             $shown = implode("\n", $out);
             same(0, $code, $shown);
-            truthy(strpos($shown, '4 requests: 3 let through, 0 checked, 0 told to wait, 1 refused') !== false, $shown);
-            truthy(strpos($shown, 'answers: 200: 2, 404: 2') !== false, 'the site\'s 404 and the shield\'s');
-            truthy(preg_match('~^  /\s+2\s+1\s+0\s+1$~m', $shown) === 1, 'the front page: 2 views, 1 person, 1 bot (the 404 and the refusal are no page views): ' . $shown);
+            truthy(strpos($shown, '5 requests: 3 let through, 0 checked, 0 told to wait, 2 refused') !== false, $shown);
+            truthy(strpos($shown, 'answers: 200: 2, 404: 3') !== false, 'the site\'s 404 and the shield\'s (twice)');
+            truthy(preg_match('~^  /\s+2\s+1\s+0\s+1\s+0\s+0\s+0\s+0$~m', $shown) === 1, 'the front page: 2 views, 1 person, 1 bot (the 404 and the refusal are no page views): ' . $shown);
             truthy(preg_match('~1\s+/missing-page\s+linked from: /news/x \(1\)~', $shown) === 1, 'the page not found and the link to it');
             $out = [];
+            exec("$bin stats " . escapeshellarg("$dir/site.rules") . ' --sort=blocked 2>&1', $out, $code);
+            truthy(preg_match('~^Pages stopped most.*\n  /index\.php/\.env\s+0\s+0\s+0\s+0\s+2\s+2\s+0\s+0$~m', implode("\n", $out)) === 1, 'the pages the shield stopped, from the real path: ' . implode("\n", $out));
+            $out = [];
             exec("$bin stats " . escapeshellarg("$dir/site.rules") . ' --json 2>&1', $out, $code);
-            same(4, array_sum((array) (json_decode(implode("\n", $out), true)['totals'] ?? [])), 'JSON');
+            same(5, array_sum((array) (json_decode(implode("\n", $out), true)['totals'] ?? [])), 'JSON');
             $out = [];
             exec("$bin stats " . escapeshellarg("$dir/site.rules") . ' --from=' . date('Y-m-d', time() - 86400) . ' --to=' . gmdate('Y-m-d') . ' --by=month 2>&1', $out, $code);
             truthy($code === 0 && preg_match('/^  ' . gmdate('Y-m') . '\s+\d/m', implode("\n", $out)) === 1, 'a period, by month: ' . implode("\n", $out));
