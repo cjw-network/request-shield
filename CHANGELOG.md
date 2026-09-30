@@ -132,6 +132,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   Rule Set's first level (IDs `ATK-…`, `version 2026.09.1`).
 
 ### Fixed
+- A form sent past `challenge-at` without a valid pass got "Please try again in
+  10 seconds" instead of the check -- for example after the pass ran out while
+  the check inside the form showed ✓ (it had been given no answer, since the
+  visitor held a pass then). Such a form now gets the check page, which sends
+  it again once solved, as `requirePass()` and a spent budget's check already
+  did. The widget endpoint also says until when the pass holds (`until`); the
+  box fetches a task before it runs out, and a pass with less than 30 seconds
+  left gets one anyway.
 - Fake search engine crawlers could make requests wait where DNS does not
   answer (a DMZ): each new address claiming to be Googlebot started a DNS
   lookup that waited for the resolver's timeout. At most `dns-lookups` new

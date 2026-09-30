@@ -28,14 +28,17 @@ it expires (the hard `limit` still applies).
 - **Stateless:** challenge and pass cookie are signed (HMAC) with `secret`;
   the pass cookie is bound to the client bucket and (by default) its
   User-Agent. Solutions are single-use and expire (`solutionTtl`).
-- **Only GET and HEAD are challenged**: a reload cannot repeat a form's POST;
-  those get 429 (see proposal 0001 for more).
+- **Forms are checked and sent again:** a POST that meets the check gets the
+  check page carrying the form's fields, which sends them again once solved —
+  nothing typed is lost. Forms with files, or larger than 256 KB, cannot be
+  carried: the page asks to send them again (the check inside the form avoids
+  that). APIs (JSON, `api-path`) get the task as a header.
 - **Search engines** that would be challenged are verified by reverse and
   forward DNS (Googlebot, Bingbot, DuckDuckBot, Applebot, YandexBot, …) and
   passed; the answer is remembered for a day per address.
 - **Always-checked paths** (`alwaysPaths`): a login or admin page checks every
   visitor once per pass cookie, whatever the budgets say, for every method — a
-  bot cannot POST to a login it never loaded (a POST without a pass gets 429).
+  bot cannot POST to a login it never loaded (a POST without a pass gets the check first).
 - **Exempt paths** (APIs, feeds) are never challenged.
 - Without JavaScript or cookies the page says what is missing; after three
   failed attempts in a tab it stops instead of looping.

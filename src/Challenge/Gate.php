@@ -142,12 +142,24 @@ final class Gate
      */
     public function widgetTask(Request $request, float $now): ?array
     {
-        $bucket = IpAddress::bucket($request->clientIp, $this->ipv6Prefix);
-        $pass = new PassCookie($this->secret, $this->config->bindUserAgent);
-        if ($pass->valid($request->cookie($this->config->cookie), $bucket, (string) $request->header('user-agent'), $now)) {
+        // A pass about to run out gets a task anyway: the form may be sent after it.
+        if ($this->passUntil($request, $now) > $now + 30) {
             return null;
         }
+        $bucket = IpAddress::bucket($request->clientIp, $this->ipv6Prefix);
         return (new ProofOfWork($this->secret))->create($bucket, $this->config->widgetDifficulty, (int) $now + $this->config->solutionTtl);
+    }
+
+    /**
+     * Until when the visitor's pass is valid (a Unix time), 0 without one --
+     * the check inside the form fetches a task before it runs out.
+     */
+    public function passUntil(Request $request, float $now): int
+    {
+        $bucket = IpAddress::bucket($request->clientIp, $this->ipv6Prefix);
+        $pass = new PassCookie($this->secret, $this->config->bindUserAgent);
+        $cookie = $request->cookie($this->config->cookie);
+        return $cookie !== null && $pass->valid($cookie, $bucket, (string) $request->header('user-agent'), $now) ? $pass->expires($cookie) : 0;
     }
 
     /**

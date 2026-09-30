@@ -41,7 +41,9 @@ written by hand. `widget('load')` checks at once instead of on the first input;
    Varnish). On the first input into the form, the script asks the shield for
    one: `GET /request-shield/challenge` — answered by the shield, before the
    application, as JSON in ALTCHA's format, with the texts in the visitor's
-   language. A visitor holding a pass gets `{"passed": true}` and the ✓ at once.
+   language. A visitor holding a pass gets `{"passed": true, "until": <Unix time>}` and the ✓ at
+   once; sent after `until` (less 20 seconds), the box fetches a task first. A pass with
+   less than 30 seconds left gets a task anyway.
 2. The browser solves the task (the check page's own solver; the widget's
    difficulty is lower, `set widget-difficulty 25000`: the visitor is typing)
    and puts the answer into a hidden field, `rs_solution`.

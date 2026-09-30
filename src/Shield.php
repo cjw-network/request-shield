@@ -349,8 +349,8 @@ final class Shield
 
     /**
      * How the gate answers this request: an API gets the task as JSON; a
-     * spent budget's form comes back after the check; its solution starts
-     * the budget's counter again.
+     * form comes back after the check (a pause would lose what was typed);
+     * a spent budget's solution starts the budget's counter again.
      *
      * @return array{solution: ?string, api: bool, earn: array{window: int}|null, resend: array{action: string, fields: list<array{0: string, 1: string}>}|false|null}
      */
@@ -362,7 +362,7 @@ final class Shield
             'solution' => $this->postedSolution(),
             'api' => $api,
             'earn' => $budget !== null ? ['window' => $budget->window] : null,
-            'resend' => $d->spent && !$api && $request->method !== 'GET' && $request->method !== 'HEAD' ? self::resendFields($request) : null,
+            'resend' => !$api && $request->method !== 'GET' && $request->method !== 'HEAD' ? self::resendFields($request) : null,
         ];
     }
 
@@ -442,12 +442,15 @@ final class Shield
         }
         $texts = Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts);
         $task = $this->gate()->widgetTask($request, $now);
+        $until = $task === null ? $this->gate()->passUntil($request, $now) : 0;
         header('Content-Type: application/json; charset=utf-8');
         header('Cache-Control: no-store');
         header('Vary: Accept-Language');
         header('X-Robots-Tag: noindex');
         echo json_encode([
             'passed' => $task === null,
+            // With a pass: until when it holds; the widget fetches a task before then.
+            'until' => $task === null ? $until : null,
             'challenge' => $task,
             'field' => $c->solutionCookie,
             'texts' => ['checking' => $texts['widget-checking'], 'checked' => $texts['widget-checked'], 'failed' => $texts['widget-failed']],

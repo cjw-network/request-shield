@@ -86,7 +86,11 @@ final class Widget
         .then(function (j) {
           if (!j) { finish('failed', texts.failed); return; }
           texts = j.texts || texts;
-          if (j.passed) { finish('done', texts.checked); return; }
+          if (j.passed) {
+            // The pass holds until then: send before, or fetch a task first.
+            expires = j.until ? +j.until * 1000 : 0;
+            finish('done', texts.checked); return;
+          }
           show('checking', texts.checking);
           R.solve(j.challenge, function (n, took) {
             if (n < 0) { finish('failed', texts.failed); return; }

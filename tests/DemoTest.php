@@ -277,8 +277,17 @@ $widget = function (string $prefix): void {
             same(429, $r['status'], 'an answer counts once');
             truthy(strpos($r['body'], 'Please go back and send the form again') !== false, 'files cannot come back: asked to send again');
             // With the pass: the endpoint says so, the form goes through without an answer
-            same(true, json_decode($get('GET', '/request-shield/challenge', ['Cookie' => "rs_pass=$pass"])['body'], true)['passed']);
+            $j = json_decode($get('GET', '/request-shield/challenge', ['Cookie' => "rs_pass=$pass"])['body'], true);
+            same(true, $j['passed']);
+            truthy(is_int($j['until']) && $j['until'] > time() + 30 && $j['until'] <= time() + 61, 'and until when the pass holds (pass-ttl 1m): the widget fetches a task before');
             same(200, $get('POST', '/contact', ['Cookie' => "rs_pass=$pass"], 'message=hi')['status']);
+            // Past challenge-at without a pass (it ran out): a form is checked and
+            // sent again -- not a pause that loses what was typed.
+            for ($n = 0; $n < 25 && $get('GET', '/contact')['status'] === 200; $n++) {
+            }
+            $r = $get('POST', '/contact', [], 'message=typed+for+minutes');
+            truthy(strpos($r['body'], 'then what you entered is sent') !== false && strpos($r['body'], 'typed for minutes') !== false, 'the check page carries the form: ' . substr(strip_tags($r['body']), 0, 200));
+            truthy(strpos($r['body'], 'Please try again in') === false, 'no pause');
         }, $prefix);
 };
 

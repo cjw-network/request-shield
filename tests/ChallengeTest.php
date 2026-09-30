@@ -184,7 +184,9 @@ return [
         same(Decision::ALLOW_UNCACHED, $r['decision']->action, 'solved');
         $withPass = creq('/login', ['rs_pass' => (string) cookieValue($r['cookies'], 'rs_pass')]);
         same(Decision::ALLOW, $shield->settle($shield->decide($withPass, 3.0), $withPass, 3.0)['decision']->action, 'with the pass: through');
-        same(Decision::THROTTLE, $shield->settle($shield->decide(creq('/login', [], 'POST'), 4.0), creq('/login', [], 'POST'), 4.0)['decision']->action, 'a POST without a pass: not through');
+        $post = $shield->settle($shield->decide(creq('/login', [], 'POST'), 4.0), creq('/login', [], 'POST'), 4.0);
+        same(Decision::CHALLENGE, $post['decision']->action, 'a POST without a pass: not through');
+        truthy(is_string($post['page']) && strpos($post['page'], 'then what you entered is sent') !== false, 'but checked, and the form sent again -- not a pause');
         $postWithPass = creq('/login', ['rs_pass' => (string) cookieValue($r['cookies'], 'rs_pass')], 'POST');
         same(Decision::ALLOW_UNCACHED, $shield->settle($shield->decide($postWithPass, 5.0), $postWithPass, 5.0)['decision']->action, 'a POST with the pass: through, uncached');
         exec('rm -rf ' . escapeshellarg($dir));
@@ -248,6 +250,9 @@ return [
         truthy($pass !== null && $pass !== '', 'with a pass');
         same(Decision::THROTTLE, $gate->resolve(Decision::challenge('always'), Decision::allow(), creq('/login', [], 'POST'), 2.0, ['solution' => $answer])['decision']->action, 'the same answer twice: no');
         same(null, $gate->widgetTask(creq('/x', ['rs_pass' => $pass]), 3.0), 'with a pass: no task');
+        same(2 + $c->passTtl, $gate->passUntil(creq('/x', ['rs_pass' => $pass]), 3.0), 'until when the pass holds');
+        same(0, $gate->passUntil(creq('/x'), 3.0), 'without one: 0');
+        truthy(is_array($gate->widgetTask(creq('/x', ['rs_pass' => $pass]), 2 + $c->passTtl - 20.0)), 'a pass about to run out: a task anyway');
         foreach (['request-shield', '/a b', '/x/../y"', '/'] as $bad) {
             try {
                 ChallengeSettings::from(['widgetPath' => $bad]);
