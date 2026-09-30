@@ -1,0 +1,458 @@
+<?php
+/**
+ * This file is part of cjw-network/request-shield.
+ *
+ * @copyright Copyright (C) 2026 JAC Systeme GmbH, CJW Network
+ * @license MIT, see LICENSE
+ */
+
+declare(strict_types=1);
+
+namespace CjwNetwork\RequestShield\Report;
+
+use CjwNetwork\RequestShield\Settings;
+use CjwNetwork\RequestShield\Stats;
+use CjwNetwork\RequestShield\Texts;
+
+/**
+ * The statistics as a page (set stats on): who came -- people, crawlers,
+ * bots --, what the shield did, the answers' status codes, what each known
+ * crawler did, pages not found and who links to them. Charts drawn as inline
+ * SVG and CSS (no script library, no external file); dark mode; English and
+ * German. It refreshes itself every minute.
+ *
+ *   echo StatsPage::render($settings, ['action' => '/stats', 'days' => 7]);
+ *
+ * Print it where only the site's people see it: behind the CMS's login, or a
+ * path restricted to some addresses (restrict /stats to 192.0.2.0/24).
+ */
+final class StatsPage
+{
+    private const T = [
+        'en' => [
+            'title' => 'Statistics', 'today' => '24 hours', 'd7' => '7 days', 'd30' => '30 days', 'm12' => '12 months',
+            'requests' => 'Requests', 'people' => 'People', 'crawlers' => 'Crawlers', 'bots' => 'Bots', 'checked' => 'Checked', 'refused' => 'Refused',
+            'notFound' => 'Not found', 'through' => 'Let through', 'throttled' => 'Told to wait', 'who' => 'Who came', 'what' => 'What the shield did',
+            'answers' => 'Answers', 'short' => 'In short', 'known' => 'Known crawlers', 'missing' => 'Pages not found', 'linked' => 'linked from',
+            'rules' => 'Rules that decided most', 'botfam' => 'Other bots', 'nothing' => 'Nothing yet.', 'claimed' => 'only claimed',
+            'allowed' => 'let through', 'last' => 'last visit', 'updated' => 'Updated', 'refresh' => 'refreshes every minute', 'hours48' => 'last 48 hours',
+            'all' => 'all crawlers', 'kind.search' => 'search', 'kind.ai-search' => 'AI search', 'kind.ai-user' => 'AI, for a person', 'kind.ai-training' => 'AI training',
+            'noStats' => 'No statistics: switch them on with "set stats on" in the rule file.', 'sitemaps' => 'Sitemaps', 'noMaps' => 'No sitemap was asked for.',
+            'noReader' => 'not read by a verified crawler', 'times' => '×', 'per' => 'per', 'hour' => 'hour', 'day' => 'day', 'week' => 'week', 'month' => 'month', 'year' => 'year',
+        ],
+        'de' => [
+            'title' => 'Statistik', 'today' => '24 Stunden', 'd7' => '7 Tage', 'd30' => '30 Tage', 'm12' => '12 Monate',
+            'requests' => 'Anfragen', 'people' => 'Menschen', 'crawlers' => 'Crawler', 'bots' => 'Bots', 'checked' => 'Geprüft', 'refused' => 'Abgewiesen',
+            'notFound' => 'Nicht gefunden', 'through' => 'Durchgelassen', 'throttled' => 'Gebremst', 'who' => 'Wer kam', 'what' => 'Was der Schutz tat',
+            'answers' => 'Antworten', 'short' => 'Kurz gesagt', 'known' => 'Bekannte Crawler', 'missing' => 'Nicht gefundene Seiten', 'linked' => 'verlinkt von',
+            'rules' => 'Regeln, die am meisten entschieden', 'botfam' => 'Andere Bots', 'nothing' => 'Noch nichts.', 'claimed' => 'nur behauptet',
+            'allowed' => 'durchgelassen', 'last' => 'zuletzt', 'updated' => 'Stand', 'refresh' => 'aktualisiert sich jede Minute', 'hours48' => 'letzte 48 Stunden',
+            'all' => 'alle Crawler', 'kind.search' => 'Suche', 'kind.ai-search' => 'KI-Suche', 'kind.ai-user' => 'KI, für eine Person', 'kind.ai-training' => 'KI-Training',
+            'noStats' => 'Keine Statistik: mit "set stats on" in der Regeldatei einschalten.', 'sitemaps' => 'Sitemaps', 'noMaps' => 'Keine Sitemap wurde abgefragt.',
+            'noReader' => 'von keinem bestätigten Crawler gelesen', 'times' => '×', 'per' => 'pro', 'hour' => 'Stunde', 'day' => 'Tag', 'week' => 'Woche', 'month' => 'Monat', 'year' => 'Jahr',
+        ],
+    ];
+
+    /**
+     * @param array{action?: string, days?: int, by?: string, crawler?: ?string, lang?: string, accept?: ?string, home?: string, homeLabel?: string,
+     *   title?: string, fragment?: bool, now?: int, stats?: Stats} $o
+     *   action: the page's own address (links, refresh); lang: en, de, or auto (the browser's, from accept);
+     *   fragment: only the content, for the refresh
+     */
+    public static function render(Settings $s, array $o = []): string
+    {
+        $lang = $o['lang'] ?? 'auto';
+        if (!isset(self::T[$lang])) {
+            $lang = Texts::language('auto', $o['accept'] ?? null);
+            $lang = isset(self::T[$lang]) ? $lang : 'en';
+        }
+        $t = self::T[$lang];
+        $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $n = static fn (int $v): string => StatsReport::number($v, $lang);
+        $days = max(1, min(3660, $o['days'] ?? 7));
+        $by = $o['by'] ?? ($days === 1 ? 'hour' : ($days > 62 ? 'month' : 'day'));
+        $crawler = $o['crawler'] ?? null;
+        $now = $o['now'] ?? time();
+        $action = $o['action'] ?? '';
+        $query = static fn (array $q): string => $action . '?' . http_build_query($q);
+
+        if (!$s->statsEnabled) {
+            $body = '<p class="note">' . $e($t['noStats']) . '</p>';
+            return ($o['fragment'] ?? false) ? $body : self::page($body, $t['title'], $lang, $o, $e);
+        }
+        $r = StatsReport::build($s, $o['stats'] ?? null, $days, $now, ['by' => $by === 'hour' ? 'day' : $by, 'lang' => $lang] + ($crawler !== null ? ['crawler' => $crawler] : []));
+        // Hours: the last 48 for the small curves, today's for a "today" chart.
+        $hours = [];
+        for ($i = 47; $i >= 0; $i--) {
+            $k = gmdate('YmdH', $now - $i * 3600);
+            $hours[$k] = $r['hourly'][$k] ?? [];
+        }
+        $periods = $r['periods'];
+        if ($by === 'hour') {
+            // "Today": the last 24 hours, labelled in the server's time.
+            $periods = [];
+            foreach (array_slice($hours, 24, null, true) as $k => $b) {
+                $k = (string) $k;           // PHP makes "2026093010" an integer key
+                $ts = (int) gmmktime((int) substr($k, 8, 2), 0, 0, (int) substr($k, 4, 2), (int) substr($k, 6, 2), (int) substr($k, 0, 4));
+                $periods[date('H', $ts) . ':00'] = $b;
+            }
+        }
+        // Hours of today, or the periods (days, weeks, months -- old months from their files).
+        $src = $by === 'hour' ? $periods : $r['periods'];
+        $total = self::sum($src, 'passed') + self::sum($src, 'uncached') + self::sum($src, 'checked') + self::sum($src, 'throttled') + self::sum($src, 'refused');
+        $tile = static fn (string $key, int $value, string $cls, array $curve): string => '<div class="tile ' . $cls . '"><span class="n">' . $e($n($value)) . '</span><span class="l">' . $e($t[$key]) . '</span>'
+            . self::spark(self::ints($curve)) . '</div>';
+
+        $h = '<div class="bar"><div class="pills">';
+        foreach ([[1, 'hour', 'today'], [7, 'day', 'd7'], [30, 'day', 'd30'], [365, 'month', 'm12']] as [$d, $b, $label]) {
+            $h .= '<a class="pill' . ($d === $days ? ' on' : '') . '" href="' . $e($query(['days' => $d, 'by' => $b, 'lang' => $lang] + ($crawler !== null ? ['crawler' => $crawler] : []))) . '">' . $e($t[$label]) . '</a>';
+        }
+        $h .= '</div><div class="pills">';
+        foreach (['de' => 'DE', 'en' => 'EN'] as $l => $label) {
+            $h .= '<a class="pill' . ($l === $lang ? ' on' : '') . '" href="' . $e($query(['days' => $days, 'by' => $by, 'lang' => $l] + ($crawler !== null ? ['crawler' => $crawler] : []))) . '">' . $label . '</a>';
+        }
+        $h .= '<a class="pill" href="' . $e($query(['days' => $days, 'by' => $by === 'hour' ? 'day' : $by, 'format' => 'json'])) . '">JSON</a></div></div>';
+        $h .= '<p class="sub">' . $e(self::date($r['from'], $lang) . ' – ' . self::date($r['to'], $lang)) . ($crawler !== null ? ' · ' . $e($crawler) . ' · <a href="' . $e($query(['days' => $days, 'by' => $by, 'lang' => $lang])) . '">' . $e($t['all']) . '</a>' : '') . '</p>';
+
+        $h .= '<div class="tiles">'
+            . $tile('requests', $total, 'req', array_map(static fn (int $a, int $b, int $c, int $d, int $x): int => $a + $b + $c + $d + $x, self::curve($hours, 'passed'), self::curve($hours, 'uncached'), self::curve($hours, 'checked'), self::curve($hours, 'throttled'), self::curve($hours, 'refused')))
+            . $tile('people', self::sum($src, 'people'), 'people', self::curve($hours, 'people'))
+            . $tile('crawlers', self::sum($src, 'crawlers'), 'crawlers', self::curve($hours, 'crawlers'))
+            . $tile('bots', self::sum($src, 'bots'), 'bots', self::curve($hours, 'bots'))
+            . $tile('checked', self::sum($src, 'checked'), 'checked', self::curve($hours, 'checked'))
+            . $tile('refused', self::sum($src, 'refused') + self::sum($src, 'throttled'), 'refused', array_map(static fn (int $a, int $b): int => $a + $b, self::curve($hours, 'refused'), self::curve($hours, 'throttled')))
+            . $tile('notFound', self::sum($src, 'notFound'), 'nf', self::curve($hours, 'notFound'))
+            . '</div><p class="hint">' . $e($t['hours48']) . '</p>';
+
+        $h .= '<div class="grid2"><section class="card"><h2>' . $e($t['who']) . ' <small>' . $e($t['per'] . ' ' . $t[$by === 'hour' ? 'hour' : $by]) . '</small></h2>'
+            . self::stacked($src, ['people' => [$t['people'], 'people'], 'crawlers' => [$t['crawlers'], 'crawlers'], 'bots' => [$t['bots'], 'bots']], $lang)
+            . '</section><section class="card"><h2>' . $e($t['what']) . ' <small>' . $e($t['per'] . ' ' . $t[$by === 'hour' ? 'hour' : $by]) . '</small></h2>'
+            . self::stacked(array_map(static fn (array $b): array => ['through' => self::sum([$b], 'passed') + self::sum([$b], 'uncached'), 'checked' => self::sum([$b], 'checked'), 'throttled' => self::sum([$b], 'throttled'), 'refused' => self::sum([$b], 'refused')], $src),
+                ['through' => [$t['through'], 'through'], 'checked' => [$t['checked'], 'checked'], 'throttled' => [$t['throttled'], 'throttled'], 'refused' => [$t['refused'], 'refused']], $lang)
+            . '</section></div>';
+
+        // The answers as a ring, and the sentences.
+        $groups = [];
+        foreach ($r['statuses'] as $code => $count) {
+            $g = substr((string) $code, 0, 1) . 'xx';
+            $groups[$g] = ($groups[$g] ?? 0) + $count;
+        }
+        ksort($groups);
+        $h .= '<div class="grid2"><section class="card"><h2>' . $e($t['answers']) . '</h2>' . ($r['statuses'] === [] ? '<p class="note">' . $e($t['nothing']) . '</p>'
+            : '<div class="donut">' . self::donut($groups, $lang) . '<ul class="legend">' . implode('', array_map(static fn ($code, int $c): string => '<li><span class="dot s' . $e(substr((string) $code, 0, 1)) . '"></span><b>' . $e((string) $code) . '</b> ' . $e($n($c)) . '</li>',
+                array_keys($r['statuses']), $r['statuses'])) . '</ul></div>')
+            . '</section><section class="card"><h2>' . $e($t['short']) . '</h2>' . ($r['sentences'] === [] ? '<p class="note">' . $e($t['nothing']) . '</p>'
+            : '<ul class="short"><li>' . implode('</li><li>', array_map($e, $r['sentences'])) . '</li></ul>') . '</section></div>';
+
+        // Crawlers: one bar each -- let through, checked or told to wait, refused; and how often the name was only claimed.
+        $seen = array_filter($r['crawlers'], static fn (array $c): bool => $c['seen'] > 0);
+        uasort($seen, static fn (array $a, array $b): int => $b['seen'] <=> $a['seen']);
+        $max = max(1, ...array_map(static fn (array $c): int => $c['seen'], array_values($seen) ?: [['seen' => 1]]));
+        $h .= '<section class="card"><h2>' . $e($t['known']) . '</h2>';
+        if ($seen === []) {
+            $h .= '<p class="note">' . $e($t['nothing']) . '</p>';
+        }
+        foreach ($seen as $id => $c) {
+            $w = static fn (int $v): string => number_format(100 * $v / $max, 2, '.', '');
+            $h .= '<div class="crow"><div class="cname"><a href="' . $e($query(['days' => $days, 'by' => $by, 'lang' => $lang, 'crawler' => (string) $id])) . '">' . $e((string) $id) . '</a>'
+                . ' <span class="kind">' . $e($t['kind.' . $c['kind']] ?? $c['kind']) . '</span><br><span class="note">' . $e($c['name'])
+                . ($c['last'] !== null ? ' · ' . $e($t['last']) . ' ' . $e(date($lang === 'de' ? 'd.m. H:i' : 'M j, H:i', $c['last'][0])) : '') . '</span></div>'
+                . '<div class="hbar" title="' . $e($n($c['allowed']) . ' ' . $t['allowed'] . ' · ' . $n($c['checked'] + $c['throttled']) . ' ' . $t['checked'] . ' · ' . $n($c['refused']) . ' ' . $t['refused'] . ' · ' . $n($c['claimed']) . ' ' . $t['claimed']) . '">'
+                . '<i class="through" style="width:' . $w($c['allowed']) . '%"></i><i class="checked" style="width:' . $w($c['checked'] + $c['throttled']) . '%"></i>'
+                . '<i class="refused" style="width:' . $w($c['refused']) . '%"></i><i class="claimed" style="width:' . $w($c['claimed']) . '%"></i></div>'
+                . '<div class="cnum">' . $e($n($c['verified'])) . ($c['claimed'] > 0 ? ' <span class="note">+' . $e($n($c['claimed'])) . ' ' . $e($t['claimed']) . '</span>' : '') . '</div></div>';
+        }
+        $h .= '<p class="legend inline"><span class="dot through"></span>' . $e($t['through']) . ' <span class="dot checked"></span>' . $e($t['checked']) . ' <span class="dot refused"></span>' . $e($t['refused'])
+            . ' <span class="dot claimed"></span>' . $e($t['claimed']) . '</p></section>';
+
+        // Sitemaps: which exist (the answers), who read each, when last.
+        $h .= '<section class="card"><h2>' . $e($t['sitemaps']) . '</h2>';
+        if ($r['sitemaps'] === []) {
+            $h .= '<p class="note">' . $e($t['noMaps']) . '</p>';
+        } else {
+            $h .= '<table class="list">';
+            foreach ($r['sitemaps'] as $path => $x) {
+                $h .= '<tr><td><code>' . $e($path) . '</code><br>' . implode(' ', array_map(static fn ($code, int $c): string => '<span class="badge s' . $e(substr((string) $code, 0, 1)) . '">' . $e((string) $code) . ' · ' . $e($n($c)) . '</span>',
+                    array_keys($x['statuses']), $x['statuses'])) . '</td><td>'
+                    . ($x['crawlers'] === [] ? '<span class="note">' . $e($t['noReader']) . '</span>' : implode('<br>', array_map(static fn ($id, array $c): string => '<b>' . $e((string) $id) . '</b> '
+                        . $e($n($c['count']) . $t['times']) . ($c['last'] !== null ? ' <span class="note">· ' . $e($t['last']) . ' ' . $e(date($lang === 'de' ? 'd.m. H:i' : 'M j, H:i', $c['last'])) . '</span>' : ''),
+                        array_keys($x['crawlers']), $x['crawlers'])))
+                    . '</td></tr>';
+            }
+            $h .= '</table>';
+        }
+        $h .= '</section>';
+
+        // Not found, rules, bots: lists with a bar each.
+        $missing = [];
+        foreach ($r['notFound'] as $path => $x) {
+            $from = [];
+            foreach ($x['referrers'] as $source => $c) {
+                $from[] = "$source ($c)";
+            }
+            $missing[] = ['<code>' . $e((string) $path) . '</code>' . ($from !== [] ? '<br><span class="note">' . $e($t['linked'] . ' ' . implode(', ', $from)) . '</span>' : ''), $x['count']];
+        }
+        $rules = [];
+        foreach (array_slice($r['rules'], 0, 10, true) as $rule => $c) {
+            $rules[] = ['<code>' . $e((string) $rule) . '</code>', $c];
+        }
+        $bots = [];
+        foreach ($r['bots'] as $family => $c) {
+            $bots[] = [$e((string) $family), $c];
+        }
+        $h .= '<div class="grid2"><section class="card"><h2>' . $e($t['missing']) . '</h2>' . self::bars($missing, $lang, $t['nothing'])
+            . '</section><section class="card"><h2>' . $e($t['rules']) . '</h2>' . self::bars($rules, $lang, $t['nothing'])
+            . '<h2>' . $e($t['botfam']) . '</h2>' . self::bars($bots, $lang, $t['nothing']) . '</section></div>';
+        $h .= '<p class="foot">' . $e($t['updated'] . ' ' . date($lang === 'de' ? 'd.m.Y H:i:s' : 'Y-m-d H:i:s', $now) . ' · ' . $t['refresh']) . '</p>';
+
+        if ($o['fragment'] ?? false) {
+            return $h;
+        }
+        return self::page($h, $o['title'] ?? $t['title'], $lang, $o + ['refresh' => $query(['days' => $days, 'by' => $by, 'lang' => $lang, 'fragment' => 1] + ($crawler !== null ? ['crawler' => $crawler] : []))], $e);
+    }
+
+    /**
+     * @param array<mixed> $values
+     * @return list<int>
+     */
+    private static function ints(array $values): array
+    {
+        $out = [];
+        foreach ($values as $v) {
+            $out[] = is_int($v) ? $v : 0;
+        }
+        return $out;
+    }
+
+    /**
+     * The sum of one of the numbers over periods.
+     *
+     * @param array<array-key, array<string, int>> $list
+     */
+    private static function sum(array $list, string $k): int
+    {
+        $total = 0;
+        foreach ($list as $b) {
+            $total += $b[$k] ?? 0;
+        }
+        return $total;
+    }
+
+    /**
+     * One number over the hours, for a small curve.
+     *
+     * @param array<array-key, array<string, int>> $hours
+     * @return list<int>
+     */
+    private static function curve(array $hours, string $k): array
+    {
+        $out = [];
+        foreach ($hours as $b) {
+            $out[] = $b[$k] ?? 0;
+        }
+        return $out;
+    }
+
+    /**
+     * Rows with a bar each: the label (HTML, escaped already), the count.
+     *
+     * @param list<array{0: string, 1: int}> $list
+     */
+    private static function bars(array $list, string $lang, string $nothing): string
+    {
+        if ($list === []) {
+            return '<p class="note">' . htmlspecialchars($nothing, ENT_QUOTES) . '</p>';
+        }
+        $max = 1;
+        foreach ($list as $row) {
+            $max = max($max, $row[1]);
+        }
+        $out = '<table class="list">';
+        foreach ($list as [$label, $count]) {
+            $out .= '<tr><td>' . $label . '</td><td class="num">' . htmlspecialchars(StatsReport::number($count, $lang), ENT_QUOTES) . '</td>'
+                . '<td class="barcell"><i style="width:' . number_format(100 * $count / $max, 2, '.', '') . '%"></i></td></tr>';
+        }
+        return $out . '</table>';
+    }
+
+    /**
+     * @param array<string, mixed> $o
+     * @param callable(string): string $e
+     */
+    private static function page(string $body, string $title, string $lang, array $o, callable $e): string
+    {
+        $refresh = is_string($o['refresh'] ?? null) ? $o['refresh'] : '';
+        return '<!doctype html><html lang="' . $e($lang) . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+            . '<meta name="robots" content="noindex,nofollow"><title>' . $e($title) . '</title><style>' . self::CSS . '</style></head><body>'
+            . (isset($o['home']) && is_string($o['home']) ? '<header><a href="' . $e($o['home']) . '">← ' . $e(is_string($o['homeLabel'] ?? null) ? $o['homeLabel'] : 'Back') . '</a></header>' : '')
+            . '<main><h1>' . $e($title) . '</h1><div id="stats"' . ($refresh !== '' ? ' data-refresh="' . $e($refresh) . '"' : '') . '>' . $body . '</div></main>'
+            . '<script>' . self::SCRIPT . '</script></body></html>';
+    }
+
+    /**
+     * A small curve of the last hours.
+     *
+     * @param list<int> $values
+     */
+    private static function spark(array $values): string
+    {
+        $max = max(1, ...($values ?: [0]));
+        $count = count($values);
+        if ($count < 2) {
+            return '';
+        }
+        $points = [];
+        foreach ($values as $i => $v) {
+            $points[] = number_format($i * 120 / ($count - 1), 1, '.', '') . ',' . number_format(26 - 24 * $v / $max, 1, '.', '');
+        }
+        return '<svg class="spark" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true"><polyline points="' . implode(' ', $points) . '"/></svg>';
+    }
+
+    /**
+     * Stacked bars, one per period; every part has its tooltip.
+     *
+     * @param array<array-key, array<string, int>> $periods label => series => count
+     * @param array<string, array{0: string, 1: string}> $series key => [label, css class]
+     */
+    private static function stacked(array $periods, array $series, string $lang): string
+    {
+        $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $count = count($periods);
+        $legend = '<p class="legend inline">' . implode(' ', array_map(static fn (array $x): string => '<span class="dot ' . $x[1] . '"></span>' . $e($x[0]), $series)) . '</p>';
+        if ($count === 0) {
+            return $legend;
+        }
+        $max = 1;
+        foreach ($periods as $b) {
+            $sum = 0;
+            foreach (array_keys($series) as $k) {
+                $sum += (int) ($b[$k] ?? 0);
+            }
+            $max = max($max, $sum);
+        }
+        $w = 600;
+        $h = 180;
+        $slot = $w / $count;
+        $bar = max(2.0, min(40.0, $slot * 0.7));
+        $svg = '<svg class="chart" viewBox="0 0 ' . $w . ' ' . ($h + 22) . '" role="img">';
+        foreach ([0.25, 0.5, 0.75, 1.0] as $f) {
+            $y = number_format($h - $h * $f, 1, '.', '');
+            $svg .= '<line class="grid" x1="0" x2="' . $w . '" y1="' . $y . '" y2="' . $y . '"/>';
+        }
+        $svg .= '<text class="axis" x="2" y="11">' . $e(StatsReport::number($max, $lang)) . '</text>';
+        $i = 0;
+        $every = (int) max(1, ceil($count / 12));
+        foreach ($periods as $label => $b) {
+            $x = $i * $slot + ($slot - $bar) / 2;
+            $y = $h;
+            $tip = [(string) $label];
+            foreach ($series as $k => [$name, $cls]) {
+                $v = (int) ($b[$k] ?? 0);
+                $tip[] = $name . ': ' . StatsReport::number($v, $lang);
+                if ($v === 0) {
+                    continue;
+                }
+                $bh = $h * $v / $max;
+                $y -= $bh;
+                $svg .= '<rect class="' . $cls . '" x="' . number_format($x, 1, '.', '') . '" y="' . number_format($y, 1, '.', '') . '" width="' . number_format($bar, 1, '.', '') . '" height="' . number_format($bh, 1, '.', '') . '"><title>'
+                    . $e($label . ' · ' . $name . ': ' . StatsReport::number($v, $lang)) . '</title></rect>';
+            }
+            $svg .= '<rect class="hit" x="' . number_format($i * $slot, 1, '.', '') . '" y="0" width="' . number_format($slot, 1, '.', '') . '" height="' . $h . '"><title>' . $e(implode("\n", $tip)) . '</title></rect>';
+            if ($i % $every === 0) {
+                $svg .= '<text class="axis" x="' . number_format($i * $slot + $slot / 2, 1, '.', '') . '" y="' . ($h + 16) . '" text-anchor="middle">' . $e(self::short((string) $label, $lang)) . '</text>';
+            }
+            $i++;
+        }
+        return $svg . '</svg>' . $legend;
+    }
+
+    /**
+     * A ring of the answers by class (2xx, 3xx, 4xx, 5xx).
+     *
+     * @param array<string, int> $groups
+     */
+    private static function donut(array $groups, string $lang): string
+    {
+        $total = max(1, array_sum($groups));
+        $r = 15.9155;          // circumference 100
+        $offset = 25.0;
+        $svg = '<svg viewBox="0 0 42 42" class="ring" role="img">';
+        foreach ($groups as $g => $count) {
+            $part = 100 * $count / $total;
+            $svg .= '<circle class="s' . htmlspecialchars(substr($g, 0, 1), ENT_QUOTES) . '" cx="21" cy="21" r="' . $r . '" fill="none" stroke-width="6" stroke-dasharray="'
+                . number_format($part, 2, '.', '') . ' ' . number_format(100 - $part, 2, '.', '') . '" stroke-dashoffset="' . number_format($offset, 2, '.', '') . '"><title>'
+                . htmlspecialchars($g . ': ' . StatsReport::number($count, $lang), ENT_QUOTES) . '</title></circle>';
+            $offset -= $part;
+        }
+        return $svg . '<text x="21" y="23" text-anchor="middle" class="ringn">' . htmlspecialchars(StatsReport::number(array_sum($groups), $lang), ENT_QUOTES) . '</text></svg>';
+    }
+
+    /** A period's label, short: 30.09., KW 40, Sep 2026, 2026, 14:00. */
+    private static function short(string $label, string $lang): string
+    {
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $label, $m)) {
+            return $lang === 'de' ? "$m[3].$m[2]." : date('M j', (int) strtotime($label));
+        }
+        if (preg_match('/^(\d{4})-W(\d{2})$/', $label, $m)) {
+            return ($lang === 'de' ? 'KW ' : 'W') . (int) $m[2];
+        }
+        if (preg_match('/^(\d{4})-(\d{2})(?: \(month\))?$/', $label, $m)) {
+            return $lang === 'de' ? "$m[2]/$m[1]" : date('M Y', (int) strtotime("$m[1]-$m[2]-01"));
+        }
+        return $label;
+    }
+
+    private static function date(string $ymd, string $lang): string
+    {
+        $t = (int) strtotime($ymd . ' UTC');
+        return $lang === 'de' ? gmdate('d.m.Y', $t) : gmdate('Y-m-d', $t);
+    }
+
+    private const SCRIPT = <<<'JS'
+(function () {
+  var box = document.getElementById('stats'), url = box && box.getAttribute('data-refresh');
+  if (!url || !window.fetch) { return; }
+  setInterval(function () {
+    if (document.hidden) { return; }
+    fetch(url, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : null; })
+      .then(function (html) { if (html) { box.innerHTML = html; } }, function () {});
+  }, 60000);
+})();
+JS;
+
+    private const CSS = <<<'CSS'
+:root{--bg:#f4f6f9;--fg:#1d2127;--m:#5b6470;--card:#fff;--line:#e3e7ec;--a:#2f62c9;--people:#2f62c9;--crawlers:#1e8a52;--bots:#c07a00;--through:#1e8a52;--checked:#2f62c9;--throttled:#c07a00;--refused:#c2412d;--claimed:#9aa3ae;--s2:#1e8a52;--s3:#2f62c9;--s4:#c07a00;--s5:#c2412d;--nf:#8b5cf6}
+@media (prefers-color-scheme:dark){:root{--bg:#121519;--fg:#e7e9ec;--m:#9aa4b0;--card:#1b1f24;--line:#2d333b;--a:#7aa2ff;--people:#6f9bff;--crawlers:#4cc38a;--bots:#e0a43c;--through:#4cc38a;--checked:#6f9bff;--throttled:#e0a43c;--refused:#ff7a66;--claimed:#6b7480;--s2:#4cc38a;--s3:#6f9bff;--s4:#e0a43c;--s5:#ff7a66;--nf:#a78bfa}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{max-width:1120px;margin:0 auto;padding:14px 16px 0}header a,a{color:var(--a)}main{max-width:1120px;margin:0 auto;padding:6px 16px 28px}
+h1{font-size:26px;margin:8px 0 4px}h2{font-size:16px;margin:0 0 10px}h2 small{color:var(--m);font-weight:400}
+.bar{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;margin:6px 0}.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{padding:4px 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);text-decoration:none;color:var(--fg);font-size:14px}.pill.on{background:var(--a);border-color:var(--a);color:#fff}
+.sub,.hint,.note,.foot{color:var(--m)}.sub{margin:4px 0 12px}.hint{font-size:12px;margin:4px 0 0;text-align:right}.foot{font-size:13px;margin-top:16px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px 6px;position:relative;overflow:hidden}
+.tile .n{display:block;font-size:24px;font-weight:700;line-height:1.2}.tile .l{color:var(--m);font-size:13px}
+.spark{display:block;width:100%;height:28px;margin-top:4px}.spark polyline{fill:none;stroke:var(--c,var(--a));stroke-width:1.6;vector-effect:non-scaling-stroke}
+.tile.people{--c:var(--people)}.tile.crawlers{--c:var(--crawlers)}.tile.bots{--c:var(--bots)}.tile.checked{--c:var(--checked)}.tile.refused{--c:var(--refused)}.tile.nf{--c:var(--nf)}.tile.req{--c:var(--fg)}
+.tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c,var(--a))}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:14px;margin-top:14px}@media (max-width:420px){.grid2{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:14px;overflow-x:auto}.grid2 .card{margin-top:0}
+.chart{width:100%;height:auto;display:block}.chart .grid{stroke:var(--line);stroke-width:1}.chart .axis{fill:var(--m);font-size:11px}.chart .hit{fill:transparent}.chart .hit:hover{fill:rgba(127,127,127,.08)}
+.chart .people{fill:var(--people)}.chart .crawlers{fill:var(--crawlers)}.chart .bots{fill:var(--bots)}.chart .through{fill:var(--through)}.chart .checked{fill:var(--checked)}.chart .throttled{fill:var(--throttled)}.chart .refused{fill:var(--refused)}
+.legend{list-style:none;padding:0;margin:8px 0 0;font-size:13px;color:var(--m)}.legend.inline{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
+.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle;background:var(--m)}
+.dot.people{background:var(--people)}.dot.crawlers{background:var(--crawlers)}.dot.bots{background:var(--bots)}.dot.through{background:var(--through)}.dot.checked{background:var(--checked)}.dot.throttled{background:var(--throttled)}.dot.refused{background:var(--refused)}.dot.claimed{background:var(--claimed)}
+.dot.s2{background:var(--s2)}.dot.s3{background:var(--s3)}.dot.s4{background:var(--s4)}.dot.s5{background:var(--s5)}
+.donut{display:flex;gap:16px;align-items:center;flex-wrap:wrap}.ring{width:150px;height:150px}.ring circle{stroke:var(--m)}.ring .s2{stroke:var(--s2)}.ring .s3{stroke:var(--s3)}.ring .s4{stroke:var(--s4)}.ring .s5{stroke:var(--s5)}.ringn{font-size:6px;font-weight:700;fill:var(--fg)}
+.short{margin:0;padding-left:18px}.short li{margin:4px 0}
+.crow{display:grid;grid-template-columns:minmax(160px,260px) 1fr auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}.crow:last-of-type{border-bottom:0}
+.cname a{font-weight:600;text-decoration:none}.kind{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--bg);color:var(--m);border:1px solid var(--line)}
+.hbar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--bg)}.hbar i{display:block;height:100%}
+.hbar .through{background:var(--through)}.hbar .checked{background:var(--checked)}.hbar .refused{background:var(--refused)}.hbar .claimed{background:repeating-linear-gradient(45deg,var(--claimed) 0 4px,transparent 4px 7px)}
+.cnum{font-weight:700;white-space:nowrap}.cnum .note{font-weight:400;font-size:12px}
+@media (max-width:640px){.crow{grid-template-columns:1fr auto}.crow .hbar{grid-column:1/3;order:3}}
+.list{width:100%;border-collapse:collapse}.list td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}.list .num{text-align:right;white-space:nowrap;font-weight:600}
+.badge{display:inline-block;font-size:12px;padding:0 7px;border-radius:999px;border:1px solid var(--line);margin:2px 4px 0 0}.badge.s2{color:var(--s2)}.badge.s3{color:var(--s3)}.badge.s4{color:var(--s4)}.badge.s5{color:var(--s5)}
+.barcell{width:30%}.barcell i{display:block;height:8px;border-radius:4px;background:var(--a);margin-top:7px}code{font-size:13px;word-break:break-all}
+CSS;
+}

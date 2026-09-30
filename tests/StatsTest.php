@@ -199,7 +199,7 @@ return [
             same([2, 0, 1], [$r['periods']['2026-01']['passed'], $r['periods']['2026-01']['refused'], $r['periods']['2026-02']['refused']]);
             same(3, $r['periods']['2026-09']['passed'], 'the running month: its days');
             $y = StatsReport::build($s, $st, 7, (int) $at('2026-09-30'), ['from' => '20260101', 'to' => '20260930', 'by' => 'year']);
-            same(['2026' => ['passed' => 5, 'uncached' => 0, 'checked' => 0, 'throttled' => 0, 'refused' => 1]], $y['periods'], 'a year');
+            same(['2026' => ['passed' => 5, 'uncached' => 0, 'checked' => 0, 'throttled' => 0, 'refused' => 1, 'people' => 6, 'crawlers' => 0, 'bots' => 0, 'notFound' => 0]], $y['periods'], 'a year');
             $w = StatsReport::build($s, $st, 7, (int) $at('2026-09-30'), ['from' => '20260901', 'to' => '20260930', 'by' => 'week']);
             same(['2026-W40'], array_keys($w['periods']), 'ISO weeks (28 and 30 September: week 40)');
             $c = StatsReport::build($s, $st, 7, (int) $at('2026-09-30'), ['from' => '20260101', 'to' => '20260930', 'by' => 'month', 'crawler' => 'CRAWL-GPTBOT']);
@@ -224,15 +224,16 @@ return [
                 }
                 $st = new Stats($dir, $apcu);
                 for ($i = 1; $i <= 60; $i++) {
-                    $st->count(["p:CRAWL-X:/page/$i", 'n:/gone/' . $i, 'nr:/gone|/ref/' . $i], STATS_T0 + $i);
+                    $st->count(['n:/gone', "p:CRAWL-X:/page/$i", 'n:/gone/' . $i, 'nr:/gone|/ref/' . $i, 'nr:/random/' . $i . '|/x'], STATS_T0 + $i);
                 }
                 $st->count(['p:CRAWL-X:/page/1'], STATS_T0 + 100);
                 $st->count(['a:allow'], STATS_T0 + 3600);                         // rolled
                 $day = statsDay($st, STATS_T0);
                 $pages = array_filter($day, static fn (string $k): bool => strncmp($k, 'p:CRAWL-X:/page/', 16) === 0, ARRAY_FILTER_USE_KEY);
                 same([50, 10, 2], [count($pages), $day['p:CRAWL-X:(other)'] ?? 0, $day['p:CRAWL-X:/page/1'] ?? 0], "$label: 50 pages, the rest (other); a page seen twice counted twice");
-                same(10, $day['n:(other)'] ?? 0, "$label: pages not found too");
+                same([60, 11], [$day['n:/gone'] ?? 0, $day['n:(other)'] ?? 0], "$label: pages not found too (/gone and 49 others)");
                 same(55, $day['nr:/gone|(other)'] ?? 0, "$label: 5 referrers a page");
+                same([], array_filter(array_keys($day), static fn (string $k): bool => strncmp($k, 'nr:/random/', 11) === 0), "$label: no referrers for a page that is not on the list");
             } finally {
                 exec('rm -rf ' . escapeshellarg($dir));
             }
@@ -266,6 +267,12 @@ return [
             $log = (string) file_get_contents("$dir/crawlers/CRAWL-CLAUDEBOT/" . date('Y-m-d', STATS_T0) . '.log');
             truthy(strpos($log, STATS_ANTHROPIC . ' allow 200 "" "GET http://www.example.org/news/a"') !== false, 'the crawler log: the verified address in full, the query left out: ' . $log);
             truthy(strpos($log, '198.51.100.0/24 allow 200 "" claimed=CRAWL-CLAUDEBOT') !== false, 'one that only claims: masked, noted');
+            // A sitemap: which crawler read it, and when last; the answer counted at the end of the request.
+            $record(statsReq('/sitemap.xml', STATS_ANTHROPIC, STATS_CLAUDEBOT), STATS_T0 + 7);
+            same(1, statsDay(Stats::of($s), STATS_T0)['smc:/sitemap.xml|CRAWL-CLAUDEBOT'] ?? 0, 'a verified crawler read the sitemap');
+            same((int) STATS_T0 + 7, Stats::of($s)->read('20260930', '20260930')['last']['sitemap:/sitemap.xml@CRAWL-CLAUDEBOT'][0] ?? null, 'and when');
+            same(['s:200', 'sm:/news/sitemap-news.xml.gz|200'], Shield::statusKeys(statsReq('/news/sitemap-news.xml.gz'), 200), 'which sitemaps exist: their answers');
+            same(['s:200'], Shield::statusKeys(statsReq('/my-sitemap.html'), 200), 'no sitemap');
             // Refused by the site's policy
             $d = $record(statsReq('/', '20.171.207.2', 'Mozilla/5.0 (compatible; GPTBot/1.2)'), STATS_T0 + 6);
             same(Decision::REJECT, $d->action);
@@ -299,7 +306,12 @@ return [
             same(['200' => 1, '403' => 1, '404' => 1], array_combine(array_map('strval', array_keys($r['statuses'])), $r['statuses']));
             same(['/old' => ['count' => 1, 'referrers' => ['/news/x' => 1]]], $r['notFound']);
             same([1, 1, ['/news' => 1]], [$r['crawlers']['CRAWL-CLAUDEBOT']['verified'], $r['crawlers']['CRAWL-CLAUDEBOT']['allowed'], $r['crawlers']['CRAWL-CLAUDEBOT']['pages']]);
-            same(['passed' => 2, 'uncached' => 0, 'checked' => 0, 'throttled' => 0, 'refused' => 1], $r['daily']['20260930']);
+            same(['passed' => 2, 'uncached' => 0, 'checked' => 0, 'throttled' => 0, 'refused' => 1, 'people' => 0, 'crawlers' => 3, 'bots' => 0, 'notFound' => 1], $r['daily']['20260930'], 'who: three crawlers (seen), no people');
+            $de = StatsReport::build($s, $st, 7, STATS_T0 + 10, ['lang' => 'de']);
+            $worte = implode("\n", $de['sentences']);
+            truthy(strpos($worte, "(CRAWL-GPTBOT) kam 1× in den letzten 7 Tagen: jedes Mal abgewiesen (so eingestellt: block).") !== false, $worte);
+            truthy(strpos($worte, '1 Anfrage gab sich nur als') !== false && strpos($worte, 'Kaputter Link: /news/x verweist auf /old') !== false, 'German sentences');
+            same('1.204', StatsReport::number(1204, 'de'));
             $words = implode("\n", $r['sentences']);
             truthy(strpos($words, "Anthropic's training crawler (CRAWL-CLAUDEBOT) came 1× in the last 7 days: every time let through.") !== false, $words);
             truthy(strpos($words, "(CRAWL-GPTBOT) came 1× in the last 7 days: every time refused (as set: block).") !== false, 'refused as set');
@@ -307,6 +319,21 @@ return [
             truthy(strpos($words, 'No verified visit in the last 7 days from: CRAWL-OAI-SEARCH') !== false, 'the AI crawlers that did not come');
             truthy(strpos($words, 'Broken link: /news/x links to /old, which was not found (1×).') !== false, 'a broken link');
             truthy(json_encode($r) !== false, 'JSON for a CMS');
+            $st->count(['sm:/sitemap.xml|200', 'smc:/sitemap.xml|CRAWL-GOOGLE', 'l:sitemap:/sitemap.xml@CRAWL-GOOGLE|' . (STATS_T0 + 5) . '|-', 'sm:/old-sitemap.xml|404'], STATS_T0 + 5);
+            $maps = StatsReport::build($s, $st, 7, STATS_T0 + 10);
+            same(['/old-sitemap.xml' => ['statuses' => ['404' => 1], 'crawlers' => []], '/sitemap.xml' => ['statuses' => ['200' => 1], 'crawlers' => ['CRAWL-GOOGLE' => ['count' => 1, 'last' => STATS_T0 + 5]]]], $maps['sitemaps']);
+            $words = implode("\n", $maps['sentences']);
+            truthy(strpos($words, '/old-sitemap.xml was asked for 1× but does not exist (404).') !== false && strpos($words, 'CRAWL-GOOGLE read /sitemap.xml 1×, last on') !== false, $words);
+            // The page: charts, both languages, everything escaped.
+            $st->count(['n:/<script>x', 'o:curl', 'c:CRAWL-GOOGLE:seen'], STATS_T0 + 6);
+            $page = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'action' => '/stats']);
+            truthy(strpos($page, '<html lang="de">') !== false && strpos($page, 'Wer kam') !== false && strpos($page, 'Nicht gefundene Seiten') !== false, 'German');
+            truthy(substr_count($page, '<svg') >= 4 && strpos($page, 'class="chart"') !== false && strpos($page, 'class="ring"') !== false, 'the charts');
+            truthy(strpos($page, '<script>x') === false && strpos($page, '&lt;script&gt;x') !== false, 'a path is never markup');
+            truthy(strpos($page, 'Sitemaps') !== false && strpos($page, 'CRAWL-GOOGLE') !== false, 'sitemaps, crawlers');
+            $en = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'accept' => 'en-US,en;q=0.9', 'fragment' => true]);
+            truthy(strpos($en, 'Who came') !== false && strpos($en, '<html') === false, 'the browser\'s language; only the content for the refresh');
+            truthy(strpos(\CjwNetwork\RequestShield\Report\StatsPage::render(Settings::from([])), 'set stats on') !== false, 'without statistics: how to switch them on');
             $html = RulesPage::render($s, ['now' => STATS_T0 + 10]);
             truthy(strpos($html, '7 days: 1 visits (1 let through), last') !== false, 'the rules page: what each crawler did');
         } finally {

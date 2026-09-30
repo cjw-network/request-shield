@@ -28,8 +28,11 @@ namespace CjwNetwork\RequestShield;
  * "p:<crawler>:<path>", "o:<bot family>", "m:<action>" (what monitor mode would
  * have done), "s:<status>" (the answer's status code), "n:<path>" (a page the
  * site did not find), "nr:<path>|<referrer>" (where a link to it was: a path
- * of the site itself, or another site's host). "l:<crawler>|<time>|<address>"
- * is not counted: the crawler's last visit.
+ * of the site itself, or another site's host), "sm:<sitemap>|<status>" (a
+ * sitemap asked for, and the answer), "smc:<sitemap>|<crawler>" (a verified
+ * crawler read it). "l:<crawler>|<time>|<address>" is not counted: the
+ * crawler's last visit ("l:sitemap:<path>@<crawler>|…": its last read of a
+ * sitemap).
  */
 final class Stats
 {
@@ -39,6 +42,9 @@ final class Stats
     public const PAGES = 50;
 
     public const REFERRERS = 5;
+
+    /** Sitemaps kept a day (and five times as many sitemap-crawler pairs); the rest count as "(other)". */
+    public const SITEMAPS = 20;
 
     public function __construct(
         private string $dir,
@@ -81,6 +87,9 @@ final class Stats
                 }
                 if (self::group($k) !== null) {
                     $k = $this->page($hour, $k);
+                    if ($k === '') {
+                        continue;
+                    }
                 }
                 apcu_inc(self::PREFIX . $hour . ':' . $k, 1, $ok, 86400 * 8);
             }
@@ -149,6 +158,12 @@ final class Stats
             $g = substr($key, 0, (int) strpos($key, '|'));
             return [$g, self::REFERRERS, $g . '|(other)'];
         }
+        if (strncmp($key, 'sm:', 3) === 0) {
+            return ['sm', self::SITEMAPS, 'sm:(other)|0'];
+        }
+        if (strncmp($key, 'smc:', 4) === 0) {
+            return ['smc', self::SITEMAPS * 5, 'smc:(other)|(other)'];
+        }
         return null;
     }
 
@@ -163,11 +178,24 @@ final class Stats
             return $key;
         }
         [$group, $limit, $other] = $g;
+        if (apcu_exists(self::PREFIX . $hour . ':' . $key)) {
+            return $key;                    // admitted already
+        }
+        // A missing page's referrers only for missing pages that made the list:
+        // random paths must not open a group each.
+        if (strncmp($key, 'nr:', 3) === 0 && !apcu_exists(self::PREFIX . $hour . ':n:' . substr($group, 3))) {
+            return '';
+        }
+        $counter = self::PREFIX . 'pages:' . $hour . ':' . md5((string) $group);
+        $taken = apcu_fetch($counter);
+        if (is_int($taken) && $taken >= $limit) {
+            return (string) $other;         // full: no more guard keys (a flood of random paths stays small)
+        }
         if (apcu_add(self::PREFIX . 'seen:' . $hour . ':' . md5($key), 1, 86400 * 8)) {
             // Seen for the first time this hour: one of the first, or "(other)".
-            return apcu_inc(self::PREFIX . 'pages:' . $hour . ':' . md5((string) $group), 1, $ok, 86400 * 8) > $limit ? (string) $other : $key;
+            return apcu_inc($counter, 1, $ok, 86400 * 8) > $limit ? (string) $other : $key;
         }
-        return apcu_exists(self::PREFIX . $hour . ':' . $key) ? $key : (string) $other;
+        return (string) $other;
     }
 
     /**
@@ -506,6 +534,13 @@ final class Stats
             foreach (array_slice($g['keys'], $g['limit'], null, true) as $k => $n) {
                 unset($counts[$k]);
                 $counts[$g['other']] = ($counts[$g['other']] ?? 0) + $n;
+            }
+        }
+        // Referrers only for the pages not found that stayed on the list.
+        foreach ($counts as $k => $n) {
+            $k = (string) $k;
+            if (strncmp($k, 'nr:', 3) === 0 && !isset($counts['n:' . substr($k, 3, (int) strpos($k, '|') - 3)])) {
+                unset($counts[$k]);
             }
         }
         return $counts;

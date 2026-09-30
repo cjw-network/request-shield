@@ -320,6 +320,11 @@ final class Shield
                 // The page, without its query; spaces and the like escaped (a key is one word).
                 $keys[] = "p:$id:" . self::word($request->path);
                 $keys[] = "l:$id|" . (int) $now . '|' . $request->clientIp;
+                if (self::isSitemap($request->path)) {
+                    // Which crawler read which sitemap, and when last: does it see the new content?
+                    $keys[] = 'smc:' . self::word($request->path) . "|$id";
+                    $keys[] = 'l:sitemap:' . self::word($request->path) . "@$id|" . (int) $now . '|-';
+                }
             }
             if ($s->crawlerLogDir !== null && ($s->crawlerLogKinds === [] || in_array($this->crawlers()->kind($id), $s->crawlerLogKinds, true))) {
                 // A verified crawler's address is its operator's: in full. One that
@@ -341,20 +346,23 @@ final class Shield
         $stats = $this->stats;
         $requests = in_array('requests', $parts, true);
         $missing = in_array('not-found', $parts, true);
-        if (!$atEnd || (!$requests && !$missing)) {
+        if (!$atEnd || (!$requests && !$missing && !$crawling)) {
             if ($requests) {
                 $keys[] = 's:' . $decision->status;          // the shield answered itself
+            }
+            if ($crawling && self::isSitemap($request->path)) {
+                $keys[] = 'sm:' . self::word($request->path) . '|' . $decision->status;
             }
             if ($keys !== []) {
                 $stats->count($keys, $now);
             }
             return;
         }
-        register_shutdown_function(static function () use ($keys, $request, $now, $stats, $requests, $missing): void {
+        register_shutdown_function(static function () use ($keys, $request, $now, $stats, $requests, $missing, $crawling): void {
             $status = http_response_code();
             if (is_int($status) && $status > 0) {
                 foreach (self::statusKeys($request, $status) as $k) {
-                    if (strncmp($k, 's:', 2) === 0 ? $requests : $missing) {
+                    if (strncmp($k, 'sm:', 3) === 0 ? $crawling : (strncmp($k, 's:', 2) === 0 ? $requests : $missing)) {
                         $keys[] = $k;
                     }
                 }
@@ -366,6 +374,12 @@ final class Shield
     }
 
     private ?Stats $stats = null;
+
+    /** sitemap.xml, sitemap_index.xml, sitemap-news.xml, …, also .gz, in any folder. */
+    public static function isSitemap(string $path): bool
+    {
+        return preg_match('~(?:^|/)sitemap[\w.-]*\.xml(?:\.gz)?$~i', $path) === 1;
+    }
 
     /**
      * A path as one word of a counter's name: spaces, "*" (a count in the
@@ -386,6 +400,9 @@ final class Shield
     public static function statusKeys(Request $request, int $status): array
     {
         $keys = ['s:' . $status];
+        if (self::isSitemap($request->path)) {
+            $keys[] = 'sm:' . self::word($request->path) . '|' . $status;     // which sitemaps exist: 200, 404
+        }
         if ($status !== 404 && $status !== 410) {
             return $keys;
         }
