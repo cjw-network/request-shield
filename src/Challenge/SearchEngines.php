@@ -42,6 +42,9 @@ final class SearchEngines
      * @param array<string, list<string>> $engines
      * @param (callable(string): (string|false))|null $reverse gethostbyaddr, replaceable for tests
      * @param (callable(string): list<string>)|null $forward addresses of a host, replaceable for tests
+     * @param (\Closure(): bool)|null $mayLookUp asked before every new lookup (and counting it): false, and
+     *   the address counts as not verified, at once -- DNS that does not answer (a DMZ) must not let
+     *   a flood of fake crawlers make every request wait for its timeout
      */
     public function __construct(
         private array $engines,
@@ -49,6 +52,7 @@ final class SearchEngines
         private ?\Closure $cacheSet = null,
         private $reverse = null,
         private $forward = null,
+        private ?\Closure $mayLookUp = null,
     ) {
     }
 
@@ -79,6 +83,11 @@ final class SearchEngines
             if ($known === '1' || $known === '0') {
                 return $known === '1';
             }
+        }
+        // Past the lookups allowed: not verified, without waiting -- and not
+        // remembered, so a real crawler is known again once the flood is over.
+        if ($this->mayLookUp !== null && !($this->mayLookUp)()) {
+            return false;
         }
         $ok = $this->resolve($ip, $suffixes);
         if ($this->cacheSet !== null) {

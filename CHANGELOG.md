@@ -132,6 +132,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   Rule Set's first level (IDs `ATK-…`, `version 2026.09.1`).
 
 ### Fixed
+- Fake search engine crawlers could make requests wait where DNS does not
+  answer (a DMZ): each new address claiming to be Googlebot started a DNS
+  lookup that waited for the resolver's timeout. At most `dns-lookups` new
+  lookups a minute are made now, for all requests together (default 30); past
+  that a claimed crawler counts as not verified at once, and nothing is
+  remembered. `set dns-lookups 0` for no lookups at all. The check itself never
+  needed the internet (documented).
 - The check page said "The check did not succeed" on the fourth check in a
   browser tab, however far apart and on whatever pages: its guard against a
   loop counted every check page of the tab and was never reset. It now counts

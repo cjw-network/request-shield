@@ -57,6 +57,8 @@ And what it does **not** cost you:
   check comes from your own server, nothing about your visitors leaves it.
   No tracking cookie, no data protection question beyond the pass itself.
 - **No account, no subscription, no service** that has to be running.
+- **No internet connection needed:** the check works in a closed network (a
+  DMZ) as well — everything is made and checked on the site's own server.
 
 ## What it does not do
 

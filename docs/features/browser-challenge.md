@@ -40,6 +40,28 @@ it expires (the hard `limit` still applies).
 - Without JavaScript or cookies the page says what is missing; after three
   failed attempts in a tab it stops instead of looping.
 
+
+## No internet needed — and a DMZ
+
+The check itself makes **no connection to anyone**: the task, its signature,
+the check of the answer and the pass cookie are all made on the site's own
+server with its own secret; the browser gets everything from the site. It works
+in a closed network, a DMZ, without any outside service.
+
+The **only** contact with the outside is DNS, to verify search engines: only
+for a request that would get the check **and** says it is a search engine
+(Googlebot, bingbot, …), and remembered for a day per address. Without a DNS
+server that answers (a DMZ), such a lookup waits for the resolver's timeout; so
+at most `dns-lookups` new lookups a minute are made for all requests together
+(default 30) — past that, a claimed crawler counts as not verified at once and
+nothing is remembered, so a flood of fake crawlers cannot make requests wait.
+
+In a DMZ without DNS: `set dns-lookups 0` (no lookups; search engines are then
+checked like everyone else — which only matters where the site checks) or
+`set search-engines off`; or a short resolver timeout (`options timeout:1
+attempts:1` in `/etc/resolv.conf`). Verifying crawlers without DNS, by their
+operators' published address lists: [proposal 0011](../proposals/0011-known-crawlers.md).
+
 ## Use cases
 
 - Scrapers and simple bots: they either run the script (and pay CPU per

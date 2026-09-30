@@ -693,6 +693,12 @@ final class Shield
                     @mkdir($dir . '/se', 0700, true);
                     @file_put_contents($dir . '/se/' . md5($key), $value);
                 },
+                null,
+                null,
+                // New DNS lookups per minute, for all requests together (the store).
+                function () use ($c): bool {
+                    return $c->dnsLookups > 0 && $this->store->hit('se-lookups', 60, microtime(true)) <= $c->dnsLookups;
+                },
             );
         }
         return new Gate($c, Secret::resolve($c->secret, $dir), $engines, $this->settings->ipv6Prefix, $this->store);

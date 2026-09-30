@@ -231,6 +231,7 @@ keeps both the same.
 | `difficulty-min`, `difficulty-max` | numbers |
 | `cookie`, `solution-cookie` | cookie names |
 | `bind-user-agent`, `search-engines`, `debug-header`, `strip-untrusted-forwarded` | `on` / `off` |
+| `dns-lookups` | new DNS lookups a minute to verify search engines, for all requests together (default 30; `0`: none — a DMZ without DNS) |
 | `app-challenge` | `on`: the site may ask for the check with the header `X-Request-Shield-Challenge: required` ([docs](app-challenges.md)) |
 | `ipv6-prefix`, `max-uri`, `max-query-parameters`, `max-header-bytes` | numbers |
 | `widget-path`, `widget-difficulty` | the browser check inside a form: its endpoint (`/request-shield`; unset: off) and difficulty ([docs](browser-check-in-the-form.md)) |

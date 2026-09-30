@@ -349,4 +349,37 @@ return [
         }
         exec('rm -rf ' . escapeshellarg($dir));
     },
+    'DNS lookups for search engines: at most so many a minute -- a flood of fake crawlers does not wait for DNS' => function (): void {
+        $calls = 0;
+        // DNS that does not answer (a DMZ): every lookup waits, then fails.
+        $slow = function (string $ip) use (&$calls) { $calls++; usleep(20000); return false; };
+        $cache = [];
+        $get = function ($k) use (&$cache) { return $cache[$k] ?? null; };
+        $set = function ($k, $v) use (&$cache) { $cache[$k] = $v; };
+        $flood = function (?\Closure $guard) use ($slow, $get, $set, &$calls, &$cache): array {
+            [$calls, $cache] = [0, []];
+            $se = new SearchEngines(SearchEngines::defaults(), $get, $set, $slow, null, $guard);
+            $t = microtime(true);
+            for ($i = 1; $i <= 50; $i++) {
+                truthy(!$se->verified("198.51.100.$i", 'Mozilla/5.0 (compatible; Googlebot/2.1)'), 'a fake crawler is never verified');
+            }
+            return [$calls, microtime(true) - $t];
+        };
+        [$without, $slowTime] = $flood(null);
+        same(50, $without, 'without the guard: 50 fake crawlers, 50 lookups');
+        $store = new \CjwNetwork\RequestShield\Store\MemoryStore();
+        [$with, $fastTime] = $flood(function () use ($store): bool { return $store->hit('se-lookups', 60, 1000.0) <= 5; });
+        same(5, $with, 'with it: 5 lookups, the rest refused at once');
+        truthy($fastTime < $slowTime / 5, sprintf('and fast: %.2f s instead of %.2f s', $fastTime, $slowTime));
+        // Past the budget nothing is remembered: a real crawler is known again later.
+        $real = new SearchEngines(SearchEngines::defaults(), $get, $set,
+            fn (string $ip) => 'crawl-66-249-66-1.googlebot.com', fn (string $h) => ['66.249.66.1'], fn (): bool => false);
+        same(false, $real->verified('66.249.66.1', 'Googlebot/2.1'), 'no lookups left: not verified');
+        same(null, $cache['se:66.249.66.1'] ?? null, 'and not remembered');
+        $later = new SearchEngines(SearchEngines::defaults(), $get, $set,
+            fn (string $ip) => 'crawl-66-249-66-1.googlebot.com', fn (string $h) => ['66.249.66.1'], fn (): bool => true);
+        same(true, $later->verified('66.249.66.1', 'Googlebot/2.1'), 'a minute later: verified');
+        same(30, ChallengeSettings::from([])->dnsLookups, 'the default: 30 a minute');
+        same(0, ChallengeSettings::from(['dnsLookups' => 0])->dnsLookups, '0: none (a DMZ without DNS)');
+    },
 ];

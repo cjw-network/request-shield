@@ -57,6 +57,8 @@ final class ChallengeSettings
         public int $widgetDifficulty = 25000,
         /** @readonly paths of the site's API: a check there is sent as a header, not as a page */
         public array $apiPaths = [],
+        /** @readonly new DNS lookups a minute to verify search engines, for all requests together; 0: none */
+        public int $dnsLookups = 30,
     ) {
     }
 
@@ -113,6 +115,7 @@ final class ChallengeSettings
             self::widgetPath($c),
             max(1000, Settings::int($c, 'widgetDifficulty', 'challenge.widgetDifficulty', 25000)),
             Settings::strings($c, 'apiPaths', 'challenge.apiPaths'),
+            max(0, Settings::int($c, 'dnsLookups', 'challenge.dnsLookups', 30)),
         );
     }
 

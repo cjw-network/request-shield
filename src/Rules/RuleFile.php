@@ -52,6 +52,7 @@ final class RuleFile
         'solution-cookie' => ['challenge.solutionCookie', 'string'],
         'bind-user-agent' => ['challenge.bindUserAgent', 'bool'],
         'search-engines' => ['challenge.searchEngines', 'bool'],
+        'dns-lookups' => ['challenge.dnsLookups', 'int'],
         'recheck' => ['recheck', 'seconds'],
         'language' => ['challenge.language', 'language'],
         'home' => ['challenge.home', 'string'],

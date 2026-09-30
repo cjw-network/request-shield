@@ -79,6 +79,10 @@ final class Config
                 // The site's API: a check there (past a limit, say) is sent as JSON with
                 // a Request-Shield-Challenge header; JSON requests count as API anyway.
                 'apiPaths' => [],
+                // New DNS lookups a minute to verify search engines, for all requests
+                // together; past that a claimed crawler counts as not verified at once.
+                // 0: no lookups (a DMZ without DNS).
+                'dnsLookups' => 30,
                 // Own texts: 'title' for every language, 'de.title' for one
                 // (keys: Texts::KEYS).
                 'texts' => [],
