@@ -86,6 +86,7 @@ set         crawler-verify ranges
 [DEMO-STATS]        restrict **/rs/**     to 127.0.0.1 ::1        # the statistics -- /rs/dashboard, /rs/stats, /rs/shield: only this machine
 set         stats on
 set         dashboard-path /rs                                     # the statistics: /rs/dashboard, /rs/stats, /rs/shield (restricted above)
+set         stats-depth 4                                          # sections to the fourth folder: the demo lives under /qbixserver/request-shield/examples/demo/
 
 # Counters, the generated secret and the log: outside the document root,
 # never in a directory a web server might hand out (the tests set the variable).
