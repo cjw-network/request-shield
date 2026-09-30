@@ -31,6 +31,7 @@ version 2026-09-29.1        # this rule set's own version: shown on /rules and b
 include @tracking
 [DEMO-PARAMS]       query page int   q text   start word   v id                            # page numbers, the search, how the form box starts, the script's version
 [DEMO-PARAMS-RULES] query method word   url text   ip /[0-9A-Fa-f.:]{1,45}/ at **/rules      # the check on the active rules page
+[DEMO-PARAMS-STATS] query days int   by word   crawler id   format word at **/stats         # the statistics page: the period, one crawler, JSON
 [DEMO-STRICT]       query strict                                  # any other parameter, or a value not of its type: 404
 
 [DEMO-FORMS]        allow POST  **/edit **/comment **/profile **/contact     # forms may only be sent to the edit, comment, profile and contact pages
@@ -77,7 +78,13 @@ set         mode enforce
 set         pass-ttl 1m
 set         difficulty-min 50000
 set         difficulty-max 300000
-set         search-engines off
+# Crawlers are recognised by their published address lists only: no DNS
+# lookups from the demo (on your machine they are all "claimed" anyway).
+set         crawler-verify ranges
+
+# Statistics: what the shield did, per hour (bin/request-shield stats, or /stats).
+[DEMO-STATS]        restrict **/stats     to 127.0.0.1 ::1        # the statistics page: only this machine
+set         stats on
 
 # Counters, the generated secret and the log: outside the document root,
 # never in a directory a web server might hand out (the tests set the variable).

@@ -124,6 +124,60 @@ if ($path === '/search') {
     echo RulesPage::render($shield->settings, ['check' => $_GET, 'action' => $url('/rules'), 'ip' => $request->clientIp, 'title' => 'Active rules — request-shield demo',
         'home' => $url('/'), 'homeLabel' => 'request-shield demo']);
     exit;
+} elseif ($path === '/stats' && $shield !== null) {
+    // What the counters say (set stats on): the demo's own small dashboard.
+    $days = max(1, min(400, (int) ($_GET['days'] ?? 7)));
+    $by = in_array($_GET['by'] ?? 'day', ['day', 'week', 'month', 'year'], true) ? (string) ($_GET['by'] ?? 'day') : 'day';
+    $only = isset($_GET['crawler']) && isset($shield->settings->crawlers[(string) $_GET['crawler']]) ? (string) $_GET['crawler'] : null;
+    $report = \CjwNetwork\RequestShield\Report\StatsReport::build($shield->settings, null, $days, null, ['by' => $by] + ($only !== null ? ['crawler' => $only] : []));
+    if (($_GET['format'] ?? '') === 'json') {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    header('Content-Type: text/html; charset=utf-8');
+    $n = static fn (int $v): string => number_format($v);
+    $t = $report['totals'];
+    $rows = static function (array $list, callable $cells): string {
+        $h = '';
+        foreach ($list as $k => $v) {
+            $h .= '<tr>' . $cells((string) $k, $v) . '</tr>';
+        }
+        return $h === '' ? '<tr><td class="m">nothing yet</td></tr>' : $h;
+    };
+    $link = static fn (array $q, string $label) => '<a href="' . $e($url('/stats') . '?' . http_build_query($q)) . '">' . $e($label) . '</a>';
+    echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">'
+        . '<title>Statistics — request-shield demo</title><style>:root{--bg:#f6f7f9;--fg:#1d2127;--m:#5b6470;--card:#fff;--line:#dfe3e8;--a:#2f62c9}'
+        . '@media (prefers-color-scheme:dark){:root{--bg:#15181c;--fg:#e7e9ec;--m:#a0a8b3;--card:#1d2127;--line:#3a414b;--a:#7aa2ff}}'
+        . 'body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}main{max-width:980px;margin:0 auto;padding:20px 16px}'
+        . 'a{color:var(--a)}section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:14px 0;overflow-x:auto}'
+        . 'table{border-collapse:collapse;width:100%}td,th{padding:4px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}td.r,th.r{text-align:right}'
+        . '.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}.tile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}'
+        . '.tile b{display:block;font-size:22px}.m{color:var(--m)}</style></head><body><main>'
+        . '<p><a href="' . $e($url('/')) . '">← request-shield demo</a></p><h1>Statistics</h1>'
+        . '<p class="m">' . $e(substr($report['from'], 0, 4) . '-' . substr($report['from'], 4, 2) . '-' . substr($report['from'], 6) . ' to ' . substr($report['to'], 0, 4) . '-' . substr($report['to'], 4, 2) . '-' . substr($report['to'], 6))
+        . ' · ' . $link(['days' => 1], 'today') . ' · ' . $link(['days' => 7], '7 days') . ' · ' . $link(['days' => 30, 'by' => 'week'], '30 days by week') . ' · '
+        . $link(['days' => 365, 'by' => 'month'], '12 months') . ' · ' . $link(['days' => $days, 'by' => $by, 'format' => 'json'], 'JSON') . ' · <code>php bin/request-shield stats</code></p>'
+        . '<div class="tiles"><div class="tile"><b>' . $n(array_sum($t)) . '</b>requests</div><div class="tile"><b>' . $n(($t['allow'] ?? 0) + ($t['allow-uncached'] ?? 0)) . '</b>let through</div>'
+        . '<div class="tile"><b>' . $n($t['challenge'] ?? 0) . '</b>checked</div><div class="tile"><b>' . $n($t['throttle'] ?? 0) . '</b>told to wait</div><div class="tile"><b>' . $n($t['reject'] ?? 0) . '</b>refused</div></div>'
+        . '<section><h2>In short</h2>' . ($report['sentences'] === [] ? '<p class="m">Nothing to say yet.</p>' : '<ul><li>' . implode('</li><li>', array_map($e, $report['sentences'])) . '</li></ul>') . '</section>'
+        . '<section><h2>' . $e(ucfirst($by)) . ($only !== null ? ' — ' . $e($only) : '') . '</h2><table><tr><th></th>'
+        . ($only !== null ? '<th class="r">visits</th><th class="r">let through</th><th class="r">checked</th><th class="r">refused</th><th class="r">claimed</th>'
+            : '<th class="r">cacheable</th><th class="r">uncached</th><th class="r">checked</th><th class="r">waited</th><th class="r">refused</th>') . '</tr>'
+        . $rows($report['periods'], static fn (string $k, array $b): string => '<td>' . $e($k) . '</td>' . implode('', array_map(static fn (string $c): string => '<td class="r">' . $n((int) ($b[$c] ?? 0)) . '</td>',
+            $only !== null ? ['verified', 'allowed', 'checked', 'refused', 'claimed'] : ['passed', 'uncached', 'checked', 'throttled', 'refused']))) . '</table></section>'
+        . '<section><h2>Answers</h2><table>' . $rows($report['statuses'], static fn (string $k, int $v): string => '<td>' . $e($k) . '</td><td class="r">' . $n($v) . '</td>') . '</table>'
+        . '<h2>Not found</h2><table>' . $rows($report['notFound'], static fn (string $k, array $x): string => '<td>' . $e($k) . '</td><td class="r">' . $n($x['count']) . '</td><td class="m">'
+            . $e(implode(', ', array_map(static fn ($f, $v): string => "$f ($v)", array_keys($x['referrers']), $x['referrers']))) . '</td>') . '</table>'
+        . '<h2>Rules that decided most</h2><table>' . $rows($report['rules'], static fn (string $k, int $v): string => '<td><code>' . $e($k) . '</code></td><td class="r">' . $n($v) . '</td>') . '</table></section>'
+        . '<section><h2>Known crawlers</h2><table><tr><th></th><th class="r">seen</th><th class="r">verified</th><th class="r">claimed</th><th class="r">allowed</th><th class="r">refused</th><th>last</th></tr>'
+        . $rows(array_filter($report['crawlers'], static fn (array $c): bool => $c['seen'] > 0), static fn (string $id, array $c): string => '<td>' . $link(['days' => $days, 'by' => 'day', 'crawler' => $id], $id)
+            . '<br><span class="m">' . $e($c['name']) . '</span></td><td class="r">' . $n($c['seen']) . '</td><td class="r">' . $n($c['verified']) . '</td><td class="r">' . $n($c['claimed']) . '</td><td class="r">'
+            . $n($c['allowed']) . '</td><td class="r">' . $n($c['refused']) . '</td><td class="m">' . ($c['last'] !== null ? $e(date('Y-m-d H:i', $c['last'][0])) : '–') . '</td>') . '</table>'
+        . '<h2>Other bots</h2><table>' . $rows($report['bots'], static fn (string $k, int $v): string => '<td>' . $e($k) . '</td><td class="r">' . $n($v) . '</td>') . '</table></section>'
+        . '<p class="m">Try: <code>curl -A "Mozilla/5.0 (compatible; GPTBot/1.2)" ' . $e($url('/')) . '</code> — from your machine it only claims the name, so it counts as "claimed". '
+        . 'A page that does not exist (<a href="' . $e($url('/no-such-page')) . '">/no-such-page</a>) shows up under "Not found" with this page as the link to it.</p></main></body></html>';
+    exit;
 } elseif ($path === '/api/status') {
     // 5 calls a minute; past that: 429 with the task as JSON and in the header
     // Request-Shield-Challenge -- solved, the call is repeated with Request-Shield-Solution.
@@ -133,6 +187,13 @@ if ($path === '/search') {
     header('Content-Type: application/json');
     echo json_encode(['ok' => true, 'note' => 'the API answers only this machine (restrict **/api/** to 127.0.0.1 ::1)']), "\n";
     exit;
+}
+
+// A page the demo does not have: "not found" (404), as a CMS would answer it --
+// with statistics on, it shows up under "Not found", with the page linking to it.
+if ($content === null && !in_array($path, ['/', '/index.php', '/challenge'], true) && strncmp($path, '/page/', 6) !== 0) {
+    http_response_code(404);
+    $content = ['Not found', 'There is no page "' . $path . '" in this demo (a 404, as a CMS would answer). With statistics on (set stats on), it is listed under "Not found" on /stats, with the page that linked here.'];
 }
 
 $rule = Shield::currentRule();
@@ -178,6 +239,7 @@ $groups = [
         ['/api/status', 'The API', 'answers this machine only'],
         ['/files/.env', 'A hidden file in the admin\'s file reader', 'passes from this machine: hidden files are open at /files/ only'],
         ['/rules', 'The active rules', 'every rule in plain words, and a check for any address (this machine only)'],
+        ['/stats', 'The statistics', 'what the shield did, per day, week, month; crawlers, pages not found (this machine only)'],
     ],
     'The site asks for the check' => [
         ['/comment', 'A comment form', 'sending it needs a pass: without one, the check — then the comment is sent again by itself'],

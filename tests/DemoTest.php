@@ -101,8 +101,14 @@ $examples = function (string $prefix): void {
             same(200, $get('GET', '/?page=2&fbclid=x&gclid=y')['status'], 'known, and marketing tags');
             same(200, $get('GET', '/rules?method=GET&url=' . rawurlencode('https://www.example.org/x?a=1') . '&ip=')['status'], 'the rules page\'s check, an empty field too');
             $r = $get('GET', '/random/abc');
-            same(200, $r['status'], 'an unknown path passes: the site answers it');
+            same(404, $r['status'], 'an unknown path passes the shield: the site answers it ("not found", as a CMS would)');
             same('allow-uncached path not cacheable; rule=DEMO-CACHE', $r['shield']);
+            // The statistics page: counted, the page not found listed with the link to it.
+            $get('GET', '/no-such-page', ['Referer' => 'http://127.0.0.1/stats']);
+            $stats = json_decode($get('GET', '/stats?format=json')['body'], true);
+            $missing = array_filter(array_keys((array) ($stats['notFound'] ?? [])), static fn ($p): bool => substr((string) $p, -13) === '/no-such-page');
+            truthy($missing !== [], 'the page not found, counted (under its full path): ' . json_encode($stats['notFound'] ?? null));
+            same(200, $get('GET', '/stats?days=30&by=week')['status'], 'the statistics page');
             $r = $get('GET', '/.env');
             same(404, $r['status'], 'scanner path');
             truthy(strpos($r['body'], '<a href="' . $prefix . '/">To the home page</a>') !== false, 'the shield\'s own page leads back to the demo');
