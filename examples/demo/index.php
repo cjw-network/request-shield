@@ -134,9 +134,12 @@ if ($path === '/search') {
     }
     echo "</urlset>\n";
     exit;
-} elseif ($path === '/stats' && $shield !== null) {
-    // What the counters say (set stats on): the library's statistics page, in
-    // the visitor's language (or ?lang=de|en); ?format=json for a CMS.
+} elseif ($shield !== null && \CjwNetwork\RequestShield\Report\StatsPage::viewFor($shield->settings, $path) !== null) {
+    // What the counters say (set stats on): the library's statistics page at
+    // dashboard-path (/rs here, /admin/rs on a site that likes it so) -- the path names the view (the dashboard: everything; stats: visitors and
+    // pages, for editors; shield: the protection, for admins), GET parameters
+    // filter; in the visitor's language (or ?lang=de|en); ?format=json for a CMS.
+    $view = (string) \CjwNetwork\RequestShield\Report\StatsPage::viewFor($shield->settings, $path);
     $days = max(1, min(400, (int) ($_GET['days'] ?? 7)));
     $by = in_array($_GET['by'] ?? '', ['hour', 'day', 'week', 'month', 'year'], true) ? (string) $_GET['by'] : null;
     $only = isset($_GET['crawler']) && isset($shield->settings->crawlers[(string) $_GET['crawler']]) ? (string) $_GET['crawler'] : null;
@@ -148,7 +151,8 @@ if ($path === '/search') {
         exit;
     }
     header('Content-Type: text/html; charset=utf-8');
-    echo \CjwNetwork\RequestShield\Report\StatsPage::render($shield->settings, ['action' => $url('/stats'), 'days' => $days, 'crawler' => $only, 'path' => isset($_GET['path']) ? (string) $_GET['path'] : null, 'view' => (string) ($_GET['view'] ?? 'site'),
+    echo \CjwNetwork\RequestShield\Report\StatsPage::render($shield->settings, ['view' => $view, 'links' => array_map($url, \CjwNetwork\RequestShield\Report\StatsPage::links($shield->settings)),
+        'days' => $days, 'crawler' => $only, 'path' => isset($_GET['path']) ? (string) $_GET['path'] : null,
         'lang' => (string) ($_GET['lang'] ?? 'auto'), 'accept' => $request->header('accept-language'), 'fragment' => isset($_GET['fragment']),
         'home' => $url('/'), 'homeLabel' => 'request-shield demo'] + ($by !== null ? ['by' => $by] : []));
     exit;
@@ -213,10 +217,11 @@ $groups = [
         ['/api/status', 'The API', 'answers this machine only'],
         ['/files/.env', 'A hidden file in the admin\'s file reader', 'passes from this machine: hidden files are open at /files/ only'],
         ['/rules', 'The active rules', 'every rule in plain words, and a check for any address (this machine only)'],
-        ['/stats', 'Statistics: visitors & pages', 'for editors: people, crawlers, bots; the most visited pages and sections, broken links, sitemaps (this machine only)'],
-        ['/stats?view=shield', 'Statistics: protection', 'for admins: what the shield did, the answers, the rules, bots (this machine only)'],
-        ['/stats?lang=de', 'Statistik auf Deutsch', 'the same page in German (it also follows your browser\'s language)'],
-        ['/stats?path=' . rawurlencode($url('/page/')), 'Statistics: one subtree', 'the "path starts with" filter: views of one section, by people, crawlers, bots'],
+        ['/rs/dashboard', 'Statistics: the dashboard', 'everything at a glance: who came, what the shield did, pages, crawlers, rules (this machine only)'],
+        ['/rs/stats', 'Statistics: visitors & pages', 'for editors: people, crawlers, bots; the most visited pages and sections, broken links, sitemaps'],
+        ['/rs/shield', 'Statistics: protection', 'for admins: what the shield did, the answers, the rules, bots'],
+        ['/rs/stats?lang=de', 'Statistik auf Deutsch', 'the same page in German (it also follows your browser\'s language)'],
+        ['/rs/stats?path=' . rawurlencode($url('/page/')), 'Statistics: one subtree', 'the "path starts with" filter: views of one section, by people, crawlers, bots'],
     ],
     'The site asks for the check' => [
         ['/comment', 'A comment form', 'sending it needs a pass: without one, the check — then the comment is sent again by itself'],

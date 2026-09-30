@@ -69,11 +69,26 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
         same([false, null], [Settings::from([])->statsEnabled, Settings::from([])->crawlerLogDir], 'off by default');
+        // Where the pages live: dashboard-path, something in front of it allowed.
+        $page = \CjwNetwork\RequestShield\Report\StatsPage::class;
+        same(['all' => '/rs/dashboard', 'site' => '/rs/stats', 'shield' => '/rs/shield'], $page::links(Settings::from([])), 'the default: /rs');
+        $admin = Settings::from(['dashboardPath' => '/admin/rs']);
+        same(['all' => '/admin/rs/dashboard', 'site' => '/admin/rs/stats', 'shield' => '/admin/rs/shield'], $page::links($admin));
+        same(['all', 'site', 'shield', null, null], [$page::viewFor($admin, '/admin/rs/dashboard'), $page::viewFor($admin, '/Admin/RS/stats/'), $page::viewFor($admin, '/admin/rs/shield'),
+            $page::viewFor($admin, '/rs/stats'), $page::viewFor($admin, '/admin/rs/other')], 'which view a path is: capitals and a trailing slash do not matter');
+        foreach (['admin/rs', '/a b', '/x/../y', ''] as $bad) {
+            try {
+                Settings::from(['dashboardPath' => $bad]);
+                throw new TestFailure("accepted dashboardPath $bad");
+            } catch (InvalidArgumentException $e) {
+                truthy(strpos($e->getMessage(), 'dashboardPath') !== false, $e->getMessage());
+            }
+        }
         $dir = statsDir();
         try {
-            file_put_contents("$dir/p.rules", "set stats crawlers not-found\nset stats-flush 30s\n");
+            file_put_contents("$dir/p.rules", "set stats crawlers not-found\nset stats-flush 30s\nset dashboard-path /admin/rs\n");
             $p = Settings::from(RuleFile::read(["$dir/p.rules"])['config']);
-            same([true, ['crawlers', 'not-found'], 30], [$p->statsEnabled, $p->statsParts, $p->statsFlush], 'only some parts; the flush');
+            same([true, ['crawlers', 'not-found'], 30, '/admin/rs'], [$p->statsEnabled, $p->statsParts, $p->statsFlush, $p->dashboardPath], 'only some parts; the flush; the pages\' path');
             same(Settings::STATS_PARTS, Settings::from(['stats' => ['enabled' => true]])->statsParts, 'all parts by default');
             file_put_contents("$dir/q.rules", "set stats everything\n");
             try {
@@ -362,6 +377,10 @@ return [
             truthy(strpos($shield, 'Regeln, die am meisten entschieden') !== false && strpos($shield, 'Was der Schutz tat') !== false && strpos($shield, 'Meistbesuchte Seiten') === false, 'the shield view: what it did, rules -- no pages');
             truthy(strpos($site, 'class="tab on"') !== false && strpos($site, 'view=shield') !== false, 'tabs between the two');
             truthy(strpos(\CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'tabs' => false]), 'class="tabs"') === false, 'embedded: one view, no tabs');
+            $linked = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'en', 'view' => 'shield',
+                'links' => ['all' => '/rs/dashboard', 'site' => '/rs/stats', 'shield' => '/rs/shield']]);
+            truthy(strpos($linked, 'href="/rs/dashboard?days=7&amp;lang=en">Overview') !== false && strpos($linked, 'href="/rs/stats?days=7&amp;lang=en">Visitors') !== false, 'one address per view, three tabs');
+            truthy(strpos($linked, 'view=') === false && strpos($linked, 'href="/rs/shield?days=30') !== false, 'the path names the view; the filters stay parameters');
             $en = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'accept' => 'en-US,en;q=0.9', 'fragment' => true]);
             truthy(strpos($en, 'Who came') !== false && strpos($en, '<html') === false, 'the browser\'s language; only the content for the refresh');
             truthy(strpos(\CjwNetwork\RequestShield\Report\StatsPage::render(Settings::from([])), 'set stats on') !== false, 'without statistics: how to switch them on');

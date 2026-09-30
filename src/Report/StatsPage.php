@@ -39,7 +39,7 @@ final class StatsPage
             'all' => 'all crawlers', 'kind.search' => 'search', 'kind.ai-search' => 'AI search', 'kind.ai-user' => 'AI, for a person', 'kind.ai-training' => 'AI training',
             'noStats' => 'No statistics: switch them on with "set stats on" in the rule file.', 'sitemaps' => 'Sitemaps', 'noMaps' => 'No sitemap was asked for.',
             'noReader' => 'not read by a verified crawler', 'times' => '×', 'top' => 'Most visited pages', 'noPages' => 'No page views counted yet (set stats … pages).', 'sections' => 'Most visited sections',
-            'tabSite' => 'Visitors & pages', 'tabShield' => 'Protection', 'filter' => 'Filter', 'pathStarts' => 'path starts with', 'subtree' => 'Subtree', 'views' => 'views', 'exact' => 'exact', 'approx' => 'the sum of its most visited pages', 'clear' => 'all pages', 'per' => 'per', 'hour' => 'hour', 'day' => 'day', 'week' => 'week', 'month' => 'month', 'year' => 'year',
+            'tabAll' => 'Overview', 'tabSite' => 'Visitors & pages', 'tabShield' => 'Protection', 'filter' => 'Filter', 'pathStarts' => 'path starts with', 'subtree' => 'Subtree', 'views' => 'views', 'exact' => 'exact', 'approx' => 'the sum of its most visited pages', 'clear' => 'all pages', 'per' => 'per', 'hour' => 'hour', 'day' => 'day', 'week' => 'week', 'month' => 'month', 'year' => 'year',
         ],
         'de' => [
             'title' => 'Statistik', 'today' => '24 Stunden', 'd7' => '7 Tage', 'd30' => '30 Tage', 'm12' => '12 Monate',
@@ -51,15 +51,16 @@ final class StatsPage
             'all' => 'alle Crawler', 'kind.search' => 'Suche', 'kind.ai-search' => 'KI-Suche', 'kind.ai-user' => 'KI, für eine Person', 'kind.ai-training' => 'KI-Training',
             'noStats' => 'Keine Statistik: mit "set stats on" in der Regeldatei einschalten.', 'sitemaps' => 'Sitemaps', 'noMaps' => 'Keine Sitemap wurde abgefragt.',
             'noReader' => 'von keinem bestätigten Crawler gelesen', 'times' => '×', 'top' => 'Meistbesuchte Seiten', 'noPages' => 'Noch keine Seitenaufrufe gezählt (set stats … pages).', 'sections' => 'Meistbesuchte Bereiche',
-            'tabSite' => 'Besucher & Seiten', 'tabShield' => 'Schutz', 'filter' => 'Filtern', 'pathStarts' => 'Pfad beginnt mit', 'subtree' => 'Unterbaum', 'views' => 'Aufrufe', 'exact' => 'genau', 'approx' => 'Summe seiner meistbesuchten Seiten', 'clear' => 'alle Seiten', 'per' => 'pro', 'hour' => 'Stunde', 'day' => 'Tag', 'week' => 'Woche', 'month' => 'Monat', 'year' => 'Jahr',
+            'tabAll' => 'Übersicht', 'tabSite' => 'Besucher & Seiten', 'tabShield' => 'Schutz', 'filter' => 'Filtern', 'pathStarts' => 'Pfad beginnt mit', 'subtree' => 'Unterbaum', 'views' => 'Aufrufe', 'exact' => 'genau', 'approx' => 'Summe seiner meistbesuchten Seiten', 'clear' => 'alle Seiten', 'per' => 'pro', 'hour' => 'Stunde', 'day' => 'Tag', 'week' => 'Woche', 'month' => 'Monat', 'year' => 'Jahr',
         ],
     ];
 
     /**
-     * @param array{action?: string, view?: string, tabs?: bool, days?: int, by?: string, crawler?: ?string, path?: ?string, lang?: string, accept?: ?string, home?: string, homeLabel?: string,
+     * @param array{action?: string, view?: string, tabs?: bool, links?: array<string, string>, days?: int, by?: string, crawler?: ?string, path?: ?string, lang?: string, accept?: ?string, home?: string, homeLabel?: string,
      *   title?: string, fragment?: bool, now?: int, stats?: Stats} $o
      *   action: the page's own address (links, refresh); view: site (visitors and pages, for editors), shield
-     *   (what the protection did, for admins) or all; tabs: the tabs between the two; lang: en, de, or auto (the browser's, from accept);
+     *   (what the protection did, for admins) or all (everything); links: an address per view -- 'all', 'site',
+     *   'shield' => '/rs/dashboard' … -- for the tabs (without: ?view=); tabs: the tabs between them; lang: en, de, or auto (the browser's, from accept);
      *   fragment: only the content, for the refresh
      */
     public static function render(Settings $s, array $o = []): string
@@ -79,7 +80,16 @@ final class StatsPage
         $view = in_array($o['view'] ?? 'site', ['site', 'shield', 'all'], true) ? ($o['view'] ?? 'site') : 'site';
         $now = $o['now'] ?? time();
         $action = $o['action'] ?? '';
-        $query = static fn (array $q): string => $action . '?' . http_build_query($q);
+        // One address per view ('links' => ['all' => '/rs/dashboard', 'site' => '/rs/stats', 'shield' => '/rs/shield']):
+        // the path names the view, GET parameters filter. Without links: ?view=.
+        $links = [];
+        foreach ((array) ($o['links'] ?? []) as $v => $u) {
+            if (in_array($v, ['all', 'site', 'shield'], true) && $u !== '') {
+                $links[$v] = $u;
+            }
+        }
+        $action = $links[$view] ?? $action;
+        $query = static fn (array $q): string => $action . '?' . http_build_query($links !== [] ? array_diff_key($q, ['view' => 1]) : $q);
 
         if (!$s->statsEnabled) {
             $body = '<p class="note">' . $e($t['noStats']) . '</p>';
@@ -110,8 +120,17 @@ final class StatsPage
 
         // The tabs: visitors and pages (editors) -- protection (admins). An
         // embedding page can show one only ('tabs' => false).
-        $h = ($o['tabs'] ?? true) ? '<nav class="tabs">' . implode('', array_map(static fn (string $v, string $label): string => '<a class="tab' . ($v === $view ? ' on' : '') . '" href="'
-            . $e($query(['view' => $v, 'days' => $days, 'lang' => $lang])) . '">' . $e($label) . '</a>', ['site', 'shield'], [$t['tabSite'], $t['tabShield']])) . '</nav>' : '';
+        $tabs = $links !== [] ? array_intersect_key(['all' => $t['tabAll'], 'site' => $t['tabSite'], 'shield' => $t['tabShield']], $links)
+            : ['site' => $t['tabSite'], 'shield' => $t['tabShield']];
+        $h = '';
+        if (($o['tabs'] ?? true) && count($tabs) > 1) {
+            $h .= '<nav class="tabs">';
+            foreach ($tabs as $v => $label) {
+                $href = isset($links[$v]) ? $links[$v] . '?' . http_build_query(['days' => $days, 'lang' => $lang]) : $query(['view' => $v, 'days' => $days, 'lang' => $lang]);
+                $h .= '<a class="tab' . ($v === $view ? ' on' : '') . '" href="' . $e($href) . '">' . $e($label) . '</a>';
+            }
+            $h .= '</nav>';
+        }
         $h .= '<div class="bar"><div class="pills">';
         foreach ([[1, 'hour', 'today'], [7, 'day', 'd7'], [30, 'day', 'd30'], [365, 'month', 'm12']] as [$d, $b, $label]) {
             $h .= '<a class="pill' . ($d === $days ? ' on' : '') . '" href="' . $e($query(['view' => $view, 'days' => $d, 'by' => $b, 'lang' => $lang] + ($crawler !== null ? ['crawler' => $crawler] : []) + ($path !== null ? ['path' => $path] : []))) . '">' . $e($t[$label]) . '</a>';
@@ -263,6 +282,31 @@ final class StatsPage
             return $h;
         }
         return self::page($h, $o['title'] ?? $t['title'], $lang, $o + ['refresh' => $query(['view' => $view, 'days' => $days, 'by' => $by, 'lang' => $lang, 'fragment' => 1] + ($crawler !== null ? ['crawler' => $crawler] : []) + ($path !== null ? ['path' => $path] : []))], $e);
+    }
+
+    /**
+     * The addresses of the three views under the settings' dashboard-path:
+     * the dashboard (everything), stats (visitors and pages), shield (the
+     * protection) -- for 'links', and for a site's routes.
+     *
+     * @return array{all: string, site: string, shield: string}
+     */
+    public static function links(Settings $s, string $prefix = ''): array
+    {
+        $base = $prefix . $s->dashboardPath;
+        return ['all' => $base . '/dashboard', 'site' => $base . '/stats', 'shield' => $base . '/shield'];
+    }
+
+    /** Which view a path asks for (all, site, shield), or null; capitals do not matter. */
+    public static function viewFor(Settings $s, string $path): ?string
+    {
+        $p = strtolower(rtrim($path, '/'));
+        foreach (self::links($s) as $view => $link) {
+            if ($p === strtolower($link)) {
+                return $view;
+            }
+        }
+        return null;
     }
 
     /**

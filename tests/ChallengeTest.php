@@ -257,7 +257,7 @@ return [
         same(2 + $c->passTtl, $gate->passUntil(creq('/x', ['rs_pass' => $pass]), 3.0), 'until when the pass holds');
         same(0, $gate->passUntil(creq('/x'), 3.0), 'without one: 0');
         truthy(is_array($gate->widgetTask(creq('/x', ['rs_pass' => $pass]), 2 + $c->passTtl - 20.0)), 'a pass about to run out: a task anyway');
-        foreach (['request-shield', '/a b', '/x/../y"', '/'] as $bad) {
+        foreach (['request-shield', '/a b', '/x/../y"', '/', '/x/../y', '/..'] as $bad) {
             try {
                 ChallengeSettings::from(['widgetPath' => $bad]);
                 throw new TestFailure("accepted $bad");

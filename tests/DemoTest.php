@@ -105,10 +105,14 @@ $examples = function (string $prefix): void {
             same('allow-uncached path not cacheable; rule=DEMO-CACHE', $r['shield']);
             // The statistics page: counted, the page not found listed with the link to it.
             $get('GET', '/no-such-page', ['Referer' => 'http://127.0.0.1/stats']);
-            $stats = json_decode($get('GET', '/stats?format=json')['body'], true);
+            $stats = json_decode($get('GET', '/rs/stats?format=json')['body'], true);
             $missing = array_filter(array_keys((array) ($stats['notFound'] ?? [])), static fn ($p): bool => substr((string) $p, -13) === '/no-such-page');
             truthy($missing !== [], 'the page not found, counted (under its full path): ' . json_encode($stats['notFound'] ?? null));
-            same(200, $get('GET', '/stats?days=30&by=week')['status'], 'the statistics page');
+            same(200, $get('GET', '/rs/stats?days=30&by=week')['status'], 'the statistics page');
+            $r = $get('GET', '/rs/dashboard');
+            same(200, $r['status'], 'the dashboard');
+            truthy(strpos($r['body'], '/rs/shield?days=7') !== false && strpos($r['body'], 'class="tab on"') !== false, 'tabs: one address per view');
+            same(200, $get('GET', '/RS/shield')['status'], 'in capitals too');
             $r = $get('GET', '/.env');
             same(404, $r['status'], 'scanner path');
             truthy(strpos($r['body'], '<a href="' . $prefix . '/">To the home page</a>') !== false, 'the shield\'s own page leads back to the demo');

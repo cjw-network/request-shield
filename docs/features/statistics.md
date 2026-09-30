@@ -64,8 +64,25 @@ shows each known crawler's last 7 days next to its row.
 
 ![](../explained/stats-page.png)
 
-`Report\StatsPage::render($settings, ['action' => '/stats'])` prints the page, in
-**two views** with tabs between them: **Visitors & pages** (`'view' => 'site'`, the
+**Where it lives:** `set dashboard-path /rs` (the default; `/admin/rs` if the site
+wants it behind its admin area) gives three addresses — **`/rs/dashboard`**
+(everything), **`/rs/stats`** (visitors and pages) and **`/rs/shield`** (the
+protection). The path names the view; the filters stay GET parameters
+(`?days=30&by=week&lang=de&path=/news/&crawler=CRAWL-GOOGLE`, `format=json`).
+`StatsPage::links($settings)` returns the three addresses, `StatsPage::viewFor(
+$settings, $path)` which view a path is (capitals and a trailing slash do not
+matter) — a site or a CMS routes them to `StatsPage::render()`, behind its
+login or restricted to some addresses (`restrict /rs/** to 192.0.2.0/24`):
+
+```php
+$view = StatsPage::viewFor($settings, $path);
+if ($view !== null) {
+    echo StatsPage::render($settings, ['view' => $view, 'links' => StatsPage::links($settings)] + $_GET-derived options);
+}
+```
+
+`Report\StatsPage::render()` prints the page, in **views** with tabs between them —
+the overview (`'view' => 'all'`) and two for different people: **Visitors & pages** (`'view' => 'site'`, the
 default — for editors: people, crawlers, pages not found, who came, the most
 visited pages and sections with the subtree filter, broken links, sitemaps,
 what the crawlers did) and **Protection** (`'view' => 'shield'` — for admins:

@@ -149,6 +149,8 @@ final class Settings
         public int $statsFlush = 60,
         /** @readonly months the month totals are kept (0: for good) */
         public int $statsMonths = 0,
+        /** @readonly where the statistics pages live: <path>/dashboard, /stats, /shield */
+        public string $dashboardPath = '/rs',
     ) {
     }
 
@@ -265,6 +267,7 @@ final class Settings
             $monitorRules === null ? null : self::from(['mode' => $mode, 'monitorRules' => null] + $monitorRules),
             ...self::knownCrawlers($c, $verify),
             ...self::stats($c),
+            ...[self::dashboardPath($c)],
         );
     }
 
@@ -385,6 +388,17 @@ final class Settings
             }
         }
         return $out;
+    }
+
+    /** @param array<mixed> $c */
+    private static function dashboardPath(array $c): string
+    {
+        $p = $c['dashboardPath'] ?? '/rs';
+        // Names of letters, digits and . _ ~ -, but no "." or ".." of their own.
+        if (!is_string($p) || !preg_match('#^(/[A-Za-z0-9._~-]+)+$#', $p) || preg_match('#/\.+(/|$)#', $p)) {
+            throw self::wrong('dashboardPath', 'a path such as /rs or /admin/rs');
+        }
+        return $p;
     }
 
     /**
@@ -674,7 +688,7 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 22;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo
+    private const FORMAT = 23;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

@@ -164,7 +164,7 @@ final class ChallengeSettings
         if ($p === null || $p === '') {
             return null;
         }
-        if (!is_string($p) || !preg_match('#^(/[A-Za-z0-9._~-]+)+$#', $p)) {
+        if (!is_string($p) || !preg_match('#^(/[A-Za-z0-9._~-]+)+$#', $p) || preg_match('#/\.+(/|$)#', $p)) {
             throw Settings::wrong('challenge.widgetPath', 'null or a path such as /request-shield');
         }
         return $p;

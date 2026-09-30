@@ -101,9 +101,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   top 100 an hour for each kind of visitor, and their first two folders, so a
   subtree's views are exact -- `stats --path=/news/` and a "path starts with"
   filter on the statistics page, with "most visited sections".
-- The statistics page in two views: **Visitors & pages** for editors (the
-  default) and **Protection** for admins, with tabs -- or one of them embedded
-  on its own (`'view' => 'site'|'shield'`, `'tabs' => false`).
+- The statistics page in views: an overview, **Visitors & pages** for editors
+  and **Protection** for admins, with tabs -- or one of them embedded on its
+  own (`'view' => 'all'|'site'|'shield'`, `'tabs' => false`). Each view has its
+  own address under `set dashboard-path` (default `/rs`: `/rs/dashboard`,
+  `/rs/stats`, `/rs/shield`; `/admin/rs` if wanted); `StatsPage::links()` and
+  `::viewFor()` help a site route them; the filters stay GET parameters. The
+  demo has them at `/rs/…`, restricted to this machine.
+
+### Fixed
+- `set widget-path` accepted a path with `..` in it (`/x/../y`), which could
+  never match; it is refused now, like `dashboard-path`.
 
 ### Changed
 - The query string is parsed once per request, for every check that reads it.
