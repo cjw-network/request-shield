@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Known query parameters and their types (proposal 0009): `query <name> <type>
+  … [at <paths>]` (types `int`, `number`, `word`, `id`, `list`, `text`, `any`,
+  `/regex/`; names with `*`; inside `match` blocks too). The attack patterns
+  see only what could hold an attack -- `text`, unknown parameters and values
+  not of their type, name and value -- and `query strict` answers anything
+  else with 404 before they run (6.7 instead of 17.7 µs for such a request with
+  `@attacks`). An empty value is of every type. `rules/tracking.rules`
+  (`include @tracking`, IDs `TRACK-…`) declares the marketing tags. The rules
+  page, `trace`, `show` and `Shield::explain()` name them
+  ([docs](docs/features/known-parameters.md)).
+- The demo declares its parameters, includes `@tracking` and runs `query
+  strict`.
+
+### Changed
+- The query string is parsed once per request, for every check that reads it.
+
 ## [0.3.0] — 2026-09-30
 
 ### Added

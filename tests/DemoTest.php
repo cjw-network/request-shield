@@ -90,6 +90,11 @@ $examples = function (string $prefix): void {
             truthy(strpos($r['body'], '<del class="no">X-Forwarded-For: 203.0.113.9</del>') !== false, 'the forged header shown as removed');
             truthy(strpos($r['body'], 'X-Request-Shield: allow') !== false, 'the answer\'s headers, with the decision');
             same('allow-uncached query parameter; rule=DEMO-CACHE-QUERY', $get('GET', '/?utm_source=newsletter')['shield']);
+            // Known parameters: a number is a number, and nothing else gets in.
+            same([404, 'reject unknown parameter; rule=DEMO-STRICT'], [($r = $get('GET', '/?page=2%27'))['status'], $r['shield']], 'not of its type');
+            same(404, $get('GET', '/?debug=1')['status'], 'unknown');
+            same(200, $get('GET', '/?page=2&fbclid=x&gclid=y')['status'], 'known, and marketing tags');
+            same(200, $get('GET', '/rules?method=GET&url=' . rawurlencode('https://www.example.org/x?a=1') . '&ip=')['status'], 'the rules page\'s check, an empty field too');
             $r = $get('GET', '/random/abc');
             same(200, $r['status'], 'an unknown path passes: the site answers it');
             same('allow-uncached path not cacheable; rule=DEMO-CACHE', $r['shield']);

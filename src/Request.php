@@ -127,6 +127,47 @@ final class Request
     /** @var array<string, string> */
     private array $content = [];
 
+    /** What the attack patterns see of the query, when the known parameters said (QueryRule). */
+    private ?string $scanQuery = null;
+
+    /**
+     * Only these pairs of the query ("a=1&b=2", raw) go to the attack
+     * patterns (typed values cannot hold an attack). Set before they look.
+     */
+    public function scanQuery(string $pairs): void
+    {
+        $this->scanQuery = $pairs;
+        unset($this->content['query'], $this->content['anywhere']);
+    }
+
+    /**
+     * The query's parameters as PHP will see them: [name, value, raw pair],
+     * a name such as "a[b]" as "a", the value decoded; the raw pair as it
+     * stands in the query string.
+     *
+     * @return list<array{0: string, 1: string, 2: string}>
+     */
+    public function queryPairs(): array
+    {
+        if ($this->pairs !== null) {
+            return $this->pairs;
+        }
+        $out = [];
+        foreach ($this->query === '' ? [] : explode('&', $this->query) as $pair) {
+            if ($pair === '') {
+                continue;
+            }
+            $kv = explode('=', $pair, 2);
+            $name = urldecode($kv[0]);
+            $bracket = strpos($name, '[');
+            $out[] = [$bracket === false ? $name : substr($name, 0, $bracket), urldecode($kv[1] ?? ''), $pair];
+        }
+        return $this->pairs = $out;
+    }
+
+    /** @var list<array{0: string, 1: string, 2: string}>|null parsed once, for every rule that asks */
+    private ?array $pairs = null;
+
     /**
      * What attack rules look at, normalised so that disguises do not help:
      * decoded (twice: "%2527" is "'"), "+" as a space in the query, lower
@@ -143,7 +184,7 @@ final class Request
             return $this->content[$target];
         }
         if ($target === 'query') {
-            $v = self::normal(str_replace('+', ' ', $this->query));
+            $v = self::normal(str_replace('+', ' ', $this->scanQuery ?? $this->query));
         } elseif (strncmp($target, 'header:', 7) === 0) {
             $v = self::normal((string) $this->header(substr($target, 7)));
         } elseif ($target === 'headers') {
@@ -172,7 +213,7 @@ final class Request
     {
         $raw = [];
         if ($target === 'query' || $target === 'anywhere') {
-            $raw[] = $this->query;
+            $raw[] = $this->scanQuery ?? $this->query;
         }
         if ($target === 'anywhere') {
             $raw[] = $this->path;
@@ -274,18 +315,6 @@ final class Request
      */
     public function queryNames(): array
     {
-        if ($this->query === '') {
-            return [];
-        }
-        $names = [];
-        foreach (explode('&', $this->query) as $pair) {
-            if ($pair === '') {
-                continue;
-            }
-            $name = urldecode(explode('=', $pair, 2)[0]);
-            $bracket = strpos($name, '[');
-            $names[] = $bracket === false ? $name : substr($name, 0, $bracket);
-        }
-        return $names;
+        return array_column($this->queryPairs(), 0);
     }
 }

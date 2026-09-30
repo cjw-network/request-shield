@@ -23,7 +23,7 @@ final class Diagram
     private const SHORT = [
         'Kind of request' => 'Kind', 'Size' => 'Size', 'Disguised address' => 'Disguise', 'Website name' => 'Name',
         'Addresses only attackers ask for' => 'Blocked', 'Where forms may be sent' => 'Forms',
-        'Areas for certain visitors' => 'Areas', 'May a cache keep the answer?' => 'Cache', 'Browser check' => 'Check',
+        'Areas for certain visitors' => 'Areas', 'Known parameters' => 'Params', 'Attack patterns' => 'Attacks', 'May a cache keep the answer?' => 'Cache', 'Browser check' => 'Check',
     ];
 
     private const STYLE = '<style>'

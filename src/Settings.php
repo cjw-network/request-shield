@@ -98,6 +98,18 @@ final class Settings
          * @var array<string, list<string>>
          */
         public array $contentHints = [],
+        /**
+         * @readonly the known query parameters (QueryRule)
+         * @var list<array{paths: list<string>|null, exact: array<string, string>, globs: array<string, string>}>
+         */
+        public array $queryParams = [],
+        /** @readonly anything but a known parameter of its type: 404 */
+        public bool $queryStrict = false,
+        /**
+         * @readonly queryParams as one lookup (QueryRule::index()), built once
+         * @var array{exact: array<string, string>, globs: array<string, string>, local: list<array{paths: list<string>, exact: array<string, string>, globs: array<string, string>}>}
+         */
+        public array $queryIndex = ['exact' => [], 'globs' => [], 'local' => []],
     ) {
     }
 
@@ -189,7 +201,44 @@ final class Settings
             $contentIndex,
             self::combine($blocked),
             self::hints($contentRules),
+            $query = self::queryParams(self::map($c, 'queryParams')),
+            self::bool($c, 'queryStrict'),
+            \CjwNetwork\RequestShield\Rule\QueryRule::index($query),
         );
+    }
+
+    /**
+     * @param array<mixed> $list
+     * @return list<array{paths: list<string>|null, exact: array<string, string>, globs: array<string, string>}>
+     */
+    private static function queryParams(array $list): array
+    {
+        $out = [];
+        $type = static function ($t, string $where): string {
+            if (!is_string($t) || !(in_array($t, ['int', 'number', 'word', 'id', 'list', 'text', 'any'], true)
+                || (strncmp($t, '#', 1) === 0 && @preg_match($t, '') !== false))) {
+                throw self::wrong($where, 'int, number, word, id, list, text, any or a regex');
+            }
+            return $t;
+        };
+        foreach ($list as $i => $r) {
+            if (!is_array($r)) {
+                throw self::wrong("queryParams.$i", "an array of 'paths', 'exact' and 'globs'");
+            }
+            $exact = [];
+            foreach (self::map($r, 'exact', "queryParams.$i.exact") as $name => $t) {
+                $exact[(string) $name] = $type($t, "queryParams.$i.exact.$name");
+            }
+            $globs = [];
+            foreach (self::map($r, 'globs', "queryParams.$i.globs") as $glob => $t) {
+                if (@preg_match((string) $glob, '') === false) {
+                    throw self::wrong("queryParams.$i.globs", 'regular expressions as keys');
+                }
+                $globs[(string) $glob] = $type($t, "queryParams.$i.globs");
+            }
+            $out[] = ['paths' => self::stringsOrNull($r, 'paths', "queryParams.$i.paths"), 'exact' => $exact, 'globs' => $globs];
+        }
+        return $out;
     }
 
     /**
@@ -401,7 +450,7 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 14;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups
+    private const FORMAT = 16;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams
 
     /**
      * The settings of a file, checked only when it changed. A ".rules" file

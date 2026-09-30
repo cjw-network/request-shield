@@ -91,8 +91,9 @@ server and PHP slots, just very briefly.
 - **0.3.0:** rule files, access rules, rule IDs, the log, the active rules
   page, attack rules, match blocks, the check inside the form, earning back a
   spent budget (forms and APIs), the demo; PHP 8.0.
-- **Next:** typed query parameters
-  ([proposal 0009](docs/proposals/0009-typed-query-parameters.md)); modes —
+- **Unreleased:** known query parameters and their types, `query strict`,
+  `@tracking` ([docs](docs/features/known-parameters.md)).
+- **Next:** modes —
   monitor first, strict under attack
   ([proposal 0004](docs/proposals/0004-modes-monitor-and-strict.md)); known
   crawlers, AI crawlers included

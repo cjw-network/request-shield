@@ -14,6 +14,7 @@
   [active rules page](features/active-rules-page.md) ·
   [the site asks for the check](features/app-challenges.md) ·
   [the check inside the form](features/browser-check-in-the-form.md) ·
+  [known query parameters](features/known-parameters.md) ·
   [settings](features/settings.md)
 - **Use cases** — scenarios end to end:
   [shared hosting DoS guard](use-cases/shared-hosting-dos-guard.md) ·
@@ -27,7 +28,7 @@
   [0005 versioned rule sets](proposals/0005-versioned-rule-sets.md) (implemented) ·
   [0006 the site asks for the check](proposals/0006-the-site-asks-for-the-check.md) (implemented) ·
   [0008 match blocks](proposals/0008-match-blocks.md) (first step implemented) ·
-  [0009 typed query parameters](proposals/0009-typed-query-parameters.md) (accepted) ·
+  [0009 typed query parameters](proposals/0009-typed-query-parameters.md) (implemented) ·
   [0010 the browser check inside the form](proposals/0010-browser-check-in-the-form.md) (implemented) ·
   [0011 known crawlers](proposals/0011-known-crawlers.md) (accepted)
   (0002, a single-file build, is reserved)

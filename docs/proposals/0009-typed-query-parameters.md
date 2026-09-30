@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Accepted** 2026-09-30 (decisions below), not yet implemented |
+| Status | **Implemented** 2026-09-30 (see [known parameters](../features/known-parameters.md)) |
 | Proposed | 2026-09-29 |
 | Affects | rule files, the order of the checks, the attack rules (0007), the Exponential adapter |
 
@@ -18,6 +18,10 @@ A site says which query parameters it knows, and of which type — `Offset int`,
   their type (digits, a word) — only free text is scanned;
 - keep what it does today where nothing is said: unknown parameters are
   answered, but not cached.
+
+## In one picture
+
+![Each parameter is looked up in the site's list: a number or a word passes unscanned, free text is scanned for attacks, an unknown one or one of the wrong type is refused with query strict -- without strict scanned and not cached](0009-typed-query-parameters.svg)
 
 ## Motivation
 
@@ -131,6 +135,19 @@ their own. A built-in list of such tags (`@tracking`, shipped like
 | A tracking list? | **Shipped**: `include @tracking` (`utm_*`, `fbclid`, `gclid`, `msclkid`, …), versioned like the other built-in rules | With `strict`, marketing links keep working; maintained in one place instead of forgotten by each site. |
 | A value not of its type, without `strict`? | **Scanned as `text`** by the attack rules | A wrong type is often the attack itself; the cost is for those values only. |
 | `cache-query` and `query` as one? | **No, two rules** | A known parameter need not be cacheable (a search term); the docs show them side by side. |
+
+## As built — where it differs
+
+- **An empty value is of every type** (`?page=`): forms send their empty
+  fields, and in strict mode each would have been a 404.
+- **Which declaration counts:** a path's own before those for every path, an
+  exact name before one with `*` (the more specific wins), the first line for
+  the same name. The rules are merged into one lookup with the settings.
+- **The attack patterns get the pairs, not only the values** — an unknown
+  parameter's name is scanned too (`?<attack>=1`).
+- **Cost, measured:** next to the attack rules about even for typed queries
+  (the lookup costs what leaving the values out of the scan saves); a refusal
+  under `strict` 6.7 instead of 17.7 µs. Details in the feature doc.
 
 ## Open questions (as proposed)
 

@@ -130,6 +130,9 @@ final class Inspector
         $restricted = $s->restricted === [] ? null : (new RestrictedPathRule($s->restricted))->check($request, $now);
         $step('Areas for certain visitors', $restricted, $this->restrictedPass($request),
             fn (): string => 'only for ' . $this->restrictedFor($request) . " — $request->clientIp is not one of them");
+        $query = $s->queryParams === [] && !$s->queryStrict ? null : (new \CjwNetwork\RequestShield\Rule\QueryRule($s->queryIndex, $s->queryStrict))->check($request, $now);
+        $step('Known parameters', $query, $this->queryPass($request),
+            fn (): string => 'refused: ' . $this->queryProblem($request) . ' (query strict)');
         $step('Attack patterns', $s->contentIndex === [] ? null : (new ContentRule($s->contentIndex, $s->contentRules, $s->blockExceptions, $s->contentHints))->check($request, $now),
             $s->contentIndex === [] ? 'no attack patterns configured' : $this->attackPass($request),
             fn (): string => 'refused: ' . $this->attackMatch($request));
@@ -223,6 +226,36 @@ final class Inspector
             }
         }
         return 'no attack pattern in the address or the headers';
+    }
+
+    /** What the known parameters make of the query. */
+    private function queryPass(Request $request): string
+    {
+        $s = $this->settings;
+        if ($s->queryParams === [] && !$s->queryStrict) {
+            return 'no known parameters configured';
+        }
+        if ($request->query === '') {
+            return 'no parameters';
+        }
+        $problem = $this->queryProblem($request);
+        return $problem === null ? 'every parameter known and of its type'
+            : $problem . ' — answered, not cached, scanned by the attack patterns';
+    }
+
+    private function queryProblem(Request $request): ?string
+    {
+        $rule = new \CjwNetwork\RequestShield\Rule\QueryRule($this->settings->queryIndex);
+        foreach ($request->queryPairs() as [$name, $value]) {
+            $type = $rule->type($name, $request->matchPath());
+            if ($type === null) {
+                return "\"$name\" is not a known parameter here";
+            }
+            if (!\CjwNetwork\RequestShield\Rule\QueryRule::fits($type, $value)) {
+                return "\"$name\" is not " . (strncmp($type, '#', 1) === 0 ? 'of its pattern' : "of the type $type");
+            }
+        }
+        return null;
     }
 
     private function restrictedPass(Request $request): string

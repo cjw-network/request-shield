@@ -105,6 +105,12 @@ final class Config
             // [['target' => 'query'|'headers'|'anywhere'|'header:<name>',
             //   'patterns' => [regex, ...]], ...], matched against Request::content().
             'contentRules' => [],
+            // Known query parameters and their types (Rule\QueryRule):
+            // [['paths' => [regex, ...] or null (every path), 'exact' => [name => type],
+            //   'globs' => [regex => type]], ...]; types: int, number, word, id, list,
+            // text, any, or a regex. queryStrict: anything else is refused (404).
+            'queryParams' => [],
+            'queryStrict' => false,
             // Methods allowed only on some paths: ['POST' => [regex, ...]]; other
             // paths answer 405 for that method. Methods not listed: see 'methods'.
             'methodPaths' => [],

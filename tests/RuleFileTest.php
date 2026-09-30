@@ -386,8 +386,8 @@ return [
         try {
             $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
             $t = (new \CjwNetwork\RequestShield\Report\Inspector($s, new MemoryStore()))->trace(\CjwNetwork\RequestShield\Report\Inspector::request('GET', '/admin/files/.env', '192.0.2.5'), 1000.0);
-            same('pass', $t['steps'][4]['state']);
-            same('would be refused (hidden files and folders: .env, .git, .htpasswd, editor settings), but open here for 192.0.2.5 (192.0.2.0/24) — site.rules:1', $t['steps'][4]['text']);
+            same('pass', step($t, 'Addresses only attackers ask for')['state']);
+            same('would be refused (hidden files and folders: .env, .git, .htpasswd, editor settings), but open here for 192.0.2.5 (192.0.2.0/24) — site.rules:1', step($t, 'Addresses only attackers ask for')['text']);
             $html = \CjwNetwork\RequestShield\Report\RulesPage::render($s, ['store' => new MemoryStore()]);
             truthy(strpos($html, 'Open at /admin/files/**: every block above — only for 192.0.2.0/24') !== false, 'the exception on the page');
             truthy(strpos($html, 'Open at /downloads/**: backups, dumps and archives') !== false && strpos($html, '⚠ for everyone') !== false, 'the open one, with a warning');

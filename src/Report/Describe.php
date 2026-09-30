@@ -116,6 +116,7 @@ final class Describe
             'always' => 'a page where every visitor is checked',
             'app' => 'the site asked for the browser check (a form)',
             'attack' => 'an attack pattern in the address or the headers',
+            'unknown parameter' => 'a parameter the site does not know, or a value not of its type',
             'challenge solved' => 'the browser check was just passed',
         ];
         return $words[$reason] ?? "the budget \"$reason\"";

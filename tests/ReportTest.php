@@ -26,6 +26,17 @@ function reportSettings(string $rules, ?string $log = null): Settings
     }
 }
 
+/** A trace's step by its name. */
+function step(array $trace, string $check): array
+{
+    foreach ($trace['steps'] as $st) {
+        if ($st['check'] === $check) {
+            return $st;
+        }
+    }
+    throw new TestFailure("no step \"$check\"");
+}
+
 /** @return array<string, string> check => state */
 function steps(array $trace): array
 {
@@ -46,8 +57,8 @@ return [
         same('site.rules:2', $t['rule']);
         same('gets "not found" (404) — the site never sees it', $t['verdict']);
         same(['Kind of request' => 'pass', 'Size' => 'pass', 'Disguised address' => 'pass', 'Website name' => 'pass', 'Addresses only attackers ask for' => 'stop',
-            'Where forms may be sent' => 'skip', 'Areas for certain visitors' => 'skip', 'Attack patterns' => 'skip', 'May a cache keep the answer?' => 'skip', 'Pace: "requests"' => 'skip', 'Browser check' => 'skip'], steps($t));
-        same('refused: /wp-admin/**', $t['steps'][4]['text'], 'the pattern as it was written');
+            'Where forms may be sent' => 'skip', 'Areas for certain visitors' => 'skip', 'Known parameters' => 'skip', 'Attack patterns' => 'skip', 'May a cache keep the answer?' => 'skip', 'Pace: "requests"' => 'skip', 'Browser check' => 'skip'], steps($t));
+        same('refused: /wp-admin/**', step($t, 'Addresses only attackers ask for')['text'], 'the pattern as it was written');
     },
     'trace: the other outcomes, in plain words' => function (): void {
         $i = new Inspector(reportSettings(REPORT_RULES), new MemoryStore());
@@ -56,7 +67,7 @@ return [
         same('sees the page — a cache may keep it', $at('GET', 'https://www.example.org/')['verdict']);
         $t = $at('GET', 'https://www.example.org//ADMIN/users');
         same(['reject', 403, 'site.rules:3'], [$t['decision']->action, $t['decision']->status, $t['rule']], 'restricted, sneaked');
-        truthy(strpos($t['steps'][6]['text'], 'only for 192.0.2.0/24') !== false, $t['steps'][6]['text']);
+        truthy(strpos(step($t, 'Areas for certain visitors')['text'], 'only for 192.0.2.0/24') !== false, step($t, 'Areas for certain visitors')['text']);
         same('allow', $at('GET', 'https://www.example.org/admin/', '192.0.2.9')['decision']->action === 'allow-uncached' ? 'allow' : 'x', 'allowed from the office');
         same(405, $at('POST', 'https://www.example.org/page/about')['decision']->status);
         same('allow-uncached', $at('POST', 'https://www.example.org/contact')['decision']->action);
@@ -78,8 +89,8 @@ return [
         for ($n = 0; $n < 5; $n++) {
             $t = $i->trace(Inspector::request('GET', 'https://www.example.org/', '198.51.100.7'), 1000.0);
         }
-        truthy(strpos($t['steps'][9]['text'], '4 of 5 per minute') !== false, 'three counted + this one: ' . $t['steps'][9]['text']);
-        same('note', $t['steps'][9]['state'], 'past challenge-at 3');
+        truthy(strpos(step($t, 'Pace: "requests"')['text'], '4 of 5 per minute') !== false, 'three counted + this one: ' . step($t, 'Pace: "requests"')['text']);
+        same('note', step($t, 'Pace: "requests"')['state'], 'past challenge-at 3');
         same('challenge', $t['decision']->action);
         same(3.0, round($store->peek('requests:198.51.100.7', 60, 1000.0)), 'the traces counted nothing');
     },
@@ -136,11 +147,12 @@ return [
     },
     'diagrams: valid SVG, the path of a request, everything escaped; the files in docs/ are current' => function (): void {
         $i = new Inspector(reportSettings(REPORT_RULES), new MemoryStore());
-        $svg = \CjwNetwork\RequestShield\Report\Diagram::trace($i->trace(Inspector::request('GET', 'https://www.example.org/wp-admin/<script>', '198.51.100.7'), 1000.0), 'GET /wp-admin/<script>');
+        $t = $i->trace(Inspector::request('GET', 'https://www.example.org/wp-admin/<script>', '198.51.100.7'), 1000.0);
+        $svg = \CjwNetwork\RequestShield\Report\Diagram::trace($t, 'GET /wp-admin/<script>');
         truthy(@simplexml_load_string($svg) !== false, 'well-formed');
         truthy(strpos($svg, '<script') === false, 'nothing from the request is markup');
         same(1, substr_count($svg, 'class="stop"'), 'one refusing check');
-        same(6, substr_count($svg, 'class="skip"'), 'the rest not checked');
+        same(count(array_filter($t['steps'], static fn (array $st): bool => $st['state'] === 'skip')), substr_count($svg, 'class="skip"'), 'the rest not checked, a circle each');
         truthy(strpos($svg, '>404</text>') !== false, 'where it ends: the shield\'s answer');
         $ok = \CjwNetwork\RequestShield\Report\Diagram::trace($i->trace(Inspector::request('GET', 'https://www.example.org/', '198.51.100.7'), 1000.0), 'GET /');
         truthy(strpos($ok, '>Your site</text>') !== false && strpos($ok, 'class="stop"') === false, 'a passing request: the site');

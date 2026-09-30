@@ -158,11 +158,13 @@ $groups = [
         ['/edit', 'An edit form', 'a POST is accepted here, and only here'],
     ],
     'Keeping the cache clean' => [
-        ['/?utm_source=newsletter', 'An unknown parameter', 'answered, but a cache must not keep it'],
+        ['/?utm_source=newsletter', 'A link from a newsletter', 'passes (a known marketing tag), but a cache must not keep it'],
         ['/random/' . bin2hex(random_bytes(3)), 'An unknown path', 'the site answers it (a CMS: 200 or 404), but a cache must not keep it'],
     ],
     'Turning attackers away' => [
         ['/.env', 'What a scanner looks for', '"not found" (404) — the site never sees it'],
+        ['/?page=2%27', 'A parameter not of its type', '"not found" (404) — page is a number: no attack pattern needs to run'],
+        ['/?debug=1', 'A parameter the site does not know', '"not found" (404) — query strict'],
         ['/files/%2e%2e/secret', 'Leaving the site\'s folder', 'a broken request (400)'],
         ['//admin/', 'The admin area, sneaked', 'no access (403) — "//", "%61" and case do not get past it'],
     ],

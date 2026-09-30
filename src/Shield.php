@@ -22,6 +22,7 @@ use CjwNetwork\RequestShield\Rule\LimitsRule;
 use CjwNetwork\RequestShield\Rule\MethodPathRule;
 use CjwNetwork\RequestShield\Rule\MethodRule;
 use CjwNetwork\RequestShield\Rule\PathSanityRule;
+use CjwNetwork\RequestShield\Rule\QueryRule;
 use CjwNetwork\RequestShield\Rule\RestrictedPathRule;
 use CjwNetwork\RequestShield\Rule\Rule;
 use CjwNetwork\RequestShield\Store\ApcuStore;
@@ -92,6 +93,11 @@ final class Shield
         }
         if ($s->restricted !== []) {
             $this->rules[] = new RestrictedPathRule($s->restricted);
+        }
+        // Known parameters before the attack patterns: cheaper, and they say
+        // which values the patterns need to look at.
+        if ($s->queryParams !== [] || $s->queryStrict) {
+            $this->rules[] = new QueryRule($s->queryIndex, $s->queryStrict);
         }
         if ($s->contentIndex !== []) {
             $this->rules[] = new ContentRule($s->contentIndex, $s->contentRules, $s->blockExceptions, $s->contentHints);
@@ -274,6 +280,8 @@ final class Shield
                 return $name('hosts', '*', 'hosts');
             case 'app':
                 return 'application';
+            case 'unknown parameter':
+                return $name('query', 'strict', 'queryStrict');
             case 'attack':
                 $p = ContentRule::matched($s->contentRules, $s->blockExceptions, null, $request);
                 return $p === null ? null : $name('contentRules', $p, 'contentRules');

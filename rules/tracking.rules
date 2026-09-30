@@ -1,0 +1,17 @@
+# Built into cjw-network/request-shield, on request: "include @tracking".
+#
+# Parameters that newsletters, ads and analytics add to links -- on any page.
+# With "query strict", a site refuses parameters it does not know; this list
+# keeps marketing links working. Taken, never scanned, never cached (they are
+# not in cache-query).
+
+ids TRACK required
+version 2026.10.1
+
+[TRACK-UTM@1]       query utm_* any                                        # campaign tags: utm_source, utm_medium, utm_campaign, …
+[TRACK-GOOGLE@1]    query gclid any  gbraid any  wbraid any  dclid any  _ga any  _gl any   # Google Ads and Analytics
+[TRACK-MICROSOFT@1] query msclkid any                                      # Microsoft Advertising
+[TRACK-META@1]      query fbclid any  igshid any                           # Facebook, Instagram
+[TRACK-SOCIAL@1]    query ttclid any  twclid any  li_fat_id any            # TikTok, X, LinkedIn
+[TRACK-MAIL@1]      query mc_cid any  mc_eid any  _hsenc any  _hsmi any  mkt_tok any   # Mailchimp, HubSpot, Marketo
+[TRACK-OTHER@1]     query yclid any  s_kwcid any                           # Yandex, Adobe

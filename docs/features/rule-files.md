@@ -55,6 +55,7 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `block <paths>` / `unblock <paths>` | `blockedPaths` | 404 before the site sees it / take a block back |
 | `block query|header <Name>|headers|anywhere <regex>` | `contentRules` | attack patterns in the query or the headers, 403 |
 | `unblock [<what>] at <paths> [for <addresses>]` | `blockExceptions` | blocked paths let through at some paths only (an admin's file reader) ([access rules](access-rules.md#exceptions-an-admins-file-reader)) |
+| `query <name> <type> … [at <paths>]` / `query strict` | `queryParams`, `queryStrict` | the query parameters the site takes and their types (`int`, `number`, `word`, `id`, `list`, `text`, `any`, `/regex/`); only `text` and the unknown ones go to the attack patterns; `strict`: anything else 404 ([known parameters](known-parameters.md)) |
 | `cache-path <paths>` | `cacheable.paths` | what a cache may keep; `any`: every path (default) |
 | `cache-query <names>` | `cacheable.query` | parameters a cached URL may have; `any` (default), `none` |
 | `limit <name> <n>/<unit> [challenge-at <n>] [on-demand] [on-exceeded challenge]` | `budgets` | units `s`, `sec`, `min`, `hour`, `day`, also `20/10s`; `on-exceeded challenge`: past the limit the check that frees the counter instead of a pause ([budgets](budgets.md#past-the-limit-a-pause-or-earn-it-back)) |
@@ -215,6 +216,7 @@ before the site's own rules — the same format, with IDs and descriptions:
 |---|---|---|
 | `rules/scanners.rules` | `SCAN-HIDDEN`, `SCAN-BACKUP`, `SCAN-TEST`, `SCAN-DBTOOL`, `SCAN-CGI` | always read |
 | `rules/wordpress.rules` | `WP-FOLDERS`, `WP-SCRIPTS` | `include @wordpress` (or `block @wordpress`), for sites that are not WordPress |
+| `rules/tracking.rules` | `TRACK-UTM`, `TRACK-GOOGLE`, `TRACK-MICROSOFT`, `TRACK-META`, `TRACK-SOCIAL`, `TRACK-MAIL`, `TRACK-OTHER` | `include @tracking`: the marketing tags as known parameters ([known parameters](known-parameters.md#the-marketing-tags-tracking)) |
 
 `unblock @scanners` takes back all of a shipped file's blocks, `unblock
 [SCAN-CGI]` one. PHP array settings get the same blocks from `Config`; a test

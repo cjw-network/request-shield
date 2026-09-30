@@ -23,6 +23,16 @@ version 2026-09-29.1        # this rule set's own version: shown on /rules and b
 # search against its own budget (on-demand: the page counts, see index.php).
 [DEMO-SEARCH]       limit searches 10/min on-demand               # at most 10 searches a minute per visitor
 
+# The query parameters the site knows, and their types: anything else gets
+# "not found" (404) before a single attack pattern runs, and the attack
+# patterns look only at free text -- a number or a word cannot hold an attack.
+# Marketing tags (utm_*, fbclid, gclid, ...) come from the library's
+# rules/tracking.rules, so newsletter and ad links keep working.
+include @tracking
+[DEMO-PARAMS]       query page int   q text   start word   v id                            # page numbers, the search, how the form box starts, the script's version
+[DEMO-PARAMS-RULES] query method word   url text   ip /[0-9A-Fa-f.:]{1,45}/ at **/rules      # the check on the active rules page
+[DEMO-STRICT]       query strict                                  # any other parameter, or a value not of its type: 404
+
 [DEMO-FORMS]        allow POST  **/edit **/comment **/profile **/contact     # forms may only be sent to the edit, comment, profile and contact pages
 
 # The admin area, as a block: the rules of one area in one place, the path

@@ -30,7 +30,7 @@ use CjwNetwork\RequestShield\Texts;
 final class RuleFile
 {
     /** The sets "block @name" adds and "unblock @name" takes away. */
-    private const SETS = ['scanners', 'wordpress'];
+    private const SETS = ['scanners', 'wordpress', 'tracking'];
 
     /** "set" keys => [setting path, type]. */
     private const SET = [
@@ -357,6 +357,9 @@ final class RuleFile
                 $this->patterns('cacheable.paths', $args, $at, false);
                 $this->origins['cacheable.paths']['*'] = $this->rid;
                 return;
+            case 'query':
+                $this->queryRule($args, $at);
+                return;
             case 'cache-query':
                 $this->list('cacheable.query', $args, $at, static fn (string $q): string => $q);
                 $this->origins['cacheable.query']['*'] = $this->rid;
@@ -410,7 +413,7 @@ final class RuleFile
                 return;
         }
         throw new RuleFileException("$at: unknown rule \"$keyword\"" . self::suggest($keyword,
-            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'api-path', 'limit', 'no-limit', 'set', 'include']));
+            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'api-path', 'limit', 'no-limit', 'set', 'include']));
     }
 
     /**
@@ -669,6 +672,14 @@ final class RuleFile
                 $what = $for === false ? $args : array_slice($args, 0, (int) $for);
                 $rest = $for === false ? [] : array_slice($args, (int) $for);
                 return array_merge($what, ['at'], $path, $rest);
+            case 'query':
+                if ($args === ['strict']) {
+                    throw new RuleFileException("$at: query strict is for the whole site -- put it outside the block");
+                }
+                if (in_array('at', $args, true)) {
+                    throw new RuleFileException("$at: inside match: query <name> <type> ... -- the block is where");
+                }
+                return array_merge($args, ['at'], $path);
             case 'limit':
             case 'cache-query':
                 throw new RuleFileException("$at: $keyword per area is not there yet (proposal 0008, a second step) -- put it outside the block");
@@ -999,6 +1010,66 @@ final class RuleFile
         $list = is_array($list) ? $list : [];
         $list[] = ['paths' => $paths, 'patterns' => $patterns, 'ips' => $ips];
         $this->put('blockExceptions', $list);
+    }
+
+    /**
+     * query <name> <type> [<name> <type> ...] [at <paths>]  -- known parameters
+     * query strict                                          -- anything else: 404
+     * Types: int, number, word, id, list, text, any, or /regex/. A name may use
+     * * (utm_*).
+     *
+     * @param list<string> $args
+     */
+    private function queryRule(array $args, string $at): void
+    {
+        if ($args === ['strict']) {
+            $this->put('queryStrict', true);
+            $this->origins['query']['strict'] = $this->rid;
+            return;
+        }
+        $usage = 'query <name> <type> ... [at <paths>]  (types: int, number, word, id, list, text, any, /regex/) -- or query strict';
+        $where = array_search('at', $args, true);
+        $pairs = $where === false ? $args : array_slice($args, 0, (int) $where);
+        if ($pairs === [] || count($pairs) % 2 !== 0) {
+            throw new RuleFileException("$at: $usage");
+        }
+        $exact = [];
+        $globs = [];
+        for ($i = 0; $i < count($pairs); $i += 2) {
+            [$name, $type] = [$pairs[$i], $pairs[$i + 1]];
+            if (!preg_match('/^[A-Za-z0-9_.*-]{1,64}$/', $name)) {
+                throw new RuleFileException("$at: \"$name\" is not a parameter name");
+            }
+            if (preg_match('#^/(.+)/$#', $type, $m)) {
+                $type = Pattern::fromRegex('^(?:' . $m[1] . ')$');
+                if (!Pattern::valid($type)) {
+                    throw new RuleFileException("$at: \"{$pairs[$i + 1]}\" is not a valid regular expression");
+                }
+            } elseif (!in_array($type, ['int', 'number', 'word', 'id', 'list', 'text', 'any'], true)) {
+                throw new RuleFileException("$at: \"$type\" is not a type -- int, number, word, id, list, text, any, /regex/");
+            }
+            if (strpos($name, '*') !== false) {
+                $globs['#^' . str_replace('\\*', '.*', preg_quote($name, '#')) . '$#'] = $type;
+            } else {
+                $exact[$name] = $type;
+            }
+        }
+        $paths = null;
+        if ($where !== false) {
+            $paths = [];
+            foreach ($this->compile(array_slice($args, (int) $where + 1), $at, false) as $p => $_) {
+                $paths[] = $p;
+            }
+            if ($paths === []) {
+                throw new RuleFileException("$at: $usage");
+            }
+        }
+        $list = (array) $this->get('queryParams');
+        $list[] = ['paths' => $paths, 'exact' => $exact, 'globs' => $globs];
+        $this->put('queryParams', $list);
+        foreach (array_merge(array_keys($exact), array_keys($globs)) as $n) {
+            $this->origins['query'][(string) $n] = $this->rid;
+        }
     }
 
     /**

@@ -205,6 +205,23 @@ final class RulesPage
         }
 
         $rows = [];
+        foreach ($s->queryParams as $n => $q) {
+            $names = [];
+            foreach ($q['exact'] + $q['globs'] as $name => $type) {
+                $shown = strncmp((string) $name, '#^', 2) === 0 ? str_replace('.*', '*', substr((string) $name, 2, -2)) : (string) $name;
+                $names[] = stripslashes($shown) . ' (' . (strncmp($type, '#', 1) === 0 ? 'pattern' : $type) . ')';
+            }
+            $first = (string) array_key_first($q['exact'] + $q['globs']);
+            $key = strncmp($first, '#^', 2) === 0 ? $first : $first;
+            $rows[] = $row(implode(', ', $names) . ($q['paths'] !== null ? ' — at ' . implode(', ', array_map($pattern, $q['paths'])) : ''),
+                $o('query', array_key_exists($first, $q['exact']) ? $first : $key), "queryParams[$n]");
+        }
+        if ($rows !== [] || $s->queryStrict) {
+            $g[] = ['Known parameters', $s->queryStrict ? 'Any other parameter, or a value not of its type, gets "not found" (404):'
+                : 'Values of these types are not scanned by the attack patterns; any other parameter is answered, but not cached:', $rows];
+        }
+
+        $rows = [];
         foreach ($s->restricted as $n => $r) {
             foreach ($r['paths'] as $p) {
                 $rows[] = $row($pattern($p) . ' — only for ' . implode(', ', $r['ips']), $o('restricted', $p), $o('restricted', $p) ?? "restricted[$n]");
