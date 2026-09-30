@@ -1,0 +1,48 @@
+<svg class="rsd" role="img" viewBox="0 0 780 410" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>A value from the query or a header: without the characters an attack needs it passes at once; a typed parameter passes; otherwise a small detector reads it as a browser would and flags scripts, event handlers and script addresses -- refused, or only logged in monitor mode</title>
+<style>.rsd{font:13px/1.2 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}.rsd .go{stroke:#1e7b43}.rsd .no{stroke:#a3361f}.rsd .okbox{fill:#e6f4ea;stroke:#1e7b43}.rsd .warnbox{fill:#fdf3dc;stroke:#b07400}.rsd .nobox{fill:#fbe9e5;stroke:#a3361f}.rsd .qbox{fill:#eef3fd;stroke:#2f62c9}.rsd .tag{fill:#2f62c9}.rsd .w{fill:#fff;font-weight:700}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .arrow{stroke:#a0a8b3}.rsd .okbox{fill:#17301f}.rsd .warnbox{fill:#3a2f15}.rsd .nobox{fill:#3d1f19}.rsd .qbox{fill:#1b2740;stroke:#7aa2ff}.rsd .tag{fill:#7aa2ff}}</style>
+<defs><marker id="rs17-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>
+<rect class="box" x="10" y="20" width="160" height="62" rx="10" stroke-width="1.5"/>
+<text class="t" x="90" y="46" text-anchor="middle" font-weight="700">A value</text>
+<text class="m" x="90" y="66" text-anchor="middle" font-size="12">query or a header</text>
+<path class="arrow" d="M170 51 H206" marker-end="url(#rs17-a)"/>
+<rect class="qbox" x="210" y="20" width="230" height="62" rx="10" stroke-width="1.5"/>
+<rect class="tag" x="222" y="10" width="46" height="18" rx="9"/><text class="w" x="245" y="23" text-anchor="middle" font-size="11">1</text>
+<text class="t" x="325" y="46" text-anchor="middle" font-weight="700">Characters an attack needs?</text>
+<text class="m" x="325" y="66" text-anchor="middle" font-size="12">&lt;, a quote with =, a script name …</text>
+<path class="arrow go" d="M440 51 H586" marker-end="url(#rs17-a)"/>
+<text class="m" x="513" y="43" text-anchor="middle" font-size="12">no — almost always</text>
+<rect class="okbox" x="590" y="20" width="180" height="62" rx="10" stroke-width="1.5"/>
+<text class="t" x="680" y="46" text-anchor="middle" font-weight="700">Passes</text>
+<text class="m" x="680" y="66" text-anchor="middle" font-size="12">~0.2 µs, as today</text>
+<path class="arrow" d="M325 82 V118" marker-end="url(#rs17-a)"/>
+<text class="m" x="333" y="104" font-size="12">yes</text>
+<rect class="qbox" x="170" y="122" width="310" height="80" rx="10" stroke-width="1.5"/>
+<rect class="tag" x="182" y="112" width="46" height="18" rx="9"/><text class="w" x="205" y="125" text-anchor="middle" font-size="11">2</text>
+<text class="t" x="325" y="148" text-anchor="middle" font-weight="700">Read it as a browser would</text>
+<text class="m" x="325" y="168" text-anchor="middle" font-size="12">decoded, then tokenized as page text,</text>
+<text class="m" x="325" y="186" text-anchor="middle" font-size="12">as an attribute value, as an address</text>
+<path class="arrow go" d="M480 162 H586" marker-end="url(#rs17-a)"/>
+<text class="m" x="533" y="154" text-anchor="middle" font-size="12">nothing runs</text>
+<rect class="okbox" x="590" y="130" width="180" height="62" rx="10" stroke-width="1.5"/>
+<text class="t" x="680" y="156" text-anchor="middle" font-weight="700">Passes</text>
+<text class="m" x="680" y="176" text-anchor="middle" font-size="12">plain markup is fine</text>
+<path class="arrow no" d="M325 202 V238" marker-end="url(#rs17-a)"/>
+<text class="m" x="333" y="224" font-size="12">something would run</text>
+<rect class="nobox" x="170" y="242" width="310" height="62" rx="10" stroke-width="1.5"/>
+<text class="t" x="325" y="266" text-anchor="middle" font-weight="700">Refused (403) — or logged in monitor</text>
+<text class="m" x="325" y="286" text-anchor="middle" font-size="12">"an event handler", "a script address" …</text>
+<path class="arrow" d="M60 82 V118" marker-end="url(#rs17-a)"/>
+<rect class="warnbox" x="4" y="122" width="152" height="80" rx="10" stroke-width="1.5"/>
+<text class="t" x="80" y="148" text-anchor="middle" font-weight="700">Skipped</text>
+<text class="m" x="80" y="168" text-anchor="middle" font-size="12">typed parameters:</text>
+<text class="m" x="80" y="186" text-anchor="middle" font-size="12">"2" holds nothing</text>
+<rect class="box" x="500" y="216" width="270" height="94" rx="10" stroke-width="1.5"/>
+<text class="t" x="516" y="240" font-weight="700">The real defence: the application</text>
+<text class="m" x="516" y="260" font-size="12">every value encoded where it lands,</text>
+<text class="m" x="516" y="278" font-size="12">a Content Security Policy;</text>
+<text class="m" x="516" y="296" font-size="12">the shield is a second line</text>
+<text class="m" x="10" y="344" font-size="12">A browser does not match patterns, it reads markup. A detector that reads the same way sees through</text>
+<text class="m" x="10" y="362" font-size="12">encodings and odd spellings at once — and runs only for the rare value that could hold an attack.</text>
+<text class="m" x="10" y="388" font-size="12">No dependency, a few microseconds, one class in the single file.</text>
+</svg>
