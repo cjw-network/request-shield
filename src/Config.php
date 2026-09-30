@@ -138,6 +138,19 @@ final class Config
             // stop (rejected, throttled, challenged), flag (also allow-uncached),
             // all (every request), off. ip: masked (/24, /48) or full.
             'log' => ['file' => null, 'level' => 'stop', 'ip' => 'masked', 'maxSize' => 10485760],
+            // Counters for the dashboard (proposals 0012, 0014): per hour in the
+            // store (APCu, else files in storeDir/stats); hours kept for 'hours'
+            // days, day totals for 'days' days. Off: nothing is counted.
+            // 'parts': what is counted -- requests (actions, rules, status codes),
+            // crawlers (0014), not-found (pages the site did not find, and the
+            // links to them), bots (other bots by family). 'flush': with APCu,
+            // every so many seconds the counts are written to the hour's file,
+            // so a restart of PHP-FPM loses at most that much (0: only hourly).
+            'stats' => ['enabled' => false, 'parts' => ['requests', 'crawlers', 'not-found', 'bots'], 'hours' => 7, 'days' => 400, 'flush' => 60],
+            // One log file per known crawler and day (dir/CRAWL-GPTBOT/2026-09-30.log),
+            // for the kinds listed ([]: all); kept 'days' days; 'query' false leaves
+            // the query string out. null: none.
+            'crawlerLog' => ['dir' => null, 'kinds' => [], 'days' => 30, 'query' => true],
         ];
     }
 

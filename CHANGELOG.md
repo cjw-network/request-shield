@@ -50,6 +50,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   changes); `trace --ua=…`. The rules page lists the crawlers and counts false
   claims ([docs](docs/features/known-crawlers.md)).
 
+- Statistics (proposals 0012, 0014): `set stats on` counts, per hour, what the
+  shield did (let through, checked, told to wait, refused, the rule behind it,
+  the answer's status code -- the site's own at the end of the request), what
+  each known crawler did (verified or only claiming the name, let through,
+  checked, refused, robots.txt, its top 50 pages a day, its last visit), the
+  pages the site did not find and where the links to them are (the site's own
+  page, or another site's host), and other bots by family. The parts can be
+  switched on one by one (`set stats requests crawlers not-found bots`). With
+  APCu a count is one `apcu_inc()`, written to disk every `stats-flush`
+  seconds (default 60) so a restart of PHP-FPM loses at most that; without,
+  one appended line. Finished hours go into one JSON file per day (hours kept 7
+  days, days 400). `bin/request-shield stats [--days=7] [--json]`,
+  `Report\StatsReport::build()` and the rules page show it -- with sentences
+  such as "OpenAI's training crawler (CRAWL-GPTBOT) came 1,204× in the last 7
+  days: every time refused (as set: block)" and "Broken link: /news/x links to
+  /old, which was not found". Optional: one log per known crawler and day
+  (`set crawler-log <dir>`). About +7 µs a request with APCu in the container
+  (+27 µs with files, one appended line) ([docs](docs/features/statistics.md)).
+
 ### Changed
 - The query string is parsed once per request, for every check that reads it.
 

@@ -66,6 +66,14 @@ final class RuleFile
         'mode' => ['mode', 'mode'],
         'crawler-verify' => ['crawlerVerify', 'verify'],
         'log' => ['log.file', 'path'],
+        'stats' => ['stats', 'stats'],
+        'stats-flush' => ['stats.flush', 'seconds'],
+        'stats-hours' => ['stats.hours', 'int'],
+        'stats-days' => ['stats.days', 'int'],
+        'crawler-log' => ['crawlerLog.dir', 'path'],
+        'crawler-log-kinds' => ['crawlerLog.kinds', 'kinds'],
+        'crawler-log-days' => ['crawlerLog.days', 'int'],
+        'crawler-log-query' => ['crawlerLog.query', 'bool'],
         'log-level' => ['log.level', 'loglevel'],
         'log-ip' => ['log.ip', 'logip'],
         'log-max-size' => ['log.maxSize', 'bytes'],
@@ -205,8 +213,12 @@ final class RuleFile
             $crawlers[$id]['policy'] = 'allow';
         }
         [$index, $ids] = \CjwNetwork\RequestShield\Settings::crawlerIndex($crawlers);
+        // The descriptions, for reports of settings from a PHP array (which have no origins).
+        $r = new self();
+        $r->file((string) self::shipped('crawlers'), null, null);
+        $names = array_intersect_key($r->origins['text'] ?? [], $crawlers);
         return "<?php\n// Generated from rules/crawlers.rules and rules/crawlers/*.json by bin/update-crawler-lists -- do not edit.\n"
-            . 'return ' . var_export(['crawlers' => $crawlers, 'index' => $index, 'ids' => $ids], true) . ";\n";
+            . 'return ' . var_export(['crawlers' => $crawlers, 'index' => $index, 'ids' => $ids, 'names' => $names], true) . ";\n";
     }
 
     /**
@@ -1400,6 +1412,29 @@ final class RuleFile
                     throw new RuleFileException("$at: $key is a size (10M, 500K), not \"$value\"");
                 }
                 $v = (int) $m[1] * ['' => 1, 'k' => 1024, 'm' => 1048576, 'g' => 1073741824][strtolower($m[2] ?? '')];
+                break;
+            case 'stats':
+                // on, off, or the parts: set stats requests crawlers
+                $words = preg_split('/\s+/', strtolower($value)) ?: [];
+                if ($words === ['on'] || $words === ['off']) {
+                    $this->put('stats.enabled', $words === ['on']);
+                    return;
+                }
+                foreach ($words as $w) {
+                    if (!in_array($w, \CjwNetwork\RequestShield\Settings::STATS_PARTS, true)) {
+                        throw new RuleFileException("$at: stats is on, off or what to count: " . implode(', ', \CjwNetwork\RequestShield\Settings::STATS_PARTS) . " -- not \"$w\"");
+                    }
+                }
+                $this->put('stats.enabled', true);
+                $this->put('stats.parts', $words);
+                return;
+            case 'kinds':
+                $v = preg_split('/\s+/', $value) ?: [];
+                foreach ($v as $k) {
+                    if (!in_array($k, self::KINDS, true)) {
+                        throw new RuleFileException("$at: $key takes kinds of crawler (" . implode(', ', self::KINDS) . "), not \"$k\"");
+                    }
+                }
                 break;
             case 'path':
                 // Relative to the rule file it is written in.

@@ -11,6 +11,7 @@
  *   php bin/request-shield reload site.rules [--source=<glob>]...
  *   php bin/request-shield trace  site.rules "GET https://www.example.org/wp-login.php" [--ip=<address>] [--ua=<User-Agent>]
  *   php bin/request-shield crawlers site.rules [update] [--force]
+ *   php bin/request-shield stats site.rules [--days=7] [--json]
  *
  * check:  reads every file, reports the first error with file and line, and
  *         warns about rule files anyone else could change.
@@ -25,6 +26,10 @@
  *         lists into store-dir (cron, a deploy -- or where there is internet,
  *         copying store-dir/crawlers/ into a DMZ); the servers read them on their
  *         next check. A list that shrank to less than half is kept unless --force.
+ * stats:  what the counters (set stats on) say about the last days: requests
+ *         let through, checked, refused, the rules behind them, the answers'
+ *         status codes, pages not found and who links to them, what each known
+ *         crawler did, other bots -- in words, or as JSON for a CMS.
  */
 
 declare(strict_types=1);
@@ -32,6 +37,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/bootstrap.php';
 
 use CjwNetwork\RequestShield\Report\Inspector;
+use CjwNetwork\RequestShield\Report\StatsReport;
 use CjwNetwork\RequestShield\Rules\CrawlerLists;
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Rules\RuleFileException;
@@ -43,9 +49,15 @@ $rest = [];
 $ip = '198.51.100.7';
 $force = false;
 $ua = null;
+$days = 7;
+$json = false;
 foreach ($args as $a) {
     if ($a === '--force') {
         $force = true;
+    } elseif ($a === '--json') {
+        $json = true;
+    } elseif (strncmp($a, '--days=', 7) === 0) {
+        $days = max(1, (int) substr($a, 7));
     } elseif (strncmp($a, '--ua=', 5) === 0) {
         $ua = substr($a, 5);
     } elseif (strncmp($a, '--ip=', 5) === 0) {
@@ -57,11 +69,12 @@ foreach ($args as $a) {
     }
 }
 [$command, $file, $what] = $rest + [null, null, null];
-if (!in_array($command, ['check', 'show', 'reload', 'trace', 'crawlers'], true) || $file === null || ($command === 'trace' && $what === null)
+if (!in_array($command, ['check', 'show', 'reload', 'trace', 'crawlers', 'stats'], true) || $file === null || ($command === 'trace' && $what === null)
     || ($command === 'crawlers' && $what !== null && $what !== 'update')) {
     fwrite(STDERR, "usage: request-shield check|show|reload <main.rules> [--source=<glob>]...\n"
         . "       request-shield trace <main.rules> \"GET https://www.example.org/path\" [--ip=<address>] [--ua=<User-Agent>] [--source=<glob>]...\n"
-        . "       request-shield crawlers <main.rules> [update] [--force]\n");
+        . "       request-shield crawlers <main.rules> [update] [--force]\n"
+        . "       request-shield stats <main.rules> [--days=7] [--json]\n");
     exit(2);
 }
 if (substr($file, -6) !== '.rules') {
@@ -92,6 +105,58 @@ if ($command === 'trace') {
     echo "\nThis visitor {$t['verdict']}." . ($t['rule'] !== null ? " Decided by {$t['rule']}." : '') . "\n";
     echo $t['watched'] !== null ? "Watched: it {$t['watched']}.\n" : '';
     exit($t['decision']->passes() || in_array($settings->mode, ['off', 'monitor'], true) ? 0 : 4);     // 4: refused (a script can test for it)
+}
+
+if ($command === 'stats') {
+    if (!$settings->statsEnabled) {
+        fwrite(STDERR, "no statistics: switch them on with \"set stats on\" in the rule file\n");
+        exit(1);
+    }
+    $r = StatsReport::build($settings, null, $days);
+    if ($json) {
+        echo json_encode($r, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
+        exit(0);
+    }
+    $n = static fn (int $v): string => number_format($v);
+    $t = $r['totals'];
+    $all = array_sum($t);
+    echo "Last $days day(s), " . substr($r['from'], 0, 4) . '-' . substr($r['from'], 4, 2) . '-' . substr($r['from'], 6) . ' to ' . substr($r['to'], 0, 4) . '-' . substr($r['to'], 4, 2) . '-' . substr($r['to'], 6) . ":\n\n";
+    echo '  ' . $n($all) . ' requests: ' . $n(($t['allow'] ?? 0) + ($t['allow-uncached'] ?? 0)) . ' let through, ' . $n($t['challenge'] ?? 0) . ' checked, '
+        . $n($t['throttle'] ?? 0) . ' told to wait, ' . $n($t['reject'] ?? 0) . " refused\n";
+    if ($r['monitor'] !== []) {
+        echo '  monitor mode would have: ' . implode(', ', array_map(static fn (string $a, int $v): string => "$a $v", array_keys($r['monitor']), $r['monitor'])) . "\n";
+    }
+    if ($r['statuses'] !== []) {
+        echo '  answers: ' . implode(', ', array_map(static fn (string $c, int $v): string => "$c: $v", array_map('strval', array_keys($r['statuses'])), $r['statuses'])) . "\n";
+    }
+    if ($r['rules'] !== []) {
+        echo "\nRules that decided most:\n";
+        foreach (array_slice($r['rules'], 0, 10, true) as $rule => $v) {
+            echo '  ' . str_pad($n($v), 8, ' ', STR_PAD_LEFT) . "  $rule\n";
+        }
+    }
+    if ($r['notFound'] !== []) {
+        echo "\nNot found:\n";
+        foreach ($r['notFound'] as $path => $x) {
+            echo '  ' . str_pad($n($x['count']), 8, ' ', STR_PAD_LEFT) . "  $path" . ($x['referrers'] !== [] ? '   linked from: ' . implode(', ', array_map(static fn (string $f, int $v): string => "$f ($v)", array_map('strval', array_keys($x['referrers'])), $x['referrers'])) : '') . "\n";
+        }
+    }
+    echo "\nKnown crawlers                  seen  verified claimed allowed checked refused  last\n";
+    foreach ($r['crawlers'] as $id => $c) {
+        if ($c['seen'] === 0) {
+            continue;
+        }
+        echo '  ' . str_pad($id, 26) . str_pad($n($c['seen']), 8, ' ', STR_PAD_LEFT) . str_pad($n($c['verified']), 10, ' ', STR_PAD_LEFT) . str_pad($n($c['claimed']), 8, ' ', STR_PAD_LEFT)
+            . str_pad($n($c['allowed']), 8, ' ', STR_PAD_LEFT) . str_pad($n($c['checked']), 8, ' ', STR_PAD_LEFT) . str_pad($n($c['refused']), 8, ' ', STR_PAD_LEFT)
+            . '  ' . (is_array($c['last']) ? date('Y-m-d H:i', (int) $c['last'][0]) : '-') . "\n";
+    }
+    if ($r['bots'] !== []) {
+        echo "\nOther bots (by what they say they are): " . implode(', ', array_map(static fn (string $f, int $v): string => "$f $v", array_keys($r['bots']), $r['bots'])) . "\n";
+    }
+    if ($r['sentences'] !== []) {
+        echo "\nIn short:\n  " . implode("\n  ", $r['sentences']) . "\n";
+    }
+    exit(0);
 }
 
 if ($command === 'crawlers') {

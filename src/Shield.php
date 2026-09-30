@@ -187,7 +187,9 @@ final class Shield
         // (or when every request is logged) -- a passing one costs nothing.
         $rule = null;
         $watched = null;
+        $would = null;
         if ($s->mode === 'monitor' && !$decision->passes()) {
+            $would = $decision;
             // Monitor: decided and counted, logged as it would be -- and let through,
             // never cached (whatever it is, it is not what a cache should keep).
             $watched = $shield->watched($decision, $request, $now, $shield);
@@ -205,6 +207,11 @@ final class Shield
         }
         self::$current = $decision;
         self::$rule = $rule;
+        if ($s->statsEnabled || $s->crawlerLogDir !== null) {
+            // A request that goes on to the site: counted when it ends, with the
+            // status the site answered (one write, as for the others).
+            $shield->record($request, $decision, $rule, $now, $would, $decision->passes());
+        }
         if (!headers_sent()) {
             foreach ($settled['cookies'] as $cookie) {
                 header('Set-Cookie: ' . $cookie, false);
@@ -266,6 +273,132 @@ final class Shield
         // A check the visitor has passed already (a pass cookie) is no refusal.
         $d = $w->settle($d, $request, $now)['decision'];
         return $d->passes() ? null : $this->watched($d, $request, $now, $w);
+    }
+
+    /**
+     * Counts a decided request for the dashboard (set stats on): its action,
+     * its rule, and for a known crawler what it asked for and got -- every
+     * request that names one is verified then (the list: half a microsecond;
+     * DNS: remembered for a day). A crawler's request also goes into its own
+     * log (set crawler-log). protect() calls it; code that runs decide() and
+     * settle() itself calls it after them.
+     *
+     * @param Decision|null $would what monitor mode would have done
+     * @param bool $atEnd count when the request ends, with the status the site
+     *   answered (http_response_code()) -- for a request that goes on to the site
+     */
+    public function record(Request $request, Decision $decision, ?string $rule, float $now, ?Decision $would = null, bool $atEnd = false): void
+    {
+        $s = $this->settings;
+        $parts = $s->statsEnabled ? $s->statsParts : [];
+        $keys = [];
+        if (in_array('requests', $parts, true)) {
+            $keys[] = 'a:' . $decision->action;
+            if ($decision->action !== Decision::ALLOW && $rule !== null) {
+                $keys[] = 'r:' . str_replace(' ', '_', $rule);
+            }
+            if ($would !== null) {
+                $keys[] = 'm:' . $would->action;
+            }
+        }
+        $crawling = in_array('crawlers', $parts, true);
+        $ua = (string) $request->header('user-agent');
+        // A crawler is looked at only for its statistics or its log.
+        $id = $s->crawlers === [] || (!$crawling && $s->crawlerLogDir === null) ? null : $this->crawlers()->claims($ua);
+        if ($id !== null) {
+            $verified = $this->crawlers()->verified($request->clientIp, $id);
+            if ($crawling) {
+                $keys[] = "c:$id:seen";
+                $keys[] = "c:$id:" . ($verified ? 'verified' : 'claimed');
+            }
+            if ($verified && $crawling) {
+                $keys[] = "c:$id:" . [Decision::ALLOW => 'allowed', Decision::ALLOW_UNCACHED => 'allowed', Decision::CHALLENGE => 'checked',
+                    Decision::THROTTLE => 'throttled', Decision::REJECT => 'refused'][$decision->action];
+                if ($request->path === '/robots.txt') {
+                    $keys[] = "c:$id:robots";
+                }
+                // The page, without its query; spaces and the like escaped (a key is one word).
+                $keys[] = "p:$id:" . self::word($request->path);
+                $keys[] = "l:$id|" . (int) $now . '|' . $request->clientIp;
+            }
+            if ($s->crawlerLogDir !== null && ($s->crawlerLogKinds === [] || in_array($this->crawlers()->kind($id), $s->crawlerLogKinds, true))) {
+                // A verified crawler's address is its operator's: in full. One that
+                // only claims the name may be a person: as the log keeps addresses.
+                Log::append($s->crawlerLogDir . '/' . $id . '/' . date('Y-m-d', (int) $now) . '.log',
+                    Log::line($s, $request, $verified ? $decision : $decision->claiming($id), $rule, $now, false, $verified ? $request->clientIp : null, $s->crawlerLogQuery),
+                    $s->logMaxSize);
+            }
+        } elseif (in_array('bots', $parts, true)) {
+            $family = Stats::botFamily($ua);
+            if ($family !== null) {
+                $keys[] = 'o:' . $family;
+            }
+        }
+        if (!$s->statsEnabled) {
+            return;
+        }
+        $this->stats ??= Stats::of($s);
+        $stats = $this->stats;
+        $requests = in_array('requests', $parts, true);
+        $missing = in_array('not-found', $parts, true);
+        if (!$atEnd || (!$requests && !$missing)) {
+            if ($requests) {
+                $keys[] = 's:' . $decision->status;          // the shield answered itself
+            }
+            if ($keys !== []) {
+                $stats->count($keys, $now);
+            }
+            return;
+        }
+        register_shutdown_function(static function () use ($keys, $request, $now, $stats, $requests, $missing): void {
+            $status = http_response_code();
+            if (is_int($status) && $status > 0) {
+                foreach (self::statusKeys($request, $status) as $k) {
+                    if (strncmp($k, 's:', 2) === 0 ? $requests : $missing) {
+                        $keys[] = $k;
+                    }
+                }
+            }
+            if ($keys !== []) {
+                $stats->count($keys, $now);
+            }
+        });
+    }
+
+    private ?Stats $stats = null;
+
+    /**
+     * A path as one word of a counter's name: spaces, "*" (a count in the
+     * files) and "|" (the referrer's separator) escaped, at most 200 characters.
+     */
+    private static function word(string $v): string
+    {
+        return substr((string) preg_replace_callback('/[^\x21-\x29\x2b-\x7b\x7d\x7e]/', static fn (array $m): string => rawurlencode($m[0]), $v), 0, 200);
+    }
+
+    /**
+     * The status the site answered; for a page it did not find (404, 410),
+     * the page and where a link to it was: a page of the site itself (a broken
+     * link to fix), or the other site's host -- never a whole foreign URL.
+     *
+     * @return list<string>
+     */
+    public static function statusKeys(Request $request, int $status): array
+    {
+        $keys = ['s:' . $status];
+        if ($status !== 404 && $status !== 410) {
+            return $keys;
+        }
+        $word = static fn (string $v): string => self::word($v);
+        $path = $word($request->path);
+        $keys[] = 'n:' . $path;
+        $ref = (string) $request->header('referer');
+        $parts = $ref === '' ? false : parse_url($ref);
+        if (is_array($parts) && isset($parts['host'])) {
+            $own = strcasecmp($parts['host'], $request->host) === 0;
+            $keys[] = 'nr:' . $path . '|' . ($own ? $word($parts['path'] ?? '/') : $word(strtolower($parts['host'])));
+        }
+        return $keys;
     }
 
     /** The shield of the rules marked "monitor" (null: there are none), built once. */

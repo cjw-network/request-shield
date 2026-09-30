@@ -247,6 +247,9 @@ keeps both the same.
 | `mode` | `off`, `monitor`, `enforce` (default), `strict` ([modes](modes.md)) |
 | `crawler-verify` | `both` (default), `ranges` (the published address lists only: no DNS, for a DMZ), `dns` ([known crawlers](known-crawlers.md)) |
 | `log`, `log-level`, `log-ip`, `log-max-size` | [the log](log-and-rule-ids.md) |
+| `stats` | `off` (default), `on`, or the parts: `requests`, `crawlers`, `not-found`, `bots` ([statistics](statistics.md)) |
+| `stats-hours`, `stats-days`, `stats-flush` | days the hours are kept (7), days the day totals are kept (400), seconds between writes to disk with APCu (60) |
+| `crawler-log`, `crawler-log-kinds`, `crawler-log-days`, `crawler-log-query` | one log per known crawler and day: its directory, the kinds logged, days kept (30), whether the query is kept ([statistics](statistics.md#one-log-per-crawler-optional)) |
 | `recheck` | how often the files are checked for changes, see below |
 
 `${NAME}` is an environment variable, `${NAME:-default}` one that may be unset.

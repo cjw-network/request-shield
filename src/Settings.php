@@ -129,6 +129,24 @@ final class Settings
         public string $crawlerVerify = 'both',
         /** @var array<string, string> @readonly the policies as written: kind or crawler ID => allow, check, block */
         public array $crawlerPolicy = [],
+        /** @readonly counters for the dashboard (Stats) */
+        public bool $statsEnabled = false,
+        /** @readonly days the hourly counters are kept */
+        public int $statsHours = 7,
+        /** @readonly days the daily counters are kept */
+        public int $statsDays = 400,
+        /** @readonly one log per known crawler and day in this directory; null: none */
+        public ?string $crawlerLogDir = null,
+        /** @var list<string> @readonly the kinds whose crawlers are logged ([]: all) */
+        public array $crawlerLogKinds = [],
+        /** @readonly days a crawler's log is kept */
+        public int $crawlerLogDays = 30,
+        /** @readonly whether the crawler logs keep the query string */
+        public bool $crawlerLogQuery = true,
+        /** @var list<string> @readonly what is counted: requests, crawlers, not-found, bots */
+        public array $statsParts = ['requests', 'crawlers', 'not-found', 'bots'],
+        /** @readonly with APCu, seconds between writes of the counts to disk (0: only hourly) */
+        public int $statsFlush = 60,
     ) {
     }
 
@@ -244,7 +262,37 @@ final class Settings
             $strict ? 2 : 1,
             $monitorRules === null ? null : self::from(['mode' => $mode, 'monitorRules' => null] + $monitorRules),
             ...self::knownCrawlers($c, $verify),
+            ...self::stats($c),
         );
+    }
+
+    /**
+     * @param array<mixed> $c
+     * @return array{0: bool, 1: int, 2: int, 3: ?string, 4: list<string>, 5: int, 6: bool, 7: list<string>, 8: int}
+     */
+    private static function stats(array $c): array
+    {
+        $stats = self::map($c, 'stats');
+        $log = self::map($c, 'crawlerLog');
+        $dir = $log['dir'] ?? null;
+        if ($dir !== null && (!is_string($dir) || $dir === '')) {
+            throw self::wrong('crawlerLog.dir', 'null or a directory');
+        }
+        $kinds = self::strings($log, 'kinds', 'crawlerLog.kinds');
+        foreach ($kinds as $k) {
+            if (!in_array($k, Rules\RuleFile::KINDS, true)) {
+                throw self::wrong('crawlerLog.kinds', 'kinds of crawler: ' . implode(', ', Rules\RuleFile::KINDS));
+            }
+        }
+        $parts = array_key_exists('parts', $stats) ? self::strings($stats, 'parts', 'stats.parts') : self::STATS_PARTS;
+        foreach ($parts as $p) {
+            if (!in_array($p, self::STATS_PARTS, true)) {
+                throw self::wrong('stats.parts', implode(', ', self::STATS_PARTS));
+            }
+        }
+        return [self::bool($stats, 'enabled', 'stats.enabled'), max(1, self::int($stats, 'hours', 'stats.hours', 7)), max(1, self::int($stats, 'days', 'stats.days', 400)),
+            $dir, $kinds, max(1, self::int($log, 'days', 'crawlerLog.days', 30)), self::bool($log, 'query', 'crawlerLog.query', true),
+            $parts, max(0, self::int($stats, 'flush', 'stats.flush', 60))];
     }
 
     /**
@@ -624,9 +672,12 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 18;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers
+    private const FORMAT = 20;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
+
+    /** What the statistics can count (set stats <parts>). */
+    public const STATS_PARTS = ['requests', 'crawlers', 'not-found', 'bots'];
 
     /**
      * The settings of a file, checked only when it changed. A ".rules" file

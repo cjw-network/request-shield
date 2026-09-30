@@ -1,0 +1,518 @@
+<?php
+/**
+ * This file is part of cjw-network/request-shield.
+ *
+ * @copyright Copyright (C) 2026 JAC Systeme GmbH, CJW Network
+ * @license MIT, see LICENSE
+ */
+
+declare(strict_types=1);
+
+namespace CjwNetwork\RequestShield;
+
+/**
+ * Counters for the dashboard (proposals 0012, 0014): how many requests the
+ * shield let through, checked or refused, by which rule, and what each known
+ * crawler did -- per hour, kept while requests pass, so nobody has to read
+ * the log to see it.
+ *
+ * With APCu a counter is one apcu_inc() (~0.2 µs); without, a request appends
+ * one short line to the hour's file (lock-free, O_APPEND). The first request
+ * after an hour is over moves the finished hours into one small JSON file per
+ * day (<dir>/d-<yyyymmdd>.json); hours are kept for $hours days, the day's
+ * totals for $days days.
+ *
+ * A counter's name ("what"): "a:<action>", "r:<rule>", "c:<crawler>:<event>",
+ * "p:<crawler>:<path>", "o:<bot family>", "m:<action>" (what monitor mode would
+ * have done), "s:<status>" (the answer's status code), "n:<path>" (a page the
+ * site did not find), "nr:<path>|<referrer>" (where a link to it was: a path
+ * of the site itself, or another site's host). "l:<crawler>|<time>|<address>"
+ * is not counted: the crawler's last visit.
+ */
+final class Stats
+{
+    private const PREFIX = 'rshield:stat:';
+
+    /** Pages kept per crawler and hour (and in a day's totals), pages not found, referrers per page not found; the rest count as "(other)". */
+    public const PAGES = 50;
+
+    public const REFERRERS = 5;
+
+    public function __construct(
+        private string $dir,
+        private bool $apcu,
+        private int $hours = 7,
+        private int $days = 400,
+        private ?string $crawlerLog = null,
+        private int $crawlerLogDays = 30,
+        private int $flush = 60,
+    ) {
+    }
+
+    /** The counters of these settings: in store-dir/stats, with APCu where the store would use it. */
+    public static function of(Settings $s): self
+    {
+        $apcu = $s->store === 'apcu' || ($s->store === 'auto' && Store\ApcuStore::usable());
+        return new self($s->storeDir . '/stats', $apcu, $s->statsHours, $s->statsDays, $s->crawlerLogDir, $s->crawlerLogDays, $s->statsFlush);
+    }
+
+    /**
+     * One request: add one to each counter (and note a crawler's last visit).
+     *
+     * @param list<string> $keys
+     */
+    public function count(array $keys, float $now): void
+    {
+        // The hour's name, made once an hour (gmdate() costs half a microsecond).
+        $n = intdiv((int) $now, 3600);
+        if (self::$hourN !== $n) {
+            [self::$hourN, self::$hour, self::$closedHour] = [$n, gmdate('YmdH', (int) $now), self::closed($now)];
+        }
+        $hour = self::$hour;
+        if ($this->apcu) {
+            foreach ($keys as $k) {
+                if (strncmp($k, 'l:', 2) === 0) {
+                    [$id, $rest] = explode('|', substr($k, 2), 2) + ['', ''];
+                    apcu_store(self::PREFIX . 'last:' . $id, $rest, 86400 * 8);
+                    continue;
+                }
+                if (self::group($k) !== null) {
+                    $k = $this->page($hour, $k);
+                }
+                apcu_inc(self::PREFIX . $hour . ':' . $k, 1, $ok, 86400 * 8);
+            }
+            $closed = self::$closedHour;
+            // Once per process and hour: has the finished hour been rolled up?
+            if ((self::$checked[$this->dir] ?? null) !== $closed) {
+                self::$checked[$this->dir] = $closed;
+                if (apcu_fetch(self::PREFIX . 'rolled') !== $closed) {
+                    $this->roll($now);
+                }
+            }
+            // Every $flush seconds one request writes what APCu holds to the
+            // hour's file: a restart of PHP-FPM loses at most that much.
+            if ($this->flush > 0 && $now - (self::$flushed[$this->dir] ?? 0.0) >= $this->flush) {
+                self::$flushed[$this->dir] = $now;
+                if (apcu_add(self::PREFIX . 'flush', 1, $this->flush)) {
+                    $this->flush();
+                }
+            }
+            return;
+        }
+        $file = $this->dir . '/h-' . $hour . '.log';
+        if (@file_put_contents($file, implode(' ', $keys) . "\n", FILE_APPEND) === false) {
+            // The directory is missing: made once, the line written again.
+            @mkdir($this->dir, 0750, true);
+            @file_put_contents($file, implode(' ', $keys) . "\n", FILE_APPEND);
+        }
+        $closed = self::$closedHour;
+        if ((self::$checked[$this->dir] ?? null) !== $closed) {
+            self::$checked[$this->dir] = $closed;
+            if (!is_file($this->dir . '/rolled-' . $closed)) {
+                $this->roll($now);
+            }
+        }
+    }
+
+    private static ?int $hourN = null;
+
+    private static string $hour = '';
+
+    private static string $closedHour = '';
+
+    /** @var array<string, float> directory => when this process last looked whether to flush */
+    private static array $flushed = [];
+
+    /** @var array<string, string> directory => the finished hour this process has checked the roll-up for (a PHP-FPM worker serves many requests) */
+    private static array $checked = [];
+
+    /**
+     * A counter that belongs to a group with a limit (a crawler's pages,
+     * pages not found, a missing page's referrers): the group, its limit and
+     * the key everything past it is counted under. Null for the others.
+     *
+     * @return array{0: string, 1: int, 2: string}|null
+     */
+    private static function group(string $key): ?array
+    {
+        if (strncmp($key, 'p:', 2) === 0) {
+            $g = substr($key, 0, (int) strpos($key, ':', 2));
+            return [$g, self::PAGES, $g . ':(other)'];
+        }
+        if (strncmp($key, 'n:', 2) === 0) {
+            return ['n', self::PAGES, 'n:(other)'];
+        }
+        if (strncmp($key, 'nr:', 3) === 0) {
+            $g = substr($key, 0, (int) strpos($key, '|'));
+            return [$g, self::REFERRERS, $g . '|(other)'];
+        }
+        return null;
+    }
+
+    /**
+     * The key, or "(other)" past its group's limit in this hour: two more
+     * APCu calls, only for crawlers' pages and pages not found.
+     */
+    private function page(string $hour, string $key): string
+    {
+        $g = self::group($key);
+        if ($g === null) {
+            return $key;
+        }
+        [$group, $limit, $other] = $g;
+        if (apcu_add(self::PREFIX . 'seen:' . $hour . ':' . md5($key), 1, 86400 * 8)) {
+            // Seen for the first time this hour: one of the first, or "(other)".
+            return apcu_inc(self::PREFIX . 'pages:' . $hour . ':' . md5((string) $group), 1, $ok, 86400 * 8) > $limit ? (string) $other : $key;
+        }
+        return apcu_exists(self::PREFIX . $hour . ':' . $key) ? $key : (string) $other;
+    }
+
+    /**
+     * The newest hour that is over, with a minute's grace for requests still
+     * running: at 10:00:30 that is 08, at 10:01 09. It and the hours before
+     * it are rolled up.
+     */
+    private static function closed(float $now): string
+    {
+        return gmdate('YmdH', (int) $now - 3660);
+    }
+
+    /**
+     * Writes what APCu holds into the hours' files ("name*count"), and takes
+     * exactly that much out of APCu -- counts added meanwhile stay. The files
+     * are read with APCu's counters and rolled up like them.
+     */
+    public function flush(): void
+    {
+        if (!$this->apcu) {
+            return;
+        }
+        $lines = [];
+        foreach (new \APCUIterator('/^' . preg_quote(self::PREFIX, '/') . '(\d{10}|last):(.+)$/') as $key => $entry) {
+            if (!is_array($entry) || !preg_match('/^' . preg_quote(self::PREFIX, '/') . '(\d{10}|last):(.+)$/', (string) $key, $m)) {
+                continue;
+            }
+            $value = $entry['value'] ?? null;
+            if ($m[1] === 'last') {
+                if (is_string($value)) {
+                    $lines[gmdate('YmdH', (int) $value)][] = 'l:' . $m[2] . '|' . $value;
+                }
+                continue;
+            }
+            $n = is_int($value) ? $value : 0;
+            if ($n > 0 && apcu_dec((string) $key, $n) !== false) {
+                $lines[$m[1]][] = $m[2] . '*' . $n;
+            }
+        }
+        if ($lines !== [] && !is_dir($this->dir)) {
+            @mkdir($this->dir, 0750, true);
+        }
+        foreach ($lines as $hour => $tokens) {
+            @file_put_contents($this->dir . '/h-' . $hour . '.log', implode(' ', $tokens) . "\n", FILE_APPEND);
+        }
+    }
+
+    /**
+     * Moves the finished hours into the day files; drops hours past $hours
+     * days and days past $days days, and per-crawler logs past theirs. One
+     * request does it; the others go on.
+     */
+    public function roll(float $now): void
+    {
+        $closed = self::closed($now);
+        if (!is_dir($this->dir) && !@mkdir($this->dir, 0750, true) && !is_dir($this->dir)) {
+            return;
+        }
+        $lock = @fopen($this->dir . '/.lock', 'c');
+        if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
+            return;             // another request is at it
+        }
+        try {
+            [$hours, $last] = $this->collect($closed, true);
+            $byDay = [];
+            foreach ($hours as $hour => $counts) {
+                // (PHP makes "2026093010" an integer key: back to a string.)
+                $hour = (string) $hour;
+                $byDay[substr($hour, 0, 8)][substr($hour, 8, 2)] = $counts;
+            }
+            foreach ($byDay as $day => $hs) {
+                $day = (string) $day;
+                $file = $this->dir . '/d-' . $day . '.json';
+                $d = self::load($file);
+                foreach ($hs as $h => $counts) {
+                    $h = sprintf('%02d', $h);
+                    $d['hours'][$h] = self::cap(self::add($d['hours'][$h] ?? [], $counts));
+                }
+                foreach ($last as $id => $seen) {
+                    if (gmdate('Ymd', (int) $seen[0]) === $day && ($seen[0] > ($d['last'][$id][0] ?? 0))) {
+                        $d['last'][$id] = $seen;
+                    }
+                }
+                self::save($file, $d);
+            }
+            $this->expire($now);
+            if ($this->apcu) {
+                apcu_store(self::PREFIX . 'rolled', $closed, 86400 * 8);
+            } else {
+                foreach (glob($this->dir . '/rolled-*') ?: [] as $old) {
+                    @unlink($old);
+                }
+                @touch($this->dir . '/rolled-' . $closed);
+            }
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    /**
+     * The counters not yet in a day file: hours up to $until (and, for
+     * reading, the running one), taken out when $take -- APCu's and the
+     * hours' files (without APCu, or written by a flush).
+     *
+     * @return array{0: array<array-key, array<string, int>>, 1: array<string, array{0: int, 1: string}>} hour => counts, crawler => [time, address]
+     */
+    private function collect(?string $until, bool $take): array
+    {
+        $hours = [];
+        $last = [];
+        if ($this->apcu) {
+            $pattern = '/^' . preg_quote(self::PREFIX, '/') . '(\d{10}|last):(.+)$/';
+            foreach (new \APCUIterator($pattern) as $key => $entry) {
+                if (!is_array($entry) || !preg_match($pattern, (string) $key, $m)) {
+                    continue;
+                }
+                $value = $entry['value'] ?? null;
+                if ($m[1] === 'last') {
+                    $v = explode('|', is_string($value) ? $value : '', 2);
+                    $last[$m[2]] = [(int) $v[0], $v[1] ?? ''];
+                    continue;
+                }
+                if ($until !== null && $m[1] > $until) {
+                    continue;
+                }
+                if (is_int($value) && $value > 0) {
+                    $hours[$m[1]][$m[2]] = ($hours[$m[1]][$m[2]] ?? 0) + $value;
+                }
+                if ($take) {
+                    apcu_delete((string) $key);
+                }
+            }
+            if ($take) {
+                foreach (new \APCUIterator('/^' . preg_quote(self::PREFIX, '/') . '(seen|pages):(\d{10}):/') as $key => $entry) {
+                    if (preg_match('/:(\d{10}):/', (string) $key, $m) && ($until === null || $m[1] <= $until)) {
+                        apcu_delete((string) $key);
+                    }
+                }
+            }
+        }
+        foreach (glob($this->dir . '/h-*.log') ?: [] as $file) {
+            $hour = substr(basename($file, '.log'), 2);
+            if ($until !== null && $hour > $until) {
+                continue;
+            }
+            $h = @fopen($file, 'rb');
+            if ($h === false) {
+                continue;
+            }
+            while (($line = fgets($h)) !== false) {
+                foreach (explode(' ', trim($line)) as $k) {
+                    if ($k === '') {
+                        continue;
+                    }
+                    if (strncmp($k, 'l:', 2) === 0) {
+                        $v = explode('|', substr($k, 2), 3);
+                        if (count($v) === 3 && (int) $v[1] >= ($last[$v[0]][0] ?? 0)) {
+                            $last[$v[0]] = [(int) $v[1], $v[2]];
+                        }
+                        continue;
+                    }
+                    // "name" is one, "name*12" twelve (written by a flush).
+                    $star = strrpos($k, '*');
+                    $n = 1;
+                    if ($star !== false && ctype_digit(substr($k, $star + 1))) {
+                        [$k, $n] = [substr($k, 0, $star), (int) substr($k, $star + 1)];
+                    }
+                    $hours[$hour][$k] = ($hours[$hour][$k] ?? 0) + $n;
+                }
+            }
+            fclose($h);
+            if ($take) {
+                @unlink($file);
+            }
+        }
+        return [$hours, $last];
+    }
+
+    /** Hours past their days summed into the day's totals; days past theirs removed; old crawler logs removed. */
+    private function expire(float $now): void
+    {
+        $keepHours = gmdate('Ymd', (int) $now - $this->hours * 86400);
+        $keepDays = gmdate('Ymd', (int) $now - $this->days * 86400);
+        foreach (glob($this->dir . '/d-*.json') ?: [] as $file) {
+            $day = substr(basename($file, '.json'), 2);
+            if ($day < $keepDays) {
+                @unlink($file);
+            } elseif ($day < $keepHours) {
+                $d = self::load($file);
+                if ($d['hours'] !== []) {
+                    $total = $d['total'];
+                    foreach ($d['hours'] as $counts) {
+                        $total = self::add($total, $counts);
+                    }
+                    self::save($file, ['hours' => [], 'total' => self::cap($total), 'last' => $d['last']]);
+                }
+            }
+        }
+        if ($this->crawlerLog !== null) {
+            $keep = date('Y-m-d', (int) $now - $this->crawlerLogDays * 86400);
+            foreach (glob($this->crawlerLog . '/*/*.log') ?: [] as $file) {
+                if (basename($file, '.log') < $keep) {
+                    @unlink($file);
+                }
+            }
+        }
+    }
+
+    /**
+     * What was counted from $fromDay to $toDay (yyyymmdd, both included): each
+     * day's totals, the hours still kept, every crawler's last visit. The
+     * running hour included.
+     *
+     * @return array{days: array<string, array<string, int>>, hours: array<string, array<string, int>>, last: array<string, array{0: int, 1: string}>}
+     */
+    public function read(string $fromDay, string $toDay): array
+    {
+        $days = [];
+        $hours = [];
+        $last = [];
+        foreach (glob($this->dir . '/d-*.json') ?: [] as $file) {
+            $day = substr(basename($file, '.json'), 2);
+            $d = self::load($file);
+            foreach ($d['last'] as $id => $seen) {
+                if ($seen[0] > ($last[$id][0] ?? 0)) {
+                    $last[$id] = $seen;
+                }
+            }
+            if ($day < $fromDay || $day > $toDay) {
+                continue;
+            }
+            $days[$day] = $d['total'];
+            foreach ($d['hours'] as $h => $counts) {
+                $hours[$day . sprintf('%02d', $h)] = $counts;
+                $days[$day] = self::add($days[$day], $counts);
+            }
+        }
+        [$live, $liveLast] = $this->collect(null, false);
+        foreach ($live as $hour => $counts) {
+            $hour = (string) $hour;
+            $day = substr($hour, 0, 8);
+            if ($day >= $fromDay && $day <= $toDay) {
+                $hours[$hour] = self::add($hours[$hour] ?? [], $counts);
+                $days[$day] = self::add($days[$day] ?? [], $counts);
+            }
+        }
+        foreach ($liveLast as $id => $seen) {
+            if ($seen[0] > ($last[$id][0] ?? 0)) {
+                $last[$id] = $seen;
+            }
+        }
+        ksort($days);
+        ksort($hours);
+        foreach ($days as &$counts) {
+            ksort($counts);         // the same order from files and APCu
+        }
+        unset($counts);
+        foreach ($hours as &$counts) {
+            ksort($counts);
+        }
+        unset($counts);
+        return ['days' => $days, 'hours' => $hours, 'last' => $last];
+    }
+
+    /**
+     * @param array<string, int> $a
+     * @param array<string, int> $b
+     * @return array<string, int>
+     */
+    public static function add(array $a, array $b): array
+    {
+        foreach ($b as $k => $n) {
+            $a[(string) $k] = ($a[(string) $k] ?? 0) + $n;
+        }
+        return $a;
+    }
+
+    /**
+     * Each group at its limit: the most counted kept, the rest as "(other)".
+     *
+     * @param array<string, int> $counts
+     * @return array<string, int>
+     */
+    private static function cap(array $counts): array
+    {
+        $groups = [];
+        foreach ($counts as $k => $n) {
+            $g = self::group((string) $k);
+            if ($g !== null && (string) $k !== $g[2]) {
+                $groups[$g[0]]['keys'][(string) $k] = $n;
+                $groups[$g[0]]['limit'] = $g[1];
+                $groups[$g[0]]['other'] = $g[2];
+            }
+        }
+        foreach ($groups as $g) {
+            if (count($g['keys']) <= $g['limit']) {
+                continue;
+            }
+            arsort($g['keys']);
+            foreach (array_slice($g['keys'], $g['limit'], null, true) as $k => $n) {
+                unset($counts[$k]);
+                $counts[$g['other']] = ($counts[$g['other']] ?? 0) + $n;
+            }
+        }
+        return $counts;
+    }
+
+    /** @return array{hours: array<string, array<string, int>>, total: array<string, int>, last: array<string, array{0: int, 1: string}>} */
+    private static function load(string $file): array
+    {
+        $d = @json_decode((string) @file_get_contents($file), true);
+        $d = is_array($d) ? $d : [];
+        /** @var array{hours: array<string, array<string, int>>, total: array<string, int>, last: array<string, array{0: int, 1: string}>} */
+        return ['hours' => is_array($d['hours'] ?? null) ? $d['hours'] : [], 'total' => is_array($d['total'] ?? null) ? $d['total'] : [], 'last' => is_array($d['last'] ?? null) ? $d['last'] : []];
+    }
+
+    /** @param array<string, mixed> $d */
+    private static function save(string $file, array $d): void
+    {
+        $tmp = $file . '.' . bin2hex(random_bytes(4));
+        if (@file_put_contents($tmp, json_encode($d, JSON_UNESCAPED_SLASHES)) !== false) {
+            @chmod($tmp, 0640);
+            @rename($tmp, $file);
+        } else {
+            @unlink($tmp);
+        }
+    }
+
+    /**
+     * The family of a client that says it is a tool, not a browser, and is no
+     * known crawler: python, curl, wget, go, java, node, php, perl, headless,
+     * scrapy, empty, other (a "bot", "crawler", "spider" of its own). Null
+     * for a browser.
+     */
+    public static function botFamily(string $userAgent): ?string
+    {
+        if ($userAgent === '') {
+            return 'empty';
+        }
+        // One expression for all families; the first alternative that matches names it.
+        $m = [];
+        if (preg_match('/(?:HeadlessChrome|PhantomJS|Puppeteer|Playwright|Selenium)(*MARK:headless)|(?:python-requests|python-urllib|aiohttp|httpx|Python\/)(*MARK:python)'
+            . '|(?:^curl\/)(*MARK:curl)|(?:^Wget\/)(*MARK:wget)|(?:Go-http-client)(*MARK:go)|(?:^Java\/|okhttp|Apache-HttpClient)(*MARK:java)'
+            . '|(?:node-fetch|axios|undici|^got |Node\.js)(*MARK:node)|(?:GuzzleHttp|^PHP\/|Symfony HttpClient)(*MARK:php)|(?:libwww-perl|^LWP)(*MARK:perl)'
+            . '|(?:Scrapy)(*MARK:scrapy)|(?:bot\b|crawler|spider|scraper|fetcher)(*MARK:other)/i', $userAgent, $m) !== 1) {
+            return null;
+        }
+        return isset($m['MARK']) ? (string) $m['MARK'] : 'other';
+    }
+}

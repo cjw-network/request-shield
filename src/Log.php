@@ -46,24 +46,37 @@ final class Log
     /** @param bool $monitor what a rule in monitor would have decided: written as "monitor-<action>" */
     public static function write(Settings $s, Request $request, Decision $d, ?string $rule, ?float $now = null, bool $monitor = false): void
     {
-        $file = $s->logFile;
-        if ($file === null) {
+        if ($s->logFile === null) {
             return;
         }
-        $line = date('c', (int) ($now ?? time())) . ' '
-            . ($s->logIp === 'full' ? $request->clientIp : self::mask($request->clientIp)) . ' '
+        self::append($s->logFile, self::line($s, $request, $d, $rule, $now, $monitor), $s->logMaxSize);
+    }
+
+    /**
+     * One line of the log: time, the client's address (masked unless log-ip
+     * full, or as given), decision, status, reason, rule, what was asked
+     * (full URL, or without its query), User-Agent.
+     */
+    public static function line(Settings $s, Request $request, Decision $d, ?string $rule, ?float $now = null, bool $monitor = false, ?string $ip = null, bool $query = true): string
+    {
+        $uri = $query ? $request->rawUri : strtok($request->rawUri, '?');
+        return date('c', (int) ($now ?? time())) . ' '
+            . ($ip ?? ($s->logIp === 'full' ? $request->clientIp : self::mask($request->clientIp))) . ' '
             . ($monitor ? 'monitor-' : '') . $d->action . ' ' . $d->status . ' "' . self::clean($d->reason, 60) . '"'
             . ($rule !== null ? ' rule=' . self::clean($rule, 120) : '')
             . ($d->claimed !== null ? ' claimed=' . self::clean($d->claimed, 60) : '')
-            . ' "' . self::clean($request->method, 10) . ' ' . self::clean($request->scheme . '://' . $request->host . $request->rawUri, 300) . '"'
+            . ' "' . self::clean($request->method, 10) . ' ' . self::clean($request->scheme . '://' . $request->host . $uri, 300) . '"'
             . ' "' . self::clean((string) $request->header('user-agent'), 150) . "\"\n";
+    }
 
-        // One rotation when it gets large: file.log -> file.log.1. Only
-        // checked when there is something to write -- and past PHP's stat
+    /** Appends a line; one rotation (file.1) past $maxSize; the file 0640, its directory 0750. */
+    public static function append(string $file, string $line, int $maxSize): void
+    {
+        // Only checked when there is something to write -- and past PHP's stat
         // cache, which a long-running process would otherwise keep.
         clearstatcache(true, $file);
         $size = @filesize($file);
-        if ($size !== false && $size > $s->logMaxSize) {
+        if ($size !== false && $size > $maxSize) {
             @rename($file, $file . '.1');
         }
         $new = $size === false;

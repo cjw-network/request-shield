@@ -17,6 +17,7 @@
   [known query parameters](features/known-parameters.md) ·
   [modes: monitor and strict](features/modes.md) ·
   [known crawlers](features/known-crawlers.md) ·
+  [statistics](features/statistics.md) ·
   [settings](features/settings.md)
 - **Use cases** — scenarios end to end:
   [shared hosting DoS guard](use-cases/shared-hosting-dos-guard.md) ·
@@ -33,9 +34,9 @@
   [0009 typed query parameters](proposals/0009-typed-query-parameters.md) (implemented) ·
   [0010 the browser check inside the form](proposals/0010-browser-check-in-the-form.md) (implemented) ·
   [0011 known crawlers](proposals/0011-known-crawlers.md) (implemented) ·
-  [0012 a dashboard](proposals/0012-dashboard.md) (draft) ·
+  [0012 a dashboard](proposals/0012-dashboard.md) (counters implemented) ·
   [0013 IP lists](proposals/0013-ip-lists.md) (draft) ·
-  [0014 crawler statistics](proposals/0014-crawler-statistics.md) (draft) ·
+  [0014 crawler statistics](proposals/0014-crawler-statistics.md) (implemented, dashboard tab to come) ·
   [0015 page statistics](proposals/0015-page-statistics.md) (draft) ·
   [0016 the rule advisor](proposals/0016-rule-advisor.md) (draft) ·
   [0017 detecting cross-site scripting](proposals/0017-detecting-xss.md) (draft)

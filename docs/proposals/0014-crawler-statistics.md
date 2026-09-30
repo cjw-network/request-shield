@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Implemented** 2026-09-30, except the dashboard tab (see [statistics](../features/statistics.md)) |
 | Proposed | 2026-09-30 |
 | Affects | known crawlers ([0011](0011-known-crawlers.md)), the counters of [0012](0012-dashboard.md), the log |
 
@@ -99,6 +99,21 @@ JSON: `Panel::json($settings, 'crawlers')`, `<panel-path>/api/crawlers?days=7`.
   claimed ones are masked. URLs can carry personal data (a search term in a
   query) — the log keeps what the shield's log keeps; `set crawler-log-query
   off` leaves the query out.
+
+## As built — where it differs
+
+- The four open questions as recommended: every crawler request is verified
+  when statistics are on; 50 pages per crawler and day; per-crawler logs off by
+  default, all kinds when on; other bots counted by family.
+- Also counted, at the site owner's request: the answers' **status codes** and
+  the **pages not found** with where the links to them are (the site's own
+  path, or another site's host) — part `not-found`.
+- The parts can be switched on one by one (`set stats requests crawlers
+  not-found bots`); with APCu the counts are written to disk every
+  `stats-flush` seconds (default 60), so a restart of PHP-FPM loses at most that.
+- Read with `bin/request-shield stats` (words or `--json`),
+  `Report\StatsReport::build()`, and on the rules page; the dashboard tab
+  comes with 0012.
 
 ## Open questions
 

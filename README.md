@@ -96,7 +96,10 @@ server and PHP slots, just very briefly.
   first, strict under attack, `monitor` for single rules, `challenge …
   max-age` ([docs](docs/features/modes.md)); known crawlers — search engines
   and AI crawlers verified by their published address lists or DNS, allowed,
-  checked or refused per kind ([docs](docs/features/known-crawlers.md)).
+  checked or refused per kind ([docs](docs/features/known-crawlers.md));
+  statistics — requests, rules, status codes, pages not found and who links
+  to them, what each crawler did — kept per hour, `bin/request-shield stats`
+  ([docs](docs/features/statistics.md)).
 - **Next:** adapters for
   Exponential, WordPress and Ibexa; exporting the rules to nginx, Apache and
   Varnish.

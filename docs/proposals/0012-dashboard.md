@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Draft** — the counters implemented 2026-09-30 (see [statistics](../features/statistics.md)); the panel to come |
 | Proposed | 2026-09-30 |
 | Affects | a new optional part (`Report\Panel`), the store (counters), the rules page, the log |
 
