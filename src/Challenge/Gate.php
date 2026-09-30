@@ -75,11 +75,12 @@ final class Gate
             return ['decision' => $base, 'cookies' => [], 'page' => null, 'json' => null];
         }
 
-        // A solution comes with the reload of a page, a form sent again, the
-        // check inside the form (a field), or an API's header.
+        // A solution comes with the reload of a page, a form sent again (the
+        // check page carried it: resend), the check inside the form (a field),
+        // or an API's header.
         $solution = $posted ?? ($api ? $request->header('request-shield-solution') : null) ?? $request->cookie($solutionName);
         $cookies = [];
-        if ($solution !== null && ($request->method === 'GET' || $request->method === 'HEAD' || $forced || $posted !== null || $spent || $api)) {
+        if ($solution !== null && ($request->method === 'GET' || $request->method === 'HEAD' || $forced || $resend !== null || $posted !== null || $spent || $api)) {
             if ($request->cookie($solutionName) !== null) {
                 $cookies[] = self::cookie($solutionName, '', 0, $secure);
             }

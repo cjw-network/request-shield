@@ -140,6 +140,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   did. The widget endpoint also says until when the pass holds (`until`); the
   box fetches a task before it runs out, and a pass with less than 30 seconds
   left gets one anyway.
+- A form the check page sent again after solving was refused its answer (the
+  answer comes in a cookie, which a POST was allowed only for `requirePass()`
+  and a spent budget), got the check page again and, on the third try, "The
+  check did not succeed". The check page's own resent form counts now.
 - Fake search engine crawlers could make requests wait where DNS does not
   answer (a DMZ): each new address claiming to be Googlebot started a DNS
   lookup that waited for the resolver's timeout. At most `dns-lookups` new

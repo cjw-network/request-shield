@@ -288,6 +288,15 @@ $widget = function (string $prefix): void {
             $r = $get('POST', '/contact', [], 'message=typed+for+minutes');
             truthy(strpos($r['body'], 'then what you entered is sent') !== false && strpos($r['body'], 'typed for minutes') !== false, 'the check page carries the form: ' . substr(strip_tags($r['body']), 0, 200));
             truthy(strpos($r['body'], 'Please try again in') === false, 'no pause');
+            // Solved, the page sends the form again with the answer in a cookie: through.
+            preg_match('/var RS=(\{.*?\});\(function/s', $r['body'], $m);
+            $rs = json_decode($m[1] ?? 'null', true);
+            same(true, $rs['resend'] ?? null, 'the script sends the form again');
+            [$payload] = solveInNode($rs['c']);
+            $r = $get('POST', '/contact', ['Cookie' => $rs['cookie'] . '=' . $payload], 'message=typed+for+minutes');
+            same(200, $r['status'], 'sent again: through');
+            truthy(strpos($r['body'], 'your message &quot;typed for minutes&quot; arrived') !== false, 'the message arrived');
+            truthy(($r['cookies']['rs_pass'] ?? '') !== '', 'and a new pass');
         }, $prefix);
 };
 
