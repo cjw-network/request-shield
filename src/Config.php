@@ -153,10 +153,12 @@ final class Config
             // every so many seconds the counts are written to the hour's file,
             // so a restart of PHP-FPM loses at most that much (0: only hourly).
             // Days past 'days' are summed into their month, kept 'months' months (0: for good).
+            // 'depth': the folder levels a section's views are counted for exactly (1 to 4;
+            // 2: /news/ and /news/2026/ -- 3 where a language takes the first: /de/news/2026/).
             // Where the statistics pages live: <dashboardPath>/dashboard, /stats, /shield
             // (StatsPage::links(), ::viewFor()). Something in front is fine: /admin/rs.
             'dashboardPath' => '/rs',
-            'stats' => ['enabled' => false, 'parts' => ['requests', 'crawlers', 'not-found', 'bots', 'pages'], 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 60],
+            'stats' => ['enabled' => false, 'parts' => ['requests', 'crawlers', 'not-found', 'bots', 'pages'], 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 60, 'depth' => 2],
             // One log file per known crawler and day (dir/CRAWL-GPTBOT/2026-09-30.log),
             // for the kinds listed ([]: all); kept 'days' days; 'query' false leaves
             // the query string out. null: none.

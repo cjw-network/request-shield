@@ -21,8 +21,9 @@ With `set stats on` the shield counts, per hour, while requests pass:
   — useful after a content update: has Googlebot read the new sitemap yet?
 - **pages** — the most visited pages (a view: GET, 200, HTML; the path without
   its query), by **people, crawlers and bots**, the top 100 an hour for each;
-  and their first two folders (`/news/`, `/news/2026/`), so a **subtree's**
-  views are exact: `stats --path=/news/`, or "path starts with" on the page —
+  and their first two folders (`/news/`, `/news/2026/`; `set stats-depth 1` to
+  `4`), so a **subtree's** views are exact: `stats --path=/news/`, or "path
+  starts with" on the page (deeper, the sum of its most visited pages) —
   like AWStats, without a log to read; and the pages the shield **stopped**
   (refused, checked, told to wait — whoever asked; the top 100 an hour for
   each): every page shows them next to its views, and sorted by them the list
@@ -137,6 +138,7 @@ set stats requests crawlers           #   requests, crawlers, not-found, bots, p
 set stats-hours 7                     # days the hours are kept (default 7)
 set stats-days 400                    # days the day totals are kept (default 400), then summed into months
 set stats-months 0                    # months kept (default 0: for good)
+set stats-depth 2                     # folder levels counted exactly for a section (1 to 4, default 2)
 set stats-flush 60s                   # with APCu: written to disk this often (default 60 s, 0: only hourly)
 ```
 
@@ -203,6 +205,15 @@ Measured with OPcache, a request passing the shield (µs):
   the file store for budgets pays the same. APCu is the store to use.
 - The hourly roll-up and a flush run once per interval, in one request.
 - A site's 404s cost one or two counters more, at the end of the request.
+- **Section levels (`stats-depth`):** each level is one counter more per page
+  view — 3 instead of 2 measured at +2–3 µs with APCu (13–18 → 16–21 µs for the
+  counting of a page view, 200,000 views, 3 runs), no measurable difference with
+  files. At 1,000 page views a second about 0.3 % of one core. Each level has its
+  own limit of 200 sections an hour for each kind of visitor, so a deep level
+  with many folders never pushes out the levels above; what does not fit is
+  `(other)`, and `bin/request-shield check` notes it. Worth it where the first
+  level is a language or siteaccess (`/de/`, `/bold_ger/`): with 2 levels such a
+  site gets only one real one.
 
 ## Large sites and intranets
 

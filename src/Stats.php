@@ -189,8 +189,10 @@ final class Stats
             return [$g, self::REFERRERS, $g . '|(other)'];
         }
         if (strncmp($key, 'pd:', 3) === 0) {
-            $g = substr($key, 0, (int) strpos($key, '|'));
-            return [$g, self::TOP * 2, $g . '|(other)'];
+            // A limit for each folder level: the many deep ones never crowd out the few above.
+            $bar = (int) strpos($key, '|');
+            $g = substr($key, 0, $bar);
+            return [$g . '#' . max(0, substr_count($key, '/', $bar) - 1), self::TOP * 2, $g . '|(other)'];
         }
         if (strncmp($key, 'pg:', 3) === 0 || strncmp($key, 'pb:', 3) === 0) {
             $g = substr($key, 0, (int) strpos($key, '|'));

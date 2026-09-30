@@ -182,7 +182,7 @@ final class StatsReport
         foreach ($stopped as $path => $x) {
             $path = (string) $path;
             $views[$path] = self::stop($views[$path] ?? $zero, $x);
-            foreach (Shield::folders($path) as $at) {
+            foreach (Shield::folders($path, $s->statsDepth) as $at) {
                 $folders[$at] = self::stop($folders[$at] ?? $zero, $x);
             }
         }

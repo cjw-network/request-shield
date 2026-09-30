@@ -90,6 +90,16 @@ return [
             $p = Settings::from(RuleFile::read(["$dir/p.rules"])['config']);
             same([true, ['crawlers', 'not-found'], 30, '/admin/rs'], [$p->statsEnabled, $p->statsParts, $p->statsFlush, $p->dashboardPath], 'only some parts; the flush; the pages\' path');
             same(Settings::STATS_PARTS, Settings::from(['stats' => ['enabled' => true]])->statsParts, 'all parts by default');
+            file_put_contents("$dir/d.rules", "set stats on\nset stats-depth 3\n");
+            same([2, 3], [Settings::from([])->statsDepth, Settings::from(RuleFile::read(["$dir/d.rules"])['config'])->statsDepth], 'section levels: 2 by default, stats-depth 3');
+            foreach ([0, 5] as $bad) {
+                try {
+                    Settings::from(['stats' => ['depth' => $bad]]);
+                    throw new TestFailure("accepted stats.depth $bad");
+                } catch (InvalidArgumentException $e) {
+                    truthy(strpos($e->getMessage(), 'stats.depth') !== false && strpos($e->getMessage(), '1 to 4') !== false, $e->getMessage());
+                }
+            }
             file_put_contents("$dir/q.rules", "set stats everything\n");
             try {
                 RuleFile::read(["$dir/q.rules"]);
@@ -254,6 +264,16 @@ return [
                 same([60, 11], [$day['n:/gone'] ?? 0, $day['n:(other)'] ?? 0], "$label: pages not found too (/gone and 49 others)");
                 same(55, $day['nr:/gone|(other)'] ?? 0, "$label: 5 referrers a page");
                 same([], array_filter(array_keys($day), static fn (string $k): bool => strncmp($k, 'nr:/random/', 11) === 0), "$label: no referrers for a page that is not on the list");
+                // Sections: a limit for each folder level -- 250 deep ones first do not crowd out the few above.
+                for ($i = 1; $i <= 250; $i++) {
+                    $st->count(["pd:people|/de/news/t$i/"], STATS_T0 + 7200 + $i);
+                }
+                $st->count(['pd:people|/de/', 'pd:people|/de/news/', 'pd:people|/en/'], STATS_T0 + 7200 + 300);
+                $st->count(['a:allow'], STATS_T0 + 3 * 3600);                     // rolled
+                $day = statsDay($st, STATS_T0);
+                $deep = array_filter($day, static fn (string $k): bool => strncmp($k, 'pd:people|/de/news/t', 20) === 0, ARRAY_FILTER_USE_KEY);
+                same([200, 50, 1, 1, 1], [count($deep), $day['pd:people|(other)'] ?? 0, $day['pd:people|/de/'] ?? 0, $day['pd:people|/de/news/'] ?? 0, $day['pd:people|/en/'] ?? 0],
+                    "$label: 200 on the third level, the rest (other); the first and second level still counted");
             } finally {
                 exec('rm -rf ' . escapeshellarg($dir));
             }
@@ -383,6 +403,7 @@ return [
             same(['/news/', '/news/2026/'], Shield::folders('/news/2026/10/x'));
             same(['/news/'], Shield::folders('/news/'), 'a folder\'s own page belongs to it');
             same([], Shield::folders('/about'));
+            same([['/de/'], ['/de/', '/de/news/', '/de/news/2026/'], ['/de/', '/de/news/', '/de/news/2026/']], [Shield::folders('/de/news/2026/10/x', 1), Shield::folders('/de/news/2026/10/x', 3), Shield::folders('/de/news/2026/', 4)], 'stats-depth 1, 3, 4');
             // The page: charts, both languages, everything escaped.
             $st->count(['n:/<script>x', 'o:curl', 'c:CRAWL-GOOGLE:seen'], STATS_T0 + 6);
             $page = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'action' => '/stats', 'view' => 'all']);
@@ -420,7 +441,7 @@ return [
         $dir = statsDir();
         mkdir("$dir/docroot");
         file_put_contents("$dir/docroot/index.php", '<?php if (strpos($_SERVER["REQUEST_URI"], "/missing") === 0) { http_response_code(404); echo "not found"; exit; } echo "ok";');
-        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset stats on\nexempt none\n");
+        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset stats on\nset stats-depth 3\nexempt none\n");
         $port = freePort();
         $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1', escapeshellarg("$dir/site.rules"),
             escapeshellarg(PHP_BINARY), escapeshellarg(dirname(__DIR__) . '/bootstrap.php'), $port, escapeshellarg("$dir/docroot")), [], $pipes);
@@ -433,6 +454,7 @@ return [
             };
             $get('/', "User-Agent: Mozilla/5.0 (X11; Linux x86_64) Firefox/136.0\r\n");
             $get('/', "User-Agent: python-requests/2.32\r\n");
+            $get('/de/news/2026/x', "User-Agent: Mozilla/5.0 (X11; Linux x86_64) Firefox/136.0\r\n");
             $get('/missing-page', "Referer: http://127.0.0.1:$port/news/x\r\n");
             $get('/index.php/.env');
             $get('/index.php/.env');
@@ -440,16 +462,27 @@ return [
             exec("$bin stats " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
             $shown = implode("\n", $out);
             same(0, $code, $shown);
-            truthy(strpos($shown, '5 requests: 3 let through, 0 checked, 0 told to wait, 2 refused') !== false, $shown);
-            truthy(strpos($shown, 'answers: 200: 2, 404: 3') !== false, 'the site\'s 404 and the shield\'s (twice)');
+            truthy(strpos($shown, '6 requests: 4 let through, 0 checked, 0 told to wait, 2 refused') !== false, $shown);
+            truthy(strpos($shown, 'answers: 200: 3, 404: 3') !== false, 'the site\'s 404 and the shield\'s (twice)');
             truthy(preg_match('~^  /\s+2\s+1\s+0\s+1\s+0\s+0\s+0\s+0$~m', $shown) === 1, 'the front page: 2 views, 1 person, 1 bot (the 404 and the refusal are no page views): ' . $shown);
             truthy(preg_match('~1\s+/missing-page\s+linked from: /news/x \(1\)~', $shown) === 1, 'the page not found and the link to it');
+            $out = [];
+            exec("$bin stats " . escapeshellarg("$dir/site.rules") . ' --path=/de/news/2026/ 2>&1', $out, $code);
+            truthy(preg_match('~^Subtree /de/news/2026/: 1 views \(people 1, crawlers 0, bots 0\)$~m', implode("\n", $out)) === 1, 'stats-depth 3: the third level exact: ' . implode("\n", $out));
+            $out = [];
+            exec("$bin check " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
+            truthy($code === 0 && strpos(implode("\n", $out), 'past the limit') === false, 'check: no note while the sections fit');
+            \CjwNetwork\RequestShield\Stats::of(Settings::from(RuleFile::read(["$dir/site.rules"])['config']))->count(['pd:people|(other)', 'pd:bots|(other)'], time());
+            $out = [];
+            exec("$bin check " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
+            truthy($code === 0 && strpos(implode("\n", $out), 'note: 2 section views in the last 7 days were past the limit of 200 sections an hour on one folder level: the deepest levels are approximate there -- set stats-depth 2') !== false,
+                'check: a note (not a warning) when a level overflows: ' . implode("\n", $out));
             $out = [];
             exec("$bin stats " . escapeshellarg("$dir/site.rules") . ' --sort=blocked 2>&1', $out, $code);
             truthy(preg_match('~^Pages stopped most.*\n  /index\.php/\.env\s+0\s+0\s+0\s+0\s+2\s+2\s+0\s+0$~m', implode("\n", $out)) === 1, 'the pages the shield stopped, from the real path: ' . implode("\n", $out));
             $out = [];
             exec("$bin stats " . escapeshellarg("$dir/site.rules") . ' --json 2>&1', $out, $code);
-            same(5, array_sum((array) (json_decode(implode("\n", $out), true)['totals'] ?? [])), 'JSON');
+            same(6, array_sum((array) (json_decode(implode("\n", $out), true)['totals'] ?? [])), 'JSON');
             $out = [];
             exec("$bin stats " . escapeshellarg("$dir/site.rules") . ' --from=' . date('Y-m-d', time() - 86400) . ' --to=' . gmdate('Y-m-d') . ' --by=month 2>&1', $out, $code);
             truthy($code === 0 && preg_match('/^  ' . gmdate('Y-m') . '\s+\d/m', implode("\n", $out)) === 1, 'a period, by month: ' . implode("\n", $out));

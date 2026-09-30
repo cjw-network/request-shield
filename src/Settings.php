@@ -149,6 +149,8 @@ final class Settings
         public int $statsFlush = 60,
         /** @readonly months the month totals are kept (0: for good) */
         public int $statsMonths = 0,
+        /** @readonly folder levels a section's views are counted for exactly: 1 to 4 (2: /news/, /news/2026/) */
+        public int $statsDepth = 2,
         /** @readonly where the statistics pages live: <path>/dashboard, /stats, /shield */
         public string $dashboardPath = '/rs',
     ) {
@@ -273,7 +275,7 @@ final class Settings
 
     /**
      * @param array<mixed> $c
-     * @return array{0: bool, 1: int, 2: int, 3: ?string, 4: list<string>, 5: int, 6: bool, 7: list<string>, 8: int, 9: int}
+     * @return array{0: bool, 1: int, 2: int, 3: ?string, 4: list<string>, 5: int, 6: bool, 7: list<string>, 8: int, 9: int, 10: int}
      */
     private static function stats(array $c): array
     {
@@ -289,6 +291,10 @@ final class Settings
                 throw self::wrong('crawlerLog.kinds', 'kinds of crawler: ' . implode(', ', Rules\RuleFile::KINDS));
             }
         }
+        $depth = self::int($stats, 'depth', 'stats.depth', 2);
+        if ($depth < 1 || $depth > 4) {
+            throw self::wrong('stats.depth', '1 to 4 folder levels');
+        }
         $parts = array_key_exists('parts', $stats) ? self::strings($stats, 'parts', 'stats.parts') : self::STATS_PARTS;
         foreach ($parts as $p) {
             if (!in_array($p, self::STATS_PARTS, true)) {
@@ -297,7 +303,7 @@ final class Settings
         }
         return [self::bool($stats, 'enabled', 'stats.enabled'), max(1, self::int($stats, 'hours', 'stats.hours', 7)), max(1, self::int($stats, 'days', 'stats.days', 400)),
             $dir, $kinds, max(1, self::int($log, 'days', 'crawlerLog.days', 30)), self::bool($log, 'query', 'crawlerLog.query', true),
-            $parts, max(0, self::int($stats, 'flush', 'stats.flush', 60)), max(0, self::int($stats, 'months', 'stats.months', 0))];
+            $parts, max(0, self::int($stats, 'flush', 'stats.flush', 60)), max(0, self::int($stats, 'months', 'stats.months', 0)), $depth];
     }
 
     /**
@@ -688,7 +694,7 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 23;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath
+    private const FORMAT = 24;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

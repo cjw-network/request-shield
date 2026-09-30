@@ -251,6 +251,7 @@ keeps both the same.
 | `stats` | `off` (default), `on`, or the parts: `requests`, `crawlers`, `not-found`, `bots` ([statistics](statistics.md)) |
 | `dashboard-path` | where the statistics pages live: `/rs` (default) gives `/rs/dashboard`, `/rs/stats`, `/rs/shield`; something in front is fine (`/admin/rs`) ([statistics](statistics.md#the-statistics-page)) |
 | `stats-hours`, `stats-days`, `stats-months`, `stats-flush` | days the hours are kept (7), days the day totals are kept (400, then summed into months), months kept (0: for good), seconds between writes to disk with APCu (60) |
+| `stats-depth` | folder levels a section's views are counted for exactly, 1 to 4 (2: `/news/`, `/news/2026/`; 3 where a language takes the first level: `/de/news/2026/`) |
 | `crawler-log`, `crawler-log-kinds`, `crawler-log-days`, `crawler-log-query` | one log per known crawler and day: its directory, the kinds logged, days kept (30), whether the query is kept ([statistics](statistics.md#one-log-per-crawler-optional)) |
 | `recheck` | how often the files are checked for changes, see below |
 

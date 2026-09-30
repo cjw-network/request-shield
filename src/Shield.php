@@ -370,7 +370,8 @@ final class Shield
             }
             return;
         }
-        register_shutdown_function(static function () use ($keys, $request, $now, $stats, $requests, $missing, $crawling, $paging, $who): void {
+        $depth = $s->statsDepth;
+        register_shutdown_function(static function () use ($keys, $request, $now, $stats, $requests, $missing, $crawling, $paging, $who, $depth): void {
             $status = http_response_code();
             if (is_int($status) && $status > 0) {
                 foreach (self::statusKeys($request, $status) as $k) {
@@ -381,8 +382,8 @@ final class Shield
                 // A page view: GET, 200, HTML -- counted by who came.
                 if ($paging && $status === 200 && $request->method === 'GET' && self::isHtml(headers_list())) {
                     $keys[] = 'pg:' . $who . '|' . self::word($request->path);
-                    // Its first two folders too: how many views a subtree got, exactly.
-                    foreach (self::folders($request->path) as $folder) {
+                    // Its first folders too (stats-depth, 2: /news/, /news/2026/): how many views a subtree got, exactly.
+                    foreach (self::folders($request->path, $depth) as $folder) {
                         $keys[] = 'pd:' . $who . '|' . self::word($folder);
                     }
                 }
@@ -399,12 +400,12 @@ final class Shield
     private const BLOCKED = [Decision::REJECT => 'refused', Decision::CHALLENGE => 'checked', Decision::THROTTLE => 'throttled'];
 
     /**
-     * The first two folders of a path: /news/2026/10/x -> /news/, /news/2026/;
-     * /news/ -> /news/ (its own page belongs to it).
+     * The first folders of a path, $depth of them: /news/2026/10/x -> /news/,
+     * /news/2026/ (2); /news/ -> /news/ (its own page belongs to it).
      *
      * @return list<string>
      */
-    public static function folders(string $path): array
+    public static function folders(string $path, int $depth = 2): array
     {
         $parts = explode('/', trim($path, '/'));
         if (substr($path, -1) !== '/') {
@@ -412,7 +413,7 @@ final class Shield
         }
         $out = [];
         $prefix = '/';
-        foreach (array_slice($parts, 0, 2) as $part) {
+        foreach (array_slice($parts, 0, $depth) as $part) {
             if ($part === '') {
                 break;
             }

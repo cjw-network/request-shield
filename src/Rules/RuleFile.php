@@ -71,6 +71,7 @@ final class RuleFile
         'stats-flush' => ['stats.flush', 'seconds'],
         'dashboard-path' => ['dashboardPath', 'string'],
         'stats-months' => ['stats.months', 'int'],
+        'stats-depth' => ['stats.depth', 'int'],
         'stats-hours' => ['stats.hours', 'int'],
         'stats-days' => ['stats.days', 'int'],
         'crawler-log' => ['crawlerLog.dir', 'path'],

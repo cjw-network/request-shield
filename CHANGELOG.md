@@ -107,6 +107,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   refused / checked / told to wait", `stats --sort=blocked`, `'sort'`), the list
   shows the pages the shield stopped most -- also ones nobody ever saw, like
   `/wp-login.php`. The Protection view starts there.
+- `set stats-depth 1…4` (default 2): how many folder levels a section's views
+  are counted for exactly -- 3 where a language or siteaccess takes the first
+  level (`/de/news/2026/`). Each level has its own limit of 200 sections an
+  hour, so the many deep ones never crowd out the few above; `check` notes when
+  a level overflowed. Measured: one more counter, ~2–3 µs per page view with APCu
+  (~0.3 % of a core at 1,000 page views a second), none measurable with files.
 - The statistics page in views: an overview, **Visitors & pages** for editors
   and **Protection** for admins, with tabs -- or one of them embedded on its
   own (`'view' => 'all'|'site'|'shield'`, `'tabs' => false`). Each view has its
