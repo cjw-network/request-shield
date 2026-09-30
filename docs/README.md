@@ -28,7 +28,8 @@
   [0006 the site asks for the check](proposals/0006-the-site-asks-for-the-check.md) (implemented) ·
   [0008 match blocks](proposals/0008-match-blocks.md) (first step implemented) ·
   [0009 typed query parameters](proposals/0009-typed-query-parameters.md) ·
-  [0010 the browser check inside the form](proposals/0010-browser-check-in-the-form.md) (implemented)
+  [0010 the browser check inside the form](proposals/0010-browser-check-in-the-form.md) (implemented) ·
+  [0011 known crawlers](proposals/0011-known-crawlers.md)
   (0002, a single-file build, is reserved)
 - **Architecture decisions**:
   [0001 run in PHP first](adr/0001-run-in-php-before-the-application.md) ·
