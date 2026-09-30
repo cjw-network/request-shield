@@ -88,6 +88,9 @@ the address it comes from. They are **never fetched while a request runs**:
 
 ## Without internet: a DMZ
 
+(Also a privacy point: a DNS lookup sends the client's address to the resolver
+— with `ranges` nothing leaves the server; see [privacy and the GDPR](../privacy.md).)
+
 ```text
 set crawler-verify ranges          # both (default) | ranges | dns
 ```

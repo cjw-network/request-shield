@@ -69,7 +69,8 @@ got in.
   a single client: enough to see a pattern, not a person. `set log-ip full`
   when the log feeds a ban list (fail2ban) — then it holds personal data;
   keep it short and say so in the privacy notice. (The URL can hold personal
-  data too — a search term, an e-mail address in a link.)
+  data too — a search term, an e-mail address in a link.) See
+  [privacy and the GDPR](../privacy.md).
 - **Nothing forged:** request line and User-Agent are shortened, non-printable
   characters become `?`, quotes `'` — a request cannot write a line of its own.
 - One line per `write()` with `O_APPEND`: lines of parallel requests do not

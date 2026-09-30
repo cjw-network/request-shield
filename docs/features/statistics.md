@@ -149,6 +149,8 @@ Measured with OPcache, a request passing the shield (µs):
 
 ## Privacy
 
+See also [privacy and the GDPR](../privacy.md) for every feature.
+
 The counters hold actions, rule IDs, status codes, paths, crawler IDs and
 bot families — **no visitors' addresses**. A crawler's last address is kept
 only for verified crawlers (an operator's server). A referrer is kept only for
