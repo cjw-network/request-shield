@@ -4,7 +4,7 @@
 |---|---|
 | Status | **Draft** |
 | Proposed | 2026-09-30 |
-| Affects | rule files ([0003](0003-rule-files.md)), the site asking for the check ([app challenges](../features/app-challenges.md), `requirePass()`), budgets counted by the site (`consume()`), the browser check in the form ([0010](0010-browser-check-in-the-form.md)), known parameters ([0009](0009-typed-query-parameters.md)), the rules pages, the Exponential adapter |
+| Affects | rule files ([0003](0003-human-readable-rule-files.md)), the site asking for the check ([app challenges](../features/app-challenges.md), `requirePass()`), budgets counted by the site (`consume()`), the browser check in the form ([0010](0010-browser-check-in-the-form.md)), known parameters ([0009](0009-typed-query-parameters.md)), the rules pages, the Exponential adapter |
 
 ## Summary
 
@@ -47,7 +47,9 @@ The shield decides **before** the site runs; a response header exists only
 | **this response** | replace it with the check page, mark it "not for a cache", count an event against a budget | `X-Request-Shield-Challenge: required` (with `set app-challenge on`), `requirePass()`, `consume()` — already there |
 | **the following requests** | a check for the form's `POST`, a limit for its address, the parameters a view takes, an exception for a callback | **new: learned rules** |
 
-The first row exists; this proposal gives it one name and adds the second.
+The first row exists; this proposal gives it one name and adds the second —
+and, better still for the structure of a site, a CMS plugin that pushes the
+rules before any page is shown (below).
 
 ## What the site can say
 
@@ -121,29 +123,66 @@ except the relax paths.
   the page and the time), the rule tester applies them, and
   `bin/request-shield learned [list|forget <ID>|clear]` manages them.
 
-## The other way: the CMS writes a rule file
+## A CMS plugin that pushes the rules
 
-Instead of headers at runtime, the CMS can write a rule file when content
-changes (the Exponential adapter: on publish, from its URL aliases, the content
-classes with forms, the siteaccesses) and the site includes it:
+Better than waiting for pages to speak: a **plugin in the CMS pushes the rules**
+when something changes. It knows the whole site — every form, every address,
+every view and its parameters, every siteaccess — and it can act the moment an
+editor publishes, not when the first visitor comes.
 
-```
-include exponential.rules                  # written by the CMS
-```
+![A CMS plugin pushes rules: an editor publishes a form, moves a page, adds a siteaccess or changes a view; the plugin builds the rules from what the CMS knows, checks them with the shield's parser and the limits for rules from the site, and writes cms.rules at once; every server reads it within 10 seconds or at once with reload. In the rule file the site owner decides what the plugin may do: include-app cms.rules (tighten always), app-rules relax at … (loosen only there). Several servers: a shared rule directory, or a signed push to each server.](0021-cms-plugin-push.svg)
 
-| | Headers / `learn()` at runtime | A rule file the CMS writes |
-|---|---|---|
-| Knows about a new form | when the page is first shown | when it is published |
-| Per response ("this page now") | **yes** | no |
-| Reviewable, versioned, in git | shown on the rules page | **yes, a file** |
-| Works when the page is served from a cache | only when rendered | **yes** |
-| Needs CMS code | a header in a template | an export on publish |
-| Cost per request | none (compiled) | none (compiled) |
+**How:**
 
-**Recommendation: both.** The written rule file for the structure (known
-addresses, forms, areas, view parameters); headers for what only the page knows
-when it renders (a check now, count this, this callback); learned rules as the
-bridge where no export exists yet.
+- The plugin listens to the CMS's events (publish, move, delete, a form
+  added, a siteaccess changed) and builds the rule set from its data: a check
+  and a limit for each form's address, the parameters each view takes, the
+  areas only editors reach, the callbacks of its payment or newsletter
+  extensions (at the relax paths).
+- It writes it with the shield's own code — `RuleSet::write('cms', $lines,
+  $storeDir)` — which parses every line with the rule-file parser, applies the
+  limits for rules from the site, and only then puts the file in place (a new
+  file, then renamed: a server never reads half a file). A line with a mistake
+  stops the push and keeps the old file; the plugin shows the error in the
+  CMS's admin interface.
+- IDs come from the CMS's objects — `CMS-FORM-12`, `CMS-VIEW-3` — so the log
+  and the statistics name the form, and the rules page links back to it.
+- The rule file decides what the plugin may do:
+
+  ```
+  include-app cms.rules           # rules from the CMS: tighten always
+  app-rules relax at **/hooks/**  # loosen only here
+  ```
+
+  `include-app` reads the file like `include`, but with the limits of rules from
+  the site (tighten always, loosen only at `relax` paths, never `restrict`,
+  proxies, the mode …). A site owner who trusts the plugin fully writes a plain
+  `include` instead.
+- Every server reads the new file within `recheck` (10 s with APCu) or at once
+  after `reload` (the plugin can call it).
+- **Several servers:** a shared rule directory (one file for all), or the plugin
+  pushes to each server's endpoint (`POST /.request-shield/rules`, only from
+  the CMS's addresses, signed with the shared secret and a timestamp, so a
+  push cannot be forged or replayed).
+
+The Exponential adapter (phase 3) is the first such plugin: it needs the URL
+index anyway, and the HTTP cache's purge listener already tells it when content
+changes.
+
+| | Plugin pushes | Page headers / `learn()` | Written by hand |
+|---|---|---|---|
+| A new form protected | **when it is published** | from its second visitor | when someone edits the file |
+| Pages served by a cache | **covered** | not refreshed | covered |
+| "This page, now" (a check, count this) | no | **yes** | no |
+| Reviewable, in one file | **yes** (`cms.rules`) | on the rules page | yes |
+| A header injection bug can add rules | no | limited to tightening | no |
+| Needs CMS code | a plugin | a header in a template | nothing |
+| Cost per request | none (compiled) | none (compiled) | none |
+
+**Recommendation:** the plugin for the structure of the site (forms,
+addresses, views, areas, callbacks); a page header only for what a page knows
+when it renders (a check now, count this search); learned rules from headers as
+the fallback for a CMS without a plugin.
 
 ## Advantages and disadvantages
 
@@ -195,6 +234,9 @@ when the learned set changes.
    `challenge-exempt`, `unblock`, `query` — never `restrict` or anything about
    proxies. `allow POST` and `cache-path` stay out: whether they widen or narrow
    depends on what the rule file already says.*
-5. **Should the Exponential adapter write a rule file on publish** (the other
-   way) in its first version? *Recommendation: yes — the URL index it needs for
-   phase 3 is most of it.*
+5. **The plugin first, or the headers first?** *Recommendation: the plugin —
+   `RuleSet::write()` and `include-app` first, with the Exponential adapter as the
+   first user (its URL index is most of it); headers and learned rules after.*
+6. **The push endpoint for several servers** in the first version, or a shared
+   directory only? *Recommendation: a shared directory first; the signed
+   endpoint when a site needs it.*

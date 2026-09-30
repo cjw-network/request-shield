@@ -1,0 +1,44 @@
+<svg class="rsd" role="img" viewBox="0 0 800 300" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>A CMS plugin pushes rules: when an editor publishes a form, moves a page or adds a siteaccess, the plugin builds the rule set from what the CMS knows (forms, addresses, view parameters, areas), checks it with the shield's own parser and the limits for rules from the site, and writes it at once (a new file, then renamed); every server reads it within the recheck time (10 s) or at once with reload; from the next request on — also the first visitor of a new form, also pages from a cache — the shield applies it. Several servers: a shared rule directory, or the plugin pushes to each server's endpoint, signed with the shared secret.</title>
+<style>.rsd{font:13px/1.2 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .c{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}.rsd .dash{stroke-dasharray:5 4}.rsd .okbox{fill:#e6f4ea;stroke:#1e7b43}.rsd .warnbox{fill:#fdf3dc;stroke:#b07400}.rsd .qbox{fill:#eef3fd;stroke:#2f62c9}.rsd .tag{fill:#2f62c9}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .arrow{stroke:#a0a8b3}.rsd .okbox{fill:#17301f}.rsd .warnbox{fill:#3a2f15}.rsd .qbox{fill:#1b2740;stroke:#7aa2ff}.rsd .tag{fill:#7aa2ff}}</style>
+<defs><marker id="a21p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>
+
+<rect class="box" x="16" y="30" width="170" height="110" rx="8"/>
+<text class="t" x="101" y="52" text-anchor="middle" font-weight="700">CMS: an editor…</text>
+<text class="m" x="30" y="74" font-size="12">publishes a form</text>
+<text class="m" x="30" y="92" font-size="12">moves a page</text>
+<text class="m" x="30" y="110" font-size="12">adds a siteaccess</text>
+<text class="m" x="30" y="128" font-size="12">changes a view</text>
+<path class="arrow" d="M186 85 H226" marker-end="url(#a21p)"/>
+
+<rect class="qbox" x="228" y="30" width="200" height="110" rx="8"/>
+<text class="t" x="328" y="52" text-anchor="middle" font-weight="700">request-shield plugin</text>
+<text class="m" x="242" y="74" font-size="12">builds the rules from the CMS</text>
+<text class="m" x="242" y="92" font-size="12">checks them with the parser</text>
+<text class="m" x="242" y="110" font-size="12">and the limits (tighten; loosen</text>
+<text class="m" x="242" y="128" font-size="12">only where the rule file allows)</text>
+<path class="arrow" d="M428 85 H468" marker-end="url(#a21p)"/>
+
+<rect class="warnbox" x="470" y="30" width="162" height="110" rx="8" stroke-width="1.5"/>
+<text class="t" x="551" y="52" text-anchor="middle" font-weight="700">cms.rules</text>
+<text class="c t" x="484" y="74">[CMS-FORM-12]</text>
+<text class="c t" x="484" y="90">challenge **/contact</text>
+<text class="c t" x="484" y="108">[CMS-VIEW-3]</text>
+<text class="c t" x="484" y="124">query offset int …</text>
+<path class="arrow" d="M632 85 H658" marker-end="url(#a21p)"/>
+
+<rect class="okbox" x="660" y="30" width="124" height="110" rx="8" stroke-width="1.5"/>
+<text class="t" x="722" y="52" text-anchor="middle" font-weight="700">every server</text>
+<text class="m" x="722" y="74" text-anchor="middle" font-size="12">reads it within</text>
+<text class="m" x="722" y="92" text-anchor="middle" font-size="12">10 s (recheck),</text>
+<text class="m" x="722" y="110" text-anchor="middle" font-size="12">or at once</text>
+<text class="m" x="722" y="128" text-anchor="middle" font-size="12">(reload)</text>
+
+<text class="t" x="16" y="178" font-weight="700">In the rule file — the site owner decides what the plugin may do:</text>
+<rect class="box" x="16" y="190" width="768" height="54" rx="8"/>
+<text class="c t" x="30" y="212">include-app cms.rules                      # rules from the CMS: tighten always</text>
+<text class="c t" x="30" y="230">app-rules relax at **/hooks/** **/.well-known/acme-challenge/**   # loosen only here</text>
+
+<text class="m" x="16" y="272" font-size="12">Several servers: a shared rule directory (one file for all), or the plugin pushes to each server's endpoint,</text>
+<text class="m" x="16" y="288" font-size="12">signed with the shared secret. From the next request on — also the first visitor of a new form, also pages from a cache.</text>
+</svg>
