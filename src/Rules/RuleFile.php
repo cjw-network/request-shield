@@ -63,6 +63,7 @@ final class RuleFile
         'home' => ['challenge.home', 'string'],
         'widget-path' => ['challenge.widgetPath', 'string'],
         'widget-difficulty' => ['challenge.widgetDifficulty', 'int'],
+        'challenge-logo' => ['challenge.logo', 'logo'],
         'mode' => ['mode', 'mode'],
         'crawler-verify' => ['crawlerVerify', 'verify'],
         'log' => ['log.file', 'path'],
@@ -1410,6 +1411,19 @@ final class RuleFile
                     throw new RuleFileException("$at: store is auto, apcu, file or memory, not \"$value\"");
                 }
                 $v = $value;
+                break;
+            case 'logo':
+                // Relative to the rule file; checked now, so a refused logo names its line.
+                $v = $value[0] === '/' ? $value : dirname($file) . '/' . $value;
+                try {
+                    \CjwNetwork\RequestShield\Challenge\ChallengeLogo::load($v, $key);
+                } catch (\InvalidArgumentException $e) {
+                    throw new RuleFileException("$at: " . $e->getMessage());
+                }
+                $stat = self::stat($v);
+                if ($stat !== null) {
+                    $this->seen[$v] = $stat;        // a changed logo is noticed like a changed rule file
+                }
                 break;
             default:
                 $v = $value;

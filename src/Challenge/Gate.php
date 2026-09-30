@@ -138,7 +138,7 @@ final class Gate
         if ($spent && $resend === null) {
             $texts['text'] = $texts['spent'];
         }
-        $page = ChallengePage::render($challenge, $solutionName, $secure, $texts, $resend, $c->home);
+        $page = ChallengePage::render($challenge, $solutionName, $secure, $texts, $resend, $c->home, $c->logo);
         return ['decision' => $challenged, 'cookies' => $cookies, 'page' => $page, 'json' => null];
     }
 

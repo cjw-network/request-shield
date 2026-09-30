@@ -64,6 +64,8 @@ final class ChallengeSettings
          * @var array<string, int>
          */
         public array $alwaysMaxAge = [],
+        /** @readonly the site's logo for the check page, checked (Challenge\ChallengeLogo), as markup; null: a plain shield */
+        public ?string $logo = null,
     ) {
     }
 
@@ -138,7 +140,21 @@ final class ChallengeSettings
             Settings::strings($c, 'apiPaths', 'challenge.apiPaths'),
             max(0, Settings::int($c, 'dnsLookups', 'challenge.dnsLookups', 30)),
             $ages,
+            self::logo($c),
         );
+    }
+
+    /** @param array<mixed> $c */
+    private static function logo(array $c): ?string
+    {
+        $file = $c['logo'] ?? null;
+        if ($file === null || $file === '') {
+            return null;
+        }
+        if (!is_string($file)) {
+            throw Settings::wrong('challenge.logo', 'null or the path of an SVG file');
+        }
+        return \CjwNetwork\RequestShield\Challenge\ChallengeLogo::load($file, 'challenge.logo');
     }
 
     /** @param array<mixed> $c */

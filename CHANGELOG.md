@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- A friendlier check page: a ring around the site's logo that fills with the
+  browser's progress while a dot circles it, a smile when it is done (the page
+  goes on at once, nobody waits for it), a calm "!" when the check cannot
+  finish; dark mode, `prefers-reduced-motion`, nothing moves without
+  JavaScript. `set challenge-logo logo.svg` puts the site's own logo in the
+  middle -- read once when the settings are compiled, checked strictly (no
+  scripts, handlers, outside links or styles; at most 16 KB) and inlined. Inline
+  SVG and CSS only: the page is 8.7 KB instead of 6.2 KB (4.1 KB instead of
+  3.1 KB gzip), built as fast as before (~11 µs)
+  ([docs](docs/features/browser-challenge.md#how-it-looks)).
 - Known query parameters and their types (proposal 0009): `query <name> <type>
   … [at <paths>]` (types `int`, `number`, `word`, `id`, `list`, `text`, `any`,
   `/regex/`; names with `*`; inside `match` blocks too). The attack patterns
