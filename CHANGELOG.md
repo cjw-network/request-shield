@@ -113,7 +113,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   words with its ID, where it is written and how often it decided; every
   technical setting (the secret never shown); a rule tester (an address, a
   visitor, a User-Agent: every step, the diagram, the rule that decides,
-  nothing counted); in English and German. The
+  nothing counted); the way as a picture (13 checks on or off, the site or the
+  shield's answer, then the log and the statistics and when they write); the
+  rules as the rule files hold them, one collapsible part per file, the ID
+  first; in English and German. The
   Protection view's rules now say what each does and where it is written, and
   link there. The rules page's groups (`RulesPage::groups(…, $lang)`), the mode,
   the tracer (`new Inspector($s, $store, 'de')`, a step's English `key` beside
@@ -134,6 +137,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   demo has them at `/rs/…`, restricted to this machine.
 
 ### Fixed
+- Two `query` lines naming the same parameter (at different paths) were both
+  shown as the later rule on the rules pages; each line now keeps its own ID.
 - `set widget-path` accepted a path with `..` in it (`/x/../y`), which could
   never match; it is refused now, like `dashboard-path`.
 

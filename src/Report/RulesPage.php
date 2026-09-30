@@ -225,7 +225,7 @@ final class RulesPage
             }
             $first = (string) array_key_first($q['exact'] + $q['globs']);
             $rows[] = $row(implode(', ', $names) . ($q['paths'] !== null ? $w(' — at %s', implode(', ', array_map($pattern, $q['paths']))) : ''),
-                $o('query', $first), "queryParams[$n]");
+                $o('queryParams', '#' . $n) ?? $o('query', $first), "queryParams[$n]");
         }
         if ($rows !== [] || $s->queryStrict) {
             $g[] = [$w('Known parameters'), $s->queryStrict ? $w('Any other parameter, or a value not of its type, gets "not found" (404):')

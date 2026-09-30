@@ -1225,6 +1225,8 @@ final class RuleFile
         foreach (array_merge(array_keys($exact), array_keys($globs)) as $n) {
             $this->origins['query'][(string) $n] = $this->rid;
         }
+        // The line too: two query lines may name the same parameter (at different paths).
+        $this->origins['queryParams']['#' . (count($list) - 1)] = $this->rid;       // '#0': a number would become an int key
     }
 
     /**

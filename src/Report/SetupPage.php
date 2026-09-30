@@ -28,21 +28,21 @@ final class SetupPage
 {
     private const T = [
         'en' => [
-            'way' => 'The way of a request', 'wayIntro' => 'Every request passes these checks in this order, before the site\'s code runs. The first that refuses ends it; a browser check or "not kept by a cache" lets the rest still look.',
-            'on' => 'on', 'off' => 'off', 'always' => 'always', 'answers' => 'answers', 'rulesN' => 'rules', 'rules' => 'The rules', 'rulesIntro' => 'Each with its ID and where it is written; the text is the comment after it in the rule file. The number: how often it decided in this period (statistics).',
+            'way' => 'The way of a request', 'wayIntro' => 'Every request passes these checks in this order, before the site\'s code runs. The first that refuses ends it; a browser check or "not kept by a cache" lets the rest still look. Coloured: on, grey: off — a circle leads to its line below.',
+            'on' => 'on', 'off' => 'off', 'always' => 'always', 'answers' => 'answers', 'rulesN' => 'rules', 'rules' => 'The rules', 'rulesIntro' => 'As the rule files hold them, one per file, in their order: the rule\'s ID, what it does (the comment after it), how it is written, its line — and how often it decided in this period (statistics). Click a file to open or close it.',
             'settings' => 'Technical settings', 'settingsIntro' => 'Everything the shield runs with, as compiled from the rule files.', 'decided' => 'decided', 'where' => 'where', 'none' => 'none',
             'mode' => 'Mode', 'modeEnforce' => 'enforce: every rule decides', 'modeMonitor' => 'monitor: checked and counted, nobody refused', 'modeStrict' => 'strict: under attack -- checks from a quarter of each limit', 'modeOff' => 'off: nothing is checked',
             'yes' => 'yes', 'no' => 'no', 'files' => 'Rule files', 'versions' => 'Rule sets',
             // The steps
-            's.client' => 'Visitor\'s address', 's.method' => 'Kind of request', 's.size' => 'Sizes', 's.sanity' => 'Disguised addresses', 's.host' => 'Website names',
+            's.method' => 'Kind of request', 's.size' => 'Sizes', 's.sanity' => 'Disguised addresses', 's.host' => 'Website names',
             's.blocked' => 'Addresses only attackers ask for', 's.methodPaths' => 'Where forms may be sent', 's.restricted' => 'Areas for certain visitors', 's.crawlers' => 'Known crawlers',
-            's.query' => 'Known parameters', 's.attacks' => 'Attack patterns', 's.cache' => 'What a cache may keep', 's.budgets' => 'Pace per visitor', 's.check' => 'Browser check', 's.after' => 'Log and statistics',
+            's.query' => 'Known parameters', 's.attacks' => 'Attack patterns', 's.cache' => 'What a cache may keep', 's.budgets' => 'Pace per visitor', 's.check' => 'Browser check',
             'd.client' => 'from the connection%s; IPv6 counted per /%d network%s', 'd.proxies' => ', X-Forwarded-* believed only from %s', 'd.exempt' => '; never counted: %s',
             'd.method' => 'accepted: %s', 'd.size' => 'address up to %d characters, %d parameters, headers up to %d KB', 'd.sanity' => 'no hidden encoding, no way out of the website\'s folder',
             'd.hostAny' => 'any name', 'd.hosts' => 'only %s', 'd.blocked' => '%d patterns%s', 'd.exceptions' => ', %d opened again (unblock)', 'd.methodPaths' => '%s only at certain addresses', 'd.none' => 'none',
             'd.restricted' => '%d areas', 'd.crawlers' => '%d crawlers, verified by %s', 'd.query' => '%d rules%s', 'd.strict' => ', anything else: 404 (query strict)', 'd.loose' => ', anything else answered but not cached',
             'd.attacks' => '%d patterns in %d rules', 'd.cacheAll' => 'every address', 'd.cachePaths' => '%d address patterns', 'd.cacheQ' => ', parameters: %s', 'd.budgets' => '%d budgets: %s',
-            'd.check' => 'a pass is valid %s%s', 'd.alwaysAt' => '; always at %d addresses', 'd.widget' => '; in forms at %s', 'd.after' => 'log: %s; statistics: %s',
+            'd.check' => 'a pass is valid %s%s', 'd.alwaysAt' => '; always at %d addresses', 'd.widget' => '; in forms at %s',
             'a.405' => '405', 'a.400' => '400, 414, 431', 'a.404' => '404', 'a.403' => '403', 'a.pass' => 'answered, not kept', 'a.check' => 'browser check, then 429', 'a.page' => 'the check page',
             // The settings' groups
             'g.run' => 'Operation', 'g.clients' => 'Visitors and proxies', 'g.limits' => 'Requests', 'g.store' => 'Counters', 'g.check' => 'Browser check', 'g.crawlers' => 'Known crawlers', 'g.stats' => 'Statistics', 'g.log' => 'Log', 'g.files' => 'Rule files',
@@ -56,25 +56,34 @@ final class SetupPage
             'k.stats' => 'statistics', 'k.parts' => 'what is counted', 'k.depth' => 'section levels', 'k.flush' => 'written to disk every', 'k.hours' => 'hours kept', 'k.days' => 'days kept', 'k.months' => 'months kept', 'k.dashboard' => 'dashboard',
             'k.log' => 'log file', 'k.logLevel' => 'level', 'k.logIp' => 'addresses', 'k.logSize' => 'rotated at', 'k.forGood' => 'for good', 'k.full' => 'in full', 'k.masked' => 'anonymised', 'k.days1' => 'days', 'k.seconds' => 's', 'k.onlyHourly' => 'only hourly',
             'k.ranges' => 'published address lists', 'k.dnsV' => 'DNS', 'k.both' => 'address lists or DNS',
+            'x.request' => 'Request', 'x.before' => 'the visitor\'s address', 'x.beforeName' => 'Before: the visitor\'s address', 'x.site' => 'Your site', 'x.siteSub' => 'all checks passed',
+            'x.answer' => 'The shield answers', 'x.answerSub' => '404 · 403 · 405 · 429 · check', 'x.after' => 'After: log and statistics', 'x.feeds' => 'person · crawler · bot',
+            'x.logOff' => 'Log: off.', 'x.log.stop' => 'Log: at once, only what was stopped (level stop).', 'x.log.flag' => 'Log: at once, everything not simply let through — refused, checked, not cached (level flag).',
+            'x.log.all' => 'Log: every request, at once (level all).', 'x.log.off' => 'Log: off.',
+            'x.stats' => 'Statistics: what the shield stopped is counted at once; what goes on to the site when the request ends, with the site\'s status (page views, 404s, links).',
+            'x.parts' => 'Counted: %s; ', 'x.apcu' => 'in APCu, written to disk every %s — after the answer, nobody waits.', 'x.files' => 'one line appended to a file per request; the hour summed up after the answer.',
+            'x.statsOff' => 'Statistics: off.', 'x.noFile' => 'built into the settings (no rule file)', 'x.line' => 'line',
+            'l.method' => 'Kind', 'l.size' => 'Size', 'l.sanity' => 'Disguise', 'l.host' => 'Name', 'l.blocked' => 'Blocked', 'l.methodPaths' => 'Forms', 'l.restricted' => 'Areas',
+            'l.crawlers' => 'Crawlers', 'l.query' => 'Params', 'l.attacks' => 'Attacks', 'l.cache' => 'Cache', 'l.budgets' => 'Pace', 'l.check' => 'Check',
             'try' => 'Rule tester', 'tryIntro' => 'Enter an address (a full URL or a path) and the visitor\'s IP: every step shows what it makes of it, and which rule decides. Nothing is counted; the pace uses the visitor\'s real counters.',
             'tryUrl' => 'Address', 'tryIp' => 'Visitor\'s address (IP)', 'tryKind' => 'Kind of request', 'tryUa' => 'User-Agent (optional)', 'tryButton' => 'Test',
             'tryResult' => 'This visitor %s.', 'tryRule' => 'Decided by', 'tryWatched' => 'Watched: it %s.',
         ],
         'de' => [
-            'way' => 'Der Weg einer Anfrage', 'wayIntro' => 'Jede Anfrage durchläuft diese Prüfungen in dieser Reihenfolge, bevor der Code der Website läuft. Die erste, die abweist, beendet sie; ein Browser-Check oder „nicht im Cache“ lässt die übrigen noch prüfen.',
-            'on' => 'an', 'off' => 'aus', 'always' => 'immer', 'answers' => 'antwortet', 'rulesN' => 'Regeln', 'rules' => 'Die Regeln', 'rulesIntro' => 'Jede mit ihrer ID und wo sie steht; der Text ist der Kommentar hinter ihr in der Regeldatei. Die Zahl: wie oft sie in diesem Zeitraum entschieden hat (Statistik).',
+            'way' => 'Der Weg einer Anfrage', 'wayIntro' => 'Jede Anfrage durchläuft diese Prüfungen in dieser Reihenfolge, bevor der Code der Website läuft. Die erste, die abweist, beendet sie; ein Browser-Check oder „nicht im Cache“ lässt die übrigen noch prüfen. Farbig: an, grau: aus — ein Kreis führt zu seiner Zeile darunter.',
+            'on' => 'an', 'off' => 'aus', 'always' => 'immer', 'answers' => 'antwortet', 'rulesN' => 'Regeln', 'rules' => 'Die Regeln', 'rulesIntro' => 'So, wie die Regeldateien sie enthalten, eine pro Datei, in ihrer Reihenfolge: die ID der Regel, was sie tut (der Kommentar dahinter), wie sie geschrieben ist, ihre Zeile — und wie oft sie in diesem Zeitraum entschieden hat (Statistik). Eine Datei anklicken, um sie auf- oder zuzuklappen.',
             'settings' => 'Technische Einstellungen', 'settingsIntro' => 'Alles, womit der Schutz läuft – so, wie es aus den Regeldateien übersetzt wurde.', 'decided' => 'entschieden', 'where' => 'wo', 'none' => 'keine',
             'mode' => 'Modus', 'modeEnforce' => 'enforce: jede Regel entscheidet', 'modeMonitor' => 'monitor: geprüft und gezählt, niemand abgewiesen', 'modeStrict' => 'strict: unter Angriff – Checks ab einem Viertel jedes Limits', 'modeOff' => 'off: nichts wird geprüft',
             'yes' => 'ja', 'no' => 'nein', 'files' => 'Regeldateien', 'versions' => 'Regelsätze',
-            's.client' => 'Adresse des Besuchers', 's.method' => 'Art der Anfrage', 's.size' => 'Größen', 's.sanity' => 'Getarnte Adressen', 's.host' => 'Namen der Website',
+            's.method' => 'Art der Anfrage', 's.size' => 'Größen', 's.sanity' => 'Getarnte Adressen', 's.host' => 'Namen der Website',
             's.blocked' => 'Adressen, die nur Angreifer aufrufen', 's.methodPaths' => 'Wohin Formulare dürfen', 's.restricted' => 'Bereiche für bestimmte Besucher', 's.crawlers' => 'Bekannte Crawler',
-            's.query' => 'Bekannte Parameter', 's.attacks' => 'Angriffsmuster', 's.cache' => 'Was ein Cache behalten darf', 's.budgets' => 'Tempo pro Besucher', 's.check' => 'Browser-Check', 's.after' => 'Log und Statistik',
+            's.query' => 'Bekannte Parameter', 's.attacks' => 'Angriffsmuster', 's.cache' => 'Was ein Cache behalten darf', 's.budgets' => 'Tempo pro Besucher', 's.check' => 'Browser-Check',
             'd.client' => 'aus der Verbindung%s; IPv6 gezählt pro /%d-Netz%s', 'd.proxies' => ', X-Forwarded-* nur von %s geglaubt', 'd.exempt' => '; nie gezählt: %s',
             'd.method' => 'erlaubt: %s', 'd.size' => 'Adresse bis %d Zeichen, %d Parameter, Header bis %d KB', 'd.sanity' => 'keine versteckte Kodierung, kein Weg aus dem Ordner der Website',
             'd.hostAny' => 'jeder Name', 'd.hosts' => 'nur %s', 'd.blocked' => '%d Muster%s', 'd.exceptions' => ', %d wieder geöffnet (unblock)', 'd.methodPaths' => '%s nur an bestimmten Adressen', 'd.none' => 'keine',
             'd.restricted' => '%d Bereiche', 'd.crawlers' => '%d Crawler, erkannt über %s', 'd.query' => '%d Regeln%s', 'd.strict' => ', alles andere: 404 (query strict)', 'd.loose' => ', alles andere beantwortet, aber nicht gecacht',
             'd.attacks' => '%d Muster in %d Regeln', 'd.cacheAll' => 'jede Adresse', 'd.cachePaths' => '%d Adressmuster', 'd.cacheQ' => ', Parameter: %s', 'd.budgets' => '%d Budgets: %s',
-            'd.check' => 'ein Pass gilt %s%s', 'd.alwaysAt' => '; immer an %d Adressen', 'd.widget' => '; in Formularen unter %s', 'd.after' => 'Log: %s; Statistik: %s',
+            'd.check' => 'ein Pass gilt %s%s', 'd.alwaysAt' => '; immer an %d Adressen', 'd.widget' => '; in Formularen unter %s',
             'a.405' => '405', 'a.400' => '400, 414, 431', 'a.404' => '404', 'a.403' => '403', 'a.pass' => 'beantwortet, nicht gecacht', 'a.check' => 'Browser-Check, dann 429', 'a.page' => 'die Check-Seite',
             'g.run' => 'Betrieb', 'g.clients' => 'Besucher und Proxys', 'g.limits' => 'Anfragen', 'g.store' => 'Zähler', 'g.check' => 'Browser-Check', 'g.crawlers' => 'Bekannte Crawler', 'g.stats' => 'Statistik', 'g.log' => 'Log', 'g.files' => 'Regeldateien',
             'k.mode' => 'Modus', 'k.monitor' => 'nur beobachtete Regeln (monitor)', 'k.debug' => 'Header X-Request-Shield', 'k.app' => 'die Website darf den Check anfordern',
@@ -87,6 +96,15 @@ final class SetupPage
             'k.stats' => 'Statistik', 'k.parts' => 'was gezählt wird', 'k.depth' => 'Bereichsebenen', 'k.flush' => 'auf die Platte alle', 'k.hours' => 'Stunden aufbewahrt', 'k.days' => 'Tage aufbewahrt', 'k.months' => 'Monate aufbewahrt', 'k.dashboard' => 'Dashboard',
             'k.log' => 'Logdatei', 'k.logLevel' => 'Stufe', 'k.logIp' => 'Adressen', 'k.logSize' => 'rotiert bei', 'k.forGood' => 'für immer', 'k.full' => 'vollständig', 'k.masked' => 'anonymisiert', 'k.days1' => 'Tage', 'k.seconds' => 's', 'k.onlyHourly' => 'nur stündlich',
             'k.ranges' => 'veröffentlichte Adresslisten', 'k.dnsV' => 'DNS', 'k.both' => 'Adresslisten oder DNS',
+            'x.request' => 'Anfrage', 'x.before' => 'Adresse des Besuchers', 'x.beforeName' => 'Vorher: die Adresse des Besuchers', 'x.site' => 'Ihre Website', 'x.siteSub' => 'alle Prüfungen bestanden',
+            'x.answer' => 'Der Schutz antwortet', 'x.answerSub' => '404 · 403 · 405 · 429 · Check', 'x.after' => 'Danach: Log und Statistik', 'x.feeds' => 'Mensch · Crawler · Bot',
+            'x.logOff' => 'Log: aus.', 'x.log.stop' => 'Log: sofort, nur Gestopptes (Stufe stop).', 'x.log.flag' => 'Log: sofort, alles, was nicht einfach durchging — abgewiesen, geprüft, nicht gecacht (Stufe flag).',
+            'x.log.all' => 'Log: jede Anfrage, sofort (Stufe all).', 'x.log.off' => 'Log: aus.',
+            'x.stats' => 'Statistik: was der Schutz stoppt, wird sofort gezählt; was zur Website geht, am Ende der Anfrage, mit dem Status der Website (Seitenaufrufe, 404, Verweise).',
+            'x.parts' => 'Gezählt: %s; ', 'x.apcu' => 'in APCu, alle %s auf die Platte — nach der Antwort, niemand wartet.', 'x.files' => 'eine Zeile pro Anfrage an eine Datei angehängt; die Stunde nach der Antwort zusammengefasst.',
+            'x.statsOff' => 'Statistik: aus.', 'x.noFile' => 'in den Einstellungen eingebaut (keine Regeldatei)', 'x.line' => 'Zeile',
+            'l.method' => 'Art', 'l.size' => 'Größe', 'l.sanity' => 'Tarnung', 'l.host' => 'Name', 'l.blocked' => 'Gesperrt', 'l.methodPaths' => 'Formulare', 'l.restricted' => 'Bereiche',
+            'l.crawlers' => 'Crawler', 'l.query' => 'Parameter', 'l.attacks' => 'Angriffe', 'l.cache' => 'Cache', 'l.budgets' => 'Tempo', 'l.check' => 'Check',
             'try' => 'Regeltester', 'tryIntro' => 'Eine Adresse eingeben (ganze URL oder Pfad) und die IP des Besuchers: jeder Schritt zeigt, was er daraus macht und welche Regel entscheidet. Nichts wird gezählt; das Tempo nutzt die echten Zähler des Besuchers.',
             'tryUrl' => 'Adresse', 'tryIp' => 'Adresse des Besuchers (IP)', 'tryKind' => 'Art der Anfrage', 'tryUa' => 'User-Agent (optional)', 'tryButton' => 'Testen',
             'tryResult' => 'Dieser Besucher %s.', 'tryRule' => 'Entschieden von', 'tryWatched' => 'Beobachtet: er %s.',
@@ -126,8 +144,9 @@ final class SetupPage
         }
         $budgets = array_map(static fn ($b): string => $b->name . ' ' . $b->limit . '/' . Describe::duration($b->window), array_values($s->budgets));
         $verify = ['ranges' => $t['k.ranges'], 'dns' => $t['k.dnsV'], 'both' => $t['k.both']][$s->crawlerVerify] ?? $s->crawlerVerify;
+        $client = $f('d.client', $s->trustedProxies === [] ? '' : $f('d.proxies', implode(', ', $s->trustedProxies)), $s->ipv6Prefix, $s->exemptIps === [] ? '' : $f('d.exempt', implode(', ', $s->exemptIps)));
+        // The checks, in the order the shield runs them: key, on, what it answers, how it is set.
         $steps = [
-            ['client', true, '', $f('d.client', $s->trustedProxies === [] ? '' : $f('d.proxies', implode(', ', $s->trustedProxies)), $s->ipv6Prefix, $s->exemptIps === [] ? '' : $f('d.exempt', implode(', ', $s->exemptIps)))],
             ['method', true, $t['a.405'], $f('d.method', implode(', ', $s->methods))],
             ['size', true, $t['a.400'], $f('d.size', $s->maxUri, $s->maxQueryParameters, (int) round($s->maxHeaderBytes / 1024))],
             ['sanity', true, '400', $t['d.sanity']],
@@ -142,32 +161,63 @@ final class SetupPage
             ['budgets', $s->budgets !== [], $t['a.check'], $f('d.budgets', count($s->budgets), $list($budgets))],
             ['check', true, $t['a.page'], $f('d.check', Describe::span($s->challenge->passTtl, $lang), $s->challenge->alwaysPaths === [] ? '' : $f('d.alwaysAt', count($s->challenge->alwaysPaths)))
                 . ($s->challenge->widgetPath !== null ? $f('d.widget', $s->challenge->widgetPath) : '')],
-            ['after', $s->logFile !== null || $s->statsEnabled, '', $f('d.after', $s->logFile !== null ? $s->logLevel : $t['off'], $s->statsEnabled ? implode(', ', $s->statsParts) : $t['off'])],
         ];
-        $h .= '<section class="card" id="way"><h2>' . $e($t['way']) . '</h2><p class="note">' . $e($t['wayIntro']) . '</p><ol class="way">';
-        foreach ($steps as $i => [$key, $on, $answers, $what]) {
-            $h .= '<li class="' . ($on ? 'on' : 'off') . '"><span class="step">' . ($i + 1) . '</span><div><b>' . $e($t['s.' . $key]) . '</b> <span class="state">' . $e($on ? $t['on'] : $t['off']) . '</span>'
-                . ($answers !== '' ? ' <span class="note">· ' . $e($t['answers'] . ' ' . $answers) . '</span>' : '') . '<br><span class="note">' . $e($what) . '</span></div></li>';
+        // After the checks: what the log and the statistics write, and when.
+        $after = [$s->logFile === null ? $t['x.logOff'] : $t['x.log.' . $s->logLevel]];
+        if ($s->statsEnabled) {
+            $after[] = $t['x.stats'];
+            $after[] = $f('x.parts', implode(', ', $s->statsParts)) . ($s->store === 'apcu' || ($s->store === 'auto' && ApcuStore::usable()) ? $f('x.apcu', $s->statsFlush > 0 ? $s->statsFlush . ' s' : $t['k.onlyHourly']) : $t['x.files']);
+        } else {
+            $after[] = $t['x.statsOff'];
         }
+        $h .= '<section class="card" id="way"><h2>' . $e($t['way']) . '</h2><p class="note">' . $e($t['wayIntro']) . '</p>'
+            . '<div class="diagram">' . Diagram::setup(array_values(array_map(static fn (array $st): array => ['label' => $t['l.' . $st[0]], 'name' => $t['s.' . $st[0]], 'on' => $st[1], 'what' => $st[3], 'stops' => $st[2] !== $t['a.pass'], 'feeds' => $st[0] === 'crawlers' && $s->statsEnabled], $steps)),
+                ['request' => $t['x.request'], 'before' => $t['x.before'], 'site' => $t['x.site'], 'siteSub' => $t['x.siteSub'], 'answer' => $t['x.answer'], 'answerSub' => $t['x.answerSub'],
+                'after' => $t['x.after'], 'lines' => $after, 'feeds' => $t['x.feeds']]) . '</div><ol class="way">';
+        $item = static fn (string $id, string $mark, bool $on, string $name, string $answers, string $what): string => '<li id="' . $id . '" class="' . ($on ? 'on' : 'off') . '"><span class="step">' . $e($mark) . '</span><div><b>' . $e($name) . '</b> <span class="state">' . $e($on ? $t['on'] : $t['off']) . '</span>'
+            . ($answers !== '' ? ' <span class="note">· ' . $e($t['answers'] . ' ' . $answers) . '</span>' : '') . '<br><span class="note">' . $what . '</span></div></li>';
+        $h .= $item('step-before', '›', true, $t['x.beforeName'], '', $e($client));
+        foreach ($steps as $i => [$key, $on, $answers, $what]) {
+            $h .= $item('step-' . ($i + 1), (string) ($i + 1), $on, $t['s.' . $key], $answers, $e($what));
+        }
+        $h .= $item('step-after', '›', $s->logFile !== null || $s->statsEnabled, $t['x.after'], '', implode('<br>', array_map($e, $after)));
         $h .= '</ol></section>';
 
-        // ── The rules, in words ──────────────────────────────────────────────
+        // ── The rules, as the rule files hold them ───────────────────────────
         $h .= '<section class="card" id="rules"><h2>' . $e($t['rules']) . '</h2><p class="note">' . $e($t['rulesIntro']) . '</p>';
-        foreach (RulesPage::groups($s, [], null, $lang) as $g => [$heading, $intro, $rows]) {
-            $h .= '<h3 class="rgroup" id="g' . $g . '">' . $e($heading) . '</h3><p class="note">' . $e($intro) . '</p>';
-            if ($rows === []) {
-                continue;
-            }
-            $h .= '<table class="rtable">';
+        $files = [];
+        foreach (RulesPage::groups($s, [], null, $lang) as [$topic, , $rows]) {
             foreach ($rows as $r) {
-                $count = $r['log'] !== null && $r['log'] !== '' ? ($decided[str_replace(' ', '_', $r['log'])] ?? 0) : null;
-                $h .= '<tr' . ($r['id'] !== null ? ' id="rule-' . $e(self::anchor($r['id'])) . '"' : '') . '><td>' . $e($r['text'])
-                    . ($r['detail'] !== null ? '<br><code class="rule">' . $e($r['detail']) . '</code>' : '') . '</td>'
-                    . '<td class="rmeta">' . ($r['id'] !== null ? '<code>' . $e($r['id']) . '</code>' : '') . ($r['where'] !== null ? '<br><span class="note">' . $e($r['where']) . '</span>' : '') . '</td>'
-                    . '<td class="num">' . ($count !== null && $count > 0 ? $e($n($count) . '×') : '') . '</td></tr>';
+                // "site.rules:12 · revision 2 · in match …": the file, the line, the rest.
+                $where = (string) ($r['where'] ?? '');
+                $file = preg_match('/^(.+?):(\d+)(.*)$/', $where, $m) === 1 ? $m[1] : '';
+                $files[$file][] = ['line' => $file !== '' ? (int) $m[2] : 0, 'more' => $file !== '' ? trim($m[3], ' ·') : '', 'topic' => $topic] + $r;
             }
-            $h .= '</table>';
         }
+        // The site's own files first, then the shipped ones, then what no file holds.
+        uksort($files, static fn (string $a, string $b): int => [$a === '', strncmp($a, 'built-in', 8) === 0, $a] <=> [$b === '', strncmp($b, 'built-in', 8) === 0, $b]);
+        foreach ($files as $file => $rows) {
+            usort($rows, static fn (array $a, array $b): int => $a['line'] <=> $b['line']);
+            $sum = 0;
+            foreach ($rows as $r) {
+                $sum += $r['log'] !== null && $r['log'] !== '' ? ($decided[str_replace(' ', '_', $r['log'])] ?? 0) : 0;
+            }
+            $own = $file !== '' && strncmp($file, 'built-in', 8) !== 0;
+            $h .= '<details class="rfile"' . ($own ? ' open' : '') . '><summary><code>' . $e($file !== '' ? $file : $t['x.noFile']) . '</code> <span class="note">· '
+                . $e($n(count($rows)) . ' ' . $t['rulesN'] . ($sum > 0 ? ' · ' . $n($sum) . '× ' . $t['decided'] : '')) . '</span></summary><table class="rtable">';
+            foreach ($rows as $r) {
+                $count = $r['log'] !== null && $r['log'] !== '' ? ($decided[str_replace(' ', '_', $r['log'])] ?? 0) : 0;
+                $h .= '<tr' . ($r['id'] !== null ? ' id="rule-' . $e(self::anchor($r['id'])) . '"' : '') . '>'
+                    . '<td class="rid">' . ($r['id'] !== null ? '<code>' . $e($r['id']) . '</code>' : '') . '</td>'
+                    . '<td>' . $e($r['text']) . ($r['detail'] !== null ? '<br><code class="rule">' . $e($r['detail']) . '</code>' : '')
+                    . '<br><span class="tag">' . $e($r['topic']) . '</span>' . ($r['more'] !== '' ? ' <span class="note">' . $e($r['more']) . '</span>' : '') . '</td>'
+                    . '<td class="rline">' . ($r['line'] > 0 ? $e($t['x.line'] . ' ' . $r['line']) : '') . '</td>'
+                    . '<td class="num">' . ($count > 0 ? $e($n($count) . '×') : '') . '</td></tr>';
+            }
+            $h .= '</table></details>';
+        }
+        // A link to a rule opens its file.
+        $h .= '<script>(function(){function o(){var t=location.hash&&document.getElementById(location.hash.slice(1));if(t){var d=t.closest("details");if(d){d.open=true;t.scrollIntoView();}}}addEventListener("hashchange",o);o();})();</script>';
         $h .= '</section>';
 
         // ── Every technical setting ──────────────────────────────────────────

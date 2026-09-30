@@ -514,15 +514,25 @@ return [
             $de = $page::render($s, 'de', ['T-AREA' => 4]);
             truthy(strpos($en, 'The way of a request') !== false && strpos($en, 'Areas for certain visitors</b> <span class="state">on') !== false
                 && strpos($en, 'Website names</b> <span class="state">off') !== false, 'the way: every step, on or off');
-            truthy(strpos($en, 'id="rule-T-AREA"') !== false && strpos($en, 'the intranet only') !== false && strpos($en, 'site.rules:5') !== false && strpos($en, '4×') !== false,
+            truthy(strpos($en, 'id="rule-T-AREA"') !== false && strpos($en, 'the intranet only') !== false && strpos($en, 'line 5') !== false && strpos($en, '4×') !== false,
                 'a rule: its ID as an anchor, its description, where it is written, how often it decided');
             truthy(strpos($en, '&quot;requests&quot;: 30 requests per minute, the browser check from 10, then a pause') !== false, 'a budget in words');
             truthy(strpos($de, 'Der Weg einer Anfrage') !== false && strpos($de, 'Bereiche für bestimmte Besucher') !== false
-                && strpos($de, '„requests“: 30 Anfragen pro Minute, der Browser-Check ab 10, dann eine Pause') !== false && strpos($de, 'Alle anderen bekommen „kein Zugriff“ (403):') !== false, 'in German');
+                && strpos($de, '„requests“: 30 Anfragen pro Minute, der Browser-Check ab 10, dann eine Pause') !== false && strpos($de, '<span class="tag">Bereiche für bestimmte Besucher</span>') !== false && in_array(['Bereiche für bestimmte Besucher', 'Alle anderen bekommen „kein Zugriff“ (403):'], array_map(static fn (array $g): array => [$g[0], $g[1]], RulesPage::groups($s, [], null, 'de')), true), 'in German');
             truthy(strpos($en, 'Technical settings') !== false && strpos($en, "<th>store directory</th><td><code>$dir/store</code>") !== false && strpos($en, 'set (never shown)') !== false, 'the settings');
             truthy(strpos($en . $de, $secret) === false, 'the secret is never shown');
+            truthy(strpos($en, '<svg class="rsd setup"') !== false && substr_count($en, '<a href="#step-') === 13 && strpos($en, 'id="step-13"') !== false
+                && strpos($en, 'id="step-before"') !== false && strpos($en, 'After: log and statistics') !== false, 'the way as a picture: 13 checks, each a link to its line; before and after');
+            truthy(strpos($de, 'Log: sofort, nur Gestopptes (Stufe stop).') !== false && strpos($de, 'was zur Website geht, am Ende der Anfrage') !== false && strpos($de, '>Mensch · Crawler · Bot</text>') !== false,
+                'after: when the log and the statistics write; the line from the crawler check to the statistics');
+            truthy(preg_match('~<details class="rfile" open><summary><code>site.rules</code> <span class="note">· 3 rules · 6× decided</span></summary><table class="rtable"><tr id="rule-T-AREA"><td class="rid"><code>T-AREA</code></td><td>the intranet only~', $en) === 1,
+                'the rules as the file holds them: the file open, the ID first, in its order');
+            truthy(strpos($en, '<td class="rline">line 5</td>') !== false && strpos($en, '<span class="tag">Areas for certain visitors</span>') !== false && strpos($en, 'closest("details")') !== false, 'its line, its topic; a link opens the file');
             same(['id' => 'T-AREA', 'text' => 'the intranet only', 'where' => 'site.rules:5'], $page::rule($s, 'site.rules:5'), 'a rule counted by its place: found by it');
             same(['id' => 'T-OLD', 'text' => 'the old admin area', 'where' => 'site.rules:6'], $page::rule($s, 'T-OLD'));
+            file_put_contents("$dir/q.rules", "[Q-ONE] query page int at **/a/**   # the first\n[Q-TWO] query page int   sort word at **/b/**   # the second\n");
+            $rows = RulesPage::groups(Settings::from(RuleFile::read(["$dir/q.rules"])['config']))[1][2];
+            same([['Q-ONE', 'the first'], ['Q-TWO', 'the second']], array_map(static fn (array $r): array => [$r['id'], $r['text']], $rows), 'two query lines with the same parameter: each its own rule');
             same(['Minute', '10 Sekunden', 'einen Tag', 'eine Stunde'], [Describe::duration(60, 'de'), Describe::duration(10, 'de'), Describe::span(86400, 'de'), Describe::span(3600, 'de')]);
             same('Addresses only attackers ask for', RulesPage::groups($s)[0][0], 'the rules page stays English');
             // The statistics page: a fourth view, and the protection view explains its rules.

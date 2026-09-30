@@ -121,16 +121,24 @@ shield and wants every technical detail in one place:
   site with `query strict` lists them for the dashboard (the demo does); the
   page passes them as `'check' => $_GET`, and `'ip'` the address it starts
   with (the viewer's own);
-- **the way of a request** — every check in the order the shield runs it
-  (visitor's address, kind of request, sizes, disguised addresses, website
-  names, blocked addresses, where forms may go, restricted areas, known
-  crawlers, known parameters, attack patterns, what a cache may keep, pace per
-  visitor, browser check, log and statistics), each marked on or off, with what
-  it answers (404, 403, 405, the check …) and how it is set;
-- **every rule in words** — grouped as a site owner thinks of them, with its
-  ID (an anchor: `/rs/rules#rule-DEMO-PACE`, the Protection view links there),
-  where it is written (file, line, revision) and how often it decided in the
-  period shown;
+- **the way of a request**, as one picture: the request, a circle for each of
+  the 13 checks in the order the shield runs them (kind of request, sizes,
+  disguised addresses, website names, blocked addresses, where forms may go,
+  restricted areas, known crawlers, known parameters, attack patterns, what a
+  cache may keep, pace per visitor, browser check) — coloured when on, grey
+  when off, each a link to its line below —, the way on to the site and the way
+  down to the shield's own answer, and **after** them the log and the
+  statistics: what each writes and when (what was stopped at once, what goes
+  on to the site when the request ends, with the site's status; to disk after
+  the answer), and that the statistics use what the crawler check found. Below
+  it the same as a list: before (the visitor's address), the 13 checks with
+  what each answers and how it is set, after;
+- **every rule as the rule files hold them** — one part per file (the site's
+  own open, the shipped ones closed), the rules in their order: the ID first,
+  what it does (the comment after it), how it is written, its topic, its line,
+  and how often it decided in the period shown. A link to a rule
+  (`/rs/rules#rule-DEMO-PACE` — the Protection view and the rule tester link
+  there) opens its file;
 - **every technical setting** — mode, proxies, limits, counters and store,
   browser check (the secret only as "set" or "not set" — never its value),
   known crawlers, statistics, log, the rule files and rule sets read.

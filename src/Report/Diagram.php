@@ -115,6 +115,76 @@ final class Diagram
         return $h . '</svg>';
     }
 
+    /**
+     * How the shield is set up, as one picture: the request, a circle per
+     * check (coloured: on, grey: off; each a link to its line below), the site
+     * or the shield's own answer, and what comes after -- the log and the
+     * statistics. A dot runs along the checks (not with reduced motion).
+     *
+     * @param list<array{label: string, name: string, on: bool, what: string, stops?: bool, feeds?: bool}> $steps stops: it can answer itself (a line down to the answer); feeds: the statistics use what it found (crawlers)
+     * @param array{request: string, before: string, site: string, siteSub: string, answer: string, answerSub: string, after: string, lines: list<string>, feeds: string} $words
+     */
+    public static function setup(array $steps, array $words): string
+    {
+        $gap = 64;
+        $x0 = 170;
+        $y = 50;
+        $last = $x0 + (count($steps) - 1) * $gap;
+        $ex = $last + 46;
+        $w = $ex + 196;
+        $bottom = 214;
+        $h = '<svg class="rsd setup" role="img" viewBox="0 0 ' . $w . ' ' . ($bottom + 30 + 16 * count($words['lines'])) . '" width="100%" xmlns="http://www.w3.org/2000/svg">'
+            . '<title>' . self::e($words['request'] . ' → ' . $words['site']) . '</title>' . self::STYLE
+            . '<style>.rsd .off{fill:#b5bcc5}.rsd .on{fill:#2f62c9}.rsd a:hover circle,.rsd a:focus circle{stroke:#1d2127;stroke-width:3}.rsd .run{fill:#1e7b43}'
+            . '.rsd.setup .lane{fill:none}.rsd .feed{stroke:#8b5cf6;stroke-dasharray:3 4;fill:none;stroke-width:1.6}.rsd .fl{fill:#8b5cf6}@media (prefers-reduced-motion:reduce){.rsd .run{display:none}}</style>'
+            . '<defs><marker id="rsd-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>';
+        // The request, where the visitor's address is worked out ("before").
+        $h .= '<rect class="box" x="4" y="' . ($y - 26) . '" width="136" height="52" rx="8"/>'
+            . '<text class="t" x="72" y="' . ($y - 6) . '" text-anchor="middle" font-weight="600">' . self::e($words['request']) . '</text>'
+            . '<text class="m" x="72" y="' . ($y + 12) . '" text-anchor="middle" font-size="11">' . self::e(self::cut($words['before'], 22)) . '</text>';
+        // The track, the way on to the site, and the way down to the shield's answer.
+        $h .= '<path class="line" d="M140 ' . $y . ' H' . $ex . '"/><path class="lane" d="M' . $x0 . ' ' . ($y + 62) . ' H' . ($ex + 85) . ' V' . ($y + 90) . '" marker-end="url(#rsd-s)"/>';
+        $feedX = null;
+        foreach ($steps as $i => $s) {
+            $cx = $x0 + $i * $gap;
+            if ($s['on'] && ($s['stops'] ?? true)) {
+                $h .= '<path class="lane" d="M' . $cx . ' ' . ($y + 17) . ' V' . ($y + 62) . '"/>';
+            }
+            if ($s['feeds'] ?? false) {
+                $feedX = $cx;
+            }
+            $h .= '<a href="#step-' . ($i + 1) . '"><title>' . self::e($s['name'] . ': ' . $s['what']) . '</title>'
+                . '<circle class="' . ($s['on'] ? 'on' : 'off') . '" cx="' . $cx . '" cy="' . $y . '" r="15"/>'
+                . '<text class="w" x="' . $cx . '" y="' . ($y + 5) . '" text-anchor="middle" font-size="12">' . ($i + 1) . '</text>'
+                . '<text class="' . ($s['on'] ? 't' : 'm') . '" x="' . $cx . '" y="' . ($y + 33) . '" text-anchor="middle" font-size="11">' . self::e(self::cut($s['label'], 10)) . '</text></a>';
+        }
+        // A dot runs along the checks to the site: the way of every request.
+        $h .= '<circle class="run" r="5" cy="0" cx="0"><animateMotion dur="7s" repeatCount="indefinite" path="M140 ' . $y . ' H' . $ex . '"/></circle>';
+        // Where it ends: the site, or the shield's own answer.
+        $h .= '<rect class="okbox" x="' . $ex . '" y="' . ($y - 26) . '" width="170" height="52" rx="8" stroke-width="1.5"/>'
+            . '<text class="t" x="' . ($ex + 85) . '" y="' . ($y - 5) . '" text-anchor="middle" font-weight="700">' . self::e($words['site']) . '</text>'
+            . '<text class="m" x="' . ($ex + 85) . '" y="' . ($y + 13) . '" text-anchor="middle" font-size="11">' . self::e($words['siteSub']) . '</text>'
+            . '<rect class="nobox" x="' . $ex . '" y="' . ($y + 92) . '" width="170" height="52" rx="8" stroke-width="1.5"/>'
+            . '<text class="t" x="' . ($ex + 85) . '" y="' . ($y + 113) . '" text-anchor="middle" font-weight="700">' . self::e($words['answer']) . '</text>'
+            . '<text class="m" x="' . ($ex + 85) . '" y="' . ($y + 131) . '" text-anchor="middle" font-size="11">' . self::e($words['answerSub']) . '</text>';
+        // After: the log and the statistics, below everything.
+        $top = $bottom;
+        $height = 26 + 16 * count($words['lines']);
+        $h .= '<path class="arrow" d="M' . ($ex + 170) . ' ' . $y . ' H' . ($w - 12) . ' V' . ($top - 2) . '" marker-end="url(#rsd-s)"/>'
+            . '<path class="arrow" d="M' . ($ex + 85) . ' ' . ($y + 144) . ' V' . ($top - 2) . '" marker-end="url(#rsd-s)"/>'
+            . '<rect class="box" x="4" y="' . $top . '" width="' . ($w - 8) . '" height="' . $height . '" rx="8"/>'
+            . '<text class="t" x="18" y="' . ($top + 19) . '" font-weight="700">' . self::e($words['after']) . '</text>';
+        foreach ($words['lines'] as $n => $line) {
+            $h .= '<text class="m" x="18" y="' . ($top + 38 + 16 * $n) . '" font-size="12">' . self::e($line) . '</text>';
+        }
+        if ($feedX !== null) {
+            // The statistics use what the crawler check found: people, crawlers, bots.
+            $h .= '<path class="feed" d="M' . ($feedX + 8) . ' ' . ($y + 38) . ' V' . ($top - 2) . '" marker-end="url(#rsd-s)"/>'
+                . '<text class="fl" x="' . ($feedX + 14) . '" y="' . ($top - 10) . '" font-size="11">' . self::e($words['feeds']) . '</text>';
+        }
+        return $h . '</svg>';
+    }
+
     /** The browser check, step by step: browser, shield, site. */
     public static function browserCheck(): string
     {
