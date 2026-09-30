@@ -1,0 +1,48 @@
+<svg class="rsd" role="img" viewBox="0 0 780 420" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>A page view reaches the shield; from its headers alone three coarse counters: where it came from (search, social, AI assistant, another site's host, a page of the site, direct), the device class (mobile, tablet, desktop) and the browser family; an optional beacon adds a screen-width bucket, only with consent; all kept as counters per day, no cookie, no address, no identifier</title>
+<style>.rsd{font:13px/1.2 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .c{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}.rsd .dash{stroke-dasharray:5 4}.rsd .okbox{fill:#e6f4ea;stroke:#1e7b43}.rsd .warnbox{fill:#fdf3dc;stroke:#b07400}.rsd .qbox{fill:#eef3fd;stroke:#2f62c9}.rsd .tag{fill:#2f62c9}.rsd .w{fill:#fff;font-weight:700}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .arrow{stroke:#a0a8b3}.rsd .okbox{fill:#17301f}.rsd .warnbox{fill:#3a2f15}.rsd .qbox{fill:#1b2740;stroke:#7aa2ff}.rsd .tag{fill:#7aa2ff}}</style>
+<defs><marker id="rs18-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>
+<rect class="box" x="10" y="40" width="190" height="130" rx="10" stroke-width="1.5"/>
+<text class="t" x="105" y="66" text-anchor="middle" font-weight="700">A page view</text>
+<text class="m" x="105" y="88" text-anchor="middle" font-size="12">a person, 200, HTML</text>
+<text class="m" x="105" y="104" text-anchor="middle" font-size="12">(crawlers and bots apart)</text>
+<text class="t c" x="26" y="130">Referer</text>
+<text class="t c" x="26" y="146">User-Agent, Sec-CH-UA</text>
+<text class="m" x="105" y="162" text-anchor="middle" font-size="11">sent by the browser anyway</text>
+<path class="arrow" d="M200 72 H236" marker-end="url(#rs18-a)"/>
+<path class="arrow" d="M200 115 H236" marker-end="url(#rs18-a)"/>
+<path class="arrow" d="M200 150 V208 H236" marker-end="url(#rs18-a)"/>
+<rect class="qbox" x="240" y="40" width="330" height="62" rx="10" stroke-width="1.5"/>
+<text class="t" x="256" y="62" font-weight="700">Where from</text>
+<text class="m" x="256" y="82" font-size="12">search · AI assistant · social · another site's host</text>
+<text class="m" x="256" y="96" font-size="12">· a page of the site · direct</text>
+<rect class="qbox" x="240" y="112" width="330" height="62" rx="10" stroke-width="1.5"/>
+<text class="t" x="256" y="134" font-weight="700">Which device, which browser</text>
+<text class="m" x="256" y="154" font-size="12">mobile · tablet · desktop; Chrome, Safari, …</text>
+<text class="m" x="256" y="168" font-size="11">coarse on purpose: no versions, no models</text>
+<rect class="warnbox" x="240" y="184" width="330" height="62" rx="10" stroke-width="1.5"/>
+<text class="t" x="256" y="206" font-weight="700">Screen width — optional</text>
+<text class="m" x="256" y="224" font-size="12">a tiny beacon, a size bucket only</text>
+<text class="m" x="256" y="240" font-size="11">off by default; only with the visitor's consent</text>
+<path class="arrow" d="M570 71 H606" marker-end="url(#rs18-a)"/>
+<path class="arrow" d="M570 143 H606" marker-end="url(#rs18-a)"/>
+<path class="arrow dash" d="M570 215 H606" marker-end="url(#rs18-a)"/>
+<rect class="okbox" x="610" y="40" width="160" height="206" rx="10" stroke-width="1.5"/>
+<text class="t" x="690" y="66" text-anchor="middle" font-weight="700">Counters per day</text>
+<text class="m" x="690" y="92" text-anchor="middle" font-size="12">one more each,</text>
+<text class="m" x="690" y="108" text-anchor="middle" font-size="12">~0.2 µs with APCu</text>
+<text class="m" x="690" y="140" text-anchor="middle" font-size="12">on the dashboard,</text>
+<text class="m" x="690" y="156" text-anchor="middle" font-size="12">as JSON for a CMS</text>
+<text class="t" x="690" y="196" text-anchor="middle" font-size="12">no cookie</text>
+<text class="t" x="690" y="214" text-anchor="middle" font-size="12">no address</text>
+<text class="t" x="690" y="232" text-anchor="middle" font-size="12">no identifier</text>
+<rect class="box" x="10" y="268" width="760" height="92" rx="10" stroke-width="1.5"/>
+<text class="t" x="26" y="292" font-weight="700">Answers:</text>
+<text class="m" x="120" y="292" font-size="12">which pages, from where (Google or ChatGPT?), on phones or desktops, which browsers.</text>
+<text class="t" x="26" y="316" font-weight="700">Sees more:</text>
+<text class="m" x="120" y="316" font-size="12">every page view that reaches PHP — nothing for an ad blocker to block; bots kept apart.</text>
+<text class="t" x="26" y="340" font-weight="700">Does not:</text>
+<text class="m" x="120" y="340" font-size="12">visits, bounce rate, time on page, funnels, goals — that needs following a person; we do not.</text>
+<text class="m" x="20" y="388" font-size="12">Only the host of another site is kept, never its full address.</text>
+<text class="m" x="20" y="406" font-size="12">Legal statements: to be confirmed by the site's data protection officer.</text>
+</svg>
