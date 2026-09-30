@@ -75,8 +75,11 @@ final class Describe
     }
 
     /** What a visitor gets, in one sentence. */
-    public static function verdict(Decision $d): string
+    public static function verdict(Decision $d, string $lang = 'en'): string
     {
+        if ($lang === 'de') {
+            return self::verdictDe($d);
+        }
         switch ($d->action) {
             case Decision::ALLOW:
                 return 'sees the page — a cache may keep it';
@@ -98,9 +101,46 @@ final class Describe
         return 'gets ' . ($what[$d->status] ?? "an error ($d->status)");
     }
 
-    /** Why, in words: a decision's reason. */
-    public static function reason(string $reason): string
+    /** What a visitor gets, in German. */
+    private static function verdictDe(Decision $d): string
     {
+        switch ($d->action) {
+            case Decision::ALLOW:
+                return 'sieht die Seite — ein Cache darf sie behalten';
+            case Decision::ALLOW_UNCACHED:
+                return 'sieht die Seite — von der Website beantwortet, aber ein Cache darf sie nicht behalten';
+            case Decision::CHALLENGE:
+                return 'bekommt zuerst den Browser-Check: ein unsichtbarer Moment, dann die Seite (nicht mit gültigem Pass)';
+            case Decision::THROTTLE:
+                return "muss {$d->retryAfter} Sekunden warten (429 Too Many Requests)";
+        }
+        $what = [
+            400 => 'eine kaputte Anfrage (400) — die Website sieht sie nie',
+            403 => 'kein Zugriff (403) — die Website sieht sie nie',
+            404 => '„nicht gefunden“ (404) — die Website sieht sie nie',
+            405 => '„hier nicht erlaubt“ (405) — diese Art von Anfrage wird an dieser Adresse nicht angenommen',
+            414 => 'eine zu lange Adresse (414)',
+            431 => 'zu viele Header-Daten (431)',
+        ];
+        return 'bekommt ' . ($what[$d->status] ?? "einen Fehler ($d->status)");
+    }
+
+    /** Why, in words: a decision's reason (English or German). */
+    public static function reason(string $reason, string $lang = 'en'): string
+    {
+        if ($lang === 'de') {
+            $de = [
+                'blocked path' => 'eine Adresse, die nur Angreifer aufrufen', 'restricted' => 'ein Bereich nur für bestimmte Adressen',
+                'method' => 'diese Art von Anfrage ist nicht erlaubt', 'method not allowed here' => 'ein Formular, gesendet wohin keines gehört',
+                'host' => 'ein unbekannter Name der Website', 'uri length' => 'die Adresse ist zu lang', 'query parameters' => 'zu viele Parameter',
+                'header size' => 'zu viele Header-Daten', 'path encoding' => 'eine getarnte Adresse', 'path traversal' => 'ein Versuch, den Ordner der Website zu verlassen',
+                'query parameter' => 'ein Parameter, den ein Cache nicht behalten darf', 'path not cacheable' => 'eine Adresse, die ein Cache nicht behalten darf',
+                'unknown url' => 'eine Adresse, die die Website nicht kennt', 'always' => 'eine Seite, auf der jeder Besucher geprüft wird',
+                'app' => 'die Website hat den Browser-Check verlangt (ein Formular)', 'attack' => 'ein Angriffsmuster in der Adresse oder den Headern',
+                'unknown parameter' => 'ein Parameter, den die Website nicht kennt, oder ein Wert nicht seines Typs', 'challenge solved' => 'der Browser-Check wurde gerade bestanden',
+            ];
+            return $de[$reason] ?? "das Budget „{$reason}“";
+        }
         $words = [
             'blocked path' => 'an address only attackers ask for',
             'restricted' => 'an area only for certain addresses',

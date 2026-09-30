@@ -26,6 +26,14 @@ final class Diagram
         'Areas for certain visitors' => 'Areas', 'Known crawlers' => 'Crawlers', 'Known parameters' => 'Params', 'Attack patterns' => 'Attacks', 'May a cache keep the answer?' => 'Cache', 'Browser check' => 'Check',
     ];
 
+    /** The same in German, and the diagram's other words. */
+    private const SHORT_DE = [
+        'Kind' => 'Art', 'Size' => 'Größe', 'Disguise' => 'Tarnung', 'Name' => 'Name', 'Blocked' => 'Gesperrt', 'Forms' => 'Formulare', 'Areas' => 'Bereiche',
+        'Crawlers' => 'Crawler', 'Params' => 'Parameter', 'Attacks' => 'Angriffe', 'Cache' => 'Cache', 'Check' => 'Check', 'Pace' => 'Tempo',
+        'Request' => 'Anfrage', 'Your site' => 'Ihre Website', 'a cache may keep it' => 'ein Cache darf sie behalten', 'not kept in a cache' => 'nicht im Cache',
+        'Browser check' => 'Browser-Check', 'Please wait' => 'Bitte warten', 'the site never sees it' => 'die Website sieht sie nie',
+    ];
+
     private const STYLE = '<style>'
         . '.rsd{font:13px/1.2 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .box{fill:#fff;stroke:#c9ced6}'
         . '.rsd .line{stroke:#c9ced6;stroke-width:3;fill:none}.rsd .go{stroke:#1e7b43}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}'
@@ -45,10 +53,11 @@ final class Diagram
      * A request's path: the request, a circle per check, and where it ends --
      * the site, or the answer the shield gives itself.
      *
-     * @param array{steps: list<array{check: string, state: string, text: string, rule: ?string}>, decision: Decision, verdict: string, rule: ?string} $trace
+     * @param array{steps: list<array{check: string, key?: string, state: string, text: string, rule: ?string}>, decision: Decision, verdict: string, rule: ?string} $trace
      */
-    public static function trace(array $trace, string $request): string
+    public static function trace(array $trace, string $request, string $lang = 'en'): string
     {
+        $tr = static fn (string $en): string => $lang === 'de' ? (self::SHORT_DE[$en] ?? $en) : $en;
         $steps = $trace['steps'];
         $d = $trace['decision'];
         $gap = 76;
@@ -59,7 +68,7 @@ final class Diagram
             . '<title>' . self::e($request . ': ' . $trace['verdict']) . '</title>' . self::STYLE;
         // The request
         $h .= '<rect class="box" x="4" y="' . ($y - 24) . '" width="118" height="48" rx="8"/>'
-            . '<text class="t" x="63" y="' . ($y - 4) . '" text-anchor="middle" font-weight="600">Request</text>'
+            . '<text class="t" x="63" y="' . ($y - 4) . '" text-anchor="middle" font-weight="600">' . self::e($tr('Request')) . '</text>'
             . '<text class="m" x="63" y="' . ($y + 13) . '" text-anchor="middle" font-size="11">' . self::e(self::cut($request, 18)) . '</text>';
         // The line: green as far as the request got, grey after
         $stopAt = null;
@@ -75,7 +84,8 @@ final class Diagram
             . '<path class="line go" d="M122 ' . $y . ' H' . $goX . '"/>';
         foreach ($steps as $i => $s) {
             $cx = $x0 + $i * $gap;
-            $label = self::SHORT[$s['check']] ?? (strncmp($s['check'], 'Pace', 4) === 0 ? 'Pace' : self::cut($s['check'], 9));
+            $key = $s['key'] ?? $s['check'];              // the step's English name
+            $label = isset(self::SHORT[$key]) ? $tr(self::SHORT[$key]) : (strncmp($key, 'Pace', 4) === 0 ? $tr('Pace') : self::cut($s['check'], 9));
             $mark = ['pass' => '✓', 'note' => '!', 'stop' => '✕', 'skip' => '–'][$s['state']] ?? '';
             $h .= '<g><title>' . self::e($s['check'] . ': ' . $s['text'] . ($s['rule'] !== null ? ' (' . $s['rule'] . ')' : '')) . '</title>'
                 . '<circle class="' . $s['state'] . '" cx="' . $cx . '" cy="' . $y . '" r="16"/>'
@@ -86,12 +96,12 @@ final class Diagram
         $ex = $lastX + 60;
         if ($d->passes()) {
             $class = $d->action === Decision::ALLOW ? 'okbox' : 'warnbox';
-            $title = 'Your site';
-            $sub = $d->action === Decision::ALLOW ? 'a cache may keep it' : 'not kept in a cache';
+            $title = $tr('Your site');
+            $sub = $tr($d->action === Decision::ALLOW ? 'a cache may keep it' : 'not kept in a cache');
         } else {
             $class = $d->action === Decision::CHALLENGE ? 'warnbox' : 'nobox';
-            $title = $d->action === Decision::CHALLENGE ? 'Browser check' : ($d->action === Decision::THROTTLE ? 'Please wait' : (string) $d->status);
-            $sub = 'the site never sees it';
+            $title = $d->action === Decision::CHALLENGE ? $tr('Browser check') : ($d->action === Decision::THROTTLE ? $tr('Please wait') : (string) $d->status);
+            $sub = $tr('the site never sees it');
             if ($stopAt !== null) {
                 // From the refusing check down to the shield's own answer
                 $sx = $x0 + $stopAt * $gap;

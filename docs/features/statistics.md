@@ -113,6 +113,14 @@ addresses. The demo has it at `/rs/…`.
 **Rules & setup** (`'view' => 'rules'`, `/rs/rules`) is for whoever runs the
 shield and wants every technical detail in one place:
 
+- **the rule tester** — an address (a full URL or a path), the kind of request,
+  the visitor's IP and, if wanted, a User-Agent: every step says what it makes
+  of it, a diagram shows where the request ends, and the rule that decides
+  links to its row below. Nothing is counted; the pace shows the visitor's real
+  counters. Its fields are GET parameters (`method`, `url`, `ip`, `ua`) — a
+  site with `query strict` lists them for the dashboard (the demo does); the
+  page passes them as `'check' => $_GET`, and `'ip'` the address it starts
+  with (the viewer's own);
 - **the way of a request** — every check in the order the shield runs it
   (visitor's address, kind of request, sizes, disguised addresses, website
   names, blocked addresses, where forms may go, restricted areas, known

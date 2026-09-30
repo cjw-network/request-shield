@@ -12,6 +12,7 @@ namespace CjwNetwork\RequestShield\Report;
 
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Store\ApcuStore;
+use CjwNetwork\RequestShield\Store\Store;
 
 /**
  * "Rules & setup", the statistics page's fourth view: the way a request takes
@@ -55,6 +56,9 @@ final class SetupPage
             'k.stats' => 'statistics', 'k.parts' => 'what is counted', 'k.depth' => 'section levels', 'k.flush' => 'written to disk every', 'k.hours' => 'hours kept', 'k.days' => 'days kept', 'k.months' => 'months kept', 'k.dashboard' => 'dashboard',
             'k.log' => 'log file', 'k.logLevel' => 'level', 'k.logIp' => 'addresses', 'k.logSize' => 'rotated at', 'k.forGood' => 'for good', 'k.full' => 'in full', 'k.masked' => 'anonymised', 'k.days1' => 'days', 'k.seconds' => 's', 'k.onlyHourly' => 'only hourly',
             'k.ranges' => 'published address lists', 'k.dnsV' => 'DNS', 'k.both' => 'address lists or DNS',
+            'try' => 'Rule tester', 'tryIntro' => 'Enter an address (a full URL or a path) and the visitor\'s IP: every step shows what it makes of it, and which rule decides. Nothing is counted; the pace uses the visitor\'s real counters.',
+            'tryUrl' => 'Address', 'tryIp' => 'Visitor\'s address (IP)', 'tryKind' => 'Kind of request', 'tryUa' => 'User-Agent (optional)', 'tryButton' => 'Test',
+            'tryResult' => 'This visitor %s.', 'tryRule' => 'Decided by', 'tryWatched' => 'Watched: it %s.',
         ],
         'de' => [
             'way' => 'Der Weg einer Anfrage', 'wayIntro' => 'Jede Anfrage durchläuft diese Prüfungen in dieser Reihenfolge, bevor der Code der Website läuft. Die erste, die abweist, beendet sie; ein Browser-Check oder „nicht im Cache“ lässt die übrigen noch prüfen.',
@@ -83,15 +87,21 @@ final class SetupPage
             'k.stats' => 'Statistik', 'k.parts' => 'was gezählt wird', 'k.depth' => 'Bereichsebenen', 'k.flush' => 'auf die Platte alle', 'k.hours' => 'Stunden aufbewahrt', 'k.days' => 'Tage aufbewahrt', 'k.months' => 'Monate aufbewahrt', 'k.dashboard' => 'Dashboard',
             'k.log' => 'Logdatei', 'k.logLevel' => 'Stufe', 'k.logIp' => 'Adressen', 'k.logSize' => 'rotiert bei', 'k.forGood' => 'für immer', 'k.full' => 'vollständig', 'k.masked' => 'anonymisiert', 'k.days1' => 'Tage', 'k.seconds' => 's', 'k.onlyHourly' => 'nur stündlich',
             'k.ranges' => 'veröffentlichte Adresslisten', 'k.dnsV' => 'DNS', 'k.both' => 'Adresslisten oder DNS',
+            'try' => 'Regeltester', 'tryIntro' => 'Eine Adresse eingeben (ganze URL oder Pfad) und die IP des Besuchers: jeder Schritt zeigt, was er daraus macht und welche Regel entscheidet. Nichts wird gezählt; das Tempo nutzt die echten Zähler des Besuchers.',
+            'tryUrl' => 'Adresse', 'tryIp' => 'Adresse des Besuchers (IP)', 'tryKind' => 'Art der Anfrage', 'tryUa' => 'User-Agent (optional)', 'tryButton' => 'Testen',
+            'tryResult' => 'Dieser Besucher %s.', 'tryRule' => 'Entschieden von', 'tryWatched' => 'Beobachtet: er %s.',
         ],
     ];
 
     /**
-     * The view's content: the way, the rules, the settings.
+     * The view's content: the rule tester, the way, the rules, the settings.
      *
      * @param array<string, int> $decided rule => how often it decided (StatsReport 'rules')
+     * @param array{check?: array<mixed>, action?: string, keep?: array<string, string|int>, ip?: string, store?: Store, now?: float} $o
+     *   check: the tester's values (method, url, ip, ua), usually $_GET; action: the form's address; keep: hidden
+     *   fields the form carries along (days, lang); ip: the address the tester starts with (the viewer's own)
      */
-    public static function render(Settings $s, string $lang, array $decided = []): string
+    public static function render(Settings $s, string $lang, array $decided = [], array $o = []): string
     {
         $lang = isset(self::T[$lang]) ? $lang : 'en';
         $t = self::T[$lang];
@@ -105,6 +115,8 @@ final class SetupPage
         if ($mode !== null) {
             $h .= '<p class="setupnote' . ($s->mode === 'enforce' ? '' : ' warn') . '">' . $e($mode) . '</p>';
         }
+
+        $h .= self::tester($s, $lang, $o);
 
         // ── The way: every step in order, on or off, what it answers ─────────
         $query = $s->cacheableQuery === null ? '*' : ($s->cacheableQuery === [] ? '—' : implode(', ', $s->cacheableQuery));
@@ -248,6 +260,58 @@ final class SetupPage
             $h .= '</table>';
         }
         return $h . '</section>';
+    }
+
+    /**
+     * The rule tester: an address and a visitor, and what every step makes of
+     * them (Inspector) -- the rule that decides linked to its row below.
+     *
+     * @param array{check?: array<mixed>, action?: string, keep?: array<string, string|int>, ip?: string, store?: Store, now?: float} $o
+     */
+    private static function tester(Settings $s, string $lang, array $o): string
+    {
+        $t = self::T[$lang];
+        $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $check = $o['check'] ?? [];
+        $url = is_string($check['url'] ?? null) ? trim(substr($check['url'], 0, 2048)) : '';
+        $method = is_string($check['method'] ?? null) && preg_match('/^[A-Za-z]{1,10}$/', $check['method']) ? strtoupper($check['method']) : 'GET';
+        $ip = is_string($check['ip'] ?? null) && @inet_pton(trim($check['ip'])) !== false ? trim($check['ip']) : ($o['ip'] ?? '198.51.100.7');
+        $ua = is_string($check['ua'] ?? null) ? trim(substr($check['ua'], 0, 512)) : '';
+        $h = '<section class="card" id="try"><h2>' . $e($t['try']) . '</h2><p class="note">' . $e($t['tryIntro']) . '</p>'
+            . '<form class="filter try" method="get" action="' . $e($o['action'] ?? '') . '#try">';
+        foreach ($o['keep'] ?? [] as $k => $v) {
+            $h .= '<input type="hidden" name="' . $e((string) $k) . '" value="' . $e((string) $v) . '">';
+        }
+        $h .= '<select name="method" aria-label="' . $e($t['tryKind']) . '">';
+        foreach (array_unique(array_merge(['GET', 'POST'], $s->methods)) as $m) {
+            $h .= '<option' . ($m === $method ? ' selected' : '') . '>' . $e($m) . '</option>';
+        }
+        $h .= '</select><label class="wide">' . $e($t['tryUrl']) . ' <input type="text" name="url" value="' . $e($url) . '" placeholder="https://www.example.org/wp-login.php"></label>'
+            . '<label>' . $e($t['tryIp']) . ' <input type="text" name="ip" value="' . $e($ip) . '" class="ip"></label>'
+            . '<label class="wide">' . $e($t['tryUa']) . ' <input type="text" name="ua" value="' . $e($ua) . '" placeholder="Mozilla/5.0 … / Googlebot/2.1"></label>'
+            . '<button type="submit">' . $e($t['tryButton']) . '</button></form>';
+        if ($url === '') {
+            return $h . '</section>';
+        }
+        $trace = (new Inspector($s, $o['store'] ?? null, $lang))->trace(Inspector::request($method, $url, $ip, $ua !== '' ? ['User-Agent' => $ua] : []), $o['now'] ?? null);
+        $d = $trace['decision'];
+        $state = $d->passes() ? ($d->action === 'allow' && $trace['watched'] === null ? 'pass' : 'note') : ($d->action === 'challenge' || $s->mode === 'monitor' ? 'note' : 'stop');
+        $rule = static function (?string $id) use ($s, $e): string {
+            if ($id === null) {
+                return '';
+            }
+            $info = self::rule($s, $id);
+            return ' <a class="rid" href="#' . ($info['id'] === 'built-in' ? 'way' : 'rule-' . $e(self::anchor($info['id']))) . '"><code>' . $e($info['id']) . '</code></a>';
+        };
+        $h .= '<div class="diagram">' . Diagram::trace($trace, $method . ' ' . (string) (parse_url($url, PHP_URL_PATH) ?: $url), $lang) . '</div>'
+            . '<p class="verdict ' . $state . '"><b>' . $e(sprintf($t['tryResult'], $trace['verdict'])) . '</b>'
+            . ($trace['rule'] !== null ? '<br><span class="note">' . $e($t['tryRule']) . ':</span>' . $rule($trace['rule']) : '')
+            . ($trace['watched'] !== null ? '<br><span class="note">' . $e(sprintf($t['tryWatched'], $trace['watched'])) . '</span>' : '') . '</p><ol class="way trace">';
+        foreach ($trace['steps'] as $i => $st) {
+            $h .= '<li class="' . $st['state'] . '"><span class="step">' . ['pass' => '✓', 'note' => '!', 'stop' => '✕', 'skip' => '–'][$st['state']] . '</span><div><b>' . $e($st['check']) . '</b><br>'
+                . '<span class="note">' . $e($st['text']) . '</span>' . $rule($st['rule']) . '</div></li>';
+        }
+        return $h . '</ol></section>';
     }
 
     /**

@@ -536,6 +536,20 @@ return [
                 'the protection view: a rule with what it does, where, and a link to it');
             truthy(strpos($shield, '#way"><code>built-in</code></a><br>die festen Prüfungen') !== false, 'the fixed checks, explained');
             truthy(strpos(\CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'view' => 'shield', 'action' => '/stats']), 'view=rules') !== false, 'without addresses: ?view=rules');
+            // The rule tester: an address, what each step makes of it, the rule that decides.
+            $store = new MemoryStore();
+            $tried = $page::render($s, 'de', [], ['check' => ['method' => 'GET', 'url' => 'https://www.example.org/old-admin/x.php', 'ip' => '198.51.100.7'], 'store' => $store, 'action' => '/rs/rules', 'keep' => ['days' => 7, 'lang' => 'de'], 'now' => 1000.0]);
+            truthy(strpos($tried, 'Regeltester') !== false && strpos($tried, 'Dieser Besucher bekommt „nicht gefunden“ (404) — die Website sieht sie nie.') !== false
+                && strpos($tried, 'Entschieden von:</span> <a class="rid" href="#rule-T-OLD"><code>T-OLD</code></a>') !== false, 'the tester: the verdict, the rule, linked');
+            truthy(strpos($tried, 'abgewiesen: the old admin area') !== false && strpos($tried, 'nicht geprüft: schon oben abgewiesen') !== false && strpos($tried, '>Gesperrt</text>') !== false,
+                'every step in German, the diagram too');
+            truthy(strpos($tried, 'name="days" value="7"') !== false && strpos($tried, 'action="/rs/rules#try"') !== false && strpos($tried, 'value="https://www.example.org/old-admin/x.php"') !== false, 'the form keeps what it was given');
+            $area = $page::render($s, 'en', [], ['check' => ['url' => '/intern/', 'ip' => '10.1.2.3', 'ua' => 'Mozilla/5.0'], 'store' => $store, 'now' => 1000.0]);
+            truthy(strpos($area, 'a restricted area, and 10.1.2.3 is allowed (10.0.0.0/8)') !== false && strpos($area, 'This visitor sees the page') !== false, 'in English, from inside the area');
+            truthy(strpos($page::render($s, 'en', [], ['check' => ['url' => '/x', 'ip' => '<script>'], 'store' => $store, 'ip' => '192.0.2.1']), 'value="192.0.2.1"') !== false, 'an address that is none: the viewer\'s');
+            same(0, (int) $store->hit('requests:198.51.100.7', 60, 1000.0) - 1, 'the tester counted nothing');
+            $viewed = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'view' => 'rules', 'links' => $links, 'check' => ['url' => '/old-admin/'], 'ip' => '203.0.113.5', 'store' => $store]);
+            truthy(strpos($viewed, 'href="#rule-T-OLD"') !== false && strpos($viewed, 'value="203.0.113.5"') !== false && strpos($viewed, 'name="view"') === false, 'in the view: its address, no view field');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }

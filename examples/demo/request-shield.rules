@@ -31,7 +31,7 @@ version 2026-09-29.1        # this rule set's own version: shown on /rules and b
 include @tracking
 [DEMO-PARAMS]       query page int   q text   start word   v id                            # page numbers, the search, how the form box starts, the script's version
 [DEMO-PARAMS-RULES] query method word   url text   ip /[0-9A-Fa-f.:]{1,45}/ at **/rules      # the check on the active rules page
-[DEMO-PARAMS-STATS] query days int   by word   crawler id   format word   lang word   fragment any   path text   sort word at **/rs/**   # the statistics: the period, one crawler, a subtree, the order, JSON
+[DEMO-PARAMS-STATS] query days int   by word   crawler id   format word   lang word   fragment any   path text   sort word   method word   url text   ip /[0-9A-Fa-f.:]{1,45}/   ua text at **/rs/**   # the statistics: the period, one crawler, a subtree, the order, JSON, the rule tester
 [DEMO-STRICT]       query strict                                  # any other parameter, or a value not of its type: 404
 
 [DEMO-FORMS]        allow POST  **/edit **/comment **/profile **/contact     # forms may only be sent to the edit, comment, profile and contact pages
