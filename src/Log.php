@@ -43,7 +43,8 @@ final class Log
         return false;
     }
 
-    public static function write(Settings $s, Request $request, Decision $d, ?string $rule, ?float $now = null): void
+    /** @param bool $monitor what a rule in monitor would have decided: written as "monitor-<action>" */
+    public static function write(Settings $s, Request $request, Decision $d, ?string $rule, ?float $now = null, bool $monitor = false): void
     {
         $file = $s->logFile;
         if ($file === null) {
@@ -51,7 +52,7 @@ final class Log
         }
         $line = date('c', (int) ($now ?? time())) . ' '
             . ($s->logIp === 'full' ? $request->clientIp : self::mask($request->clientIp)) . ' '
-            . $d->action . ' ' . $d->status . ' "' . self::clean($d->reason, 60) . '"'
+            . ($monitor ? 'monitor-' : '') . $d->action . ' ' . $d->status . ' "' . self::clean($d->reason, 60) . '"'
             . ($rule !== null ? ' rule=' . self::clean($rule, 120) : '')
             . ' "' . self::clean($request->method, 10) . ' ' . self::clean($request->scheme . '://' . $request->host . $request->rawUri, 300) . '"'
             . ' "' . self::clean((string) $request->header('user-agent'), 150) . "\"\n";

@@ -33,13 +33,17 @@ final class Budget
      * @param array<mixed> $b
      * @return self|null null for a budget that is switched off (limit 0)
      */
-    public static function from(string $name, array $b): ?self
+    public static function from(string $name, array $b, bool $strict = false): ?self
     {
         $limit = Settings::int($b, 'limit', "budgets.$name.limit");
         if ($limit <= 0) {
             return null;
         }
         $challengeAt = Settings::intOrNull($b, 'challengeAt', "budgets.$name.challengeAt");
+        // strict: the check from a quarter of the limit, unless the budget says when.
+        if ($strict && ($challengeAt === null || $challengeAt <= 0)) {
+            $challengeAt = max(1, intdiv($limit, 4));
+        }
         return new self(
             $name,
             $limit,

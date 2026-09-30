@@ -93,6 +93,11 @@ $examples = function (string $prefix): void {
             // Known parameters: a number is a number, and nothing else gets in.
             same([404, 'reject unknown parameter; rule=DEMO-STRICT'], [($r = $get('GET', '/?page=2%27'))['status'], $r['shield']], 'not of its type');
             same(404, $get('GET', '/?debug=1')['status'], 'unknown');
+            // A rule being watched: through, and the log notes what it would have done.
+            $r = $get('GET', '/old/api');
+            same(200, $r['status'], 'monitor: nobody is refused');
+            truthy(in_array('X-Request-Shield-Monitor: reject blocked path; rule=DEMO-OLD', $r['headers'], true), 'what the watched rule would have done');
+            same('challenge always; rule=DEMO-CHECKOUT', $get('GET', '/checkout')['shield'], 'the checkout checks');
             same(200, $get('GET', '/?page=2&fbclid=x&gclid=y')['status'], 'known, and marketing tags');
             same(200, $get('GET', '/rules?method=GET&url=' . rawurlencode('https://www.example.org/x?a=1') . '&ip=')['status'], 'the rules page\'s check, an empty field too');
             $r = $get('GET', '/random/abc');

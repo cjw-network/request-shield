@@ -70,6 +70,12 @@ final class Shield
     /** What decide() found without the budgets: whether the answer may be cached. */
     private Decision $base;
 
+    /** The max-age of the always-checked path this request is on (challenge … max-age), or null. */
+    private ?int $alwaysAge = null;
+
+    /** The rules with those marked "monitor", decided alongside for the log (built when needed). */
+    private ?self $watcher = null;
+
     /**
      * @param array<mixed>|Settings $config see Config::defaults()
      * @param (callable(Request): ?bool)|null $known an adapter's URL index (see CacheableRule)
@@ -80,6 +86,9 @@ final class Shield
         $s = $this->settings = $config instanceof Settings ? $config : Settings::from($config);
         $this->store = $store ?? self::storeFor($s);
         $this->base = Decision::allow();
+        if ($s->mode === 'off') {
+            return;             // no checks at all
+        }
 
         $this->rules[] = new MethodRule($s->methods);
         $this->rules[] = new LimitsRule($s->maxUri, $s->maxQueryParameters, $s->maxHeaderBytes);
@@ -144,6 +153,13 @@ final class Shield
         $request = Request::fromServer($server, $s->trustedProxies);
         $shield->request = $request;
         self::$active = $shield;
+        if ($s->mode === 'off') {
+            // Switched off: nothing checked, counted or logged; the include stays.
+            self::$current = Decision::allow();
+            self::$rule = null;
+            $_SERVER['REQUEST_SHIELD'] = Decision::ALLOW;
+            return self::$current;
+        }
         $now = microtime(true);
         $decided = $shield->decide($request, $now);
         // The endpoint of the check inside the form: answered here, before the
@@ -158,17 +174,28 @@ final class Shield
         }
         $settled = $shield->settle($decided, $request, $now);
         $decision = $settled['decision'];
-        self::$current = $decision;
         $shield->passed = $settled['passed'];
         // Which rule: looked up only for a request that was stopped or flagged
         // (or when every request is logged) -- a passing one costs nothing.
         $rule = null;
-        if ($decision->action !== Decision::ALLOW || $s->logLevel === 'all') {
+        $watched = null;
+        if ($s->mode === 'monitor' && !$decision->passes()) {
+            // Monitor: decided and counted, logged as it would be -- and let through,
+            // never cached (whatever it is, it is not what a cache should keep).
+            $watched = $shield->watched($decision, $request, $now, $shield);
+            $decision = Decision::allowUncached('monitor');
+            $settled = ['decision' => $decision, 'cookies' => $settled['cookies'], 'page' => null, 'json' => null, 'passed' => false];
+        } elseif ($decision->action !== Decision::ALLOW || $s->logLevel === 'all') {
             $rule = $shield->explain($decision, $request);
             if ($s->logFile !== null && Log::wants($s->logLevel, $decision)) {
                 Log::write($s, $request, $decision, $rule, $now);
             }
         }
+        if ($s->monitor !== null && $decision->passes() && $watched === null) {
+            // Rules marked "monitor": what they would decide, for the log.
+            $watched = $shield->watch($request, $now);
+        }
+        self::$current = $decision;
         self::$rule = $rule;
         if (!headers_sent()) {
             foreach ($settled['cookies'] as $cookie) {
@@ -203,10 +230,61 @@ final class Shield
             $_SERVER['REQUEST_SHIELD_RULE'] = $rule;
         }
         if ($s->debugHeader && !headers_sent()) {
-            header('X-Request-Shield: ' . $decision->action . ($decision->reason !== '' ? ' ' . $decision->reason : '')
-                . ($rule !== null ? '; rule=' . $rule : ''));
+            header('X-Request-Shield: ' . ($watched !== null && $s->mode === 'monitor' ? 'monitor ' . $watched
+                : $decision->action . ($decision->reason !== '' ? ' ' . $decision->reason : '') . ($rule !== null ? '; rule=' . $rule : '')));
+            if ($watched !== null && $s->mode !== 'monitor') {
+                header('X-Request-Shield-Monitor: ' . $watched);
+            }
         }
         return $decision;
+    }
+
+    /**
+     * What the rules marked "monitor" would decide about a request the
+     * enforced rules let through: logged, never acted on. Returns it in
+     * words ("reject blocked path; rule=SITE-OLD") or null when they would
+     * let it through too.
+     */
+    private function watch(Request $request, float $now): ?string
+    {
+        $w = $this->watcher($request);
+        if ($w === null) {
+            return null;
+        }
+        $d = $w->decide($request, $now);
+        if ($d->passes()) {
+            return null;
+        }
+        // A check the visitor has passed already (a pass cookie) is no refusal.
+        $d = $w->settle($d, $request, $now)['decision'];
+        return $d->passes() ? null : $this->watched($d, $request, $now, $w);
+    }
+
+    /** The shield of the rules marked "monitor" (null: there are none), built once. */
+    private function watcher(Request $request): ?self
+    {
+        $m = $this->settings->monitor;
+        if ($m === null) {
+            return null;
+        }
+        if ($this->watcher === null) {
+            // Their own budgets are counted; those the enforced rules have, only looked at.
+            $own = array_fill_keys(array_keys(array_diff_key($m->budgets, $this->settings->budgets)), true);
+            $this->watcher = new self($m, new \CjwNetwork\RequestShield\Store\MonitorStore($this->store, $own));
+            $this->watcher->request = $request;
+        }
+        return $this->watcher;
+    }
+
+    /** Logs what would have been decided ("monitor-reject …") and returns it in words for the header. */
+    private function watched(Decision $d, Request $request, float $now, self $by): string
+    {
+        $s = $this->settings;
+        $rule = $by->explain($d, $request);
+        if ($s->logFile !== null && Log::wants($s->logLevel, $d)) {
+            Log::write($s, $request, $d, $rule, $now, true);
+        }
+        return $d->action . ($d->reason !== '' ? ' ' . $d->reason : '') . ($rule !== null ? '; rule=' . $rule : '');
     }
 
     /** The decision protect() made for this request, if it ran. */
@@ -309,8 +387,13 @@ final class Shield
     {
         $base = Decision::allow();
         $budget = null;
+        $this->alwaysAge = null;
         foreach ($this->rules as $rule) {
-            $wants = $rule->check($request, $now);
+            // strict: a request a cache must not keep counts twice -- the pattern
+            // of floods that bust the cache with made-up addresses.
+            $wants = $rule instanceof BudgetRule
+                ? $rule->check($request, $now, $base->action === Decision::ALLOW_UNCACHED ? $this->settings->uncachedWeight : 1)
+                : $rule->check($request, $now);
             if ($wants === null) {
                 continue;
             }
@@ -333,6 +416,7 @@ final class Shield
             foreach ($always as $pattern) {
                 if (@preg_match($pattern, $request->path) === 1) {
                     $budget = $budget === null ? Decision::challenge('always') : $budget->stricter(Decision::challenge('always'));
+                    $this->alwaysAge = $this->settings->challenge->alwaysMaxAge[$pattern] ?? null;
                     break;
                 }
             }
@@ -360,7 +444,7 @@ final class Shield
      * form comes back after the check (a pause would lose what was typed);
      * a spent budget's solution starts the budget's counter again.
      *
-     * @return array{solution: ?string, api: bool, earn: array{window: int}|null, resend: array{action: string, fields: list<array{0: string, 1: string}>}|false|null}
+     * @return array{solution: ?string, fresh: ?int, api: bool, earn: array{window: int}|null, resend: array{action: string, fields: list<array{0: string, 1: string}>}|false|null}
      */
     private function gateOptions(Decision $d, Request $request): array
     {
@@ -368,6 +452,8 @@ final class Shield
         $budget = $d->spent ? ($this->settings->budgets[$d->reason] ?? null) : null;
         return [
             'solution' => $this->postedSolution(),
+            // challenge … max-age: a pass issued at most that long ago.
+            'fresh' => $d->reason === 'always' ? $this->alwaysAge : null,
             'api' => $api,
             'earn' => $budget !== null ? ['window' => $budget->window] : null,
             'resend' => !$api && $request->method !== 'GET' && $request->method !== 'HEAD' ? self::resendFields($request) : null,
@@ -424,7 +510,7 @@ final class Shield
     public function widget(string $start = 'input'): string
     {
         $w = $this->settings->challenge->widgetPath;
-        return $w === null ? '' : \CjwNetwork\RequestShield\Challenge\Widget::html($w, $start);
+        return $w === null || $this->settings->mode === 'off' ? '' : \CjwNetwork\RequestShield\Challenge\Widget::html($w, $start);
     }
 
     /** <widgetPath>/challenge (a task as JSON) and <widgetPath>/widget.js. */
@@ -482,7 +568,7 @@ final class Shield
     public function requirePass(?int $fresh = null): void
     {
         $request = $this->request;
-        if ($request === null || ($this->passed && $fresh === null)) {
+        if ($request === null || $this->settings->mode === 'off' || ($this->passed && $fresh === null)) {
             return;
         }
         $now = microtime(true);
@@ -498,6 +584,10 @@ final class Shield
         }
         if ($r['decision']->passes()) {
             $this->passed = true;
+            return;
+        }
+        if ($this->settings->mode === 'monitor') {
+            $this->watched($r['decision'], $request, $now, $this);
             return;
         }
         $this->stop($r['decision'], $request, $r['page'], $now);
@@ -623,6 +713,10 @@ final class Shield
             $this->passed = true;
             return null;
         }
+        if ($this->settings->mode === 'monitor') {
+            $this->watched($r['decision'], $request, $now, $this);
+            return null;
+        }
         return $this->stop($r['decision'], $request, $r['page'], $now, false);
     }
 
@@ -635,11 +729,27 @@ final class Shield
     {
         $b = $this->settings->budgets[$budget] ?? null;
         $request ??= $this->request;
-        if ($b === null || $request === null) {
+        if ($request === null || $this->settings->mode === 'off') {
             return Decision::allow();
         }
         $now ??= microtime(true);
-        $d = $this->budgetRule($b)->check($request, $now) ?? Decision::allow();
+        if ($b === null) {
+            // Only a rule marked "monitor" has it: counted and logged, never acted on.
+            $this->watchBudget($budget, $request, $now);
+            return Decision::allow();
+        }
+        $times = $this->base->action === Decision::ALLOW_UNCACHED ? $this->settings->uncachedWeight : 1;
+        $d = $this->budgetRule($b)->check($request, $now, $times) ?? Decision::allow();
+        if ($this->settings->mode === 'monitor') {
+            if (!$d->passes()) {
+                $this->watched($d, $request, $now, $this);
+                return Decision::allowUncached($budget);
+            }
+            return $d;
+        }
+        if ($d->passes()) {
+            $this->watchBudget($budget, $request, $now);
+        }
         // A spent budget that lets its client earn it back: a solution sent
         // with this request (the form again, an API's header) starts it again.
         if ($d->spent) {
@@ -668,6 +778,20 @@ final class Shield
             exit;
         }
         return $d;
+    }
+
+    /** An on-demand budget of the rules marked "monitor": what it would decide, logged. */
+    private function watchBudget(string $budget, Request $request, float $now): void
+    {
+        $m = $this->settings->monitor;
+        $w = $this->watcher($request);
+        if ($m === null || $w === null || !isset($m->budgets[$budget])) {
+            return;
+        }
+        $d = $w->budgetRule($m->budgets[$budget])->check($request, $now);
+        if ($d !== null && !$d->passes()) {
+            $this->watched($d, $request, $now, $w);
+        }
     }
 
     private function budgetRule(Budget $b): BudgetRule

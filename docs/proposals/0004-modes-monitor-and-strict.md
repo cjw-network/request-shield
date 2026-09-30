@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Accepted** 2026-09-30 (decisions below), not yet implemented |
+| Status | **Implemented** 2026-09-30 (see [modes](../features/modes.md)) |
 | Proposed | 2026-09-29 |
 | Affects | Shield::protect(), rule files, the log |
 
@@ -13,6 +13,10 @@ strict` — plus `monitor` for single rules, so a new rule can be watched in the
 log before it refuses anyone, and a site under attack can tighten everything
 with one line. A fresh challenge per path (`challenge /login max-age 5m`)
 completes it.
+
+## In one picture
+
+![Four modes, from off to strict: off does nothing; monitor checks and logs what it would do, nobody is refused; enforce is the normal case; strict tightens everything for a site under attack](0004-modes-monitor-and-strict.svg)
 
 ## Motivation
 
@@ -91,6 +95,26 @@ request (other numbers only).
 | `strict`'s values | **As proposed**: the check from a quarter of each limit, a pass for 15 minutes, uncached addresses count double, the difficulty from twice `difficulty-min` | `strict` is for an attack and is switched off after it; milder values would protect less when it matters. |
 | `strict` by itself under attack? | **No, a manual switch** for now | Predictable; an automatic switch risks false alarms (a newsletter goes out, visitors get checked). A detector later, once `monitor` shows what a sensible threshold is. |
 | `max-age` where? | **Per `challenge` line**: `challenge /login max-age 5m` | Clear and where it applies; no extra concept. |
+
+## As built — where it differs
+
+- **Which rules take `monitor`:** `block`, `restrict`, `allow`, `limit`,
+  `challenge` and `query strict` — the rules that refuse or check someone.
+  The others (`host`, `trust`, `cache-path`, …) refuse nobody or change who is
+  who; `set mode monitor` watches everything.
+- **How:** a rule file with watched rules is read twice when it is compiled —
+  without them (enforced) and with them (watched). For a request the enforced
+  rules let through, the watched ones decide once more; a budget they share is
+  counted once. That costs a second pass of the checks (7.7 → 13.6 µs), only
+  while rules are watched.
+- **In `monitor`, a request that would have been stopped is `allow-uncached`**
+  (a cache must not keep it); the log writes `monitor-<action>`, the header
+  `X-Request-Shield: monitor …`; a watched rule `X-Request-Shield-Monitor: …`.
+- **`strict`'s shorter pass is a ceiling:** a site's shorter `pass-ttl` stays;
+  a pass issued before keeps its lifetime.
+- **`off` also switches off** `consume()`, `requirePass()` and the check inside
+  the form.
+- Not built: `set log-format json`, `set log-sample` (still suggestions).
 
 ## Open questions (as proposed)
 

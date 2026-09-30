@@ -1,0 +1,51 @@
+<svg class="rsd" role="img" viewBox="0 0 780 400" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>Four modes, from off to strict: off does nothing; monitor checks and logs what it would do, nobody is refused; enforce is the normal case; strict tightens everything for a site under attack</title>
+<style>.rsd{font:13px/1.2 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .c{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .track{fill:#dfe3e8}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}.rsd .okbox{fill:#e6f4ea;stroke:#1e7b43}.rsd .warnbox{fill:#fdf3dc;stroke:#b07400}.rsd .nobox{fill:#fbe9e5;stroke:#a3361f}.rsd .qbox{fill:#eef3fd;stroke:#2f62c9}.rsd .tag{fill:#2f62c9}.rsd .w{fill:#fff;font-weight:700}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .track{fill:#3a414b}.rsd .arrow{stroke:#a0a8b3}.rsd .okbox{fill:#17301f}.rsd .warnbox{fill:#3a2f15}.rsd .nobox{fill:#3d1f19}.rsd .qbox{fill:#1b2740;stroke:#7aa2ff}.rsd .tag{fill:#7aa2ff}}</style>
+<defs><marker id="rs04-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>
+<text class="t" x="20" y="28" font-weight="700">set mode …  — how hard the shield acts</text>
+<text class="m" x="760" y="28" text-anchor="end" font-size="12">stricter →</text>
+<rect class="track" x="20" y="42" width="740" height="6" rx="3"/>
+<path class="arrow" d="M20 45 H756" marker-end="url(#rs04-a)"/>
+<rect class="box" x="20" y="64" width="170" height="176" rx="10" stroke-width="1.5"/>
+<rect class="tag" x="32" y="54" width="40" height="18" rx="9"/><text class="w" x="52" y="67" text-anchor="middle" font-size="11">off</text>
+<text class="t" x="105" y="98" text-anchor="middle" font-weight="700">Switched off</text>
+<text class="m" x="105" y="122" text-anchor="middle" font-size="12">nothing checked,</text>
+<text class="m" x="105" y="138" text-anchor="middle" font-size="12">counted or logged</text>
+<text class="m" x="105" y="170" text-anchor="middle" font-size="12">for an emergency:</text>
+<text class="m" x="105" y="186" text-anchor="middle" font-size="12">the include stays</text>
+<text class="t" x="105" y="222" text-anchor="middle" font-size="12">everyone gets in</text>
+<rect class="qbox" x="203" y="64" width="176" height="176" rx="10" stroke-width="1.5"/>
+<rect class="tag" x="215" y="54" width="64" height="18" rx="9"/><text class="w" x="247" y="67" text-anchor="middle" font-size="11">monitor</text>
+<text class="t" x="291" y="98" text-anchor="middle" font-weight="700">Watch first</text>
+<text class="m" x="291" y="122" text-anchor="middle" font-size="12">every rule checked, every</text>
+<text class="m" x="291" y="138" text-anchor="middle" font-size="12">budget counted — the log</text>
+<text class="m" x="291" y="154" text-anchor="middle" font-size="12">says what would happen</text>
+<text class="m" x="291" y="186" text-anchor="middle" font-size="12">for a new site, new rules</text>
+<text class="t" x="291" y="222" text-anchor="middle" font-size="12">everyone gets in, noted</text>
+<rect class="okbox" x="392" y="64" width="176" height="176" rx="10" stroke-width="1.5"/>
+<rect class="tag" x="404" y="54" width="64" height="18" rx="9"/><text class="w" x="436" y="67" text-anchor="middle" font-size="11">enforce</text>
+<text class="t" x="480" y="98" text-anchor="middle" font-weight="700">As written</text>
+<text class="m" x="480" y="122" text-anchor="middle" font-size="12">the rules decide:</text>
+<text class="m" x="480" y="138" text-anchor="middle" font-size="12">refused, checked,</text>
+<text class="m" x="480" y="154" text-anchor="middle" font-size="12">told to wait</text>
+<text class="m" x="480" y="186" text-anchor="middle" font-size="12">the normal case (default)</text>
+<text class="t" x="480" y="222" text-anchor="middle" font-size="12">attackers stay out</text>
+<rect class="nobox" x="581" y="64" width="179" height="176" rx="10" stroke-width="1.5"/>
+<rect class="tag" x="593" y="54" width="52" height="18" rx="9"/><text class="w" x="619" y="67" text-anchor="middle" font-size="11">strict</text>
+<text class="t" x="670" y="98" text-anchor="middle" font-weight="700">Under attack</text>
+<text class="m" x="670" y="122" text-anchor="middle" font-size="12">the check from a quarter</text>
+<text class="m" x="670" y="138" text-anchor="middle" font-size="12">of each limit, a pass for</text>
+<text class="m" x="670" y="154" text-anchor="middle" font-size="12">15 min, made-up addresses</text>
+<text class="m" x="670" y="170" text-anchor="middle" font-size="12">count twice</text>
+<text class="t" x="670" y="222" text-anchor="middle" font-size="12">bots pay more, sooner</text>
+<rect class="warnbox" x="20" y="262" width="360" height="72" rx="10" stroke-width="1.5"/>
+<text class="t" x="36" y="286" font-weight="700">One rule, watched</text>
+<text class="t c" x="36" y="306">monitor block /old-api/**</text>
+<text class="m" x="36" y="324" font-size="12">logged as "monitor-reject", nobody refused</text>
+<rect class="warnbox" x="400" y="262" width="360" height="72" rx="10" stroke-width="1.5"/>
+<text class="t" x="416" y="286" font-weight="700">A fresh check where it matters</text>
+<text class="t c" x="416" y="306">challenge /checkout/** max-age 5m</text>
+<text class="m" x="416" y="324" font-size="12">a pass from the last 5 minutes there only</text>
+<text class="m" x="20" y="366" font-size="12">Put the shield in front of a live site with monitor, read the log for a few days, then enforce.</text>
+<text class="m" x="20" y="384" font-size="12">Under attack, one line — set mode strict — instead of ten edited limits; back to enforce afterwards.</text>
+</svg>

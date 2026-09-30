@@ -75,7 +75,8 @@ if ($command === 'trace') {
         echo '  ' . $mark[$st['state']] . ' ' . str_pad($st['check'], 34) . $st['text'] . ($st['rule'] !== null ? "  [{$st['rule']}]" : '') . "\n";
     }
     echo "\nThis visitor {$t['verdict']}." . ($t['rule'] !== null ? " Decided by {$t['rule']}." : '') . "\n";
-    exit($t['decision']->passes() ? 0 : 4);
+    echo $t['watched'] !== null ? "Watched: it {$t['watched']}.\n" : '';
+    exit($t['decision']->passes() || in_array($settings->mode, ['off', 'monitor'], true) ? 0 : 4);     // 4: refused (a script can test for it)
 }
 
 $versions = $settings->origins['versions'] ?? [];
@@ -181,12 +182,17 @@ foreach ($settings->budgets as $b) {
     echo $line("limit $b->name $b->limit/{$b->window}s" . ($b->challengeAt !== null ? " challenge-at $b->challengeAt" : '') . ($b->onDemand ? ' on-demand' : '') . ($b->earnBack ? ' on-exceeded challenge' : ''), $o('budgets', $b->name));
 }
 foreach ($settings->challenge->alwaysPaths as $p) {
-    echo $line('challenge regex ' . $regex($p), $o('challenge.alwaysPaths', $p));
+    $age = $settings->challenge->alwaysMaxAge[$p] ?? null;
+    echo $line('challenge regex ' . $regex($p) . ($age !== null ? " max-age {$age}s" : ''), $o('challenge.alwaysPaths', $p));
 }
 foreach ($settings->challenge->exemptPaths as $p) {
     echo $line('challenge-exempt regex ' . $regex($p), $o('challenge.exemptPaths', $p));
 }
+foreach ($settings->origins['monitor'] ?? [] as $rid => $rule) {
+    echo $line("monitor $rule", (string) $rid);
+}
 echo $line('exempt ' . ($settings->exemptIps === [] ? 'none' : implode(' ', $settings->exemptIps)));
+echo $line("set mode $settings->mode");
 echo $line('set pass-ttl ' . $settings->challenge->passTtl . 's');
 echo $line('set store ' . $settings->store);
 echo $line('set store-dir ' . $settings->storeDir);

@@ -110,6 +110,12 @@ final class Settings
          * @var array{exact: array<string, string>, globs: array<string, string>, local: list<array{paths: list<string>, exact: array<string, string>, globs: array<string, string>}>}
          */
         public array $queryIndex = ['exact' => [], 'globs' => [], 'local' => []],
+        /** @readonly off, monitor, enforce or strict */
+        public string $mode = 'enforce',
+        /** @readonly how often a request a cache must not keep counts against the budgets (strict: 2) */
+        public int $uncachedWeight = 1,
+        /** @readonly the rules with those marked "monitor": decided alongside, only logged; null: none */
+        public ?Settings $monitor = null,
     ) {
     }
 
@@ -120,6 +126,19 @@ final class Settings
     public static function from(array $config): self
     {
         $c = Config::merge($config);
+        $mode = self::string($c, 'mode', 'mode', 'enforce');
+        if (!in_array($mode, self::MODES, true)) {
+            throw self::wrong('mode', implode(', ', self::MODES));
+        }
+        $monitorRules = $c['monitorRules'] ?? null;
+        if ($monitorRules !== null && !is_array($monitorRules)) {
+            throw self::wrong('monitorRules', 'null or the settings with the monitored rules');
+        }
+        if ($mode === 'monitor' && $monitorRules !== null) {
+            // Everything is only logged anyway: the monitored rules count like the others.
+            return self::from(['mode' => 'monitor', 'monitorRules' => null] + $monitorRules);
+        }
+        $strict = $mode === 'strict';
         $limits = self::map($c, 'limits');
         $cacheable = self::map($c, 'cacheable');
         $exempt = self::map($c, 'exempt');
@@ -164,7 +183,7 @@ final class Settings
             if (!is_array($budget)) {
                 throw self::wrong("budgets.$name", 'an array');
             }
-            $b = Budget::from((string) $name, $budget);
+            $b = Budget::from((string) $name, $budget, $strict);
             if ($b !== null) {
                 $budgets[(string) $name] = $b;
             }
@@ -187,7 +206,7 @@ final class Settings
             self::string($c, 'store'),
             self::string($c, 'storeDir'),
             self::bool($c, 'debugHeader'),
-            ChallengeSettings::from(self::map($c, 'challenge')),
+            ChallengeSettings::from(self::map($c, 'challenge'), $strict),
             self::origins(self::map($c, 'origins')),
             $restricted,
             $methodPaths,
@@ -204,6 +223,9 @@ final class Settings
             $query = self::queryParams(self::map($c, 'queryParams')),
             self::bool($c, 'queryStrict'),
             \CjwNetwork\RequestShield\Rule\QueryRule::index($query),
+            $mode,
+            $strict ? 2 : 1,
+            $monitorRules === null ? null : self::from(['mode' => $mode, 'monitorRules' => null] + $monitorRules),
         );
     }
 
@@ -450,7 +472,9 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 16;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams
+    private const FORMAT = 17;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge
+
+    public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 
     /**
      * The settings of a file, checked only when it changed. A ".rules" file
@@ -577,6 +601,7 @@ final class Settings
         $e = get_object_vars($this);
         $e['budgets'] = array_map(static fn (Budget $b): array => $b->export(), $this->budgets);
         $e['challenge'] = $this->challenge->export();
+        $e['monitor'] = $this->monitor === null ? null : $this->monitor->export();
         return $e;
     }
 
@@ -592,6 +617,9 @@ final class Settings
         /** @var array<string, mixed> $challenge */
         $challenge = $e['challenge'];
         $e['challenge'] = ChallengeSettings::import($challenge);
+        /** @var array<string, mixed>|null $monitor */
+        $monitor = $e['monitor'];
+        $e['monitor'] = $monitor === null ? null : self::import($monitor);
         // Positional, in declaration order (what export() returns): unpacking
         // string keys into named arguments needs PHP 8.1.
         /** @phpstan-ignore argument.type */

@@ -59,6 +59,14 @@ match **/files/** {
 [DEMO-CALLS]        limit calls 5/min on-demand on-exceeded challenge          # the API: 5 calls a minute, then the task in a header
 [DEMO-APIPATH]      api-path **/api/**                                         # the API's addresses: a check there is JSON, not a page
 [DEMO-LOGIN]        challenge   **/challenge                       # a page where every visitor is checked, as a login would be
+[DEMO-CHECKOUT]     challenge   **/checkout max-age 20s            # the checkout: a pass from the last 20 seconds, however long the pass lives
+
+# How hard the shield acts: enforce (as here), monitor (everything logged as
+# it would be decided, nobody refused -- to try new rules on a live site),
+# strict (under attack: tighter values), off. Single rules can be watched
+# with "monitor" in front: logged, not enforced.
+set         mode enforce
+[DEMO-OLD]          monitor block **/old/**                        # watched before it is switched on: the old API would be refused -- the log says so, nobody is
 
 # The demo runs on your own machine: count localhost too (a real site exempts
 # its monitoring and its own servers here).

@@ -85,7 +85,7 @@ final class Inspector
     }
 
     /**
-     * @return array{steps: list<array{check: string, state: string, text: string, rule: ?string}>, decision: Decision, verdict: string, rule: ?string}
+     * @return array{steps: list<array{check: string, state: string, text: string, rule: ?string}>, decision: Decision, verdict: string, rule: ?string, watched: ?string}
      */
     public function trace(Request $request, ?float $now = null): array
     {
@@ -159,17 +159,35 @@ final class Inspector
                 : ($d->spent ? ' — too many: the check, then the counter starts again' : ' — past the check')));
         }
         $always = null;
+        $age = null;
         foreach ($s->challenge->alwaysPaths as $p) {
             if (@preg_match($p, $request->path) === 1) {
                 $always = Decision::challenge('always');
+                $age = $s->challenge->alwaysMaxAge[$p] ?? null;
                 break;
             }
         }
         $step('Browser check', $always, 'not asked for at this address' . ($s->challenge->exemptPaths !== [] ? ' (and never at ' . implode(', ', array_map(static fn (string $p): string => Describe::pattern($s, $p), $s->challenge->exemptPaths)) . ')' : ''),
-            static fn (): string => 'every visitor is checked here, once per pass (valid for ' . Describe::span($s->challenge->passTtl) . ')');
+            static fn (): string => 'every visitor is checked here, once per pass (valid for ' . Describe::span($s->challenge->passTtl) . ')'
+                . ($age !== null ? '; here only a pass from the last ' . Describe::span($age) : ''));
 
         $decision = $this->shield->decide($request, $now);
-        return ['steps' => $steps, 'decision' => $decision, 'verdict' => Describe::verdict($decision), 'rule' => $this->shield->explain($decision, $request)];
+        $verdict = Describe::verdict($decision);
+        if ($s->mode === 'off') {
+            $verdict = 'sees the page — the shield is switched off (set mode off)';
+        } elseif ($s->mode === 'monitor' && !$decision->passes()) {
+            $verdict = 'sees the page — monitor mode; enforced, it ' . $verdict;
+        }
+        // Rules marked "monitor": what they would add, for a request the others let through.
+        $watched = null;
+        if ($s->monitor !== null && $decision->passes() && $s->mode !== 'off') {
+            $w = (new self($s->monitor, $this->store))->shield;
+            $d = $w->decide($request, $now);
+            if (!$d->passes()) {
+                $watched = Describe::verdict($d) . ' — if the rule marked "monitor" were enforced (' . ($w->explain($d, $request) ?? 'monitor') . ')';
+            }
+        }
+        return ['steps' => $steps, 'decision' => $decision, 'verdict' => $verdict, 'rule' => $this->shield->explain($decision, $request), 'watched' => $watched];
     }
 
     private function blockedMatch(Request $request): string

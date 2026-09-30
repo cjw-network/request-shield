@@ -92,11 +92,10 @@ server and PHP slots, just very briefly.
   page, attack rules, match blocks, the check inside the form, earning back a
   spent budget (forms and APIs), the demo; PHP 8.0.
 - **Unreleased:** known query parameters and their types, `query strict`,
-  `@tracking` ([docs](docs/features/known-parameters.md)).
-- **Next:** modes —
-  monitor first, strict under attack
-  ([proposal 0004](docs/proposals/0004-modes-monitor-and-strict.md)); known
-  crawlers, AI crawlers included
+  `@tracking` ([docs](docs/features/known-parameters.md)); modes — monitor
+  first, strict under attack, `monitor` for single rules, `challenge …
+  max-age` ([docs](docs/features/modes.md)).
+- **Next:** known crawlers, AI crawlers included
   ([proposal 0011](docs/proposals/0011-known-crawlers.md)); adapters for
   Exponential, WordPress and Ibexa; exporting the rules to nginx, Apache and
   Varnish.

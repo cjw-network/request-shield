@@ -19,6 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   ([docs](docs/features/known-parameters.md)).
 - The demo declares its parameters, includes `@tracking` and runs `query
   strict`.
+- Modes (proposal 0004): `set mode off | monitor | enforce | strict`.
+  `monitor` checks and counts everything and logs what it would decide
+  (`monitor-reject …`, `X-Request-Shield: monitor …`) but refuses nobody;
+  `strict`, for a site under attack, checks from a quarter of each limit,
+  gives a pass for at most 15 minutes, starts the difficulty at twice its
+  minimum and counts addresses a cache must not keep twice; `off` does
+  nothing. `monitor` before a rule (`monitor block /old-api/**`, also
+  `restrict`, `allow`, `limit`, `challenge`, `query strict`) watches just that
+  rule: logged, not enforced, a shared budget counted once. `challenge <paths>
+  max-age 5m` asks for a pass from the last five minutes there. The rules page,
+  `show` and `trace` name the mode and the watched rules
+  ([docs](docs/features/modes.md)).
+- The demo watches a rule (`/old/api`) and has a checkout with `max-age 20s`.
 
 ### Changed
 - The query string is parsed once per request, for every check that reads it.

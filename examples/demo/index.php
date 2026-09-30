@@ -107,6 +107,10 @@ if ($path === '/search') {
     } else {
         $content = ['Contact', 'Start typing: the box under the form checks your browser in the background. Send it, with a file if you like — it goes straight through.'];
     }
+} elseif ($path === '/checkout') {
+    $content = ['Checkout', 'You passed a browser check in the last 20 seconds (challenge **/checkout max-age 20s). Come back after 20 seconds: the check comes again, although your pass still holds everywhere else.'];
+} elseif (strncmp($path, '/old/', 5) === 0) {
+    $content = ['The old API', 'The site answered: the rule for /old/** is only watched (monitor). The log below notes "monitor-reject" — what it would have done. When the log shows no false hits, remove the word monitor.'];
 } elseif ($path === '/profile') {
     // The page itself asks for the check, with a header (set app-challenge on).
     header('X-Request-Shield-Challenge: required');
@@ -166,6 +170,7 @@ $groups = [
         ['/?page=2%27', 'A parameter not of its type', '"not found" (404) — page is a number: no attack pattern needs to run'],
         ['/?debug=1', 'A parameter the site does not know', '"not found" (404) — query strict'],
         ['/files/%2e%2e/secret', 'Leaving the site\'s folder', 'a broken request (400)'],
+        ['/old/api', 'A rule being watched', 'passes — the rule is marked monitor: the log notes that it would have refused it'],
         ['//admin/', 'The admin area, sneaked', 'no access (403) — "//", "%61" and case do not get past it'],
     ],
     'Doors for certain people' => [
@@ -181,6 +186,7 @@ $groups = [
     ],
     'Browser check and pace' => [
         ['/challenge', 'A page that always checks the browser', 'the invisible check once, then the page (valid for 1 minute here)'],
+        ['/checkout', 'A checkout: only a fresh pass', 'the check if your pass is older than 20 seconds — although it holds a minute elsewhere (max-age)'],
         ['/reset', 'Forget my pass', 'the check comes back on /challenge'],
         [null, 'Reload any page 20 times', 'the invisible check (more than 20 requests a minute); past 60 a check that frees the counter — no pause'],
     ],

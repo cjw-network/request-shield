@@ -57,6 +57,10 @@ final class RulesPage
         foreach ($s->origins['warnings'] ?? [] as $w) {
             $h .= '<div class="verdict note"><span class="icon">!</span><div><strong>Please check:</strong> ' . $e($w) . '</div></div>';
         }
+        $mode = self::mode($s);
+        if ($mode !== null) {
+            $h .= '<div class="verdict ' . ($s->mode === 'strict' ? 'stop' : 'note') . '" id="mode"><span class="icon">!</span><div>' . $e($mode) . '</div></div>';
+        }
 
         // ── Summary ─────────────────────────────────────────────────────────
         $stopped = ($stats['actions']['reject'] ?? 0) + ($stats['actions']['throttle'] ?? 0);
@@ -81,10 +85,12 @@ final class RulesPage
             . '<p class="note">Nothing is counted: the check only looks at the visitor\'s counters.</p>';
         if ($url !== '') {
             $t = (new Inspector($s, $o['store'] ?? null))->trace(Inspector::request($method, $url, $ip), (float) $now);
-            $state = $t['decision']->passes() ? ($t['decision']->action === 'allow' ? 'pass' : 'note') : ($t['decision']->action === 'challenge' ? 'note' : 'stop');
+            $state = $t['decision']->passes() ? ($t['decision']->action === 'allow' && $t['watched'] === null ? 'pass' : 'note')
+                : ($t['decision']->action === 'challenge' || $s->mode === 'monitor' ? 'note' : 'stop');
             $h .= '<div class="diagram">' . Diagram::trace($t, $method . ' ' . (string) (parse_url($url, PHP_URL_PATH) ?: $url)) . '</div>';
             $h .= '<div class="verdict ' . $state . '"><span class="icon">' . self::icon($state) . '</span><div><strong>This visitor ' . $e($t['verdict']) . '.</strong>'
-                . ($t['rule'] !== null ? '<br><span class="note">Decided by: <code>' . $e($t['rule']) . '</code></span>' : '') . '</div></div><ol class="steps">';
+                . ($t['rule'] !== null ? '<br><span class="note">Decided by: <code>' . $e($t['rule']) . '</code></span>' : '')
+                . ($t['watched'] !== null ? '<br><span class="note">Watched: it ' . $e($t['watched']) . '.</span>' : '') . '</div></div><ol class="steps">';
             foreach ($t['steps'] as $st) {
                 $h .= '<li class="' . $st['state'] . '"><span class="icon">' . self::icon($st['state']) . '</span><div><strong>' . $e($st['check']) . '</strong><br>' . $e($st['text'])
                     . ($st['rule'] !== null ? ' <code class="origin">' . $e($st['rule']) . '</code>' : '') . '</div></li>';
@@ -265,7 +271,9 @@ final class RulesPage
 
         $rows = [];
         foreach ($s->challenge->alwaysPaths as $p) {
-            $rows[] = $row('always checked: ' . $pattern($p), $o('challenge.alwaysPaths', $p), $o('challenge.alwaysPaths', $p) ?? 'challenge.alwaysPaths');
+            $age = $s->challenge->alwaysMaxAge[$p] ?? null;
+            $rows[] = $row('always checked: ' . $pattern($p) . ($age !== null ? ' — a pass from the last ' . Describe::span($age) : ''),
+                $o('challenge.alwaysPaths', $p), $o('challenge.alwaysPaths', $p) ?? 'challenge.alwaysPaths');
         }
         foreach ($s->challenge->exemptPaths as $p) {
             $rows[] = $row('never checked: ' . $pattern($p), $o('challenge.exemptPaths', $p), '');
@@ -273,9 +281,35 @@ final class RulesPage
         $g[] = ['Browser check', 'An invisible check that a real browser passes in a moment; a passed check is valid for ' . Describe::span($s->challenge->passTtl)
             . ($s->challenge->searchEngines !== null ? '. Search engines (Google, Bing, …) are recognised and let through.' : '.'), $rows];
 
+        $rows = [];
+        foreach ($s->origins['monitor'] ?? [] as $rid => $rule) {
+            $rows[] = $row('monitor ' . $rule, (string) $rid);
+        }
+        if ($rows !== []) {
+            $g[] = ['Watched, not enforced', 'Rules marked "monitor": checked on every request and logged as they would decide ("monitor-reject" …), but nobody is refused. When the log shows no false hits, remove the word.', $rows];
+        }
+
         $g[] = ['Proxies and the log', ($s->trustedProxies === [] ? 'No proxy: the visitor\'s address is taken from the connection. ' : 'The visitor\'s real address is believed only from ' . implode(', ', $s->trustedProxies) . '. ')
             . ($s->logFile === null ? 'No log.' : "Log: level \"$s->logLevel\", addresses " . ($s->logIp === 'full' ? 'in full' : 'anonymised') . '.'), []];
         return $g;
+    }
+
+    /** The mode in plain words, or null for the usual one (enforce, nothing watched). */
+    public static function mode(Settings $s): ?string
+    {
+        $watched = count($s->origins['monitor'] ?? []);
+        $also = $watched > 0 ? " $watched " . ($watched === 1 ? 'rule is' : 'rules are') . ' only watched (monitor): logged as they would decide, not enforced.' : '';
+        switch ($s->mode) {
+            case 'off':
+                return 'The shield is switched off (set mode off): nothing is checked, counted or logged.';
+            case 'monitor':
+                return 'Monitor mode (set mode monitor): every rule is checked and counted, and the log shows what it would have decided'
+                    . ' — nobody is refused, nothing refused is cached. Switch to enforce when the log shows no false hits.';
+            case 'strict':
+                return 'Strict mode (set mode strict), for a site under attack: the browser check from a quarter of each limit, a pass for '
+                    . Describe::span($s->challenge->passTtl) . ', addresses a cache must not keep count twice.' . $also;
+        }
+        return $also === '' ? null : trim($also);
     }
 
     private static function tile(string $n, string $label): string
@@ -290,6 +324,9 @@ final class RulesPage
 
     private static function happened(string $action, int $status): string
     {
+        if (strncmp($action, 'monitor-', 8) === 0) {
+            return 'watched, would have been ' . self::happened(substr($action, 8), $status);
+        }
         return ['reject' => "refused ($status)", 'throttle' => 'told to wait', 'challenge' => 'browser check', 'allow-uncached' => 'answered, not cached', 'allow' => 'answered'][$action] ?? $action;
     }
 

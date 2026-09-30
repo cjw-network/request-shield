@@ -35,12 +35,17 @@ final class BudgetRule implements Rule
     ) {
     }
 
-    public function check(Request $request, float $now): ?Decision
+    /** @param int $times how often this request counts (strict: twice for one a cache must not keep) */
+    public function check(Request $request, float $now, int $times = 1): ?Decision
     {
         if ($this->limit <= 0 || ($this->exempt !== [] && IpAddress::inRanges($request->clientIp, $this->exempt))) {
             return null;
         }
-        $count = $this->store->hit($this->name . ':' . IpAddress::bucket($request->clientIp, $this->ipv6Prefix), $this->window, $now);
+        $key = $this->name . ':' . IpAddress::bucket($request->clientIp, $this->ipv6Prefix);
+        $count = $this->store->hit($key, $this->window, $now);
+        for ($i = 1; $i < $times; $i++) {
+            $count = $this->store->hit($key, $this->window, $now);
+        }
         if ($count > $this->limit) {
             $wait = (int) ceil($this->window * ($count - $this->limit) / $this->limit);
             // Earn it back (onExceeded: challenge): the check, and solved, the

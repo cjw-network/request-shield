@@ -59,15 +59,36 @@ final class ChallengeSettings
         public array $apiPaths = [],
         /** @readonly new DNS lookups a minute to verify search engines, for all requests together; 0: none */
         public int $dnsLookups = 30,
+        /**
+         * @readonly alwaysPaths entry => seconds: a pass issued at most that long ago (challenge … max-age 5m)
+         * @var array<string, int>
+         */
+        public array $alwaysMaxAge = [],
     ) {
     }
 
-    /** @param array<mixed> $c */
-    public static function from(array $c): self
+    /**
+     * @param array<mixed> $c
+     * @param bool $strict mode strict: a pass for at most 15 minutes, the difficulty from twice its minimum
+     */
+    public static function from(array $c, bool $strict = false): self
     {
         $difficulty = Settings::map($c, 'difficulty', 'challenge.difficulty');
         $min = max(1000, Settings::int($difficulty, 'min', 'challenge.difficulty.min', 50000));
         $max = max($min, Settings::int($difficulty, 'max', 'challenge.difficulty.max', 500000));
+        $passTtl = max(60, Settings::int($c, 'passTtl', 'challenge.passTtl', 3600));
+        if ($strict) {
+            $min = min($max, $min * 2);
+            $passTtl = min($passTtl, 900);
+        }
+        $always = Settings::strings($c, 'alwaysPaths', 'challenge.alwaysPaths');
+        $ages = [];
+        foreach (Settings::map($c, 'alwaysMaxAge', 'challenge.alwaysMaxAge') as $pattern => $age) {
+            if (!is_int($age) || $age < 1 || !in_array((string) $pattern, $always, true)) {
+                throw Settings::wrong("challenge.alwaysMaxAge.$pattern", 'seconds (at least 1) for one of alwaysPaths');
+            }
+            $ages[(string) $pattern] = $age;
+        }
 
         $secret = $c['secret'] ?? null;
         if ($secret !== null && (!is_string($secret) || strlen($secret) < 32)) {
@@ -99,7 +120,7 @@ final class ChallengeSettings
 
         return new self(
             $secret,
-            max(60, Settings::int($c, 'passTtl', 'challenge.passTtl', 3600)),
+            $passTtl,
             max(30, Settings::int($c, 'solutionTtl', 'challenge.solutionTtl', 300)),
             $min,
             $max,
@@ -109,13 +130,14 @@ final class ChallengeSettings
             $engines,
             Settings::strings($c, 'exemptPaths', 'challenge.exemptPaths'),
             $texts,
-            Settings::strings($c, 'alwaysPaths', 'challenge.alwaysPaths'),
+            $always,
             self::language($c),
             self::home($c),
             self::widgetPath($c),
             max(1000, Settings::int($c, 'widgetDifficulty', 'challenge.widgetDifficulty', 25000)),
             Settings::strings($c, 'apiPaths', 'challenge.apiPaths'),
             max(0, Settings::int($c, 'dnsLookups', 'challenge.dnsLookups', 30)),
+            $ages,
         );
     }
 

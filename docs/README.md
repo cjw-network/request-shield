@@ -15,6 +15,7 @@
   [the site asks for the check](features/app-challenges.md) ·
   [the check inside the form](features/browser-check-in-the-form.md) ·
   [known query parameters](features/known-parameters.md) ·
+  [modes: monitor and strict](features/modes.md) ·
   [settings](features/settings.md)
 - **Use cases** — scenarios end to end:
   [shared hosting DoS guard](use-cases/shared-hosting-dos-guard.md) ·
@@ -24,7 +25,7 @@
 - **Proposals** — planned features, open for discussion (status in each):
   [0001 earn back a spent budget](proposals/0001-earn-back-a-spent-budget.md) (implemented) ·
   [0003 human-readable rule files](proposals/0003-human-readable-rule-files.md) (implemented) ·
-  [0004 modes: monitor and strict](proposals/0004-modes-monitor-and-strict.md) (accepted) ·
+  [0004 modes: monitor and strict](proposals/0004-modes-monitor-and-strict.md) (implemented) ·
   [0005 versioned rule sets](proposals/0005-versioned-rule-sets.md) (implemented) ·
   [0006 the site asks for the check](proposals/0006-the-site-asks-for-the-check.md) (implemented) ·
   [0008 match blocks](proposals/0008-match-blocks.md) (first step implemented) ·

@@ -59,6 +59,11 @@ decoded — `//admin/` and `%61dmin` stay visible).
 Budgets counted by the application (`Shield::active()->consume('misses')`)
 are logged the same way when they refuse.
 
+What a rule would have decided in [`set mode monitor`](modes.md), or a rule
+marked `monitor`, is written with `monitor-` in front — `monitor-reject 404
+"blocked path" rule=SITE-OLD` — at the level of that decision: the visitor
+got in.
+
 - **Addresses are anonymised** by default to their network, and written as
   one (`198.51.100.0/24`, `2001:db8:1::/48`), so nobody mistakes an entry for
   a single client: enough to see a pattern, not a person. `set log-ip full`

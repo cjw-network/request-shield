@@ -61,7 +61,8 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `limit <name> <n>/<unit> [challenge-at <n>] [on-demand] [on-exceeded challenge]` | `budgets` | units `s`, `sec`, `min`, `hour`, `day`, also `20/10s`; `on-exceeded challenge`: past the limit the check that frees the counter instead of a pause ([budgets](budgets.md#past-the-limit-a-pause-or-earn-it-back)) |
 | `api-path <paths>` | `challenge.apiPaths` | the site's API: a check there is JSON with a header, not a page |
 | `no-limit <name>` | `budgets` | switch a budget off, the default one too |
-| `challenge <paths>` | `challenge.alwaysPaths` | always check the browser there |
+| `challenge <paths> [max-age <duration>]` | `challenge.alwaysPaths`, `challenge.alwaysMaxAge` | always check the browser there; `max-age 5m`: a pass from the last five minutes there ([modes](modes.md)) |
+| `monitor <rule>` | `monitorRules` | before `block`, `restrict`, `allow`, `limit`, `challenge`, `query strict`: logged as it would decide, not enforced ([modes](modes.md)) |
 | `challenge-exempt <paths>` | `challenge.exemptPaths` | never challenge there (APIs, feeds) |
 | `exempt <addresses or ranges>` | `exempt.ips` | never counted |
 | `set <key> <value>` | any other setting | see below |
@@ -240,6 +241,7 @@ keeps both the same.
 | `home` | a path (`/`) or an address: the shield's own pages (404, a pause, the check page) link to it, "To the home page" |
 | `language` | `auto` (default: the visitor's browser language among those there are texts for, else English) or a code: `de`, `en` |
 | `text.<key>`, `text.<lang>.<key>` | what visitors read (the rest of the line): for every language, or for one — `set text.de.title Einen Moment, bitte`. Keys: `title`, `text`, `noscript`, `nocookies`, `failed`, `try-again` (`%s` = seconds), `bad-request`, `no-access`, `not-found`, `not-allowed`, `too-long`, `too-many`, `too-large`, `error`. English and German are built in; another language comes with its texts (`text.fr.title …`) |
+| `mode` | `off`, `monitor`, `enforce` (default), `strict` ([modes](modes.md)) |
 | `log`, `log-level`, `log-ip`, `log-max-size` | [the log](log-and-rule-ids.md) |
 | `recheck` | how often the files are checked for changes, see below |
 

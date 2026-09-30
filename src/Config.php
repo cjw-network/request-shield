@@ -87,6 +87,14 @@ final class Config
                 // (keys: Texts::KEYS).
                 'texts' => [],
             ],
+            // How hard the shield acts: off (nothing at all), monitor (everything
+            // checked, counted and logged as it would be decided -- nobody is
+            // refused), enforce, strict (enforce with tighter values, for a site
+            // under attack). See docs/features/modes.md.
+            'mode' => 'enforce',
+            // The rules again with those marked "monitor" in a rule file: they
+            // are logged, not enforced (written by RuleFile; null: none).
+            'monitorRules' => null,
             // X-Request-Shield: <action> <reason> on every response (for testing).
             'debugHeader' => false,
             // The application may ask for the browser check with a response header,

@@ -58,6 +58,7 @@ final class RuleFile
         'home' => ['challenge.home', 'string'],
         'widget-path' => ['challenge.widgetPath', 'string'],
         'widget-difficulty' => ['challenge.widgetDifficulty', 'int'],
+        'mode' => ['mode', 'mode'],
         'log' => ['log.file', 'path'],
         'log-level' => ['log.level', 'loglevel'],
         'log-ip' => ['log.ip', 'logip'],
@@ -99,6 +100,12 @@ final class RuleFile
     /** @var list<string> reviewed revisions that differ from the rules' own: for check and the rules page */
     private array $warnings = [];
 
+    /** Whether rules marked "monitor" are read as rules (the second reading) or only noted (the first). */
+    private bool $monitoring = false;
+
+    /** Whether a rule marked "monitor" was seen. */
+    private bool $monitored = false;
+
     /** The shipped rule files: rules/<name>.rules ("@scanners", "@wordpress"). */
     public static function shipped(string $name): ?string
     {
@@ -127,7 +134,23 @@ final class RuleFile
      */
     public static function read(array $files): array
     {
+        $r = self::reading($files, false);
+        if ($r['monitored']) {
+            // Rules marked "monitor": read once more with them, for the log.
+            $r['config']['monitorRules'] = self::reading($files, true)['config'];
+        }
+        unset($r['monitored']);
+        return $r;
+    }
+
+    /**
+     * @param list<string> $files
+     * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, monitored: bool}
+     */
+    private static function reading(array $files, bool $monitoring): array
+    {
         $r = new self();
+        $r->monitoring = $monitoring;
         // Origins are named relative to the main file's directory (the last one).
         $main = $files === [] ? false : realpath(dirname($files[count($files) - 1]));
         $r->base = $main === false ? '' : $main . '/';
@@ -141,7 +164,7 @@ final class RuleFile
             $r->origins['warnings']['w' . $i] = $w;      // not numeric: PHP would make it an int key
         }
         $r->c['origins'] = $r->origins;
-        return ['config' => $r->c, 'seen' => $r->seen, 'env' => $r->env, 'recheck' => is_int($recheck) ? $recheck : 10];
+        return ['config' => $r->c, 'seen' => $r->seen, 'env' => $r->env, 'recheck' => is_int($recheck) ? $recheck : 10, 'monitored' => $r->monitored];
     }
 
     /**
@@ -247,6 +270,20 @@ final class RuleFile
         }
         $parts = preg_split('/\s+/', $line) ?: [];
         $keyword = strtolower((string) array_shift($parts));
+        // monitor <rule>: logged as it would decide, never enforced.
+        $monitor = false;
+        if ($keyword === 'monitor') {
+            $monitor = true;
+            $keyword = strtolower((string) array_shift($parts));
+            $line = (string) preg_replace('/^\S+\s*/', '', $line);
+            // The rules that refuse or check someone; the others refuse nobody.
+            $watchable = in_array($keyword, ['block', 'restrict', 'allow', 'limit', 'challenge'], true)
+                || ($keyword === 'query' && $parts === ['strict']);
+            if (!$watchable) {
+                throw new RuleFileException("$at: monitor <rule> -- for block, restrict, allow, limit, challenge and query strict"
+                    . ($keyword === '' ? '' : ", not \"$keyword\" (use set mode monitor to watch everything)"));
+            }
+        }
         $args = array_map(fn (string $a): string => $this->env($a, $at), $parts);
 
         // match <path> { ... }: the rules of an area, their paths the block's.
@@ -306,6 +343,15 @@ final class RuleFile
         if ($text !== null && $text !== '' && $keyword !== 'set' && $keyword !== 'include') {
             $this->origins['text'][$this->rid] = $text;
         }
+        if ($monitor) {
+            // The rule as written, for the rules page and show; enforced only
+            // in the second reading, which the log compares with.
+            $this->origins['monitor'][$this->rid] = $line;
+            $this->monitored = true;
+            if (!$this->monitoring) {
+                return;
+            }
+        }
 
         $this->dispatch($keyword, $args, $line, $at, $file);
     }
@@ -317,6 +363,18 @@ final class RuleFile
      */
     private function dispatch(string $keyword, array $args, string $line, string $at, string $file): void
     {
+        // challenge <paths> max-age 5m: a pass issued in the last five minutes there.
+        $maxAge = null;
+        if ($keyword === 'challenge' && ($i = array_search('max-age', $args, true)) !== false) {
+            if ($i !== count($args) - 2) {
+                throw new RuleFileException("$at: challenge <paths> max-age <duration> -- max-age and its duration come last");
+            }
+            $maxAge = self::seconds($args[$i + 1], 'max-age', $at);
+            if ($maxAge < 1) {
+                throw new RuleFileException("$at: max-age is at least one second");
+            }
+            array_splice($args, (int) $i, 2);
+        }
         $args = $this->inBlock($keyword, $args, $at, $file);
         switch ($keyword) {
             case 'host':
@@ -365,7 +423,15 @@ final class RuleFile
                 $this->origins['cacheable.query']['*'] = $this->rid;
                 return;
             case 'challenge':
-                $this->patterns('challenge.alwaysPaths', $args, $at, false);
+                foreach ($this->patterns('challenge.alwaysPaths', $args, $at, false) as $p) {
+                    $ages = (array) $this->get('challenge.alwaysMaxAge');
+                    if ($maxAge !== null) {
+                        $ages[$p] = $maxAge;
+                    } else {
+                        unset($ages[$p]);
+                    }
+                    $this->put('challenge.alwaysMaxAge', $ages);
+                }
                 return;
             case 'challenge-exempt':
                 $this->patterns('challenge.exemptPaths', $args, $at, false);
@@ -743,8 +809,9 @@ final class RuleFile
      * (file:line) is kept, so a decision can name the rule behind it.
      *
      * @param list<string> $args
+     * @return list<string> the patterns of this rule
      */
-    private function patterns(string $key, array $args, string $at, bool $sets): void
+    private function patterns(string $key, array $args, string $at, bool $sets): array
     {
         if ($args === []) {
             throw new RuleFileException("$at: " . strtok($key, '.') . ' needs at least one value');
@@ -752,7 +819,7 @@ final class RuleFile
         if ($args === ['any'] && $key === 'cacheable.paths') {
             $this->put($key, null);
             unset($this->origins[$key]);
-            return;
+            return [];
         }
         if ($args[0] === 'none') {
             $this->put($key, []);
@@ -770,6 +837,7 @@ final class RuleFile
             }
         }
         $this->put($key, $list);
+        return array_map('strval', array_keys($compiled));
     }
 
     /**
@@ -1224,10 +1292,7 @@ final class RuleFile
                 $v = (int) $value;
                 break;
             case 'seconds':
-                if (!preg_match('/^(\d+)(s|m|h|d)?$/', $value, $m)) {
-                    throw new RuleFileException("$at: $key is a duration (300, 30s, 5m, 1h, 1d), not \"$value\"");
-                }
-                $v = (int) $m[1] * ['' => 1, 's' => 1, 'm' => 60, 'h' => 3600, 'd' => 86400][$m[2] ?? ''];
+                $v = self::seconds($value, $key, $at);
                 break;
             case 'language':
                 $v = strtolower($value);
@@ -1238,6 +1303,12 @@ final class RuleFile
             case 'loglevel':
                 if (!in_array($value, \CjwNetwork\RequestShield\Log::LEVELS, true)) {
                     throw new RuleFileException("$at: log-level is " . implode(', ', \CjwNetwork\RequestShield\Log::LEVELS) . ", not \"$value\"");
+                }
+                $v = $value;
+                break;
+            case 'mode':
+                if (!in_array($value, \CjwNetwork\RequestShield\Settings::MODES, true)) {
+                    throw new RuleFileException("$at: mode is " . implode(', ', \CjwNetwork\RequestShield\Settings::MODES) . ", not \"$value\"");
                 }
                 $v = $value;
                 break;
@@ -1290,6 +1361,15 @@ final class RuleFile
             }
             throw new RuleFileException("$at: the environment variable $m[1] is not set");
         }, $value);
+    }
+
+    /** 300, 30s, 5m, 1h, 1d as seconds. */
+    private static function seconds(string $value, string $key, string $at): int
+    {
+        if (!preg_match('/^(\d+)(s|m|h|d)?$/', $value, $m)) {
+            throw new RuleFileException("$at: $key is a duration (300, 30s, 5m, 1h, 1d), not \"$value\"");
+        }
+        return (int) $m[1] * ['' => 1, 's' => 1, 'm' => 60, 'h' => 3600, 'd' => 86400][$m[2] ?? ''];
     }
 
     /** @return mixed */
