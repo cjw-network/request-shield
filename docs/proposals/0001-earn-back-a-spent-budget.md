@@ -25,7 +25,7 @@ and for **API calls** (a machine-readable challenge in a header).
 |---|---|---|
 | Past the limit, by default? | **A pause (429)**, as today. The check only where a site switches it on, per budget: `limit posts 20/min on-exceeded challenge` | An update changes nothing on its own; APIs, apps and monitoring keep getting the answer every tool understands (429 with `Retry-After`); a pause is the cheapest answer under attack. Where people are behind the requests (pages, forms), the site chooses the check. |
 | After a solved check? | **The counter starts again** (a whole new `limit`) | Simple and fair for a person: one check, and they go on. What keeps a bot from living off it is the next line. |
-| Harder each time? | **×2 per solve within an hour**, at most `difficulty-max`; after an hour without a solve, back to the start | A person solves once or twice and hardly notices (≈ 0.1 s, then 0.2 s); a bot that keeps coming back pays more each time (≈ 1–2 s on a phone at the default maximum). Stricter sites raise `difficulty-max`. |
+| Harder each time? | **×2 per solve within an hour**, from `difficulty-min` up to at most `difficulty-max`; after an hour without a solve, back to the start | A person solves once or twice and hardly notices (≈ 0.1 s, then 0.2 s); a bot that keeps coming back pays more each time (≈ 1–2 s on a phone at the default maximum). Stricter sites raise `difficulty-max`. |
 | What is an "API"? | **JSON** (`Accept` or `Content-Type` `application/json`, `*+json`), plus the paths a site names: `api-path /api/**` | JSON clients get the task as a header they can solve; the path is the surest sign a site knows. Browsers and simple tools (`*/*`) are not mistaken for APIs. |
 
 In plain words, for whom what changes when a site switches the check on:
@@ -67,8 +67,10 @@ limit posts 20/min on-exceeded challenge          # rule file; without "on-excee
   (`Store::reset(key)`, one write) and is bound to client, budget and
   challenge, and single-use as today.
 - **Escalation:** a second counter per client and budget counts solves per
-  hour; the difficulty doubles with each (`maxnumber × 2^solves`, at most
-  `difficulty-max`); an hour without a solve starts it again. One legitimate
+  hour; the difficulty starts at `difficulty-min` and doubles with each
+  (`difficulty-min × 2^solves`, at most `difficulty-max`: with the defaults
+  50,000 → 100,000 → 200,000 → 400,000 → 500,000); an hour without a solve
+  starts it again. One legitimate
   user solves once or twice; sustained abuse becomes exponentially more
   expensive.
 
