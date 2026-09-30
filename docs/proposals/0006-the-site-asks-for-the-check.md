@@ -20,7 +20,7 @@ for an account is opened, a post looks like spam. Checking every POST by rule
 (`challenge /comment`) is blunt; the site can do it where and when it matters,
 and a visitor must not lose what they typed.
 
-## Decisions (with Felix, 2026-09-29)
+## Decisions (2026-09-29)
 
 1. **The form is sent again automatically** after the check, with a *"Send
    again"* button without JavaScript; only once, only to the same address,

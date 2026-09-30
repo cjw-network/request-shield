@@ -132,7 +132,7 @@ abilities: see above, only while used.
 Rule files without blocks are unchanged. A file with blocks cannot be read by
 older versions of the library (an error names the `match` line).
 
-## Decisions (with Felix, 2026-09-29)
+## Decisions (2026-09-29)
 
 1. Nesting: yes — an inner path is added to the outer one; `**` only at the
    end of the innermost; a block by regex holds no blocks.

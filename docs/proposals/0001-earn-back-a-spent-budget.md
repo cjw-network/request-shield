@@ -19,7 +19,7 @@ and for **API calls** (a machine-readable challenge in a header).
 
 ![Past the limit: a pause by default; where the site switches it on, an invisible check -- solved, the counter starts again](0001-earn-back-a-spent-budget.svg)
 
-## Decisions (with Felix, 2026-09-30) — and why
+## Decisions (2026-09-30) — and why
 
 | Question | Decision | What it brings |
 |---|---|---|
