@@ -21,7 +21,7 @@ use CjwNetwork\RequestShield\Store\Store;
  *
  *   a valid pass cookie             -> through, as the rest of the checks decided
  *   a valid solution cookie         -> through, with a pass cookie set
- *   a verified search engine        -> through
+ *   a verified known crawler (allow) -> through (past a limit: 429)
  *   a path exempt from challenges   -> through (the budget's limit still applies)
  *   not GET or HEAD                 -> 429: a reload cannot repeat a form's POST
  *   anything else                   -> the challenge page
@@ -31,7 +31,7 @@ final class Gate
     public function __construct(
         private ChallengeSettings $config,
         private string $secret,
-        private ?SearchEngines $searchEngines = null,
+        private ?Crawlers $crawlers = null,
         private int $ipv6Prefix = 64,
         private ?Store $store = null,
     ) {
@@ -99,11 +99,18 @@ final class Gate
             // A wrong or stale solution: a new challenge below, without the old cookie.
         }
 
-        if ($this->searchEngines !== null && $this->searchEngines->verified($request->clientIp, $ua)) {
-            // A crawler cannot solve the check: past a limit, the pause it understands.
-            return $spent
-                ? ['decision' => Decision::throttle($budget, $challenged->retryAfter), 'cookies' => $cookies, 'page' => null, 'json' => null]
-                : ['decision' => $base, 'cookies' => $cookies, 'page' => null, 'json' => null];
+        // A known crawler the site lets through (policy allow), verified by its
+        // address: it cannot solve the check -- past a limit, the pause it
+        // understands. One that only claims the name is an ordinary visitor,
+        // noted in the log.
+        $crawler = $this->crawlers !== null ? $this->crawlers->claims($ua) : null;
+        if ($crawler !== null && $this->crawlers->policy($crawler) === 'allow') {
+            if ($this->crawlers->verified($request->clientIp, $crawler)) {
+                return $spent
+                    ? ['decision' => Decision::throttle($budget, $challenged->retryAfter), 'cookies' => $cookies, 'page' => null, 'json' => null]
+                    : ['decision' => $base, 'cookies' => $cookies, 'page' => null, 'json' => null];
+            }
+            $challenged = $challenged->claiming($crawler);
         }
         foreach ($forced || $spent ? [] : $this->config->exemptPaths as $pattern) {
             if (@preg_match($pattern, $request->path) === 1) {

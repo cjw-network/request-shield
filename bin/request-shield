@@ -9,7 +9,8 @@
  *   php bin/request-shield check  site.rules [--source=<glob>]...
  *   php bin/request-shield show   site.rules [--source=<glob>]...
  *   php bin/request-shield reload site.rules [--source=<glob>]...
- *   php bin/request-shield trace  site.rules "GET https://www.example.org/wp-login.php" [--ip=<address>]
+ *   php bin/request-shield trace  site.rules "GET https://www.example.org/wp-login.php" [--ip=<address>] [--ua=<User-Agent>]
+ *   php bin/request-shield crawlers site.rules [update] [--force]
  *
  * check:  reads every file, reports the first error with file and line, and
  *         warns about rule files anyone else could change.
@@ -19,6 +20,11 @@
  *         where servers without APCu do not look by themselves (extensions).
  * trace:  what happens to a request, check by check, in plain words (nothing
  *         is counted); the visitor's address with --ip (default 198.51.100.7).
+ * crawlers: the known crawlers, what the site does with each, and how old
+ *         their address lists are. "update" fetches the operators' current
+ *         lists into store-dir (cron, a deploy -- or where there is internet,
+ *         copying store-dir/crawlers/ into a DMZ); the servers read them on their
+ *         next check. A list that shrank to less than half is kept unless --force.
  */
 
 declare(strict_types=1);
@@ -26,6 +32,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/bootstrap.php';
 
 use CjwNetwork\RequestShield\Report\Inspector;
+use CjwNetwork\RequestShield\Rules\CrawlerLists;
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Rules\RuleFileException;
 use CjwNetwork\RequestShield\Settings;
@@ -34,8 +41,14 @@ $args = array_slice($argv, 1);
 $sources = [];
 $rest = [];
 $ip = '198.51.100.7';
+$force = false;
+$ua = null;
 foreach ($args as $a) {
-    if (strncmp($a, '--ip=', 5) === 0) {
+    if ($a === '--force') {
+        $force = true;
+    } elseif (strncmp($a, '--ua=', 5) === 0) {
+        $ua = substr($a, 5);
+    } elseif (strncmp($a, '--ip=', 5) === 0) {
         $ip = substr($a, 5);
     } elseif (strncmp($a, '--source=', 9) === 0) {
         $sources[] = substr($a, 9);
@@ -44,9 +57,11 @@ foreach ($args as $a) {
     }
 }
 [$command, $file, $what] = $rest + [null, null, null];
-if (!in_array($command, ['check', 'show', 'reload', 'trace'], true) || $file === null || ($command === 'trace' && $what === null)) {
+if (!in_array($command, ['check', 'show', 'reload', 'trace', 'crawlers'], true) || $file === null || ($command === 'trace' && $what === null)
+    || ($command === 'crawlers' && $what !== null && $what !== 'update')) {
     fwrite(STDERR, "usage: request-shield check|show|reload <main.rules> [--source=<glob>]...\n"
-        . "       request-shield trace <main.rules> \"GET https://www.example.org/path\" [--ip=<address>] [--source=<glob>]...\n");
+        . "       request-shield trace <main.rules> \"GET https://www.example.org/path\" [--ip=<address>] [--ua=<User-Agent>] [--source=<glob>]...\n"
+        . "       request-shield crawlers <main.rules> [update] [--force]\n");
     exit(2);
 }
 if (substr($file, -6) !== '.rules') {
@@ -68,7 +83,7 @@ if ($command === 'trace') {
     $parts = preg_split('/\s+/', trim((string) $what), 2) ?: [];
     [$method, $url] = count($parts) === 2 ? $parts : ['GET', $parts[0] ?? '/'];
     // Only looks at the counters (APCu is the CLI's own; files are the site's).
-    $t = (new Inspector($settings))->trace(Inspector::request($method, $url, $ip));
+    $t = (new Inspector($settings))->trace(Inspector::request($method, $url, $ip, $ua !== null ? ['User-Agent' => $ua] : []));
     $mark = ['pass' => '✓', 'note' => '!', 'stop' => '✕', 'skip' => '–'];
     echo strtoupper($method) . " $url from $ip\n\n";
     foreach ($t['steps'] as $st) {
@@ -77,6 +92,59 @@ if ($command === 'trace') {
     echo "\nThis visitor {$t['verdict']}." . ($t['rule'] !== null ? " Decided by {$t['rule']}." : '') . "\n";
     echo $t['watched'] !== null ? "Watched: it {$t['watched']}.\n" : '';
     exit($t['decision']->passes() || in_array($settings->mode, ['off', 'monitor'], true) ? 0 : 4);     // 4: refused (a script can test for it)
+}
+
+if ($command === 'crawlers') {
+    $dir = $settings->storeDir . '/crawlers';
+    if ($what === 'update') {
+        // The file each list is read from now: an earlier update, else the shipped one.
+        $lists = [];
+        foreach (RuleFile::crawlerListFiles($read['config']) as $name => $shipped) {
+            $lists[$name] = is_file("$dir/$name.json") ? "$dir/$name.json" : $shipped;
+        }
+        $failed = 0;
+        foreach (CrawlerLists::update($lists, $dir, null, $force) as $name => $happened) {
+            echo str_pad($name, 26) . $happened . "\n";
+            $failed += strncmp($happened, 'updated', 7) === 0 || strncmp($happened, 'unchanged', 9) === 0 ? 0 : 1;
+        }
+        echo "into $dir -- the servers read them on their next check\n";
+        exit($failed > 0 ? 1 : 0);
+    }
+    echo "crawler-verify $settings->crawlerVerify\n\n";
+    foreach ($settings->crawlers as $id => $x) {
+        $lists = [];
+        foreach ($x['lists'] as $name => $about) {
+            $lists[] = $name . ' (' . substr((string) ($about['created'] ?? '?'), 0, 10) . ', ' . ($about['from'] ?? '?') . ')';
+        }
+        echo str_pad($id, 24) . str_pad($x['kind'], 13) . str_pad($x['policy'], 7)
+            . ($lists !== [] ? ' ranges: ' . implode(', ', $lists) : '') . ($x['dns'] !== [] ? ' dns: ' . implode(' ', $x['dns']) : '') . "\n";
+    }
+    foreach (crawlerListsAge($settings) as $note) {
+        echo "\nnote: $note";
+    }
+    echo "\n";
+    exit(0);
+}
+
+/**
+ * Address lists older than 30 days (by the operator's date): a site whose
+ * server cannot fetch them (a DMZ) should update them elsewhere and deploy.
+ *
+ * @return list<string>
+ */
+function crawlerListsAge(Settings $settings): array
+{
+    $old = [];
+    foreach ($settings->crawlers as $x) {
+        foreach ($x['lists'] as $name => $about) {
+            $t = strtotime((string) ($about['fetched'] ?? $about['created'] ?? ''));
+            if ($t !== false && $t < time() - 30 * 86400) {
+                $old[$name] = substr((string) ($about['fetched'] ?? $about['created']), 0, 10);
+            }
+        }
+    }
+    return $old === [] ? [] : ['address lists fetched more than 30 days ago: ' . implode(', ', array_map(static fn (string $n, string $d): string => "$n ($d)", array_keys($old), $old))
+        . " -- php bin/request-shield crawlers <main.rules> update\n"];
 }
 
 $versions = $settings->origins['versions'] ?? [];
@@ -103,13 +171,16 @@ if ($command === 'check' || $command === 'reload') {
         }
     }
     $shipped = dirname(__DIR__) . '/rules/';
-    $files = count(array_filter(array_keys($read['seen']), static fn (string $f): bool => is_file($f) && strncmp((string) realpath($f), $shipped, strlen($shipped)) !== 0));
+    $files = count(array_filter(array_keys($read['seen']), static fn (string $f): bool => substr($f, -6) === '.rules' && strncmp((string) realpath($f), $shipped, strlen($shipped)) !== 0));
     $attacks = 0;
     foreach ($settings->contentRules as $r) {
         $attacks += count($r['patterns']);
     }
     echo "ok: $files file(s) + built-in rules, " . count($settings->blockedPaths) . ' blocked patterns, ' . count($settings->budgets) . ' budget(s)'
         . ($attacks > 0 ? ", $attacks attack patterns" : '') . ($sets !== '' ? "; $sets" : '') . "\n";
+    foreach (crawlerListsAge($settings) as $note) {
+        echo "note: $note";          // a note, not a warning: the exit code stays
+    }
     if ($command === 'reload') {
         touch($file);
         echo "reload: $file marked changed; every server reads the rules again on its next check\n";
@@ -193,6 +264,12 @@ foreach ($settings->origins['monitor'] ?? [] as $rid => $rule) {
 }
 echo $line('exempt ' . ($settings->exemptIps === [] ? 'none' : implode(' ', $settings->exemptIps)));
 echo $line("set mode $settings->mode");
+echo $line('# ' . count($settings->crawlers) . ' known crawlers (bin/request-shield crawlers ' . basename($file) . ')');
+foreach ($settings->origins['crawlerPolicy'] ?? [] as $key => $rid) {
+    $key = (string) $key;
+    echo $line((isset($settings->crawlers[$key]) ? "crawler $key " : "crawlers $key ") . ($settings->crawlerPolicy[$key] ?? '?'), (string) $rid);
+}
+echo $line("set crawler-verify $settings->crawlerVerify");
 echo $line('set pass-ttl ' . $settings->challenge->passTtl . 's');
 echo $line('set store ' . $settings->store);
 echo $line('set store-dir ' . $settings->storeDir);

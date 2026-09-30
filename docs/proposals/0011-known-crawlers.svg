@@ -39,5 +39,5 @@
 <text class="m" x="650" y="299" text-anchor="middle" font-size="12">robots.txt</text>
 <text class="m" x="20" y="350" font-size="12">A crawler at a normal pace costs the site little — and being found in search and AI answers</text>
 <text class="m" x="20" y="368" font-size="12">is what many sites want. The name alone proves nothing: only the address lets it through.</text>
-<text class="m" x="20" y="394" font-size="12">Proposed defaults: allow for search engines (as today) and for AI crawlers.</text>
+<text class="m" x="20" y="394" font-size="12">Defaults: allow for search engines (as before) and for AI crawlers.</text>
 </svg>

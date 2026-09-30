@@ -29,6 +29,11 @@ use CjwNetwork\RequestShield\Texts;
  */
 final class RuleFile
 {
+    /** The kinds of crawler (rules/crawlers.rules) and what a site may do with them. */
+    public const KINDS = ['search', 'ai-search', 'ai-user', 'ai-training'];
+
+    public const POLICIES = ['allow', 'check', 'block'];
+
     /** The sets "block @name" adds and "unblock @name" takes away. */
     private const SETS = ['scanners', 'wordpress', 'tracking'];
 
@@ -59,6 +64,7 @@ final class RuleFile
         'widget-path' => ['challenge.widgetPath', 'string'],
         'widget-difficulty' => ['challenge.widgetDifficulty', 'int'],
         'mode' => ['mode', 'mode'],
+        'crawler-verify' => ['crawlerVerify', 'verify'],
         'log' => ['log.file', 'path'],
         'log-level' => ['log.level', 'loglevel'],
         'log-ip' => ['log.ip', 'logip'],
@@ -155,9 +161,11 @@ final class RuleFile
         $main = $files === [] ? false : realpath(dirname($files[count($files) - 1]));
         $r->base = $main === false ? '' : $main . '/';
         $r->file((string) self::shipped('scanners'), null, null);
+        $r->file((string) self::shipped('crawlers'), null, null);
         foreach ($files as $file) {
             $r->source($file, null, null);
         }
+        $r->resolveLists();
         $recheck = $r->c['recheck'];
         unset($r->c['recheck']);
         foreach ($r->warnings as $i => $w) {
@@ -165,6 +173,60 @@ final class RuleFile
         }
         $r->c['origins'] = $r->origins;
         return ['config' => $r->c, 'seen' => $r->seen, 'env' => $r->env, 'recheck' => is_int($recheck) ? $recheck : 10, 'monitored' => $r->monitored];
+    }
+
+    /**
+     * The shipped crawlers as rules/crawlers.php holds them (for settings
+     * from a PHP array): rules/crawlers.rules with its shipped address lists.
+     *
+     * @return array<string, array{kind: string, ua: string, dns: list<string>, lists: array<string, mixed>, ranges: list<string>, nets: array<string, list<array{0: string, 1: int}>>}>
+     */
+    public static function shippedCrawlers(): array
+    {
+        $r = new self();
+        $r->c['storeDir'] = null;
+        $r->file((string) self::shipped('crawlers'), null, null);
+        $r->resolveLists();
+        $crawlers = $r->crawlers();
+        foreach ($crawlers as $id => $x) {
+            $crawlers[$id]['nets'] = \CjwNetwork\RequestShield\IpAddress::index($x['ranges']);    // the lookup, ready (PHP settings build nothing per request)
+        }
+        return $crawlers;
+    }
+
+    /**
+     * The contents rules/crawlers.php must have: the shipped crawlers ready
+     * for Settings (policy allow, the address lookup, the expression).
+     */
+    public static function shippedCrawlersPhp(): string
+    {
+        $crawlers = self::shippedCrawlers();
+        foreach ($crawlers as $id => $x) {
+            $crawlers[$id]['policy'] = 'allow';
+        }
+        [$index, $ids] = \CjwNetwork\RequestShield\Settings::crawlerIndex($crawlers);
+        return "<?php\n// Generated from rules/crawlers.rules and rules/crawlers/*.json by bin/update-crawler-lists -- do not edit.\n"
+            . 'return ' . var_export(['crawlers' => $crawlers, 'index' => $index, 'ids' => $ids], true) . ";\n";
+    }
+
+    /**
+     * The address lists the crawlers of these rules read, name => file (for
+     * "crawlers update").
+     *
+     * @param array<string, mixed> $config what read() returned as config
+     * @return array<string, string>
+     */
+    public static function crawlerListFiles(array $config): array
+    {
+        $out = [];
+        foreach ((array) ($config['crawlers'] ?? []) as $x) {
+            foreach (is_array($x) ? (array) ($x['lists'] ?? []) : [] as $name => $about) {
+                if (strpos((string) $name, '/') === false) {
+                    $out[(string) $name] = dirname(__DIR__, 2) . "/rules/crawlers/$name.json";
+                }
+            }
+        }
+        return $out;
     }
 
     /**
@@ -450,6 +512,15 @@ final class RuleFile
                 $this->put("budgets.$args[0]", ['limit' => 0]);
                 unset($this->origins['budgets'][$args[0]]);
                 return;
+            case 'crawler':
+                $this->crawler($args, $at, $file);
+                return;
+            case 'crawlers':
+                if (count($args) !== 2 || !in_array($args[0], self::KINDS, true) || !in_array($args[1], self::POLICIES, true)) {
+                    throw new RuleFileException("$at: crawlers <kind> <policy> -- kinds " . implode(', ', self::KINDS) . '; policies ' . implode(', ', self::POLICIES));
+                }
+                $this->crawlerPolicy($args[0], $args[1]);
+                return;
             case 'set':
                 $this->set($line, $at, $file);
                 return;
@@ -479,7 +550,7 @@ final class RuleFile
                 return;
         }
         throw new RuleFileException("$at: unknown rule \"$keyword\"" . self::suggest($keyword,
-            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'api-path', 'limit', 'no-limit', 'set', 'include']));
+            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'api-path', 'limit', 'no-limit', 'crawler', 'crawlers', 'set', 'include']));
     }
 
     /**
@@ -1306,6 +1377,12 @@ final class RuleFile
                 }
                 $v = $value;
                 break;
+            case 'verify':
+                if (!in_array($value, ['both', 'ranges', 'dns'], true)) {
+                    throw new RuleFileException("$at: crawler-verify is both, ranges (the published address lists only: no DNS, for a DMZ) or dns, not \"$value\"");
+                }
+                $v = $value;
+                break;
             case 'mode':
                 if (!in_array($value, \CjwNetwork\RequestShield\Settings::MODES, true)) {
                     throw new RuleFileException("$at: mode is " . implode(', ', \CjwNetwork\RequestShield\Settings::MODES) . ", not \"$value\"");
@@ -1361,6 +1438,119 @@ final class RuleFile
             }
             throw new RuleFileException("$at: the environment variable $m[1] is not set");
         }, $value);
+    }
+
+    /**
+     * crawler <kind> ua /<pattern>/ [dns <suffixes>] [ranges <lists>]: a
+     * crawler that behaves, verified by where it comes from -- or
+     * crawler <ID> <policy>: what the site does with one.
+     *
+     * @param list<string> $args
+     */
+    private function crawler(array $args, string $at, string $file): void
+    {
+        if (count($args) === 2 && in_array($args[1], self::POLICIES, true)) {
+            $id = trim($args[0], '[]');
+            if (!isset($this->crawlers()[$id])) {
+                throw new RuleFileException("$at: crawler $id -- no crawler has that ID (they are in rules/crawlers.rules: CRAWL-GOOGLE, CRAWL-GPTBOT, …)");
+            }
+            $this->crawlerPolicy($id, $args[1]);
+            return;
+        }
+        $usage = 'crawler <kind> ua /<pattern>/ [dns <host suffixes>] [ranges <lists>] -- or crawler <ID> allow|check|block';
+        $kind = array_shift($args);
+        if ($kind === null || !in_array($kind, self::KINDS, true)) {
+            throw new RuleFileException("$at: $usage (kinds: " . implode(', ', self::KINDS) . ')');
+        }
+        $ua = null;
+        $dns = [];
+        $lists = [];
+        $part = null;
+        foreach ($args as $a) {
+            if (in_array($a, ['ua', 'dns', 'ranges'], true)) {
+                $part = $a;
+                continue;
+            }
+            if ($part === 'ua' && $ua === null && preg_match('#^/(.+)/$#', $a, $m)) {
+                $ua = Pattern::fromRegex($m[1]) . 'i';
+                if (!Pattern::valid($ua)) {
+                    throw new RuleFileException("$at: \"$a\" is not a valid regular expression");
+                }
+            } elseif ($part === 'dns' && preg_match('/^\.[a-z0-9.-]+[a-z]$/', strtolower($a))) {
+                $dns[] = strtolower($a);
+            } elseif ($part === 'ranges' && preg_match('/^[a-z0-9._-]+$|\//', $a)) {
+                // A shipped list's name (rules/crawlers/<name>.json), or a file of the site's own (….json).
+                $own = strpos($a, '/') !== false || substr($a, -5) === '.json';
+                $path = !$own ? dirname(__DIR__, 2) . "/rules/crawlers/$a.json" : ($a[0] === '/' ? $a : dirname($file) . '/' . $a);
+                if (!is_file($path)) {
+                    throw new RuleFileException("$at: no address list \"$a\" (" . (!$own ? 'rules/crawlers/' . $a . '.json' : $path) . ')');
+                }
+                $lists[$own ? $path : $a] = $path;
+            } else {
+                throw new RuleFileException("$at: $usage -- \"$a\" does not fit" . ($part === 'dns' ? ' (a suffix starts with a dot: .googlebot.com)' : ''));
+            }
+        }
+        if ($ua === null || ($dns === [] && $lists === [])) {
+            throw new RuleFileException("$at: $usage -- a User-Agent pattern and a way to verify it (dns or ranges): the name alone proves nothing");
+        }
+        $crawlers = $this->crawlers();
+        $crawlers[$this->rid] = ['kind' => $kind, 'ua' => $ua, 'dns' => $dns, 'lists' => $lists, 'ranges' => []];
+        $this->c['crawlers'] = $crawlers;
+        $this->origins['crawlers'][$this->rid] = $this->rid;
+    }
+
+    /** @return array<string, array{kind: string, ua: string, dns: list<string>, lists: array<string, mixed>, ranges: list<string>}> */
+    private function crawlers(): array
+    {
+        /** @var array<string, array{kind: string, ua: string, dns: list<string>, lists: array<string, mixed>, ranges: list<string>}> */
+        return is_array($this->c['crawlers'] ?? null) ? $this->c['crawlers'] : [];
+    }
+
+    private function crawlerPolicy(string $key, string $policy): void
+    {
+        $policies = is_array($this->c['crawlerPolicy'] ?? null) ? $this->c['crawlerPolicy'] : [];
+        $policies[$key] = $policy;
+        $this->c['crawlerPolicy'] = $policies;
+        $this->origins['crawlerPolicy'][$key] = $this->rid;
+    }
+
+    /**
+     * The address lists of the crawlers, read now (compiled with the
+     * settings): the shipped ones, or newer ones "crawlers update" put into
+     * store-dir.
+     */
+    private function resolveLists(): void
+    {
+        $dir = is_string($this->c['storeDir'] ?? null) ? $this->c['storeDir'] . '/crawlers' : null;
+        if ($dir !== null) {
+            $stat = self::stat($dir);
+            if ($stat !== null) {
+                $this->seen[$dir] = $stat;          // a list updated there is noticed
+            }
+        }
+        $read = [];
+        $crawlers = $this->crawlers();
+        foreach ($crawlers as $id => $crawler) {
+            $ranges = [];
+            $about = [];
+            foreach ($crawler['lists'] as $name => $path) {
+                $name = (string) $name;
+                $read[$name] ??= CrawlerLists::read(is_string($path) ? $path : '', $dir !== null && strpos($name, '/') === false ? "$dir/$name.json" : null);
+                foreach ($read[$name]['files'] as $f) {
+                    $stat = self::stat($f);
+                    if ($stat !== null) {
+                        $this->seen[$f] = $stat;
+                    }
+                }
+                array_push($ranges, ...$read[$name]['prefixes']);
+                $about[$name] = ['source' => $read[$name]['source'], 'created' => $read[$name]['created'], 'fetched' => $read[$name]['fetched'], 'from' => $read[$name]['from']];
+            }
+            $crawlers[$id]['ranges'] = array_values(array_unique($ranges));
+            $crawlers[$id]['lists'] = $about;
+        }
+        if ($crawlers !== []) {
+            $this->c['crawlers'] = $crawlers;
+        }
     }
 
     /** 300, 30s, 5m, 1h, 1d as seconds. */

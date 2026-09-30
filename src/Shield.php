@@ -10,13 +10,14 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield;
 
+use CjwNetwork\RequestShield\Challenge\Crawlers;
 use CjwNetwork\RequestShield\Challenge\Gate;
-use CjwNetwork\RequestShield\Challenge\SearchEngines;
 use CjwNetwork\RequestShield\Challenge\Secret;
 use CjwNetwork\RequestShield\Rule\BlockedPathRule;
 use CjwNetwork\RequestShield\Rule\BudgetRule;
 use CjwNetwork\RequestShield\Rule\CacheableRule;
 use CjwNetwork\RequestShield\Rule\ContentRule;
+use CjwNetwork\RequestShield\Rule\CrawlerRule;
 use CjwNetwork\RequestShield\Rule\HostRule;
 use CjwNetwork\RequestShield\Rule\LimitsRule;
 use CjwNetwork\RequestShield\Rule\MethodPathRule;
@@ -102,6 +103,13 @@ final class Shield
         }
         if ($s->restricted !== []) {
             $this->rules[] = new RestrictedPathRule($s->restricted);
+        }
+        // Known crawlers the site refuses: only when there are such.
+        foreach ($s->crawlers as $x) {
+            if ($x['policy'] === 'block') {
+                $this->rules[] = new CrawlerRule($this->crawlers());
+                break;
+            }
         }
         // Known parameters before the attack patterns: cheaper, and they say
         // which values the patterns need to look at.
@@ -358,6 +366,9 @@ final class Shield
                 return $name('hosts', '*', 'hosts');
             case 'app':
                 return 'application';
+            case 'crawler':
+                $id = $this->crawlers()->claims((string) $request->header('user-agent'));
+                return $id === null ? null : ($s->origin('crawlerPolicy', $id) ?? $s->origin('crawlerPolicy', $this->crawlers()->kind($id)) ?? $id);
             case 'unknown parameter':
                 return $name('query', 'strict', 'queryStrict');
             case 'attack':
@@ -803,42 +814,52 @@ final class Shield
     private function gate(): Gate
     {
         $c = $this->settings->challenge;
-        $dir = $this->settings->storeDir;
-        $engines = null;
-        if ($c->searchEngines !== null) {
-            $apcu = ApcuStore::usable();
-            $engines = new SearchEngines(
-                $c->searchEngines,
-                static function (string $key) use ($apcu, $dir): ?string {
-                    if ($apcu) {
-                        $v = apcu_fetch('rshield:' . $key);
-                        return is_string($v) ? $v : null;
-                    }
-                    $f = $dir . '/se/' . md5($key);
-                    $mtime = @filemtime($f);
-                    if ($mtime === false || $mtime <= time() - 86400) {
-                        return null;
-                    }
-                    $v = @file_get_contents($f);
-                    return is_string($v) ? $v : null;
-                },
-                static function (string $key, string $value) use ($apcu, $dir): void {
-                    if ($apcu) {
-                        apcu_store('rshield:' . $key, $value, 86400);
-                        return;
-                    }
-                    @mkdir($dir . '/se', 0700, true);
-                    @file_put_contents($dir . '/se/' . md5($key), $value);
-                },
-                null,
-                null,
-                // New DNS lookups per minute, for all requests together (the store).
-                function () use ($c): bool {
-                    return $c->dnsLookups > 0 && $this->store->hit('se-lookups', 60, microtime(true)) <= $c->dnsLookups;
-                },
-            );
+        return new Gate($c, Secret::resolve($c->secret, $this->settings->storeDir),
+            $this->settings->crawlers === [] ? null : $this->crawlers(), $this->settings->ipv6Prefix, $this->store);
+    }
+
+    private ?Crawlers $crawlers = null;
+
+    /**
+     * The known crawlers, with what verifying them costs remembered for a day
+     * per address (APCu, else files in store-dir) and DNS lookups limited
+     * (dns-lookups a minute, for all requests together).
+     */
+    public function crawlers(): Crawlers
+    {
+        if ($this->crawlers !== null) {
+            return $this->crawlers;
         }
-        return new Gate($c, Secret::resolve($c->secret, $dir), $engines, $this->settings->ipv6Prefix, $this->store);
+        $c = $this->settings->challenge;
+        $dir = $this->settings->storeDir;
+        $apcu = ApcuStore::usable();
+        return $this->crawlers = Crawlers::of($this->settings,
+            static function (string $key) use ($apcu, $dir): ?string {
+                if ($apcu) {
+                    $v = apcu_fetch('rshield:' . $key);
+                    return is_string($v) ? $v : null;
+                }
+                $f = $dir . '/se/' . md5($key);
+                $mtime = @filemtime($f);
+                if ($mtime === false || $mtime <= time() - 86400) {
+                    return null;
+                }
+                $v = @file_get_contents($f);
+                return is_string($v) ? $v : null;
+            },
+            static function (string $key, string $value) use ($apcu, $dir): void {
+                if ($apcu) {
+                    apcu_store('rshield:' . $key, $value, 86400);
+                    return;
+                }
+                @mkdir($dir . '/se', 0700, true);
+                @file_put_contents($dir . '/se/' . md5($key), $value);
+            },
+            // New DNS lookups per minute, for all requests together (the store).
+            function () use ($c): bool {
+                return $c->dnsLookups > 0 && $this->store->hit('se-lookups', 60, microtime(true)) <= $c->dnsLookups;
+            },
+        );
     }
 
     /** The store the settings ask for ("auto": APCu when usable, else files). */

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Accepted** 2026-09-30 (decisions below), not yet implemented |
+| Status | **Implemented** 2026-09-30 (see [known crawlers](../features/known-crawlers.md)) |
 | Proposed | 2026-09-30 |
 | Affects | the browser check, budgets, rule files, the rules page |
 
@@ -192,6 +192,28 @@ someone only claimed to be it.
 | Which crawlers on the list? | **Only those an operator lets verify** (published addresses or DNS) | Only real ones get through; a borrowed name gets nothing. Others stay ordinary visitors. |
 | Address lists | **Shipped with each release, plus `crawlers update`** | Works offline (a DMZ), stays current where the update runs. |
 | A budget of its own for a verified crawler? | **Not in the first step** | Counting per address is enough so far; a shared budget per operator later, if logs show the need. |
+
+## As built — where it differs
+
+- **The lists:** Google's `common-crawlers.json` is gone (404); Googlebot is
+  verified by `googlebot.json` and `special-crawlers.json` (AdsBot,
+  Storebot), plus DNS. DuckDuckBot and DuckAssistBot publish the same list;
+  Anthropic one list for its three crawlers; Common Crawl a list
+  (`index.commoncrawl.org/ccbot.json`) and DNS (`.crawl.commoncrawl.org`).
+- **Syntax:** `crawler <kind> ua /<pattern>/ [dns …] [ranges <list names or ./files.json>]`;
+  policies `crawlers <kind> <policy>` and `crawler <ID> <policy>`.
+- **Verifying by list is a lookup of about half a microsecond** (the ranges
+  grouped by their first two bytes, built when the settings are compiled), so
+  only DNS answers are remembered; a normal request pays nothing — the name is
+  looked at only when the check would come, or when some crawler is refused.
+- **Updating:** `bin/request-shield crawlers <site.rules> update` for a site
+  (into store-dir), `bin/update-crawler-lists` for a release, a weekly
+  workflow that fails when a list changed; a list that shrank to less than
+  half is refused.
+- **The old `search-engines` setting stays:** `off` recognises no crawler;
+  the PHP map of patterns to DNS suffixes still works (as search engines).
+- A request that only claims a crawler's name is logged with `claimed=<ID>`
+  when it is checked or stopped; the rules page counts these per crawler.
 
 ## Open questions (as proposed)
 

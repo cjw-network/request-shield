@@ -130,6 +130,24 @@ final class Inspector
         $restricted = $s->restricted === [] ? null : (new RestrictedPathRule($s->restricted))->check($request, $now);
         $step('Areas for certain visitors', $restricted, $this->restrictedPass($request),
             fn (): string => 'only for ' . $this->restrictedFor($request) . " — $request->clientIp is not one of them");
+        $crawler = null;
+        $crawlerText = 'no known crawlers configured';
+        if ($s->crawlers !== []) {
+            $cr = $this->shield->crawlers();
+            $id = $cr->claims((string) $request->header('user-agent'));
+            if ($id === null) {
+                $crawlerText = 'the User-Agent names no known crawler';
+            } elseif (!$cr->verified($request->clientIp, $id)) {
+                $crawlerText = "names $id, but $request->clientIp is not one of its addresses — an ordinary visitor (when it is checked or stopped, the log notes claimed=$id)";
+            } else {
+                $policy = $cr->policy($id);
+                $crawlerText = "$id, verified by its address — " . (['allow' => 'never given the browser check (its pace is still limited)', 'check' => 'checked like any visitor (crawler ' . $id . ' check)'][$policy] ?? 'refused');
+                if ($policy === 'block') {
+                    $crawler = Decision::reject(403, 'crawler');
+                }
+            }
+        }
+        $step('Known crawlers', $crawler, $crawlerText, static fn (): string => 'refused (403): the site does not want this crawler');
         $query = $s->queryParams === [] && !$s->queryStrict ? null : (new \CjwNetwork\RequestShield\Rule\QueryRule($s->queryIndex, $s->queryStrict))->check($request, $now);
         $step('Known parameters', $query, $this->queryPass($request),
             fn (): string => 'refused: ' . $this->queryProblem($request) . ' (query strict)');

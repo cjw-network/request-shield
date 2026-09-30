@@ -33,6 +33,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   ([docs](docs/features/modes.md)).
 - The demo watches a rule (`/old/api`) and has a checkout with `max-age 20s`.
 
+- Known crawlers (proposal 0011): search engines and AI crawlers that behave
+  are never given the browser check -- verified by their operators' published
+  address lists (shipped in `rules/crawlers/`, a lookup of about half a
+  microsecond) or by DNS, never by the name they send. 19 crawlers in
+  `rules/crawlers.rules` in four kinds (`search`, `ai-search`, `ai-user`,
+  `ai-training`): Google, Bing, Apple, DuckDuckGo, Yandex, Baidu, Qwant,
+  Seznam, OpenAI, Anthropic, Perplexity, Amazon, Common Crawl. `crawlers <kind>
+  allow|check|block` and `crawler <ID> …` decide per kind or one by one
+  (default allow; block answers 403); `set crawler-verify ranges` verifies
+  without DNS (a DMZ); a site's own crawler with `crawler <kind> ua … dns …
+  ranges ./file.json`. A request that only claims a crawler's name is logged
+  with `claimed=<ID>`. `bin/request-shield crawlers <site.rules> [update]`
+  lists them and fetches current lists into store-dir; `bin/update-crawler-lists`
+  refreshes the shipped lists before a release (a weekly workflow reports
+  changes); `trace --ua=…`. The rules page lists the crawlers and counts false
+  claims ([docs](docs/features/known-crawlers.md)).
+
 ### Changed
 - The query string is parsed once per request, for every check that reads it.
 

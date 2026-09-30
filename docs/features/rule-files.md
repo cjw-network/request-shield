@@ -65,6 +65,8 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `monitor <rule>` | `monitorRules` | before `block`, `restrict`, `allow`, `limit`, `challenge`, `query strict`: logged as it would decide, not enforced ([modes](modes.md)) |
 | `challenge-exempt <paths>` | `challenge.exemptPaths` | never challenge there (APIs, feeds) |
 | `exempt <addresses or ranges>` | `exempt.ips` | never counted |
+| `crawlers <kind> allow\|check\|block` / `crawler <ID> allow\|check\|block` | `crawlerPolicy` | what the site does with verified crawlers, by kind (`search`, `ai-search`, `ai-user`, `ai-training`) or one by one ([known crawlers](known-crawlers.md)) |
+| `crawler <kind> ua /<pattern>/ [dns <suffixes>] [ranges <lists>]` | `crawlers` | a crawler of the site's own, verified by DNS or an address list (`ranges ./ours.json`) |
 | `set <key> <value>` | any other setting | see below |
 | `include <path or glob>` | — | further rule files, relative to this one |
 
@@ -217,6 +219,7 @@ before the site's own rules — the same format, with IDs and descriptions:
 |---|---|---|
 | `rules/scanners.rules` | `SCAN-HIDDEN`, `SCAN-BACKUP`, `SCAN-TEST`, `SCAN-DBTOOL`, `SCAN-CGI` | always read |
 | `rules/wordpress.rules` | `WP-FOLDERS`, `WP-SCRIPTS` | `include @wordpress` (or `block @wordpress`), for sites that are not WordPress |
+| `rules/crawlers.rules` | `CRAWL-GOOGLE`, `CRAWL-GPTBOT`, … (19) | always read: the [known crawlers](known-crawlers.md), with their address lists in `rules/crawlers/` |
 | `rules/tracking.rules` | `TRACK-UTM`, `TRACK-GOOGLE`, `TRACK-MICROSOFT`, `TRACK-META`, `TRACK-SOCIAL`, `TRACK-MAIL`, `TRACK-OTHER` | `include @tracking`: the marketing tags as known parameters ([known parameters](known-parameters.md#the-marketing-tags-tracking)) |
 
 `unblock @scanners` takes back all of a shipped file's blocks, `unblock
@@ -233,7 +236,7 @@ keeps both the same.
 | `pass-ttl`, `solution-ttl` | `3600`, `30m`, `1h`, `1d` |
 | `difficulty-min`, `difficulty-max` | numbers |
 | `cookie`, `solution-cookie` | cookie names |
-| `bind-user-agent`, `search-engines`, `debug-header`, `strip-untrusted-forwarded` | `on` / `off` |
+| `bind-user-agent`, `search-engines`, `debug-header`, `strip-untrusted-forwarded` | `on` / `off` (`search-engines off`: no crawler is recognised) |
 | `dns-lookups` | new DNS lookups a minute to verify search engines, for all requests together (default 30; `0`: none — a DMZ without DNS) |
 | `app-challenge` | `on`: the site may ask for the check with the header `X-Request-Shield-Challenge: required` ([docs](app-challenges.md)) |
 | `ipv6-prefix`, `max-uri`, `max-query-parameters`, `max-header-bytes` | numbers |
@@ -242,6 +245,7 @@ keeps both the same.
 | `language` | `auto` (default: the visitor's browser language among those there are texts for, else English) or a code: `de`, `en` |
 | `text.<key>`, `text.<lang>.<key>` | what visitors read (the rest of the line): for every language, or for one — `set text.de.title Einen Moment, bitte`. Keys: `title`, `text`, `noscript`, `nocookies`, `failed`, `try-again` (`%s` = seconds), `bad-request`, `no-access`, `not-found`, `not-allowed`, `too-long`, `too-many`, `too-large`, `error`. English and German are built in; another language comes with its texts (`text.fr.title …`) |
 | `mode` | `off`, `monitor`, `enforce` (default), `strict` ([modes](modes.md)) |
+| `crawler-verify` | `both` (default), `ranges` (the published address lists only: no DNS, for a DMZ), `dns` ([known crawlers](known-crawlers.md)) |
 | `log`, `log-level`, `log-ip`, `log-max-size` | [the log](log-and-rule-ids.md) |
 | `recheck` | how often the files are checked for changes, see below |
 

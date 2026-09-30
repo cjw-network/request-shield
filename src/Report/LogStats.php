@@ -18,18 +18,18 @@ namespace CjwNetwork\RequestShield\Report;
 final class LogStats
 {
     /**
-     * @return array{rules: array<string, array{count: int, last: int}>, actions: array<string, int>, recent: list<array{time: int, client: string, action: string, status: int, reason: string, rule: ?string, method: string, url: string, agent: string}>, since: int, lines: int}
+     * @return array{rules: array<string, array{count: int, last: int}>, actions: array<string, int>, claims: array<string, int>, recent: list<array{time: int, client: string, action: string, status: int, reason: string, rule: ?string, method: string, url: string, agent: string}>, since: int, lines: int}
      */
     public static function read(?string $file, int $since, int $recent = 20, int $maxBytes = 1048576): array
     {
-        $out = ['rules' => [], 'actions' => [], 'recent' => [], 'since' => $since, 'lines' => 0];
+        $out = ['rules' => [], 'actions' => [], 'claims' => [], 'recent' => [], 'since' => $since, 'lines' => 0];
         if ($file === null) {
             return $out;
         }
         $text = self::tail($file . '.1', $maxBytes) . self::tail($file, $maxBytes);
         $lines = [];
         foreach (explode("\n", $text) as $line) {
-            if (!preg_match('/^(\S+) (\S+) (\S+) (\d+) "([^"]*)"(?: rule=(.*?))? "(\S+) ([^"]*)" "([^"]*)"$/', $line, $m)) {
+            if (!preg_match('/^(\S+) (\S+) (\S+) (\d+) "([^"]*)"(?: rule=(.*?))?(?: claimed=(\S+))? "(\S+) ([^"]*)" "([^"]*)"$/', $line, $m)) {
                 continue;
             }
             $time = strtotime($m[1]);
@@ -37,7 +37,11 @@ final class LogStats
                 continue;
             }
             $entry = ['time' => $time, 'client' => $m[2], 'action' => $m[3], 'status' => (int) $m[4], 'reason' => $m[5],
-                'rule' => $m[6] !== '' ? $m[6] : null, 'method' => $m[7], 'url' => $m[8], 'agent' => $m[9]];
+                'rule' => $m[6] !== '' ? $m[6] : null, 'method' => $m[8], 'url' => $m[9], 'agent' => $m[10]];
+            if ($m[7] !== '') {
+                // Named a known crawler without coming from it.
+                $out['claims'][$m[7]] = ($out['claims'][$m[7]] ?? 0) + 1;
+            }
             $lines[] = $entry;
             $out['actions'][$entry['action']] = ($out['actions'][$entry['action']] ?? 0) + 1;
             if ($entry['rule'] !== null) {

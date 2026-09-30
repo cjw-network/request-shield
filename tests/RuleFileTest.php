@@ -467,10 +467,10 @@ return [
         $dir = ruleDir(['site.rules' => "ids SITE\nversion 2026-09-29.2\ninclude ext/*.rules\n", 'ext/shop.rules' => "version 1.4.0\nblock /x\n"]);
         try {
             $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
-            same(['SCAN' => '2026.09.1', 'ext/shop.rules' => '1.4.0', 'SITE' => '2026-09-29.2'], $s->origins['versions'], 'the built-ins, then in the order read; a file without namespace by its name');
+            same(['SCAN' => '2026.09.1', 'CRAWL' => '2026.10.1', 'ext/shop.rules' => '1.4.0', 'SITE' => '2026-09-29.2'], $s->origins['versions'], 'the built-ins, then in the order read; a file without namespace by its name');
             $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
             exec("$bin check " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
-            truthy(strpos(implode("\n", $out), 'rule sets SCAN 2026.09.1, ext/shop.rules 1.4.0, SITE 2026-09-29.2') !== false, implode("\n", $out));
+            truthy(strpos(implode("\n", $out), 'rule sets SCAN 2026.09.1, CRAWL 2026.10.1, ext/shop.rules 1.4.0, SITE 2026-09-29.2') !== false, implode("\n", $out));
             $html = \CjwNetwork\RequestShield\Report\RulesPage::render($s, ['store' => new MemoryStore()]);
             truthy(strpos($html, '<code>SITE 2026-09-29.2</code>') !== false, 'on the rules page');
         } finally {

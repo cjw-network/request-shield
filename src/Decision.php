@@ -49,7 +49,15 @@ final class Decision
         public float $level = 0.0,
         /** A budget past its limit that lets its client earn it back (onExceeded: challenge). */
         public bool $spent = false,
+        /** @readonly the known crawler the request named without coming from it (for the log), or null */
+        public ?string $claimed = null,
     ) {
+    }
+
+    /** The same decision, noting that the request claimed to be a crawler it is not. */
+    public function claiming(string $crawler): self
+    {
+        return new self($this->action, $this->status, $this->reason, $this->retryAfter, $this->level, $this->spent, $crawler);
     }
 
     public static function allow(): self

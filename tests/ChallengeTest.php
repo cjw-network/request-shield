@@ -142,9 +142,13 @@ return [
         same('1', $cache['se:66.249.66.1'] ?? null, 'remembered');
         truthy(!$engines->verified('6.6.6.6', $bot), 'claims Googlebot, resolves elsewhere');
         truthy(!$engines->verified('66.249.66.1', 'curl/8'), 'no crawler claimed');
-        $gate = new Gate(ChallengeSettings::from([]), SECRET, $engines);
+        $crawlers = \CjwNetwork\RequestShield\Challenge\Crawlers::of(\CjwNetwork\RequestShield\Settings::from(['crawlerVerify' => 'dns']), null, null, null,
+            fn (string $ip) => ['66.249.66.1' => 'crawl-66-249-66-1.googlebot.com', '6.6.6.6' => 'evil.example'][$ip] ?? false,
+            fn (string $host) => $host === 'crawl-66-249-66-1.googlebot.com' ? ['66.249.66.1'] : []);
+        $gate = new Gate(ChallengeSettings::from([]), SECRET, $crawlers);
         same(Decision::ALLOW, $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', [], 'GET', '66.249.66.1', $bot), 1.0)['decision']->action);
-        same(Decision::CHALLENGE, $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', [], 'GET', '6.6.6.6', $bot), 1.0)['decision']->action);
+        $fake = $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', [], 'GET', '6.6.6.6', $bot), 1.0)['decision'];
+        same([Decision::CHALLENGE, 'CRAWL-GOOGLE'], [$fake->action, $fake->claimed], 'a fake one: checked, and noted');
     },
     'shield: budget -> challenge -> solved -> through, cacheability kept' => function (): void {
         $dir = sys_get_temp_dir() . '/rshield-ch-' . getmypid() . '-' . mt_rand();

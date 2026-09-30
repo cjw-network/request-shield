@@ -116,6 +116,19 @@ final class Settings
         public int $uncachedWeight = 1,
         /** @readonly the rules with those marked "monitor": decided alongside, only logged; null: none */
         public ?Settings $monitor = null,
+        /**
+         * @readonly the known crawlers, each with what the site does with it (policy)
+         * @var array<string, array{kind: string, ua: string, dns: list<string>, ranges: list<string>, lists: array<string, array<string, ?string>>, policy: string, nets: array<string, list<array{0: string, 1: int}>>}>
+         */
+        public array $crawlers = [],
+        /** @readonly every crawler's User-Agent pattern in one expression, (*MARK:<n>) naming it; '' for none */
+        public string $crawlerIndex = '',
+        /** @var list<string> @readonly crawler IDs in the order of the MARKs */
+        public array $crawlerIds = [],
+        /** @readonly both, ranges or dns */
+        public string $crawlerVerify = 'both',
+        /** @var array<string, string> @readonly the policies as written: kind or crawler ID => allow, check, block */
+        public array $crawlerPolicy = [],
     ) {
     }
 
@@ -126,6 +139,10 @@ final class Settings
     public static function from(array $config): self
     {
         $c = Config::merge($config);
+        $verify = self::string($c, 'crawlerVerify', 'crawlerVerify', 'both');
+        if (!in_array($verify, ['both', 'ranges', 'dns'], true)) {
+            throw self::wrong('crawlerVerify', 'both, ranges or dns');
+        }
         $mode = self::string($c, 'mode', 'mode', 'enforce');
         if (!in_array($mode, self::MODES, true)) {
             throw self::wrong('mode', implode(', ', self::MODES));
@@ -226,7 +243,142 @@ final class Settings
             $mode,
             $strict ? 2 : 1,
             $monitorRules === null ? null : self::from(['mode' => $mode, 'monitorRules' => null] + $monitorRules),
+            ...self::knownCrawlers($c, $verify),
         );
+    }
+
+    /**
+     * The known crawlers with the site's policies, their expression and IDs,
+     * crawler-verify and the policies as written. The shipped list comes
+     * ready (rules/crawlers.php): settings from a PHP array only apply the
+     * site's policies to it.
+     *
+     * @param array<mixed> $c
+     * @return array{0: array<string, array{kind: string, ua: string, dns: list<string>, ranges: list<string>, lists: array<string, array<string, ?string>>, policy: string, nets: array<string, list<array{0: string, 1: int}>>}>, 1: string, 2: list<string>, 3: string, 4: array<string, string>}
+     */
+    private static function knownCrawlers(array $c, string $verify): array
+    {
+        $policies = self::crawlerPolicy($c);
+        $engines = is_array($c['challenge'] ?? null) ? ($c['challenge']['searchEngines'] ?? true) : true;
+        if ($engines === true && ($c['crawlers'] ?? null) === null) {
+            /** @var array{crawlers: array<string, array{kind: string, ua: string, dns: list<string>, ranges: list<string>, lists: array<string, array<string, ?string>>, policy: string, nets: array<string, list<array{0: string, 1: int}>>}>, index: string, ids: list<string>} $ready */
+            $ready = require dirname(__DIR__) . '/rules/crawlers.php';
+            $crawlers = $ready['crawlers'];
+            foreach ($policies as $key => $policy) {
+                if (!in_array($policy, Rules\RuleFile::POLICIES, true) || (!isset($crawlers[$key]) && !in_array($key, Rules\RuleFile::KINDS, true))) {
+                    throw self::wrong("crawlerPolicy.$key", 'allow, check or block, for a kind (' . implode(', ', Rules\RuleFile::KINDS) . ') or a crawler\'s ID');
+                }
+            }
+            if ($policies !== []) {
+                foreach ($crawlers as $id => $x) {
+                    $crawlers[$id]['policy'] = $policies[$id] ?? $policies[$x['kind']] ?? 'allow';
+                }
+            }
+            return [$crawlers, $ready['index'], $ready['ids'], $verify, $policies];
+        }
+        $crawlers = self::crawlers($c);
+        return [$crawlers, ...self::crawlerIndex($crawlers), ...[$verify, $policies]];
+    }
+
+    /**
+     * The known crawlers: the shipped list, a site's own, the old
+     * challenge.searchEngines map (pattern => DNS suffixes), or none.
+     *
+     * @param array<mixed> $c
+     * @return array<string, array{kind: string, ua: string, dns: list<string>, ranges: list<string>, lists: array<string, array<string, ?string>>, policy: string, nets: array<string, list<array{0: string, 1: int}>>}>
+     */
+    private static function crawlers(array $c): array
+    {
+        $engines = is_array($c['challenge'] ?? null) ? ($c['challenge']['searchEngines'] ?? true) : true;
+        if ($engines === false) {
+            return [];
+        }
+        if (is_array($engines)) {
+            $list = [];
+            $i = 0;
+            foreach ($engines as $pattern => $suffixes) {
+                $list['searchEngines[' . $i++ . ']'] = ['kind' => 'search', 'ua' => (string) $pattern, 'dns' => $suffixes, 'ranges' => []];
+            }
+        } else {
+            $list = $c['crawlers'] ?? [];
+        }
+        if (!is_array($list)) {
+            throw self::wrong('crawlers', 'null or an array of ID => crawler');
+        }
+        $policies = self::map($c, 'crawlerPolicy');
+        $out = [];
+        foreach ($list as $id => $x) {
+            $id = (string) $id;
+            if (!is_array($x) || !in_array($x['kind'] ?? null, Rules\RuleFile::KINDS, true)
+                || !is_string($x['ua'] ?? null) || @preg_match($x['ua'], '') === false) {
+                throw self::wrong("crawlers.$id", "an array of 'kind' (" . implode(', ', Rules\RuleFile::KINDS) . "), 'ua' (a regex), 'dns' and 'ranges'");
+            }
+            $ranges = self::strings($x, 'ranges', "crawlers.$id.ranges");
+            foreach ($ranges as $r) {
+                if (!Rules\CrawlerLists::isRange($r)) {
+                    throw self::wrong("crawlers.$id.ranges", 'addresses or ranges (192.0.2.0/24)');
+                }
+            }
+            $policy = $policies[$id] ?? $policies[$x['kind']] ?? 'allow';
+            if (!in_array($policy, Rules\RuleFile::POLICIES, true)) {
+                throw self::wrong("crawlerPolicy.$id", implode(', ', Rules\RuleFile::POLICIES));
+            }
+            /** @var array<string, array<string, ?string>> $lists */
+            $lists = is_array($x['lists'] ?? null) ? $x['lists'] : [];
+            // The ranges as a lookup, built once (compiled with the settings).
+            $nets = IpAddress::index($ranges);
+            $out[$id] = ['kind' => $x['kind'], 'ua' => $x['ua'], 'dns' => self::strings($x, 'dns', "crawlers.$id.dns"), 'ranges' => $ranges, 'lists' => $lists, 'policy' => (string) $policy, 'nets' => $nets];
+        }
+        foreach ($policies as $key => $policy) {
+            if (!isset($out[$key]) && !in_array($key, Rules\RuleFile::KINDS, true)) {
+                throw self::wrong("crawlerPolicy.$key", 'a kind (' . implode(', ', Rules\RuleFile::KINDS) . ') or a crawler\'s ID');
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * @param array<mixed> $c
+     * @return array<string, string>
+     */
+    private static function crawlerPolicy(array $c): array
+    {
+        $out = [];
+        foreach (self::map($c, 'crawlerPolicy') as $key => $policy) {
+            if (!is_string($policy)) {
+                throw self::wrong("crawlerPolicy.$key", implode(', ', Rules\RuleFile::POLICIES));
+            }
+            $out[(string) $key] = $policy;
+        }
+        return $out;
+    }
+
+    /**
+     * Every crawler's User-Agent pattern in one expression: a request that
+     * names none costs one match. (*MARK:n) says which one matched.
+     *
+     * @param array<string, array{ua: string}> $crawlers
+     * @return array{0: string, 1: list<string>}
+     */
+    public static function crawlerIndex(array $crawlers): array
+    {
+        $parts = [];
+        $ids = [];
+        foreach ($crawlers as $id => $x) {
+            // '#…#i' or '/…/i': the expression between the delimiters.
+            $d = $x['ua'][0];
+            $end = strrpos($x['ua'], $d);
+            $inner = substr($x['ua'], 1, (int) $end - 1);
+            // Into '#…#': a "#" of another delimiter's expression needs its backslash.
+            $inner = $d === '#' ? $inner : str_replace('#', '\#', str_replace('\\' . $d, $d, $inner));
+            $parts[] = '(?:' . $inner . ')(*MARK:' . count($ids) . ')';
+            $ids[] = $id;
+        }
+        $index = $parts === [] ? '' : '#' . implode('|', $parts) . '#i';
+        if ($index !== '' && @preg_match($index, '') === false) {
+            throw self::wrong('crawlers', 'User-Agent patterns that go into one expression (no back references)');
+        }
+        return [$index, $ids];
     }
 
     /**
@@ -472,7 +624,7 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 17;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge
+    private const FORMAT = 18;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

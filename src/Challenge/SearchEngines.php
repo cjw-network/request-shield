@@ -89,17 +89,24 @@ final class SearchEngines
         if ($this->mayLookUp !== null && !($this->mayLookUp)()) {
             return false;
         }
-        $ok = $this->resolve($ip, $suffixes);
+        $ok = self::dns($ip, $suffixes, $this->reverse, $this->forward);
         if ($this->cacheSet !== null) {
             ($this->cacheSet)($key, $ok ? '1' : '0');
         }
         return $ok;
     }
 
-    /** @param list<string> $suffixes */
-    private function resolve(string $ip, array $suffixes): bool
+    /**
+     * Reverse and forward DNS: the address's host ends in one of the
+     * suffixes, and resolves back to the address.
+     *
+     * @param list<string> $suffixes
+     * @param (callable(string): (string|false))|null $reverse
+     * @param (callable(string): list<string>)|null $forward
+     */
+    public static function dns(string $ip, array $suffixes, $reverse = null, $forward = null): bool
     {
-        $host = $this->reverse !== null ? ($this->reverse)($ip) : @gethostbyaddr($ip);
+        $host = $reverse !== null ? $reverse($ip) : @gethostbyaddr($ip);
         if (!is_string($host) || $host === '' || $host === $ip) {
             return false;
         }
@@ -114,7 +121,7 @@ final class SearchEngines
         if (!$matches) {
             return false;
         }
-        $addresses = $this->forward !== null ? ($this->forward)($host) : self::addressesOf($host);
+        $addresses = $forward !== null ? $forward($host) : self::addressesOf($host);
         return in_array(inet_ntop((string) inet_pton($ip)), array_map(static fn ($a) => inet_ntop((string) inet_pton($a)), array_filter($addresses, static fn ($a) => @inet_pton($a) !== false)), true);
     }
 

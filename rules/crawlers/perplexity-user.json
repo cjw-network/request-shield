@@ -1,0 +1,11 @@
+{
+    "source": "https://www.perplexity.com/perplexity-user.json",
+    "creationTime": "2025-10-17T10:17:00.000000",
+    "fetched": "2026-09-30",
+    "prefixes": [
+        "44.208.221.197/32",
+        "34.193.163.52/32",
+        "18.97.21.0/30",
+        "18.97.43.80/29"
+    ]
+}

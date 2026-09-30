@@ -101,7 +101,7 @@ final class RulesPage
 
         // ── The rules ───────────────────────────────────────────────────────
         $h .= '<h2>The rules</h2><p class="note">Each with its ID, where it is written and, from the log, how often it decided in the last 24 hours. The text is the comment after the rule in the rule file.</p>';
-        foreach (self::groups($s) as [$heading, $intro, $rows]) {
+        foreach (self::groups($s, $stats['claims']) as [$heading, $intro, $rows]) {
             $h .= '<section class="card"><h3>' . $e($heading) . '</h3><p class="intro">' . $e($intro) . '</p>';
             if ($rows !== []) {
                 $h .= '<table>';
@@ -151,9 +151,10 @@ final class RulesPage
      * as written when a description stands in front, its ID, where it is
      * written, and the ID the log counts it under.
      *
+     * @param array<string, int> $claims crawler ID => how often a request named it without coming from it (the log)
      * @return list<array{0: string, 1: string, 2: list<array{text: string, detail: ?string, id: ?string, where: ?string, log: ?string}>}>
      */
-    public static function groups(Settings $s): array
+    public static function groups(Settings $s, array $claims = []): array
     {
         $o = static fn (string $setting, string $what): ?string => $s->origin($setting, $what);
         $row = static function (string $says, ?string $id, ?string $log = null) use ($s): array {
@@ -279,7 +280,29 @@ final class RulesPage
             $rows[] = $row('never checked: ' . $pattern($p), $o('challenge.exemptPaths', $p), '');
         }
         $g[] = ['Browser check', 'An invisible check that a real browser passes in a moment; a passed check is valid for ' . Describe::span($s->challenge->passTtl)
-            . ($s->challenge->searchEngines !== null ? '. Search engines (Google, Bing, …) are recognised and let through.' : '.'), $rows];
+            . ($s->crawlers !== [] ? '. Known crawlers (search engines, AI crawlers) are recognised by their address, see below.' : '.'), $rows];
+
+        $rows = [];
+        $kinds = ['search' => 'search engine', 'ai-search' => 'AI search', 'ai-user' => 'fetches what a person asks for', 'ai-training' => 'collects for AI training'];
+        $policies = ['allow' => 'let through (never the browser check)', 'check' => 'checked like any visitor', 'block' => 'refused (403)'];
+        foreach ($s->crawlers as $id => $x) {
+            $how = [];
+            if ($x['ranges'] !== [] && $s->crawlerVerify !== 'dns') {
+                $dates = array_filter(array_map(static fn (array $l): string => substr((string) ($l['created'] ?? ''), 0, 10), $x['lists']));
+                $how[] = 'its published address list (' . count($x['ranges']) . ' ranges' . ($dates !== [] ? ', of ' . min($dates) : '') . ')';
+            }
+            if ($x['dns'] !== [] && $s->crawlerVerify !== 'ranges') {
+                $how[] = 'DNS (' . implode(', ', $x['dns']) . ')';
+            }
+            $claimed = $claims[$id] ?? 0;
+            $rows[] = $row(($kinds[$x['kind']] ?? $x['kind']) . ': ' . ($policies[$x['policy']] ?? $x['policy'])
+                . ' — verified by ' . ($how === [] ? 'nothing here (crawler-verify ' . $s->crawlerVerify . '): an ordinary visitor' : implode(' or ', $how))
+                . ($claimed > 0 ? " · {$claimed}× only claimed in 24 h" : ''), (string) $id, '');
+        }
+        if ($rows !== []) {
+            $g[] = ['Known crawlers', 'Search engines and AI crawlers that behave are recognised by where they come from — the name a request sends proves nothing. '
+                . 'One that only borrows a name is an ordinary visitor (the log notes it: claimed=…). Change it per kind or crawler: crawlers ai-training block, crawler CRAWL-GPTBOT check.', $rows];
+        }
 
         $rows = [];
         foreach ($s->origins['monitor'] ?? [] as $rid => $rule) {

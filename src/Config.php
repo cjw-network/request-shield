@@ -95,6 +95,18 @@ final class Config
             // The rules again with those marked "monitor" in a rule file: they
             // are logged, not enforced (written by RuleFile; null: none).
             'monitorRules' => null,
+            // Crawlers that behave, verified by where they come from (proposal 0011):
+            // null: the shipped list (rules/crawlers.rules, compiled into
+            // rules/crawlers.php); or ID => ['kind' => search|ai-search|ai-user|ai-training,
+            // 'ua' => regex, 'dns' => [host suffixes], 'ranges' => [CIDR, ...]].
+            // challenge.searchEngines false: none is recognised.
+            'crawlers' => null,
+            // What the site does with a verified crawler, by kind or by ID: allow
+            // (never the browser check; the default), check (like any visitor),
+            // block (403). ['ai-training' => 'block', 'CRAWL-GPTBOT' => 'check'].
+            'crawlerPolicy' => [],
+            // both | ranges (the address lists only, no DNS: a DMZ) | dns
+            'crawlerVerify' => 'both',
             // X-Request-Shield: <action> <reason> on every response (for testing).
             'debugHeader' => false,
             // The application may ask for the browser check with a response header,

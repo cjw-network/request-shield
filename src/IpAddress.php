@@ -36,6 +36,56 @@ final class IpAddress
         return false;
     }
 
+    /**
+     * Ranges as a lookup for many of them (a crawler's published list): parsed
+     * once, grouped by their first two bytes, so an address is compared with
+     * the few that can hold it instead of all.
+     *
+     * @param list<string> $ranges
+     * @return array<string, list<array{0: string, 1: int}>> "4"/"6" and the first two bytes (none below /16) => [network, bits]
+     */
+    public static function index(array $ranges): array
+    {
+        $index = [];
+        foreach ($ranges as $range) {
+            $slash = strpos($range, '/');
+            $net = @inet_pton($slash === false ? $range : substr($range, 0, $slash));
+            if ($net === false) {
+                continue;
+            }
+            $bits = $slash === false ? strlen($net) * 8 : (int) substr($range, $slash + 1);
+            $index[(strlen($net) === 4 ? '4' : '6') . ($bits >= 16 ? bin2hex(substr($net, 0, 2)) : '')][] = [$net, $bits];
+        }
+        return $index;
+    }
+
+    /** @param array<string, list<array{0: string, 1: int}>> $index from index() */
+    public static function inIndex(string $ip, array $index): bool
+    {
+        $bin = @inet_pton($ip);
+        if ($bin === false) {
+            return false;
+        }
+        $family = strlen($bin) === 4 ? '4' : '6';
+        foreach ([$family . bin2hex(substr($bin, 0, 2)), $family] as $key) {
+            foreach ($index[$key] ?? [] as [$net, $bits]) {
+                $bytes = intdiv($bits, 8);
+                if ($bytes > 0 && strncmp($bin, $net, $bytes) !== 0) {
+                    continue;
+                }
+                $rest = $bits % 8;
+                if ($rest === 0) {
+                    return true;
+                }
+                $mask = (0xFF << (8 - $rest)) & 0xFF;
+                if ((ord($bin[$bytes]) & $mask) === (ord($net[$bytes]) & $mask)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private static function inRange(string $bin, string $range): bool
     {
         $slash = strpos($range, '/');

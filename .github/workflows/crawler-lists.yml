@@ -1,0 +1,37 @@
+name: Crawler address lists
+
+# Weekly: are the crawlers' published address lists (rules/crawlers/*.json)
+# still the operators' current ones? Fails when one changed or cannot be
+# fetched -- then a maintainer runs php bin/update-crawler-lists and commits
+# (see CONTRIBUTING.md, Releasing). It never commits anything itself.
+
+on:
+  schedule:
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lists:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+
+      - name: Fetch the published lists
+        run: php bin/update-crawler-lists
+
+      - name: Changed since the last commit?
+        run: |
+          if ! git diff --quiet -- rules/; then
+            git diff --stat -- rules/
+            echo "::error::The crawlers' address lists changed: run php bin/update-crawler-lists and commit."
+            exit 1
+          fi

@@ -16,6 +16,7 @@
   [the check inside the form](features/browser-check-in-the-form.md) ·
   [known query parameters](features/known-parameters.md) ·
   [modes: monitor and strict](features/modes.md) ·
+  [known crawlers](features/known-crawlers.md) ·
   [settings](features/settings.md)
 - **Use cases** — scenarios end to end:
   [shared hosting DoS guard](use-cases/shared-hosting-dos-guard.md) ·
@@ -31,7 +32,7 @@
   [0008 match blocks](proposals/0008-match-blocks.md) (first step implemented) ·
   [0009 typed query parameters](proposals/0009-typed-query-parameters.md) (implemented) ·
   [0010 the browser check inside the form](proposals/0010-browser-check-in-the-form.md) (implemented) ·
-  [0011 known crawlers](proposals/0011-known-crawlers.md) (accepted)
+  [0011 known crawlers](proposals/0011-known-crawlers.md) (implemented)
   (0002, a single-file build, is reserved)
 - **Architecture decisions**:
   [0001 run in PHP first](adr/0001-run-in-php-before-the-application.md) ·

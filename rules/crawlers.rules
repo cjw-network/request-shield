@@ -1,0 +1,47 @@
+# Built into cjw-network/request-shield, read before every site's own rules:
+# the crawlers that behave, verified by where they come from -- never by the
+# name they send (anyone can send "GPTBot"). A verified crawler is never given
+# the browser check (it runs no JavaScript); its pace is still limited.
+#
+#   crawler <kind> ua /<User-Agent pattern>/ [dns <host suffixes>] [ranges <lists>]
+#
+# kind: search (a search engine), ai-search (AI search and answers), ai-user
+# (fetches a page when a person asks), ai-training (collects for training).
+# dns: reverse and forward DNS must end in one of the suffixes. ranges: the
+# operator's published address list, shipped in rules/crawlers/<name>.json
+# with the address it comes from; "bin/request-shield crawlers update" fetches
+# the current ones into store-dir. Only crawlers whose operators publish a way
+# to verify them are listed (checked on the operators' pages, 2026-09-30).
+#
+# A site decides per kind or per crawler: crawlers ai-training block,
+# crawler [CRAWL-GPTBOT] check. Default: allow.
+
+ids CRAWL required
+version 2026.10.1
+
+# Search engines (SEO -- and for AI answers too)
+[CRAWL-GOOGLE@1]          crawler search      ua /Googlebot|Google-InspectionTool|GoogleOther|AdsBot-Google|Mediapartners-Google|Storebot-Google/  dns .googlebot.com .google.com .googleusercontent.com  ranges google-googlebot google-special-crawlers   # Google: search, AI Overviews and AI Mode
+[CRAWL-BING@1]            crawler search      ua /bingbot|BingPreview|msnbot|adidxbot/  dns .search.msn.com  ranges bingbot                  # Bing: search, Copilot and the searches built on Bing's index
+[CRAWL-APPLE@1]           crawler search      ua /Applebot/  dns .applebot.apple.com  ranges applebot                                        # Apple: Siri, Spotlight, Safari suggestions
+[CRAWL-DUCKDUCKGO@1]      crawler search      ua /DuckDuckBot/  ranges duckduckbot                                                           # DuckDuckGo
+[CRAWL-YANDEX@1]          crawler search      ua /YandexBot|YandexImages|YandexMobileBot/  dns .yandex.ru .yandex.net .yandex.com             # Yandex
+[CRAWL-BAIDU@1]           crawler search      ua /Baiduspider/  dns .baidu.com .baidu.jp                                                     # Baidu
+[CRAWL-QWANT@1]           crawler search      ua /Qwantbot|Qwantify/  dns .qwant.com                                                         # Qwant
+[CRAWL-SEZNAM@1]          crawler search      ua /SeznamBot/  dns .seznam.cz                                                                 # Seznam
+
+# AI search and answers (GEO)
+[CRAWL-OAI-SEARCH@1]      crawler ai-search   ua /OAI-SearchBot/  ranges openai-searchbot                                                    # OpenAI: ChatGPT's search results
+[CRAWL-CLAUDE-SEARCH@1]   crawler ai-search   ua /Claude-SearchBot/  ranges anthropic                                                        # Anthropic: search in Claude
+[CRAWL-PERPLEXITY@1]      crawler ai-search   ua /PerplexityBot/  ranges perplexitybot                                                       # Perplexity: search (says: not for training)
+[CRAWL-DUCKASSIST@1]      crawler ai-search   ua /DuckAssistBot/  ranges duckassistbot                                                       # DuckDuckGo: AI answers
+
+# Fetched when a person asks (often not bound by robots.txt: a person asked)
+[CRAWL-CHATGPT-USER@1]    crawler ai-user     ua /ChatGPT-User/  ranges openai-chatgpt-user                                                  # OpenAI: a page a ChatGPT user asked for
+[CRAWL-CLAUDE-USER@1]     crawler ai-user     ua /Claude-User/  ranges anthropic                                                             # Anthropic: a page a Claude user asked for
+[CRAWL-PERPLEXITY-USER@1] crawler ai-user     ua /Perplexity-User/  ranges perplexity-user                                                   # Perplexity: a page a user asked for -- ignores robots.txt, says Perplexity
+
+# Collected for training
+[CRAWL-GPTBOT@1]          crawler ai-training ua /GPTBot/  ranges openai-gptbot                                                              # OpenAI's training crawler
+[CRAWL-CLAUDEBOT@1]       crawler ai-training ua /ClaudeBot/  ranges anthropic                                                               # Anthropic's training crawler
+[CRAWL-AMAZON@1]          crawler ai-training ua /Amazonbot/  dns .crawl.amazonbot.amazon                                                    # Amazon: Alexa and Amazon's AI
+[CRAWL-CCBOT@1]           crawler ai-training ua /CCBot/  dns .crawl.commoncrawl.org  ranges ccbot                                           # Common Crawl: an open archive many AI models are trained on

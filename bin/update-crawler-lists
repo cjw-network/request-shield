@@ -1,0 +1,51 @@
+#!/usr/bin/env php
+<?php
+/**
+ * This file is part of cjw-network/request-shield.
+ *
+ * @copyright Copyright (C) 2026 JAC Systeme GmbH, CJW Network
+ * @license MIT, see LICENSE
+ */
+
+/*
+ * For the library's maintainers, before every release: fetches the crawlers'
+ * published address lists into rules/crawlers/*.json and regenerates
+ * rules/crawlers.php (the same for settings from a PHP array).
+ *
+ *   php bin/update-crawler-lists            fetch, write, report
+ *   php bin/update-crawler-lists --check    only check that rules/crawlers.php is current (CI)
+ *   php bin/update-crawler-lists --force    take a list even if it shrank to less than half
+ *
+ * Exit: 0 all fine, 1 a list failed or was refused, 2 rules/crawlers.php is not current (--check).
+ * Sites update their own copies with "php bin/request-shield crawlers update" instead.
+ */
+
+declare(strict_types=1);
+
+require dirname(__DIR__) . '/bootstrap.php';
+
+use CjwNetwork\RequestShield\Rules\CrawlerLists;
+use CjwNetwork\RequestShield\Rules\RuleFile;
+
+$root = dirname(__DIR__);
+$php = $root . '/rules/crawlers.php';
+if (in_array('--check', $argv, true)) {
+    if (@file_get_contents($php) !== RuleFile::shippedCrawlersPhp()) {
+        fwrite(STDERR, "rules/crawlers.php is not current: php bin/update-crawler-lists\n");
+        exit(2);
+    }
+    echo "rules/crawlers.php is current\n";
+    exit(0);
+}
+$lists = [];
+foreach (glob($root . '/rules/crawlers/*.json') ?: [] as $file) {
+    $lists[basename($file, '.json')] = $file;
+}
+$failed = 0;
+foreach (CrawlerLists::update($lists, $root . '/rules/crawlers', null, in_array('--force', $argv, true)) as $name => $what) {
+    echo str_pad($name, 26) . $what . "\n";
+    $failed += strncmp($what, 'updated', 7) === 0 || strncmp($what, 'unchanged', 9) === 0 ? 0 : 1;
+}
+file_put_contents($php, RuleFile::shippedCrawlersPhp());
+echo "rules/crawlers.php regenerated\n";
+exit($failed > 0 ? 1 : 0);

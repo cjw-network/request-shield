@@ -54,6 +54,7 @@ final class Log
             . ($s->logIp === 'full' ? $request->clientIp : self::mask($request->clientIp)) . ' '
             . ($monitor ? 'monitor-' : '') . $d->action . ' ' . $d->status . ' "' . self::clean($d->reason, 60) . '"'
             . ($rule !== null ? ' rule=' . self::clean($rule, 120) : '')
+            . ($d->claimed !== null ? ' claimed=' . self::clean($d->claimed, 60) : '')
             . ' "' . self::clean($request->method, 10) . ' ' . self::clean($request->scheme . '://' . $request->host . $request->rawUri, 300) . '"'
             . ' "' . self::clean((string) $request->header('user-agent'), 150) . "\"\n";
 

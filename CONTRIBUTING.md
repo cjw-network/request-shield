@@ -32,6 +32,21 @@ things come first: **it must be right, and it must be fast.**
    an index that may be stale), it lets the request through rather than
    blocking a real user; only clear cases are refused.
 
+## Releasing
+
+1. **Crawler address lists:** `php bin/update-crawler-lists` fetches the
+   operators' published lists into `rules/crawlers/*.json` and regenerates
+   `rules/crawlers.php`. It refuses a list that shrank to less than half (a
+   broken download; `--force` takes it) and exits 1 when one failed. Look over
+   the diff, re-check `rules/crawlers.rules` against the operators' pages when
+   a crawler was added or renamed, raise its `version`, and commit. The tests
+   fail when `rules/crawlers.php` does not match the lists
+   (`php bin/update-crawler-lists --check`); a weekly workflow
+   (`crawler-lists.yml`) fails when an operator's list has changed since.
+2. `CHANGELOG.md`: *Unreleased* becomes the version with its date; the README's
+   status.
+3. Tests on every PHP version, PHPStan, Psalm (CI), then tag `vX.Y.Z` on `main`.
+
 ## Commits
 
 One change per commit; the subject says what the code does now, in the

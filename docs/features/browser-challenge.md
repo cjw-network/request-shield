@@ -33,9 +33,11 @@ it expires (the hard `limit` still applies).
   nothing typed is lost. Forms with files, or larger than 256 KB, cannot be
   carried: the page asks to send them again (the check inside the form avoids
   that). APIs (JSON, `api-path`) get the task as a header.
-- **Search engines** that would be challenged are verified by reverse and
-  forward DNS (Googlebot, Bingbot, DuckDuckBot, Applebot, YandexBot, …) and
-  passed; the answer is remembered for a day per address.
+- **Known crawlers** — search engines and AI crawlers that behave — are
+  never given the check: verified by their operators' published address
+  lists or by DNS, never by the name they send
+  ([known crawlers](known-crawlers.md)). A site can check or refuse them by
+  kind or one by one.
 - **Always-checked paths** (`alwaysPaths`): a login or admin page checks every
   visitor once per pass cookie, whatever the budgets say, for every method — a
   bot cannot POST to a login it never loaded (a POST without a pass gets the check first).
@@ -51,19 +53,24 @@ the check of the answer and the pass cookie are all made on the site's own
 server with its own secret; the browser gets everything from the site. It works
 in a closed network, a DMZ, without any outside service.
 
-The **only** contact with the outside is DNS, to verify search engines: only
-for a request that would get the check **and** says it is a search engine
-(Googlebot, bingbot, …), and remembered for a day per address. Without a DNS
+The **only** contact with the outside is DNS, to verify a crawler that has no
+published address list, or is not on it (Yandex, Baidu, Amazonbot; Google and
+Bing also by DNS): only for a request that would get the check **and** names
+such a crawler, and remembered for a day per address. Without a DNS
 server that answers (a DMZ), such a lookup waits for the resolver's timeout; so
 at most `dns-lookups` new lookups a minute are made for all requests together
 (default 30) — past that, a claimed crawler counts as not verified at once and
 nothing is remembered, so a flood of fake crawlers cannot make requests wait.
 
-In a DMZ without DNS: `set dns-lookups 0` (no lookups; search engines are then
-checked like everyone else — which only matters where the site checks) or
-`set search-engines off`; or a short resolver timeout (`options timeout:1
-attempts:1` in `/etc/resolv.conf`). Verifying crawlers without DNS, by their
-operators' published address lists: [proposal 0011](../proposals/0011-known-crawlers.md).
+In a DMZ without DNS: `set crawler-verify ranges` — crawlers are verified by
+their published address lists only, a comparison on the server: Google, Bing,
+Apple, DuckDuckGo, OpenAI, Anthropic, Perplexity, Common Crawl. Those only DNS
+can verify are then ordinary visitors (checked where the site checks). The
+lists come with each release; `php bin/request-shield crawlers <site.rules>
+update` fetches newer ones where there is internet, and `store-dir/crawlers/`
+is deployed like any other file ([known crawlers](known-crawlers.md#without-internet-a-dmz)).
+`set dns-lookups 0` or a short resolver timeout (`options timeout:1 attempts:1`
+in `/etc/resolv.conf`) also keep DNS from making anyone wait.
 
 ## Use cases
 
