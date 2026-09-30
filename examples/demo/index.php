@@ -213,7 +213,10 @@ $groups = [
         ['/api/status', 'The API', 'answers this machine only'],
         ['/files/.env', 'A hidden file in the admin\'s file reader', 'passes from this machine: hidden files are open at /files/ only'],
         ['/rules', 'The active rules', 'every rule in plain words, and a check for any address (this machine only)'],
-        ['/stats', 'The statistics', 'what the shield did, per day, week, month; crawlers, pages not found (this machine only)'],
+        ['/stats', 'Statistics: visitors & pages', 'for editors: people, crawlers, bots; the most visited pages and sections, broken links, sitemaps (this machine only)'],
+        ['/stats?view=shield', 'Statistics: protection', 'for admins: what the shield did, the answers, the rules, bots (this machine only)'],
+        ['/stats?lang=de', 'Statistik auf Deutsch', 'the same page in German (it also follows your browser\'s language)'],
+        ['/stats?path=' . rawurlencode($url('/page/')), 'Statistics: one subtree', 'the "path starts with" filter: views of one section, by people, crawlers, bots'],
     ],
     'The site asks for the check' => [
         ['/comment', 'A comment form', 'sending it needs a pass: without one, the check — then the comment is sent again by itself'],
