@@ -4,7 +4,7 @@
 |---|---|
 | Status | **Draft** |
 | Proposed | 2026-10-01 |
-| Affects | rule files (new rule `feed`), the command line (`feeds update`, `feeds export`), the IP lists ([0013](0013-ip-lists.md)) |
+| Affects | rule files (new rule `feed`), the command line (`feeds update`, `feeds export`, also as `.htaccess` for shared hosting), the IP lists ([0013](0013-ip-lists.md)) |
 
 ## Summary
 
@@ -145,11 +145,75 @@ php bin/request-shield feeds site.rules export --format=plain    # one range per
 - The shield never changes the firewall itself. Loading the file is a
   privileged step that the admin's cron or config management does.
 
+### For shared hosting: `.htaccess`
+
+On shared hosting (cPanel, Plesk) there is no firewall to touch, but the site
+may write its own `.htaccess`. Apache (and LiteSpeed, which reads
+`.htaccess` too) then refuses a listed address **before PHP starts**. For a
+flood that matters: no PHP process is taken, which on shared hosting is the
+scarce resource.
+
+```text
+php bin/request-shield feeds site.rules export --format=htaccess --write=public/.htaccess   # cron, after "feeds update"
+```
+
+What it writes, between markers, and nothing else in the file is touched:
+
+```apache
+# BEGIN request-shield (generated 2026-10-01 10:00 -- do not edit, request-shield feeds export rewrites it)
+<RequireAll>
+    Require all granted
+    # FEED-DROP spamhaus-drop, 1,412 ranges
+    Require not ip 203.0.113.0/24 198.51.100.0/22
+    # LIST-D3 scraper
+    Require not ip 192.0.2.7
+</RequireAll>
+# END request-shield
+```
+
+- **Apache 2.4 syntax** (`Require not ip`, many ranges per line); `--apache=2.2`
+  writes `Order`/`Deny from` for old servers. Which one LiteSpeed and each
+  panel accept is to be tested on cPanel (Apache and LiteSpeed) and Plesk
+  before phase 3 ships.
+- **Only small lists.** Apache reads `.htaccess` on **every request**, for
+  every directory on the path; thousands of lines cost each request (images
+  and CSS included) more than the shield's search does. So only the `deny`
+  feeds and the deny list of [0013](0013-ip-lists.md), at most
+  `--max-lines` (default 2,000 ranges, adjacent ranges merged first). DROP and
+  DShield fit; blocklist.de (tens of thousands) never goes there and stays
+  with the shield in PHP. **To be measured** in phase 3: Apache with 0, 500,
+  2,000 and 10,000 ranges in `.htaccess`, requests per second for a static
+  file.
+- **Never a broken site.** A syntax error in `.htaccess` is a 500 for the
+  whole site. Hence: only generated lines from validated addresses; the file
+  written whole (a temporary file, then `rename()`), the previous one kept as
+  `.htaccess.request-shield-bak`; with `--check-url=https://example.org/`
+  the page is fetched after writing, and on a 500 the previous file is put
+  back and the command fails (cron mails it).
+- **No running bans in it.** They last minutes; rewriting `.htaccess` every
+  minute is a race with every request reading it. Bans stay with the shield.
+- **The same exclusions:** never trusted proxies, addresses let in, private
+  ranges, verified crawlers' published ranges.
+- **Traps the docs must name:**
+  - **Plesk with nginx in front** (the default): nginx serves static files
+    itself, so `.htaccess` applies only to what reaches Apache (PHP pages).
+    That is the part that costs, so it still helps; for everything, Plesk's
+    "Additional nginx directives" take `--format=nginx` (`deny 203.0.113.0/24;`).
+  - **Behind a proxy or CDN** (Cloudflare, the host's own nginx): Apache must
+    see the visitor's address (`mod_remoteip`, which Plesk and most panels
+    configure). Otherwise `Require not ip` sees only the proxy, and the
+    exclusions make sure it is never the proxy that gets refused. `export`
+    warns when the rule file has `trust` entries.
+  - A CMS that rewrites `.htaccess` itself (WordPress "permalinks", some
+    cache plugins) keeps the request-shield block, because it is between its
+    own markers, as WordPress does with its own.
+
 ## Cost
 
 | | Per request |
 |---|---|
 | no feeds | nothing |
+| `.htaccess` export | nothing in PHP; Apache reads the block on every request (to be measured, hence at most 2,000 ranges) |
 | feeds, any number | one binary search per action used (`deny`, `check`, `ban-signal`): ~1–2 µs |
 | `count` | the same search, plus a counter only on a hit |
 | fetching | none: a cron job, outside requests |
@@ -186,7 +250,8 @@ php bin/request-shield feeds site.rules export --format=plain    # one range per
    the exclusions, `check` warnings.
 2. `ban-signal`, `at <paths>`, the larger lists (blocklist.de, Stop Forum Spam,
    Tor exits, cloud ranges), hits per feed in the statistics.
-3. `feeds export` for nftables/ipset/plain.
+3. `feeds export` for nftables/ipset/plain, and for shared hosting `.htaccess`
+   (with the safe write and `--check-url`) and `nginx`; measured first.
 4. Adapters for scored services with an API key (AbuseIPDB, CrowdSec), each with
    its own terms, opt-in.
 
@@ -203,3 +268,10 @@ php bin/request-shield feeds site.rules export --format=plain    # one range per
 4. `feeds export`: also write the deny list's entries and running bans (for
    fail2ban-like use)? *Recommendation: the deny list yes; bans no, they are
    short and per server.*
+5. `.htaccess`: write the file directly (`--write`, with backup and
+   `--check-url`), or only print the block for the site owner to paste?
+   *Recommendation: both; `--write` only with the markers, the backup and the
+   check.*
+6. The line limit for `.htaccess`: a fixed 2,000 ranges, or from the
+   measurement? *Recommendation: from the measurement in phase 3; 2,000 until
+   then.*
