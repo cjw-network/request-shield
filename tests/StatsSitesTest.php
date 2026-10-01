@@ -261,7 +261,8 @@ return [
             same(['allow' => 1, 'reject' => 1], ['allow' => ($day['a:allow'] ?? 0) + ($day['a:allow-uncached'] ?? 0), 'reject' => $day['a:reject'] ?? 0],
                 'only /page of the passing ones; the refusal from elsewhere is counted');
             $h = StatsPage::render(sitesStatsSettings($dir, "set stats-hosts a.de\n"), ['view' => 'sites', 'lang' => 'de', 'now' => SITES_T0]);
-            truthy(strpos($h, '>Anfragen von Menschen</th>') !== false && strpos($h, '>Bot-Anfragen</th>') !== false && strpos($h, 'nicht nur Seiten') !== false, 'the overview names what it counts');
+            truthy(strpos($h, '>Menschen</th>') !== false && strpos($h, '>Bots</th>') !== false && strpos($h, 'title="jede Anfrage eines Menschen, nicht nur Seiten') !== false
+                && strpos($h, '>Verlauf</th>') !== false && strpos($h, 'title="Seitenaufrufe gegenüber dem gleich langen Zeitraum davor">±</th>') !== false, 'short headings, each explained on hover; the curve at the end');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }

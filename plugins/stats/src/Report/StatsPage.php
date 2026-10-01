@@ -35,6 +35,11 @@ final class StatsPage
             'groupAll' => '%s: all %d websites', 'groupOne' => '%s: its website', 'ungrouped' => 'In no group', 'tabSites' => 'All websites',
             'sitesIntro' => 'where the traffic is: page views by people, against the period before', 'pageViews' => 'Page views', 'change' => 'Change', 'stoppedCol' => 'Stopped',
             'new' => 'new', 'before' => 'the period before: %s', 'peopleReq' => 'Requests by people', 'crawlerVisits' => 'Crawler visits', 'botReq' => 'Bot requests',
+            'hViews' => 'Views', 'hPeople' => 'People', 'hCrawlers' => 'Crawlers', 'hBots' => 'Bots', 'hStopped' => 'Stopped', 'hCurve' => 'Trend', 'otherShort' => 'other hosts',
+            'websiteTip' => 'a website, a group of websites (stats-group) or the names the rules do not know (other hosts)',
+            'viewsTip' => 'page views by people: pages shown (GET, answered 200 with HTML)', 'changeTip' => 'page views against the period before, as long as this one',
+            'crawlersTip' => 'requests from a known crawler (Googlebot …), proved by its address or only claimed', 'stoppedTip' => 'refused, checked or told to wait by the shield',
+            'notFoundTip' => 'pages not found (404, 410)', 'curveTip' => 'page views per day (or week, month) of the period',
             'peopleTip' => 'every request by a person, not only pages: forms sent, redirects, not found, JSON -- the page views are the pages shown (GET, 200, HTML)',
             'botsTip' => 'requests from tools and scripts that say so (curl, python-requests, wget …), not a known crawler', 'nSites' => '%d websites', 'oneSite' => '1 website',
             'requests' => 'Requests', 'people' => 'People', 'crawlers' => 'Crawlers', 'bots' => 'Bots', 'checked' => 'Checked', 'refused' => 'Refused',
@@ -53,6 +58,11 @@ final class StatsPage
             'groupAll' => '%s: alle %d Websites', 'groupOne' => '%s: seine Website', 'ungrouped' => 'In keiner Gruppe', 'tabSites' => 'Alle Websites',
             'sitesIntro' => 'wo der Verkehr ist: Seitenaufrufe von Menschen, gegenüber dem Zeitraum davor', 'pageViews' => 'Seitenaufrufe', 'change' => 'Veränderung', 'stoppedCol' => 'Gestoppt',
             'new' => 'neu', 'before' => 'der Zeitraum davor: %s', 'peopleReq' => 'Anfragen von Menschen', 'crawlerVisits' => 'Crawler-Besuche', 'botReq' => 'Bot-Anfragen',
+            'hViews' => 'Aufrufe', 'hPeople' => 'Menschen', 'hCrawlers' => 'Crawler', 'hBots' => 'Bots', 'hStopped' => 'Gestoppt', 'hCurve' => 'Verlauf', 'otherShort' => 'andere Hosts',
+            'websiteTip' => 'eine Website, eine Gruppe von Websites (stats-group) oder die Namen, die die Regeln nicht kennen (andere Hosts)',
+            'viewsTip' => 'Seitenaufrufe von Menschen: gezeigte Seiten (GET, mit 200 und HTML beantwortet)', 'changeTip' => 'Seitenaufrufe gegenüber dem gleich langen Zeitraum davor',
+            'crawlersTip' => 'Anfragen bekannter Crawler (Googlebot …), durch ihre Adresse bestätigt oder nur behauptet', 'stoppedTip' => 'vom Schutz abgewiesen, geprüft oder zum Warten geschickt',
+            'notFoundTip' => 'nicht gefundene Seiten (404, 410)', 'curveTip' => 'Seitenaufrufe pro Tag (oder Woche, Monat) im Zeitraum',
             'peopleTip' => 'jede Anfrage eines Menschen, nicht nur Seiten: gesendete Formulare, Weiterleitungen, nicht gefunden, JSON -- Seitenaufrufe sind die gezeigten Seiten (GET, 200, HTML)',
             'botsTip' => 'Anfragen von Werkzeugen und Skripten, die sich so nennen (curl, python-requests, wget …), kein bekannter Crawler', 'nSites' => '%d Websites', 'oneSite' => '1 Website',
             'requests' => 'Anfragen', 'people' => 'Menschen', 'crawlers' => 'Crawler', 'bots' => 'Bots', 'checked' => 'Geprüft', 'refused' => 'Abgewiesen',
@@ -446,10 +456,12 @@ final class StatsPage
         }
         $views = static fn (array $a, array $b): int => $b['views'] <=> $a['views'];
         $ctx = [$t, $lang, $most, $from, $to, $by];
-        $h = '<section class="card"><h2>' . $e($t['tabSites']) . ' <small>' . $e($t['sitesIntro']) . '</small></h2><div class="wrap"><table class="sites"><thead><tr><th>' . $e($t['website'])
-            . '</th><th>' . $e($t['pageViews']) . '</th><th>' . $e($t['change']) . '</th><th title="' . $e($t['peopleTip']) . '">' . $e($t['peopleReq']) . '</th><th>' . $e($t['crawlerVisits'])
-            . '</th><th title="' . $e($t['botsTip']) . '">' . $e($t['botReq'])
-            . '</th><th>' . $e($t['stoppedCol']) . '</th><th>' . $e($t['notFound']) . '</th><th></th></tr></thead><tbody>';
+        // Short headings, each explained on hover: the table fits, the curve at the end stays in view.
+        $th = static fn (string $short, string $tip, string $class = 'n'): string => '<th class="' . $class . '" title="' . $e($tip) . '">' . $e($short) . '</th>';
+        $h = '<section class="card"><h2>' . $e($t['tabSites']) . ' <small>' . $e($t['sitesIntro']) . '</small></h2><div class="wrap"><table class="sites"><thead><tr>'
+            . $th($t['website'], $t['websiteTip'], 'sname') . $th($t['hViews'], $t['viewsTip'], 'snum') . $th('±', $t['changeTip']) . $th($t['hPeople'], $t['peopleTip'])
+            . $th($t['hCrawlers'], $t['crawlersTip']) . $th($t['hBots'], $t['botsTip']) . $th($t['hStopped'], $t['stoppedTip']) . $th('404', $t['notFoundTip'])
+            . $th($t['hCurve'], $t['curveTip'], 'scurve') . '</tr></thead><tbody>';
         $h .= self::sitesRow($t['allSites'], $x['all'], $href(''), 'sall', '', ...$ctx);
         $groups = $x['groups'];
         uasort($groups, $views);
@@ -470,7 +482,7 @@ final class StatsPage
             $h .= self::sitesRow((string) $name, $r, $href((string) $name), 'ssite top', '', ...$ctx);
         }
         $other = $x['sites'][\CjwNetwork\RequestShield\Stats::OTHER];
-        $h .= self::sitesRow($t['otherHosts'], $other, $href(\CjwNetwork\RequestShield\Stats::OTHER), 'sother', '', ...$ctx);
+        $h .= self::sitesRow($t['otherShort'], $other, $href(\CjwNetwork\RequestShield\Stats::OTHER), 'sother', '', ...$ctx);
         return $h . '</tbody></table></div></section>';
     }
 
@@ -896,9 +908,10 @@ h1{font-size:26px;margin:8px 0 4px}h2{font-size:16px;margin:0 0 10px}h2 small{co
 .prow{display:grid;grid-template-columns:1fr auto;grid-template-areas:"name num" "bar bar";gap:3px 12px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line)}.prow:last-of-type{border-bottom:0}
 .prow .pname{grid-area:name;min-width:0}.prow .cnum{grid-area:num}.prow .hbar{grid-area:bar}.hbar.thin{height:6px;border-radius:3px}
 table.sites{width:100%;border-collapse:collapse;font-size:14px}table.sites th{text-align:left;font-weight:500;color:var(--m);font-size:12px;padding:4px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
-table.sites td{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}table.sites td.snum{min-width:130px}table.sites td.snum .hbar{margin-bottom:2px}
+table.sites td{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right;width:1%}table.sites td.sname{text-align:left;width:auto}
+table.sites th.n{text-align:right;cursor:help}table.sites th.sname,table.sites th.snum{cursor:help}table.sites td.snum{min-width:110px;text-align:left}table.sites td.snum .hbar{width:100%}table.sites td.snum .hbar{margin-bottom:2px}
 table.sites tr.sall td{font-weight:600}table.sites tr.sgroup td{font-weight:600;background:var(--bg)}table.sites tr.ssite td.sname{padding-left:24px}table.sites tr.ssite.top td.sname{padding-left:8px}
-table.sites tr.sother td{color:var(--m)}table.sites .up{color:var(--crawlers)}table.sites .down{color:var(--refused)}table.sites td.scurve{width:110px}table.sites td.scurve .spark{height:22px;margin:0}
+table.sites tr.sother td{color:var(--m)}table.sites .up{color:var(--crawlers)}table.sites .down{color:var(--refused)}table.sites td.scurve{width:120px;min-width:120px;text-align:left}table.sites td.scurve .spark{height:22px;margin:0}
 .wrap{overflow-x:auto}
 .hbar .people{background:var(--people)}.hbar .crawlers{background:var(--crawlers)}.hbar .bots{background:var(--bots)}
 
