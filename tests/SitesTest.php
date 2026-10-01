@@ -186,4 +186,31 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+'budgets: the base\'s count across every website; one written in a site block counts on that website only -- equal names in two blocks never share a counter' => function (): void {
+        $dir = sitesDir();
+        try {
+            file_put_contents("$dir/budgets.rules", "set store memory\n[BASE-PACE] limit requests 5/min\n"
+                . "site a.de {\n  [A-SEARCH] limit search 2/min on-demand\n}\nsite b.de {\n  [B-SEARCH] limit search 2/min on-demand\n}\n");
+            $base = Settings::from(RuleFile::read(["$dir/budgets.rules"])['config']);
+            $a = Settings::from(RuleFile::read(["$dir/budgets.rules"], 'a.de')['config']);
+            $b = Settings::from(RuleFile::read(["$dir/budgets.rules"], 'b.de')['config']);
+            same(['requests', 'requests', 'requests'], [$base->budgets['requests']->counter(), $a->budgets['requests']->counter(), $b->budgets['requests']->counter()], 'the base\'s counter: one for every website');
+            same(['a.de@search', 'b.de@search'], [$a->budgets['search']->counter(), $b->budgets['search']->counter()], 'a website\'s own: its own counter');
+            $store = new \CjwNetwork\RequestShield\Store\MemoryStore();
+            $req = static fn (string $host): \CjwNetwork\RequestShield\Request => \CjwNetwork\RequestShield\Request::fromServer(['REQUEST_URI' => '/', 'REQUEST_METHOD' => 'GET', 'HTTP_HOST' => $host, 'REMOTE_ADDR' => '203.0.113.9', 'HTTP_USER_AGENT' => 'Mozilla/5.0 Firefox/136.0']);
+            $actions = [];
+            foreach ([[$a, 'a.de'], [$b, 'b.de'], [$a, 'a.de'], [$b, 'b.de'], [$a, 'a.de'], [$b, 'b.de']] as $i => [$s, $host]) {
+                $shield = new \CjwNetwork\RequestShield\Shield($s, $store);
+                $r = $req($host);
+                $actions[] = $shield->decide($r, 1000.0 + $i)->action;
+                $shield->consume('search', $r, 1000.0 + $i);
+            }
+            same(['allow', 'allow', 'allow', 'allow', 'allow', 'throttle'], $actions, 'the base\'s 5 a minute across both websites: the sixth request is one too many');
+            $shield = new \CjwNetwork\RequestShield\Shield($a, $store);
+            same('throttle', $shield->consume('search', $req('a.de'), 1010.0)->action, 'a.de: its third search in the minute');
+            same([4.0, 3.0], [$store->peek('a.de@search:203.0.113.9', 60, 1010.0), $store->peek('b.de@search:203.0.113.9', 60, 1010.0)], 'counted apart: a.de 4, b.de 3 -- not 7 on one');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
 ];

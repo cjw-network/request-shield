@@ -312,6 +312,19 @@ return [
         $r = $gate->resolve($spent, Decision::allow(), creq('/x', ['rs_solution' => solveInPhp($task)]), 4.0, $earn);
         same(Decision::ALLOW_UNCACHED, $r['decision']->action, 'its own solution: through');
         same(0.0, $store->peek('posts:' . $bucket, 60, 4.0), 'and the counter starts again');
+        // A budget written in a site block (rules per website): its own counter, "<site>@<name>".
+        $siteStore = new \CjwNetwork\RequestShield\Store\MemoryStore();
+        $siteGate = new Gate($c, SECRET, null, 64, $siteStore);
+        for ($i = 0; $i < 5; $i++) {
+            $siteStore->hit('a.de@posts:' . $bucket, 60, 3.0);
+            $siteStore->hit('posts:' . $bucket, 60, 3.0);
+        }
+        $siteEarn = ['earn' => ['window' => 60, 'counter' => 'a.de@posts']];
+        $r = $siteGate->resolve($spent, Decision::allow(), creq('/x'), 3.0, $siteEarn);
+        preg_match('/var RS=(\{.*?\});\(function/s', (string) $r['page'], $m);
+        same(Decision::ALLOW_UNCACHED, $siteGate->resolve($spent, Decision::allow(), creq('/x', ['rs_solution' => solveInPhp(json_decode($m[1], true)['c'])]), 4.0, $siteEarn)['decision']->action, 'a site\'s budget: its own solution, through');
+        same([0.0, 5.0, 1.0], [$siteStore->peek('a.de@posts:' . $bucket, 60, 4.0), $siteStore->peek('posts:' . $bucket, 60, 4.0), $siteStore->peek('solved:a.de@posts:' . $bucket, 3600, 4.0)],
+            'the site\'s counter starts again, the same name elsewhere untouched; its solves counted under its own name');
         $r = $gate->resolve($spent, Decision::allow(), creq('/x'), 5.0, $earn);
         preg_match('/var RS=(\{.*?\});\(function/s', (string) $r['page'], $m);
         same(2000, json_decode($m[1], true)['c']['maxnumber'], 'the second time within the hour: twice as hard');

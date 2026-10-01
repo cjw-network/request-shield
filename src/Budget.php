@@ -26,7 +26,15 @@ final class Budget
         public bool $onDemand,
         /** @readonly past the limit: false a pause (429), true the browser check that frees the counter */
         public bool $earnBack = false,
+        /** @readonly the site block it is written in (rules per website): counted on that website only; null: across all */
+        public ?string $site = null,
     ) {
+    }
+
+    /** The counter's name: the budget's -- for one written in a site block, "<site>@<name>", so equal names in two blocks never share a counter. */
+    public function counter(): string
+    {
+        return $this->site === null ? $this->name : $this->site . '@' . $this->name;
     }
 
     /**
@@ -51,6 +59,7 @@ final class Budget
             $challengeAt !== null && $challengeAt > 0 ? $challengeAt : null,
             Settings::bool($b, 'onDemand', "budgets.$name.onDemand"),
             self::onExceeded($b, $name),
+            is_string($b['site'] ?? null) ? $b['site'] : null,
         );
     }
 

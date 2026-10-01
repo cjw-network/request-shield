@@ -1440,6 +1440,10 @@ final class RuleFile
                 throw new RuleFileException("$at: \"$a\" -- $usage");
             }
         }
+        if ($this->siteOpen !== null) {
+            // Written in a site block: counted on that website only (base budgets count across all).
+            $budget['site'] = $this->siteOpen['id'];
+        }
         $this->put("budgets.$name", $budget);
         $this->origins['budgets'][$name] = $this->rid;
     }

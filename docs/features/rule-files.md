@@ -207,9 +207,12 @@ site default {                              # any name no block lists
   check of the files: measured **about 5 µs more** per request than without
   site blocks (13–20 µs against 9–13 µs for loading the settings), nothing more
   for a website without a block of its own.
-- **Budgets:** for now a website's own `limit` counts like any budget; counting
-  a website's budgets on that website only, and logs per website, are the next
-  step (0024 phase 2).
+- **Budgets:** a budget of the base counts **across all websites** — one address
+  flooding many websites is one flood. A `limit` written in a `site` block
+  counts on that website only, under its own counter (`a.de@search`), so equal
+  names in two blocks never mix — for an application's own limits (an API, a
+  shop's searches), not for the defence. Logs per website are the next step
+  (0024 phase 2).
 - `bin/request-shield check` reads every block and lists them (`sites:
   shop.a.de (a.de) · *.b.de · default; picked by server-name`); `trace` takes the
   website from the address it tests.

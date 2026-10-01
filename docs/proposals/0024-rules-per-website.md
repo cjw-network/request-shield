@@ -121,14 +121,22 @@ set site-from host            # the Host header (behind a trusted proxy: X-Forwa
 - `bin/request-shield check` warns when `site` blocks exist and `site-from` is
   `host` without a `host` rule (a list of accepted names).
 
-## Budgets: per server, or per website
+## Budgets: across the server — a website's own where it needs one
 
-- A **budget of the base** counts **across all websites** — one address that
-  floods 50 websites on one server is one flood, and the server is what suffers.
-- A **budget inside a `site` block** counts **on that website only** (its name
-  in the counter's key): the shop's 120 a minute are the shop's.
+Against attackers, counting **across the server** is what helps: one address
+that floods 50 websites is one flood, and the server is what suffers. So:
+
+- A **budget of the base** counts **across all websites** — the default, and
+  the defence.
+- A **budget inside a `site` block** counts **on that website only**, under its
+  own counter (`<site>@<name>`): equal names in two blocks never share one. It is
+  for limits that belong to one application — an API's 600 calls a minute, a
+  shop's searches — not for the defence.
 - A website can drop a base budget for itself (`no-limit`), e.g. an API whose
-  clients are programs with their own limits.
+  clients are programs, or an intranet whose 200 people share one address.
+- The strongest defence across websites is not a budget but a ban: an address
+  caught by the scanner rules on one website, slowed or refused on all of them —
+  the automatic bans of [0013](0013-ip-lists.md), server-wide.
 
 ## What else follows the website
 
@@ -165,7 +173,9 @@ names the `site` line).
 1. `site` blocks, the name map, compiled settings per website, `site-from`,
    `default`; the base/block rules above; tests with nginx-like and Host-based
    names.
-2. Budgets per website; logs per website.
+2. Logs per website. (Budgets per website need no phase of their own: base
+   budgets count across the server, a block's own on its website — done in
+   phase 1.)
 3. The rules page, "Rules & setup" and the rule tester per website.
 4. With 0023 phase 2: site names as statistics hosts; with 0021: `include-app`
    per website.
@@ -178,6 +188,11 @@ names the `site` line).
 4. **One file or a directory** — `include sites/*.rules` with a `site` block in
    each file.
 5. **No `default` block: the base alone;** a `host` rule refuses unknown names.
+6. **Budgets** (asked again, 2026-10-01): counted across the server by default —
+   that is the defence; a budget written in a `site` block counts on that
+   website only, under its own counter, for an application's own limits. No
+   phase "budgets per website"; server-wide bans (0013) are the next step for
+   the defence.
 
 Phase 1 as built: the reader skips other websites' blocks and reads its own in
 place; the base must come first (after the first `site` block only `site`,

@@ -13,8 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   Names exact, `*.domain` (one label) or `default`. Which name decides: `set
   site-from server-name` (the default — the web server's, not the visitor's)
   or `host`. Compiled per website with the base, all checked together; a
-  request loads its website's settings without a second check. `check` lists
-  the sites, `trace` takes the website from the address.
+  request loads its website's settings without a second check. Budgets of the
+  base count across all websites (the defence); a `limit` in a site block
+  counts on that website only, under its own counter (`<site>@<name>`, also when
+  the browser check frees it). `check` lists the sites, `trace` takes the
+  website from the address.
 - **Plugins** (proposal 0023, phase 1): the core tells its plugins what it
   decided (`decided()`) and how a request the site answered ended (`ended()`,
   with the status and headers); `Seen` gives them the website, the known crawler

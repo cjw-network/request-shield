@@ -32,6 +32,7 @@ final class BudgetRule implements Rule
         private array $exempt = [],
         private int $ipv6Prefix = 64,
         private bool $earnBack = false,
+        private ?string $counter = null,
     ) {
     }
 
@@ -41,7 +42,7 @@ final class BudgetRule implements Rule
         if ($this->limit <= 0 || ($this->exempt !== [] && IpAddress::inRanges($request->clientIp, $this->exempt))) {
             return null;
         }
-        $key = $this->name . ':' . IpAddress::bucket($request->clientIp, $this->ipv6Prefix);
+        $key = ($this->counter ?? $this->name) . ':' . IpAddress::bucket($request->clientIp, $this->ipv6Prefix);
         $count = $this->store->hit($key, $this->window, $now);
         for ($i = 1; $i < $times; $i++) {
             $count = $this->store->hit($key, $this->window, $now);

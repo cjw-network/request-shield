@@ -39,7 +39,7 @@ final class Gate
 
     /**
      * @param Decision $base what every check but the budgets decided (cacheable or not)
-     * @param array{forced?: bool, fresh?: ?int, resend?: array{action: string, fields: list<array{0: string, 1: string}>}|false|null, solution?: ?string, api?: bool, earn?: array{window: int}|null} $o
+     * @param array{forced?: bool, fresh?: ?int, resend?: array{action: string, fields: list<array{0: string, 1: string}>}|false|null, solution?: ?string, api?: bool, earn?: array{window: int, counter?: string}|null} $o
      *   forced: the application asks for the check (Shield::requirePass()): exempt paths do not count;
      *   fresh: only a pass issued in the last so many seconds counts;
      *   resend: a form sent without a pass, to be sent again after the check (false: it cannot be);
@@ -87,8 +87,8 @@ final class Gate
             $pow = new ProofOfWork($this->secret);
             if ($pow->verify($solution, $bucket, $now) && (!$spent || ProofOfWork::budgetOf($solution) === $budget) && $this->firstUse($solution, $now)) {
                 if ($spent && $earn !== null && $this->store !== null) {
-                    $this->store->reset($budget . ':' . $bucket, $earn['window'], $now);
-                    $this->store->hit('solved:' . $budget . ':' . $bucket, 3600, $now);
+                    $this->store->reset(($earn['counter'] ?? $budget) . ':' . $bucket, $earn['window'], $now);
+                    $this->store->hit('solved:' . ($earn['counter'] ?? $budget) . ':' . $bucket, 3600, $now);
                 }
                 $ttl = $this->config->passTtl;
                 $cookies[] = self::cookie($passName, $pass->issue($bucket, $ua, (int) $now + $ttl), $ttl, $secure);
@@ -125,7 +125,7 @@ final class Gate
         if ($spent) {
             // Harder with every solve in the hour: from difficulty-min, doubled,
             // at most difficulty-max.
-            $solves = $this->store !== null ? (int) floor($this->store->peek('solved:' . $budget . ':' . $bucket, 3600, $now)) : 0;
+            $solves = $this->store !== null ? (int) floor($this->store->peek('solved:' . ($earn['counter'] ?? $budget) . ':' . $bucket, 3600, $now)) : 0;
             $maxNumber = (int) min($c->difficultyMax, $c->difficultyMin * 2 ** min($solves, 20));
         } else {
             $maxNumber = (int) round($c->difficultyMin + ($c->difficultyMax - $c->difficultyMin) * $challenged->level);

@@ -171,7 +171,7 @@ final class Inspector
                 continue;
             }
             $exempt = IpAddress::inRanges($request->clientIp, $s->exemptIps);
-            $count = $exempt ? 0 : (int) round($this->store->hit($b->name . ':' . IpAddress::bucket($request->clientIp, $s->ipv6Prefix), $b->window, $now));
+            $count = $exempt ? 0 : (int) round($this->store->hit($b->counter() . ':' . IpAddress::bucket($request->clientIp, $s->ipv6Prefix), $b->window, $now));
             $pace = $exempt ? $w('%s is never counted', $request->clientIp) : $w('%s of %s per %s', (string) $count, (string) $b->limit, Describe::duration($b->window, $l))
                 . ($b->challengeAt !== null ? $w(', browser check from %s', (string) $b->challengeAt) : '');
             $d = null;

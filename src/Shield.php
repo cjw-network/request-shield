@@ -565,7 +565,7 @@ final class Shield
             // challenge … max-age: a pass issued at most that long ago.
             'fresh' => $d->reason === 'always' ? $this->alwaysAge : null,
             'api' => $api,
-            'earn' => $budget !== null ? ['window' => $budget->window] : null,
+            'earn' => $budget !== null ? ['window' => $budget->window, 'counter' => $budget->counter()] : null,
             'resend' => !$api && $request->method !== 'GET' && $request->method !== 'HEAD' ? self::resendFields($request) : null,
         ];
     }
@@ -907,7 +907,7 @@ final class Shield
     private function budgetRule(Budget $b): BudgetRule
     {
         return new BudgetRule($this->store, $b->name, $b->limit, $b->window, $b->challengeAt,
-            $this->settings->exemptIps, $this->settings->ipv6Prefix, $b->earnBack);
+            $this->settings->exemptIps, $this->settings->ipv6Prefix, $b->earnBack, $b->counter());
     }
 
     private function gate(): Gate
