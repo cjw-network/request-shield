@@ -277,8 +277,10 @@ for the period chosen, showing where the traffic is:
 - a row for all websites, then each group with its websites below it, then the
   websites in no group, then the other hosts, each sorted by page views;
 - page views (with a bar), **the change against the period before**
-  (`+12 %`, `−30 %`, *new*), people, crawlers, bots, what was stopped, pages not
-  found, and a small curve of the page views;
+  (`+12 %`, `−30 %`, *new*), requests by people, **search engines and AI
+  crawlers apart** (AI: AI search, assistants, training), bots, what was
+  stopped, pages not found (404), and a small curve of the page views. Short
+  headings; each says on hover what it counts;
 - a click opens that website's or group's statistics.
 
 Reading costs about what the statistics page costs, once per website.

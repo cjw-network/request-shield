@@ -35,7 +35,8 @@ final class StatsPage
             'groupAll' => '%s: all %d websites', 'groupOne' => '%s: its website', 'ungrouped' => 'In no group', 'tabSites' => 'All websites',
             'sitesIntro' => 'where the traffic is: page views by people, against the period before', 'pageViews' => 'Page views', 'change' => 'Change', 'stoppedCol' => 'Stopped',
             'new' => 'new', 'before' => 'the period before: %s', 'peopleReq' => 'Requests by people', 'crawlerVisits' => 'Crawler visits', 'botReq' => 'Bot requests',
-            'hViews' => 'Views', 'hPeople' => 'People', 'hCrawlers' => 'Crawlers', 'hBots' => 'Bots', 'hStopped' => 'Stopped', 'hCurve' => 'Trend', 'otherShort' => 'other hosts',
+            'hViews' => 'Views', 'hPeople' => 'People', 'hCrawlers' => 'Crawlers', 'hBots' => 'Bots', 'hStopped' => 'Stopped', 'hCurve' => 'Trend', 'otherShort' => 'other hosts', 'hSearch' => 'Search', 'hAi' => 'AI',
+            'searchTip' => 'visits of search engines\' crawlers (Googlebot, Bingbot …)', 'aiTip' => 'visits of AI crawlers: AI search, AI assistants fetching for a user, AI training',
             'websiteTip' => 'a website, a group of websites (stats-group) or the names the rules do not know (other hosts)',
             'viewsTip' => 'page views by people: pages shown (GET, answered 200 with HTML)', 'changeTip' => 'page views against the period before, as long as this one',
             'crawlersTip' => 'requests from a known crawler (Googlebot …), proved by its address or only claimed', 'stoppedTip' => 'refused, checked or told to wait by the shield',
@@ -58,7 +59,8 @@ final class StatsPage
             'groupAll' => '%s: alle %d Websites', 'groupOne' => '%s: seine Website', 'ungrouped' => 'In keiner Gruppe', 'tabSites' => 'Alle Websites',
             'sitesIntro' => 'wo der Verkehr ist: Seitenaufrufe von Menschen, gegenüber dem Zeitraum davor', 'pageViews' => 'Seitenaufrufe', 'change' => 'Veränderung', 'stoppedCol' => 'Gestoppt',
             'new' => 'neu', 'before' => 'der Zeitraum davor: %s', 'peopleReq' => 'Anfragen von Menschen', 'crawlerVisits' => 'Crawler-Besuche', 'botReq' => 'Bot-Anfragen',
-            'hViews' => 'Aufrufe', 'hPeople' => 'Menschen', 'hCrawlers' => 'Crawler', 'hBots' => 'Bots', 'hStopped' => 'Gestoppt', 'hCurve' => 'Verlauf', 'otherShort' => 'andere Hosts',
+            'hViews' => 'Aufrufe', 'hPeople' => 'Menschen', 'hCrawlers' => 'Crawler', 'hBots' => 'Bots', 'hStopped' => 'Gestoppt', 'hCurve' => 'Verlauf', 'otherShort' => 'andere Hosts', 'hSearch' => 'Suche', 'hAi' => 'KI',
+            'searchTip' => 'Besuche der Crawler von Suchmaschinen (Googlebot, Bingbot …)', 'aiTip' => 'Besuche von KI-Crawlern: KI-Suche, KI-Assistenten für einen Nutzer, KI-Training',
             'websiteTip' => 'eine Website, eine Gruppe von Websites (stats-group) oder die Namen, die die Regeln nicht kennen (andere Hosts)',
             'viewsTip' => 'Seitenaufrufe von Menschen: gezeigte Seiten (GET, mit 200 und HTML beantwortet)', 'changeTip' => 'Seitenaufrufe gegenüber dem gleich langen Zeitraum davor',
             'crawlersTip' => 'Anfragen bekannter Crawler (Googlebot …), durch ihre Adresse bestätigt oder nur behauptet', 'stoppedTip' => 'vom Schutz abgewiesen, geprüft oder zum Warten geschickt',
@@ -442,7 +444,7 @@ final class StatsPage
      * websites), the websites in no group, the other hosts -- sorted by page
      * views; each a link to its statistics.
      *
-     * @param array{sites: array<string, array{views: int, people: int, crawlers: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>, groups: array<string, array{views: int, people: int, crawlers: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>, all: array{views: int, people: int, crawlers: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}} $x
+     * @param array{sites: array<string, array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>, groups: array<string, array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>, all: array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}} $x
      * @param array<string, string> $t
      * @param callable(string): string $href the statistics of a website, a group (group:<id>), all ('')
      */
@@ -460,7 +462,7 @@ final class StatsPage
         $th = static fn (string $short, string $tip, string $class = 'n'): string => '<th class="' . $class . '" title="' . $e($tip) . '">' . $e($short) . '</th>';
         $h = '<section class="card"><h2>' . $e($t['tabSites']) . ' <small>' . $e($t['sitesIntro']) . '</small></h2><div class="wrap"><table class="sites"><thead><tr>'
             . $th($t['website'], $t['websiteTip'], 'sname') . $th($t['hViews'], $t['viewsTip'], 'snum') . $th('±', $t['changeTip']) . $th($t['hPeople'], $t['peopleTip'])
-            . $th($t['hCrawlers'], $t['crawlersTip']) . $th($t['hBots'], $t['botsTip']) . $th($t['hStopped'], $t['stoppedTip']) . $th('404', $t['notFoundTip'])
+            . $th($t['hSearch'], $t['searchTip']) . $th($t['hAi'], $t['aiTip']) . $th($t['hBots'], $t['botsTip']) . $th($t['hStopped'], $t['stoppedTip']) . $th('404', $t['notFoundTip'])
             . $th($t['hCurve'], $t['curveTip'], 'scurve') . '</tr></thead><tbody>';
         $h .= self::sitesRow($t['allSites'], $x['all'], $href(''), 'sall', '', ...$ctx);
         $groups = $x['groups'];
@@ -489,7 +491,7 @@ final class StatsPage
     /**
      * One row of the overview of all websites.
      *
-     * @param array{views: int, people: int, crawlers: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>} $r
+     * @param array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>} $r
      * @param array<string, string> $t
      */
     private static function sitesRow(string $label, array $r, string $link, string $class, string $note, array $t, string $lang, int $most, int $from, int $to, string $by): string
@@ -515,7 +517,7 @@ final class StatsPage
             }
             return '<tr class="' . $class . '"><td class="sname"><a href="' . $e($link) . '">' . $e($label) . '</a>' . ($note !== '' ? ' <span class="note">' . $e($note) . '</span>' : '') . '</td>'
                 . '<td class="snum">' . ($class === 'sall' ? '' : '<div class="hbar thin"><i class="people" style="width:' . number_format(min(100, 100 * $cur / $most), 2, '.', '') . '%"></i></div>') . $e($n($cur)) . '</td>'
-                . '<td class="schange">' . $change . '</td><td>' . $e($n($r['people'])) . '</td><td>' . $e($n($r['crawlers'])) . '</td><td>' . $e($n($r['bots'])) . '</td>'
+                . '<td class="schange">' . $change . '</td><td>' . $e($n($r['people'])) . '</td><td>' . $e($n($r['search'])) . '</td><td>' . $e($n($r['ai'])) . '</td><td>' . $e($n($r['bots'])) . '</td>'
                 . '<td>' . ($r['stopped'] > 0 ? '<span class="stop">' . $e($n($r['stopped'])) . '</span>' : '0') . '</td><td>' . $e($n($r['notFound'])) . '</td>'
                 . '<td class="scurve">' . self::spark($curve) . '</td></tr>';
     }

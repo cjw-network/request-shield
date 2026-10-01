@@ -199,11 +199,13 @@ return [
                 }
             }
             Stats::of($s, Stats::OTHER)->count(['a:reject'], (float) $now);
+            Stats::of($s, 'a.de')->count(['c:CRAWL-GOOGLE:seen', 'c:CRAWL-GOOGLE:seen', 'c:CRAWL-GPTBOT:seen', 'c:CRAWL-CLAUDE-USER:seen'], (float) $now);
             $x = StatsReport::sites($s, gmdate('Ymd', $now - 6 * 86400), gmdate('Ymd', $now));
             same([5, 2, 1, 2, 3, 3, 0, 0], [$x['sites']['a.de']['views'], $x['sites']['a.de']['prev'], $x['sites']['b.de']['views'], $x['sites']['b.de']['prev'],
                 $x['sites']['c.de']['views'], $x['sites']['c.de']['prev'], $x['sites']['d.de']['views'], $x['sites']['d.de']['prev']], 'per website, this period and the one before');
             same([6, 4], [$x['groups']['customer-a']['views'], $x['groups']['customer-a']['prev']], 'a group: its websites added up');
             same([9, 1], [$x['all']['views'], $x['all']['stopped']], 'all, and what was stopped (on another host)');
+            same([2, 2, 2, 2], [$x['sites']['a.de']['search'], $x['sites']['a.de']['ai'], $x['groups']['customer-a']['search'], $x['all']['ai']], 'crawlers by kind: search engines apart from AI crawlers');
             $h = StatsPage::render($s, ['view' => 'sites', 'action' => '/rs/sites', 'links' => StatsPage::links($s), 'lang' => 'en', 'now' => $now]);
             $pos = static fn (string $needle): int => (int) strpos($h, $needle);
             truthy(strpos($h, '<a class="tab on" href="/rs/stats/sites') !== false, 'its own tab, first');

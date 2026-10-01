@@ -262,24 +262,40 @@ final class StatsReport
      * the page views of the period before, and the page views per period
      * for a small curve.
      *
-     * @return array{sites: array<string, array{views: int, people: int, crawlers: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>,
-     *   groups: array<string, array{views: int, people: int, crawlers: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>,
-     *   all: array{views: int, people: int, crawlers: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}}
+     * @return array{sites: array<string, array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>,
+     *   groups: array<string, array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>,
+     *   all: array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}}
      */
     public static function sites(Settings $s, string $from, string $to, string $by = 'day'): array
     {
         $len = (int) round(((int) strtotime($to . ' UTC') - (int) strtotime($from . ' UTC')) / 86400) + 1;
         $pTo = gmdate('Ymd', (int) strtotime($from . ' UTC') - 86400);
         $pFrom = gmdate('Ymd', (int) strtotime($from . ' UTC') - $len * 86400);
-        $row = static function (?string $site) use ($s, $from, $to, $pFrom, $pTo, $by): array {
-            $r = ['views' => 0, 'people' => 0, 'crawlers' => 0, 'bots' => 0, 'stopped' => 0, 'notFound' => 0, 'prev' => 0, 'curve' => []];
-            foreach (self::periods($s, null, $from, $to, $by, $site) as $label => $b) {
+        $kinds = [];
+        foreach ($s->crawlers as $id => $c) {
+            $kinds[(string) $id] = $c['kind'];
+        }
+        $row = static function (?string $site) use ($s, $from, $to, $pFrom, $pTo, $by, $kinds): array {
+            $r = ['views' => 0, 'people' => 0, 'crawlers' => 0, 'search' => 0, 'ai' => 0, 'bots' => 0, 'stopped' => 0, 'notFound' => 0, 'prev' => 0, 'curve' => []];
+            $periods = [];
+            foreach (self::grouped(self::read($s, null, $from, $to, $site), $by) as [$label, $counts]) {
+                $b = self::buckets($counts);
                 foreach (['views', 'people', 'crawlers', 'bots', 'notFound'] as $k) {
                     $r[$k] += $b[$k] ?? 0;
                 }
                 $r['stopped'] += ($b['refused'] ?? 0) + ($b['checked'] ?? 0) + ($b['throttled'] ?? 0);
-                $r['curve'][(string) $label] = $b['views'] ?? 0;
+                $periods[(string) $label] = ($periods[(string) $label] ?? 0) + ($b['views'] ?? 0);
+                // Crawlers by kind: search engines apart from the AI crawlers (search, assistants, training).
+                foreach ($counts as $k => $n) {
+                    $k = (string) $k;
+                    if (strncmp($k, 'c:', 2) === 0 && substr($k, -5) === ':seen') {
+                        $kind = $kinds[substr($k, 2, -5)] ?? 'search';
+                        $r[$kind === 'search' ? 'search' : 'ai'] += $n;
+                    }
+                }
             }
+            ksort($periods);
+            $r['curve'] = $periods;
             foreach (self::periods($s, null, $pFrom, $pTo, $by, $site) as $b) {
                 $r['prev'] += $b['views'] ?? 0;
             }
@@ -291,7 +307,7 @@ final class StatsReport
         }
         $groups = [];
         foreach ($s->statsGroups as $id => $g) {
-            $sum = ['views' => 0, 'people' => 0, 'crawlers' => 0, 'bots' => 0, 'stopped' => 0, 'notFound' => 0, 'prev' => 0, 'curve' => []];
+            $sum = ['views' => 0, 'people' => 0, 'crawlers' => 0, 'search' => 0, 'ai' => 0, 'bots' => 0, 'stopped' => 0, 'notFound' => 0, 'prev' => 0, 'curve' => []];
             foreach ($g['sites'] as $name) {
                 foreach ($sites[$name] ?? [] as $k => $v) {
                     if ($k === 'curve') {
