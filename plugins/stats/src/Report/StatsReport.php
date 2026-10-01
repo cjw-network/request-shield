@@ -256,6 +256,60 @@ final class StatsReport
     }
 
     /**
+     * The overview of all websites (stats-hosts, stats-group): for each
+     * website, each group (its websites added up), "other hosts" and all --
+     * page views, people, crawlers, bots, what was stopped, pages not found,
+     * the page views of the period before, and the page views per period
+     * for a small curve.
+     *
+     * @return array{sites: array<string, array{views: int, people: int, crawlers: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>,
+     *   groups: array<string, array{views: int, people: int, crawlers: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>,
+     *   all: array{views: int, people: int, crawlers: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}}
+     */
+    public static function sites(Settings $s, string $from, string $to, string $by = 'day'): array
+    {
+        $len = (int) round(((int) strtotime($to . ' UTC') - (int) strtotime($from . ' UTC')) / 86400) + 1;
+        $pTo = gmdate('Ymd', (int) strtotime($from . ' UTC') - 86400);
+        $pFrom = gmdate('Ymd', (int) strtotime($from . ' UTC') - $len * 86400);
+        $row = static function (?string $site) use ($s, $from, $to, $pFrom, $pTo, $by): array {
+            $r = ['views' => 0, 'people' => 0, 'crawlers' => 0, 'bots' => 0, 'stopped' => 0, 'notFound' => 0, 'prev' => 0, 'curve' => []];
+            foreach (self::periods($s, null, $from, $to, $by, $site) as $label => $b) {
+                foreach (['views', 'people', 'crawlers', 'bots', 'notFound'] as $k) {
+                    $r[$k] += $b[$k] ?? 0;
+                }
+                $r['stopped'] += ($b['refused'] ?? 0) + ($b['checked'] ?? 0) + ($b['throttled'] ?? 0);
+                $r['curve'][(string) $label] = $b['views'] ?? 0;
+            }
+            foreach (self::periods($s, null, $pFrom, $pTo, $by, $site) as $b) {
+                $r['prev'] += $b['views'] ?? 0;
+            }
+            return $r;
+        };
+        $sites = [];
+        foreach (array_merge($s->statsHosts, [Stats::OTHER]) as $name) {
+            $sites[$name] = $row($name);
+        }
+        $groups = [];
+        foreach ($s->statsGroups as $id => $g) {
+            $sum = ['views' => 0, 'people' => 0, 'crawlers' => 0, 'bots' => 0, 'stopped' => 0, 'notFound' => 0, 'prev' => 0, 'curve' => []];
+            foreach ($g['sites'] as $name) {
+                foreach ($sites[$name] ?? [] as $k => $v) {
+                    if ($k === 'curve') {
+                        foreach ((array) $v as $label => $n) {
+                            $sum['curve'][(string) $label] = ($sum['curve'][(string) $label] ?? 0) + (int) $n;
+                        }
+                    } else {
+                        $sum[$k] += (int) $v;
+                    }
+                }
+            }
+            ksort($sum['curve']);
+            $groups[(string) $id] = $sum;
+        }
+        return ['sites' => $sites, 'groups' => $groups, 'all' => $row(null)];
+    }
+
+    /**
      * What was counted: the statistics given, or with stats-hosts one
      * website's ($site) or every website's added up (null).
      *
@@ -266,7 +320,7 @@ final class StatsReport
         if ($stats !== null) {
             return $stats->read($from, $to);
         }
-        $all = Stats::all($s, $site !== null && ($site === Stats::OTHER || in_array($site, $s->statsHosts, true)) ? $site : null);
+        $all = Stats::all($s, $site !== null && Stats::known($s, $site) ? $site : null);
         return count($all) === 1 ? $all[0]->read($from, $to) : Stats::readAll($all, $from, $to);
     }
 

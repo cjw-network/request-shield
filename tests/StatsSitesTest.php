@@ -143,6 +143,82 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'stats-group: websites per customer -- read together and each on its own; counted apart without naming them twice; mistakes named' => function (): void {
+        $dir = sitesStatsDir();
+        try {
+            $s = sitesStatsSettings($dir, "set stats-hosts c.de\n[G-A] stats-group \"Customer A\" a.de www.a.de b.de   # the agency's customer\nstats-group Reseller b.de c.de\n");
+            same(['customer-a' => ['name' => 'Customer A', 'sites' => ['a.de', 'www.a.de', 'b.de'], 'rule' => 'G-A'], 'reseller' => ['name' => 'Reseller', 'sites' => ['b.de', 'c.de'], 'rule' => 'site.rules:6']],
+                $s->statsGroups, 'an ID for addresses; a website in two groups');
+            same(['c.de', 'a.de', 'www.a.de', 'b.de'], $s->statsHosts, 'a group\'s websites are counted apart too');
+            foreach (['a.de', 'www.a.de', 'b.de', 'b.de', 'c.de', 'x.example'] as $host) {
+                sitesCount(new Shield($s, new MemoryStore()), $host);
+            }
+            same([4, 3, 1, 6], [sitesRequests($s, 'group:customer-a'), sitesRequests($s, 'group:reseller'), sitesRequests($s, 'c.de'), sitesRequests($s, null)],
+                'a group: its websites added up; all: everything once');
+            same(6, sitesRequests($s, 'group:nobody'), 'a group that is not there: all');
+            foreach (["site a.de {\n  stats-group X a.de\n}\n" => 'stats-group is about the server', "match /x/** {\n  stats-group X a.de\n}\n" => 'does not go inside a match block',
+                "stats-group X a_b.de\n" => 'takes website names', "stats-group \"X\"\n" => 'stats-group "<name>"',
+                "stats-group \"Kunde A\" a.de\nstats-group kunde-a b.de\n" => 'used twice'] as $text => $says) {
+                try {
+                    file_put_contents("$dir/site.rules", "set store-dir $dir/store\n" . $text);
+                    Settings::from(RuleFile::read(["$dir/site.rules"], strpos($text, 'site ') === 0 ? 'a.de' : null)['config']);
+                    throw new TestFailure('accepted: ' . json_encode($text));
+                } catch (RuleFileException | InvalidArgumentException $e) {
+                    truthy(strpos($e->getMessage(), $says) !== false, $e->getMessage());
+                }
+            }
+            $s = sitesStatsSettings($dir, "set stats-hosts c.de\nstats-group \"Customer A\" a.de b.de\n");
+            $h = StatsPage::render($s, ['view' => 'site', 'action' => '/rs/stats', 'lang' => 'en', 'now' => SITES_T0, 'site' => 'group:customer-a']);
+            truthy(strpos($h, '<optgroup label="Customer A"><option value="group:customer-a" selected>Customer A: all 2 websites</option><option value="a.de">a.de</option><option value="b.de">b.de</option></optgroup>'
+                . '<optgroup label="In no group"><option value="c.de">c.de</option></optgroup><option value="(other)">') !== false, 'the switch: a section per group, then the rest');
+            truthy(strpos($h, 'Customer A: all 2 websites: a.de, b.de</p>') !== false && strpos($h, 'site=group%3Acustomer-a') !== false, 'named under the title, kept in the links');
+            truthy(strpos(\CjwNetwork\RequestShield\Report\SetupPage::render($s, 'en', []), 'Customer A: a.de, b.de') !== false, 'shown with the settings');
+            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield') . ' stats ' . escapeshellarg("$dir/site.rules");
+            exec("$bin --group=\"Customer A\" --json 2>&1", $out, $code);
+            same(0, $code, implode("\n", $out));
+            exec("$bin --group=nobody 2>&1", $bad, $code);
+            truthy($code === 2 && strpos(implode(' ', $bad), 'no group nobody (customer-a)') !== false, implode(' ', $bad));
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'all websites at a glance: each group and its websites, where the traffic is, against the period before -- only with stats-hosts' => function (): void {
+        $dir = sitesStatsDir();
+        try {
+            $s = sitesStatsSettings($dir, "set stats-hosts c.de d.de\nstats-group \"Customer A\" a.de b.de\n");
+            $now = SITES_T0;
+            $prev = SITES_T0 - 7 * 86400;
+            // Page views: this week a.de 5, b.de 1, c.de 3, d.de 0; the week before a.de 2, b.de 2, c.de 3.
+            foreach (['a.de' => [5, 2], 'b.de' => [1, 2], 'c.de' => [3, 3]] as $site => [$cur, $before]) {
+                $st = Stats::of($s, $site);
+                for ($i = 0; $i < $cur; $i++) {
+                    $st->count(['a:allow', 'pg:people|/p'], (float) ($now - $i * 3600));
+                }
+                for ($i = 0; $i < $before; $i++) {
+                    $st->count(['a:allow', 'pg:people|/p'], (float) ($prev - $i * 3600));
+                }
+            }
+            Stats::of($s, Stats::OTHER)->count(['a:reject'], (float) $now);
+            $x = StatsReport::sites($s, gmdate('Ymd', $now - 6 * 86400), gmdate('Ymd', $now));
+            same([5, 2, 1, 2, 3, 3, 0, 0], [$x['sites']['a.de']['views'], $x['sites']['a.de']['prev'], $x['sites']['b.de']['views'], $x['sites']['b.de']['prev'],
+                $x['sites']['c.de']['views'], $x['sites']['c.de']['prev'], $x['sites']['d.de']['views'], $x['sites']['d.de']['prev']], 'per website, this period and the one before');
+            same([6, 4], [$x['groups']['customer-a']['views'], $x['groups']['customer-a']['prev']], 'a group: its websites added up');
+            same([9, 1], [$x['all']['views'], $x['all']['stopped']], 'all, and what was stopped (on another host)');
+            $h = StatsPage::render($s, ['view' => 'sites', 'action' => '/rs/sites', 'links' => StatsPage::links($s), 'lang' => 'en', 'now' => $now]);
+            $pos = static fn (string $needle): int => (int) strpos($h, $needle);
+            truthy(strpos($h, '<a class="tab on" href="/rs/sites') !== false, 'its own tab, first');
+            truthy($pos('>Customer A</a>') < $pos('>a.de</a>') && $pos('>a.de</a>') < $pos('>b.de</a>') && $pos('>b.de</a>') < $pos('>c.de</a>') && $pos('>c.de</a>') < $pos('>d.de</a>')
+                && $pos('>d.de</a>') < $pos('>other hosts'), 'the group with its websites (most traffic first), then the rest, then other hosts');
+            truthy(strpos($h, '+50 %') !== false && strpos($h, '+150 %') !== false && strpos($h, '−50 %') !== false && strpos($h, '+0 %') !== false, 'the change: group, a.de, b.de, c.de');
+            truthy(strpos($h, 'href="/rs/stats?site=group%3Acustomer-a') !== false && strpos($h, 'href="/rs/stats?site=a.de') !== false, 'each opens its statistics');
+            truthy(strpos($h, '<svg class="spark"') !== false, 'a curve each');
+            $plain = sitesStatsSettings($dir, '');
+            same(false, isset(StatsPage::links($plain)['sites']), 'without stats-hosts: no such view');
+            truthy(strpos(StatsPage::render($plain, ['view' => 'sites', 'lang' => 'en', 'now' => $now]), '<table class="sites">') === false, 'asked for all the same: the overview instead');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'the page: a website switch (all, each, other), the choice kept in the links; the command line: --site' => function (): void {
         $dir = sitesStatsDir();
         try {

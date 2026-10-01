@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Groups of websites and an overview of all websites** (proposal 0023,
+  phase 3): `stats-group "Customer A" a.de www.a.de b.de` — a group's
+  statistics add its websites up, the website switch has a section per group,
+  `bin/request-shield stats --group=`. The new first tab **All websites**
+  (`/rs/sites`) shows each group with its websites, the rest and the other
+  hosts side by side: page views, the change against the period before, people,
+  crawlers, bots, stopped, not found, a small curve — sorted by traffic
+  ([docs](docs/features/statistics.md#all-websites-at-a-glance-rssites)).
 - **`stats-skip <paths>`**: paths that are no pages of the site (a map
   proxy's tiles, an image resizer) are left out of the statistics when they
   pass; refused or checked they are still counted, and every rule applies to

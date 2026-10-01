@@ -256,6 +256,7 @@ $groups = [
         ['/rs/lists', 'Lists', 'keep an address out or let it in, with a comment of your own; extend, remove; the active bans (this machine only)'],
         ['/rs/rules', 'Statistics: rules & setup', 'the way of a request through the shield, every rule in words, every technical setting (this machine only)'],
         ['/rs/stats?lang=de', 'Statistik auf Deutsch', 'the same page in German (it also follows your browser\'s language)'],
+        ['/rs/sites', 'Statistics: all websites', 'each customer (stats-group) with its websites, where the traffic is, against the period before; a click opens one'],
         ['/rs/stats?site=localhost84', 'Statistics: one website', 'set stats-hosts localhost84 127.0.0.1: each its own numbers, any other Host name as "other hosts"; the switch at the top'],
         ['/rs/stats?path=' . rawurlencode($url('/page/')), 'Statistics: one subtree', 'the "path starts with" filter: views of one section, by people, crawlers, bots'],
     ],

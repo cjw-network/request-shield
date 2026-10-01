@@ -113,7 +113,9 @@ $examples = function (string $prefix): void {
             $r = $get('GET', '/rs/dashboard');
             same(200, $r['status'], 'the dashboard');
             truthy(strpos($r['body'], '/rs/shield?days=7') !== false && strpos($r['body'], 'class="tab on"') !== false, 'tabs: one address per view');
-            same(200, $get('GET', '/RS/shield')['status'], 'in capitals too');
+            $sites = $get('GET', '/RS/sites');
+            truthy($sites['status'] === 200 && strpos($sites['body'], '<table class="sites">') !== false && strpos($sites['body'], '>Customer A</a>') !== false,
+                'all websites at a glance, grouped (and the address in capitals too)');
             $filtered = $get('GET', '/rs/stats?from=2026-09-01&to=2026-09-30&lang=de&path=%2Fpage%2F');
             truthy($filtered['status'] === 200 && strpos($filtered['body'], '01.09.2026 – 30.09.2026') !== false && strpos($filtered['body'], 'Seitenaufrufe') !== false,
                 'the filter and a range, as their forms send them (query strict in the demo knows from and to)');

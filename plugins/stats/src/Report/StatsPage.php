@@ -32,6 +32,9 @@ final class StatsPage
         'en' => [
             'title' => 'Statistics', 'today' => '24 hours', 'd7' => '7 days', 'd30' => '30 days', 'm12' => '12 months', 'thisMonth' => 'This month', 'lastMonth' => 'Last month', 'from' => 'from', 'to' => 'to', 'show' => 'Show', 'nowPeople' => 'now: %s requests by people in the last 5 minutes',
             'allSites' => 'All websites', 'otherHosts' => 'other hosts (names the rules do not know)', 'website' => 'Website',
+            'groupAll' => '%s: all %d websites', 'groupOne' => '%s: its website', 'ungrouped' => 'In no group', 'tabSites' => 'All websites',
+            'sitesIntro' => 'where the traffic is: page views by people, against the period before', 'pageViews' => 'Page views', 'change' => 'Change', 'stoppedCol' => 'Stopped',
+            'new' => 'new', 'before' => 'the period before: %s', 'nSites' => '%d websites', 'oneSite' => '1 website',
             'requests' => 'Requests', 'people' => 'People', 'crawlers' => 'Crawlers', 'bots' => 'Bots', 'checked' => 'Checked', 'refused' => 'Refused',
             'notFound' => 'Not found', 'through' => 'Let through', 'throttled' => 'Told to wait', 'who' => 'Who came', 'what' => 'What the shield did',
             'answers' => 'Answers', 'short' => 'In short', 'known' => 'Known crawlers', 'missing' => 'Pages not found', 'linked' => 'linked from',
@@ -45,6 +48,9 @@ final class StatsPage
         'de' => [
             'title' => 'Statistik', 'today' => '24 Stunden', 'd7' => '7 Tage', 'd30' => '30 Tage', 'm12' => '12 Monate', 'thisMonth' => 'Dieser Monat', 'lastMonth' => 'Letzter Monat', 'from' => 'von', 'to' => 'bis', 'show' => 'Anzeigen', 'nowPeople' => 'jetzt: %s Anfragen von Menschen in den letzten 5 Minuten',
             'allSites' => 'Alle Websites', 'otherHosts' => 'andere Hosts (Namen, die die Regeln nicht kennen)', 'website' => 'Website',
+            'groupAll' => '%s: alle %d Websites', 'groupOne' => '%s: seine Website', 'ungrouped' => 'In keiner Gruppe', 'tabSites' => 'Alle Websites',
+            'sitesIntro' => 'wo der Verkehr ist: Seitenaufrufe von Menschen, gegenüber dem Zeitraum davor', 'pageViews' => 'Seitenaufrufe', 'change' => 'Veränderung', 'stoppedCol' => 'Gestoppt',
+            'new' => 'neu', 'before' => 'der Zeitraum davor: %s', 'nSites' => '%d Websites', 'oneSite' => '1 Website',
             'requests' => 'Anfragen', 'people' => 'Menschen', 'crawlers' => 'Crawler', 'bots' => 'Bots', 'checked' => 'Geprüft', 'refused' => 'Abgewiesen',
             'notFound' => 'Nicht gefunden', 'through' => 'Durchgelassen', 'throttled' => 'Gebremst', 'who' => 'Wer kam', 'what' => 'Was der Schutz tat',
             'answers' => 'Antworten', 'short' => 'Kurz gesagt', 'known' => 'Bekannte Crawler', 'missing' => 'Nicht gefundene Seiten', 'linked' => 'verlinkt von',
@@ -94,13 +100,16 @@ final class StatsPage
         $crawler = $o['crawler'] ?? null;
         $path = isset($o['path']) && $o['path'] !== '' ? '/' . ltrim((string) $o['path'], '/') : null;
         $filter = $path;                    // the subtree filter ($path is reused by the loops below)
-        $view = in_array($o['view'] ?? 'site', ['site', 'shield', 'all', 'rules'], true) ? ($o['view'] ?? 'site') : 'site';
+        $view = in_array($o['view'] ?? 'site', ['site', 'shield', 'all', 'rules', 'sites'], true) ? ($o['view'] ?? 'site') : 'site';
+        if ($view === 'sites' && $s->statsHosts === []) {
+            $view = 'all';                  // no websites to compare: the overview
+        }
         // The pages by views, or by what the shield stopped (the protection's view starts there).
         $sorts = ['views', 'blocked', 'refused', 'checked', 'throttled'];
         $sortDefault = $view === 'shield' ? 'blocked' : 'views';
         $sort = in_array($o['sort'] ?? $sortDefault, $sorts, true) ? ($o['sort'] ?? $sortDefault) : $sortDefault;
         // stats-hosts: one website's numbers, or all added up (no "site").
-        $site = is_string($o['site'] ?? null) && ($o['site'] === \CjwNetwork\RequestShield\Stats::OTHER || in_array($o['site'], $s->statsHosts, true)) ? $o['site'] : null;
+        $site = is_string($o['site'] ?? null) && \CjwNetwork\RequestShield\Stats::known($s, $o['site']) ? $o['site'] : null;
         // What every link carries along besides the period and the language.
         $extra = $range + ($site !== null ? ['site' => $site] : []) + ($crawler !== null ? ['crawler' => $crawler] : []) + ($path !== null ? ['path' => $path] : []) + ($sort !== $sortDefault ? ['sort' => $sort] : []);
         $action = $o['action'] ?? '';
@@ -108,7 +117,7 @@ final class StatsPage
         // the path names the view, GET parameters filter. Without links: ?view=.
         $links = [];
         foreach ((array) ($o['links'] ?? []) as $v => $u) {
-            if (in_array($v, ['all', 'site', 'shield', 'rules', 'live', 'lists'], true) && $u !== '') {
+            if (in_array($v, ['sites', 'all', 'site', 'shield', 'rules', 'live', 'lists'], true) && $u !== '' && ($v !== 'sites' || $s->statsHosts !== [])) {
                 $links[$v] = $u;
             }
         }
@@ -146,7 +155,7 @@ final class StatsPage
         // The tabs: visitors and pages (editors) -- protection (admins). An
         // embedding page can show one only ('tabs' => false).
         // Live and lists are the core's pages (Report\LivePage, ListsPage): tabs here when the site has them.
-        $tabs = $links !== [] ? array_intersect_key(['all' => $t['tabAll'], 'site' => $t['tabSite'], 'shield' => $t['tabShield'], 'rules' => $t['tabRules'],
+        $tabs = $links !== [] ? array_intersect_key(['sites' => $t['tabSites'], 'all' => $t['tabAll'], 'site' => $t['tabSite'], 'shield' => $t['tabShield'], 'rules' => $t['tabRules'],
             'live' => \CjwNetwork\RequestShield\Report\Frame::TABS['live'][$lang === 'de' ? 1 : 0], 'lists' => \CjwNetwork\RequestShield\Report\Frame::TABS['lists'][$lang === 'de' ? 1 : 0]], $links)
             : ['site' => $t['tabSite'], 'shield' => $t['tabShield'], 'rules' => $t['tabRules']];
         $h = '';
@@ -180,11 +189,33 @@ final class StatsPage
         }
         $h .= '<a class="pill" href="' . $e($query(['days' => $days, 'by' => $by === 'hour' ? 'day' : $by, 'format' => 'json'] + $range + ($site !== null ? ['site' => $site] : []))) . '">JSON</a></div></div>';
         // The website switch (stats-hosts): all added up, one website, or the names the rules do not know.
-        if ($s->statsHosts !== [] && $view !== 'rules') {
-            $opts = '<option value=""' . ($site === null ? ' selected' : '') . '>' . $e($t['allSites']) . '</option>';
-            foreach (array_merge($s->statsHosts, [\CjwNetwork\RequestShield\Stats::OTHER]) as $name) {
-                $opts .= '<option value="' . $e($name) . '"' . ($name === $site ? ' selected' : '') . '>' . $e($name === \CjwNetwork\RequestShield\Stats::OTHER ? $t['otherHosts'] : $name) . '</option>';
+        if ($s->statsHosts !== [] && $view !== 'rules' && $view !== 'sites') {
+            $chosen = false;
+            $option = static function (string $value, string $label) use ($site, $e, &$chosen): string {
+                $on = !$chosen && $value === (string) $site;
+                $chosen = $chosen || $on;
+                return '<option value="' . $e($value) . '"' . ($on ? ' selected' : '') . '>' . $e($label) . '</option>';
+            };
+            $opts = $option('', $t['allSites']);
+            $grouped = [];
+            // A section per group (stats-group): the whole group, then each of its websites.
+            foreach ($s->statsGroups as $id => $g) {
+                $opts .= '<optgroup label="' . $e($g['name']) . '">' . $option('group:' . $id, count($g['sites']) === 1 ? sprintf($t['groupOne'], $g['name']) : sprintf($t['groupAll'], $g['name'], count($g['sites'])));
+                foreach ($g['sites'] as $name) {
+                    $opts .= $option($name, $name);
+                    $grouped[$name] = true;
+                }
+                $opts .= '</optgroup>';
             }
+            $rest = array_values(array_filter($s->statsHosts, static fn (string $n): bool => !isset($grouped[$n])));
+            if ($rest !== []) {
+                $opts .= $s->statsGroups !== [] ? '<optgroup label="' . $e($t['ungrouped']) . '">' : '';
+                foreach ($rest as $name) {
+                    $opts .= $option($name, $name);
+                }
+                $opts .= $s->statsGroups !== [] ? '</optgroup>' : '';
+            }
+            $opts .= $option(\CjwNetwork\RequestShield\Stats::OTHER, $t['otherHosts']);
             // The form keeps the view, the period, the language and the filters; only the website changes.
             $keepSite = ['view' => $links === [] ? $view : null, 'days' => $range === [] ? $days : null, 'by' => $range === [] ? $by : null, 'lang' => $lang] + $range
                 + array_diff_key($plain, ['site' => 1]);
@@ -197,7 +228,16 @@ final class StatsPage
             $h .= ' <button type="submit">' . $e($t['show']) . '</button></form>';
         }
         $h .= '<p class="sub">' . $e(self::date($r['from'], $lang) . ' – ' . self::date($r['to'], $lang))
-            . ($s->statsHosts !== [] ? ' · ' . $e($site === null ? $t['allSites'] : ($site === \CjwNetwork\RequestShield\Stats::OTHER ? $t['otherHosts'] : $site)) : '') . ($crawler !== null ? ' · ' . $e($crawler) . ' · <a href="' . $e($query(['days' => $days, 'by' => $by, 'lang' => $lang])) . '">' . $e($t['all']) . '</a>' : '') . '</p>';
+            . ($s->statsHosts !== [] ? ' · ' . $e(self::siteName($s, $site, $t)) : '') . ($crawler !== null ? ' · ' . $e($crawler) . ' · <a href="' . $e($query(['days' => $days, 'by' => $by, 'lang' => $lang])) . '">' . $e($t['all']) . '</a>' : '') . '</p>';
+        if ($view === 'sites') {
+            // All websites: the groups with their websites, the rest, where the traffic is.
+            $h .= self::sitesTable($s, StatsReport::sites($s, $r['from'], $r['to'], $by === 'hour' ? 'day' : $by), $t, $lang,
+                static fn (string $site): string => isset($links['site']) ? $links['site'] . '?' . http_build_query(['site' => $site, 'days' => $days, 'lang' => $lang] + $range)
+                    : $query(['view' => 'site', 'site' => $site, 'days' => $days, 'lang' => $lang] + $range),
+                (int) strtotime($r['from'] . ' UTC'), (int) strtotime($r['to'] . ' UTC'), $by === 'hour' ? 'day' : $by);
+            $h .= '<p class="foot">' . $e($t['updated'] . ' ' . date($lang === 'de' ? 'd.m.Y H:i:s' : 'Y-m-d H:i:s', $now)) . '</p>';
+            return ($o['fragment'] ?? false) ? $h : self::page($h, $o['title'] ?? $t['title'], $lang, $o, $e);
+        }
         if ($view === 'rules') {
             // Rules & setup: the way of a request, every rule, every setting.
             $h .= SetupPage::render($s, $lang, $r['rules'], ['check' => (array) ($o['check'] ?? []), 'action' => $action, 'now' => (float) $now,
@@ -383,17 +423,118 @@ final class StatsPage
     }
 
     /**
+     * The table of all websites: a row for all, each group (and below it its
+     * websites), the websites in no group, the other hosts -- sorted by page
+     * views; each a link to its statistics.
+     *
+     * @param array{sites: array<string, array{views: int, people: int, crawlers: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>, groups: array<string, array{views: int, people: int, crawlers: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>, all: array{views: int, people: int, crawlers: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}} $x
+     * @param array<string, string> $t
+     * @param callable(string): string $href the statistics of a website, a group (group:<id>), all ('')
+     */
+    private static function sitesTable(Settings $s, array $x, array $t, string $lang, callable $href, int $from, int $to, string $by): string
+    {
+        $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $n = static fn (int $v): string => StatsReport::number($v, $lang);
+        $most = 1;
+        foreach (array_merge($x['sites'], $x['groups']) as $r) {
+            $most = max($most, $r['views']);
+        }
+        $views = static fn (array $a, array $b): int => $b['views'] <=> $a['views'];
+        $ctx = [$t, $lang, $most, $from, $to, $by];
+        $h = '<section class="card"><h2>' . $e($t['tabSites']) . ' <small>' . $e($t['sitesIntro']) . '</small></h2><div class="wrap"><table class="sites"><thead><tr><th>' . $e($t['website'])
+            . '</th><th>' . $e($t['pageViews']) . '</th><th>' . $e($t['change']) . '</th><th>' . $e($t['people']) . '</th><th>' . $e($t['crawlers']) . '</th><th>' . $e($t['bots'])
+            . '</th><th>' . $e($t['stoppedCol']) . '</th><th>' . $e($t['notFound']) . '</th><th></th></tr></thead><tbody>';
+        $h .= self::sitesRow($t['allSites'], $x['all'], $href(''), 'sall', '', ...$ctx);
+        $groups = $x['groups'];
+        uasort($groups, $views);
+        $grouped = [];
+        foreach ($groups as $id => $g) {
+            $def = $s->statsGroups[$id];
+            $h .= self::sitesRow($def['name'], $g, $href('group:' . $id), 'sgroup', count($def['sites']) === 1 ? $t['oneSite'] : sprintf($t['nSites'], count($def['sites'])), ...$ctx);
+            $members = array_intersect_key($x['sites'], array_flip($def['sites']));
+            uasort($members, $views);
+            foreach ($members as $name => $r) {
+                $h .= self::sitesRow((string) $name, $r, $href((string) $name), 'ssite', '', ...$ctx);
+                $grouped[$name] = true;
+            }
+        }
+        $rest = array_diff_key($x['sites'], $grouped, [\CjwNetwork\RequestShield\Stats::OTHER => 1]);
+        uasort($rest, $views);
+        foreach ($rest as $name => $r) {
+            $h .= self::sitesRow((string) $name, $r, $href((string) $name), 'ssite top', '', ...$ctx);
+        }
+        $other = $x['sites'][\CjwNetwork\RequestShield\Stats::OTHER];
+        $h .= self::sitesRow($t['otherHosts'], $other, $href(\CjwNetwork\RequestShield\Stats::OTHER), 'sother', '', ...$ctx);
+        return $h . '</tbody></table></div></section>';
+    }
+
+    /**
+     * One row of the overview of all websites.
+     *
+     * @param array{views: int, people: int, crawlers: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>} $r
+     * @param array<string, string> $t
+     */
+    private static function sitesRow(string $label, array $r, string $link, string $class, string $note, array $t, string $lang, int $most, int $from, int $to, string $by): string
+    {
+        $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $n = static fn (int $v): string => StatsReport::number($v, $lang);
+
+            $cur = $r['views'];
+            $prev = $r['prev'];
+            if ($prev === 0) {
+                $change = $cur > 0 ? '<span class="up">' . $e($t['new']) . '</span>' : '–';
+            } else {
+                $pct = (int) round(($cur - $prev) * 100 / $prev);
+                $change = '<span class="' . ($pct >= 0 ? 'up' : 'down') . '" title="' . $e(sprintf($t['before'], $n($prev))) . '">' . ($pct >= 0 ? '+' : '−') . abs($pct) . ' %</span>';
+            }
+            $periods = [];
+            foreach ($r['curve'] as $day => $v) {
+                $periods[$day] = ['views' => $v];
+            }
+            $curve = [];
+            foreach (self::filled($periods, $from, $to, $by) as $b) {
+                $curve[] = (int) ($b['views'] ?? 0);
+            }
+            return '<tr class="' . $class . '"><td class="sname"><a href="' . $e($link) . '">' . $e($label) . '</a>' . ($note !== '' ? ' <span class="note">' . $e($note) . '</span>' : '') . '</td>'
+                . '<td class="snum">' . ($class === 'sall' ? '' : '<div class="hbar thin"><i class="people" style="width:' . number_format(min(100, 100 * $cur / $most), 2, '.', '') . '%"></i></div>') . $e($n($cur)) . '</td>'
+                . '<td class="schange">' . $change . '</td><td>' . $e($n($r['people'])) . '</td><td>' . $e($n($r['crawlers'])) . '</td><td>' . $e($n($r['bots'])) . '</td>'
+                . '<td>' . ($r['stopped'] > 0 ? '<span class="stop">' . $e($n($r['stopped'])) . '</span>' : '0') . '</td><td>' . $e($n($r['notFound'])) . '</td>'
+                . '<td class="scurve">' . self::spark($curve) . '</td></tr>';
+    }
+
+    /**
+     * What a choice of the website switch is called: all websites, a group
+     * (with how many websites), other hosts, a website.
+     *
+     * @param array<string, string> $t
+     */
+    private static function siteName(Settings $s, ?string $site, array $t): string
+    {
+        if ($site === null) {
+            return $t['allSites'];
+        }
+        if ($site === \CjwNetwork\RequestShield\Stats::OTHER) {
+            return $t['otherHosts'];
+        }
+        if (strncmp($site, 'group:', 6) === 0 && isset($s->statsGroups[substr($site, 6)])) {
+            $g = $s->statsGroups[substr($site, 6)];
+            return (count($g['sites']) === 1 ? sprintf($t['groupOne'], $g['name']) : sprintf($t['groupAll'], $g['name'], count($g['sites']))) . ': ' . implode(', ', $g['sites']);
+        }
+        return $site;
+    }
+
+    /**
      * The addresses of the four views under the settings' dashboard-path:
      * the dashboard (everything), stats (visitors and pages), shield (the
      * protection), rules (the way of a request, every rule and setting) --
      * for 'links', and for a site's routes.
      *
-     * @return array{all: string, site: string, shield: string, rules: string}
+     * @return array{sites?: string, all: string, site: string, shield: string, rules: string} sites: with stats-hosts (all websites side by side)
      */
     public static function links(Settings $s, string $prefix = ''): array
     {
         $base = $prefix . $s->dashboardPath;
-        return ['all' => $base . '/dashboard', 'site' => $base . '/stats', 'shield' => $base . '/shield', 'rules' => $base . '/rules'];
+        return ($s->statsHosts !== [] ? ['sites' => $base . '/sites'] : []) + ['all' => $base . '/dashboard', 'site' => $base . '/stats', 'shield' => $base . '/shield', 'rules' => $base . '/rules'];
     }
 
     /** Which view a path asks for (all, site, shield, rules), or null; capitals do not matter. */
@@ -738,6 +879,11 @@ h1{font-size:26px;margin:8px 0 4px}h2{font-size:16px;margin:0 0 10px}h2 small{co
 .hbar .through{background:var(--through)}.hbar .checked{background:var(--checked)}.hbar .refused{background:var(--refused)}.way{list-style:none;margin:8px 0 0;padding:0}.way li{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}.way .step{flex:0 0 26px;height:26px;border-radius:13px;background:var(--a);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px}.way li.off{opacity:.55}.trace li.pass .step{background:var(--crawlers)}.trace li.note .step{background:var(--bots)}.trace li.stop .step{background:var(--refused)}.trace li.skip{opacity:.5}.trace li.skip .step{background:var(--m)}.verdict{padding:10px 12px;border-radius:8px;border-left:4px solid var(--crawlers);background:var(--bg)}.verdict.note{border-left-color:var(--bots)}.verdict.stop{border-left-color:var(--refused)}.diagram{overflow-x:auto;margin:10px 0}.filter.try label.wide{flex:2 1 320px}.filter.try label{flex:1 1 280px}.filter.try input.ip{min-width:140px}.filter select{flex:0 0 auto}a.rid{text-decoration:none}.way li.off .step{background:var(--m)}.way .state{font-size:12px;padding:1px 7px;border-radius:9px;background:var(--bg)}.way li.on .state{color:var(--crawlers)}.rgroup{font-size:15px;margin:18px 0 2px}.rtable{width:100%;border-collapse:collapse}.rtable td{padding:6px 8px 6px 0;border-bottom:1px solid var(--line);vertical-align:top}.rtable td.rmeta{white-space:nowrap;font-size:13px}.rtable td.rid{white-space:nowrap;width:1%;padding-right:14px}.rtable td.rline{white-space:nowrap;color:var(--m);font-size:13px}.tag{font-size:12px;padding:1px 7px;border-radius:9px;background:var(--bg);color:var(--m)}details.rfile{border:1px solid var(--line);border-radius:8px;margin:8px 0;padding:0 12px}details.rfile summary{cursor:pointer;padding:10px 0;font-weight:600}details.rfile[open] summary{border-bottom:1px solid var(--line)}.way li:target{background:var(--bg)}.rtable tr:target{background:var(--bg)}code.rule{font-size:12px;color:var(--m)}table.settings{width:100%;border-collapse:collapse;margin:2px 0 6px}table.settings th{width:38%;text-align:left;font-weight:400;color:var(--m);padding:5px 12px 5px 0;border-bottom:1px solid var(--line);vertical-align:top}table.settings td{padding:5px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.setupnote{padding:8px 12px;border-radius:8px;background:var(--card);border-left:4px solid var(--a)}.setupnote.warn{border-left-color:var(--bots)}@media (max-width:640px){.rtable td.rmeta,.rtable td.rid{white-space:normal}table.settings th,table.settings td{display:block;width:auto;border:0;padding:2px 0}table.settings td{padding-bottom:8px;border-bottom:1px solid var(--line)}}.hbar .throttled{background:var(--throttled)}.stop{color:var(--refused);font-weight:600}.filter select{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg)}.filter label.sort{flex:0 0 auto}.hbar .claimed{background:repeating-linear-gradient(45deg,var(--claimed) 0 4px,transparent 4px 7px)}
 .prow{display:grid;grid-template-columns:1fr auto;grid-template-areas:"name num" "bar bar";gap:3px 12px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line)}.prow:last-of-type{border-bottom:0}
 .prow .pname{grid-area:name;min-width:0}.prow .cnum{grid-area:num}.prow .hbar{grid-area:bar}.hbar.thin{height:6px;border-radius:3px}
+table.sites{width:100%;border-collapse:collapse;font-size:14px}table.sites th{text-align:left;font-weight:500;color:var(--m);font-size:12px;padding:4px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.sites td{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}table.sites td.snum{min-width:130px}table.sites td.snum .hbar{margin-bottom:2px}
+table.sites tr.sall td{font-weight:600}table.sites tr.sgroup td{font-weight:600;background:var(--bg)}table.sites tr.ssite td.sname{padding-left:24px}table.sites tr.ssite.top td.sname{padding-left:8px}
+table.sites tr.sother td{color:var(--m)}table.sites .up{color:var(--crawlers)}table.sites .down{color:var(--refused)}table.sites td.scurve{width:110px}table.sites td.scurve .spark{height:22px;margin:0}
+.wrap{overflow-x:auto}
 .hbar .people{background:var(--people)}.hbar .crawlers{background:var(--crawlers)}.hbar .bots{background:var(--bots)}
 
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:4px 0 10px}.tab{padding:8px 14px;text-decoration:none;color:var(--m);border-bottom:3px solid transparent;font-weight:600}.tab.on{color:var(--fg);border-color:var(--a)}

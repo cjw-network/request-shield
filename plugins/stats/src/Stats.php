@@ -136,8 +136,14 @@ final class Stats
         return self::OTHER;
     }
 
+    /** Whether $site names something to read: a website of stats-hosts, OTHER, or group:<id>. */
+    public static function known(Settings $s, string $site): bool
+    {
+        return $site === self::OTHER || in_array($site, $s->statsHosts, true) || (strncmp($site, 'group:', 6) === 0 && isset($s->statsGroups[substr($site, 6)]));
+    }
+
     /**
-     * The statistics to read for $site: that website's, or (null) every
+     * The statistics to read for $site: that website's, a group's (group:<id>), or (null) every
      * website's and the shared directory's -- what was counted before
      * stats-hosts was set stays in the sum.
      *
@@ -147,6 +153,10 @@ final class Stats
     {
         if ($s->statsHosts === []) {
             return [self::of($s)];
+        }
+        if ($site !== null && strncmp($site, 'group:', 6) === 0) {
+            // A group: its websites, added up.
+            return array_map(static fn (string $name): self => self::of($s, $name), $s->statsGroups[substr($site, 6)]['sites'] ?? []);
         }
         if ($site !== null) {
             return [self::of($s, $site)];

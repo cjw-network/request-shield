@@ -102,6 +102,8 @@ set         live on
 [DEMO-SCAN]         monitor ban after 5 refusals in 5m for 10m    # a scanner: five refusals for what only attackers ask for
 set         stats-depth 4                                          # sections to the fourth folder: the demo lives under /qbixserver/request-shield/examples/demo/
 set         stats-hosts localhost84 127.0.0.1                     # statistics per website: these two names; any other Host counts as "other hosts"
+stats-group "Customer A" localhost84                           # websites per customer: read together, and each on its own
+stats-group "Customer B" 127.0.0.1
 
 # Counters, the generated secret and the log: outside the document root,
 # never in a directory a web server might hand out (the tests set the variable).

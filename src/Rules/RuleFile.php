@@ -510,6 +510,9 @@ final class RuleFile
         if ($this->siteOpen !== null && ($keyword === 'trust' || ($keyword === 'set' && in_array(strtolower($parts[0] ?? ''), self::SERVER_WIDE, true)))) {
             throw new RuleFileException("$at: " . ($keyword === 'trust' ? 'trust' : 'set ' . strtolower($parts[0] ?? '')) . ' is about the server, not a website -- put it above the site blocks');
         }
+        if ($this->siteOpen !== null && $keyword === 'stats-group') {
+            throw new RuleFileException("$at: stats-group is about the server, not a website -- put it above the site blocks");
+        }
         if ($this->siteOpen !== null && ($keyword === 'feed' || ($keyword === 'monitor' && strtolower($parts[0] ?? '') === 'feed'))) {
             throw new RuleFileException("$at: feed is about the server, not a website -- put it above the site blocks (at <paths> narrows it)");
         }
@@ -551,6 +554,9 @@ final class RuleFile
             return;
         }
         $inBlock = $this->blocks !== [] && end($this->blocks)['file'] === $file;
+        if ($inBlock && $keyword === 'stats-group') {
+            throw new RuleFileException("$at: stats-group does not go inside a match block");
+        }
         if ($inBlock && $keyword === 'feed') {
             throw new RuleFileException("$at: feed does not go inside a match block -- write it above, with at <paths>");
         }
@@ -738,6 +744,9 @@ final class RuleFile
             case 'challenge-exempt':
                 $this->patterns('challenge.exemptPaths', $args, $at, false);
                 return;
+            case 'stats-group':
+                $this->statsGroup($line, $at);
+                return;
             case 'stats-skip':
                 // Not in the statistics when they pass (a map proxy's tiles); protected all the same.
                 $this->patterns('stats.skip', $args, $at, false);
@@ -794,7 +803,7 @@ final class RuleFile
                 return;
         }
         throw new RuleFileException("$at: unknown rule \"$keyword\"" . self::suggest($keyword,
-            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'stats-skip', 'api-path', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include']));
+            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'stats-skip', 'stats-group', 'api-path', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include']));
     }
 
     /**
@@ -981,6 +990,40 @@ final class RuleFile
         }
         return isset($m[5]) ? (int) mktime((int) $m[4], (int) $m[5], 0, (int) $m[2], (int) $m[3], (int) $m[1])
             : (int) mktime(23, 59, 59, (int) $m[2], (int) $m[3], (int) $m[1]);
+    }
+
+    /**
+     * stats-group "<name>" <websites>: websites of one customer, read
+     * together (their statistics added up). The name in quotes when it has
+     * spaces; the websites as for stats-hosts (names, *.domain).
+     */
+    private function statsGroup(string $line, string $at): void
+    {
+        $usage = 'stats-group "<name>" <websites> (stats-group "Customer A" a.de www.a.de)';
+        if (preg_match('/^\S+\s+(?:"([^"]{1,60})"|([^"\s]{1,60}))\s+(\S.*)$/', trim($line), $m) !== 1) {
+            throw new RuleFileException("$at: $usage");
+        }
+        $name = trim($m[1] !== '' ? $m[1] : $m[2]);
+        $sites = [];
+        foreach (preg_split('/\s+/', strtolower(trim($m[3]))) ?: [] as $site) {
+            $site = rtrim($site, '.');
+            if (preg_match('/^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/', $site) !== 1) {
+                throw new RuleFileException("$at: stats-group takes website names (www.example.org, *.example.org) after its name, not \"$site\"");
+            }
+            $sites[] = $site;
+        }
+        if ($name === '' || $sites === []) {
+            throw new RuleFileException("$at: $usage");
+        }
+        $stats = &$this->c['stats'];
+        if (!is_array($stats)) {
+            $stats = [];
+        }
+        $groups = &$stats['groups'];
+        if (!is_array($groups)) {
+            $groups = [];
+        }
+        $groups[] = ['name' => $name, 'sites' => array_values(array_unique($sites)), 'rule' => $this->rid];
     }
 
     /**

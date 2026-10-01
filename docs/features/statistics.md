@@ -241,8 +241,40 @@ set stats-hosts sites                    # or: the site blocks' names (not "defa
 - About the server: `set stats-hosts` belongs above the site blocks.
 - **Cost:** finding the website, 0.15–0.35 µs per request (51 names, measured);
   once an hour per process, one look at each website's directory.
-- Next ([0023](../proposals/0023-plugins-hosts-customers.md)): groups of websites
-  per customer, and each customer's own access.
+
+### Groups: websites per customer
+
+```text
+stats-group "Customer A" a.de www.a.de b.de      # read together, and each on its own
+stats-group Reseller b.de c.de                   # a website may be in several groups
+```
+
+- A group's websites are counted apart without naming them in `stats-hosts`
+  as well. The name goes in quotes when it has spaces. Its ID for addresses is
+  made from it (`customer-a`).
+- **A group's statistics:** its websites added up. Counters add up exactly;
+  the lists in them (pages, sources) are added up per entry, which is exact for
+  the most visited and approximate at the tail, where each website kept only
+  its own most visited. The website switch has a section per group: *the whole
+  group*, then each of its websites. `bin/request-shield stats --group="Customer A"`.
+- About the server: above the site blocks.
+
+### All websites at a glance (`/rs/sites`)
+
+With `stats-hosts` or groups, the first tab is **All websites**: one table
+for the period chosen, showing where the traffic is:
+
+- a row for all websites, then each group with its websites below it, then the
+  websites in no group, then the other hosts, each sorted by page views;
+- page views (with a bar), **the change against the period before**
+  (`+12 %`, `−30 %`, *new*), people, crawlers, bots, what was stopped, pages not
+  found, and a small curve of the page views;
+- a click opens that website's or group's statistics.
+
+Reading costs about what the statistics page costs, once per website.
+
+- Next ([0023](../proposals/0023-plugins-hosts-customers.md)): each customer's
+  own access (a token per group, signed links from a hosting panel).
 
 ## Paths that are not counted: `stats-skip`
 

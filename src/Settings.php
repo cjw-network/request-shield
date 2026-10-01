@@ -197,6 +197,8 @@ final class Settings
         public array $statsHosts = [],
         /** @var list<string> @readonly paths left out of the statistics when they pass (stats-skip), as patterns; protected all the same */
         public array $statsSkip = [],
+        /** @var array<string, array{name: string, sites: list<string>, rule: string}> @readonly stats-group: id (customer-a) => its name, its websites */
+        public array $statsGroups = [],
     ) {
     }
 
@@ -323,7 +325,7 @@ final class Settings
             ...self::withFeeds(self::lists($c, $budgets), $feeds = self::feeds($c)),
             ...self::live($c),
             ...array_slice($feeds, 0, 5),
-            ...[self::statsHosts($c), self::patternList(is_array($c['stats'] ?? null) ? ($c['stats']['skip'] ?? []) : [], 'stats.skip')],
+            ...[self::statsHosts($c), self::patternList(is_array($c['stats'] ?? null) ? ($c['stats']['skip'] ?? []) : [], 'stats.skip'), self::statsGroups($c)],
         );
     }
 
@@ -561,6 +563,41 @@ final class Settings
     }
 
     /**
+     * The groups of websites (stats-group): an ID made from the name
+     * ("Customer A" -> customer-a), unique; the websites as given.
+     *
+     * @param array<mixed> $c
+     * @return array<string, array{name: string, sites: list<string>, rule: string}>
+     */
+    private static function statsGroups(array $c): array
+    {
+        $out = [];
+        foreach ((array) (is_array($c['stats'] ?? null) ? ($c['stats']['groups'] ?? []) : []) as $i => $g) {
+            if (!is_array($g) || !is_string($g['name'] ?? null) || !is_array($g['sites'] ?? null) || $g['sites'] === []) {
+                throw self::wrong("stats.groups[$i]", "['name' => a name, 'sites' => [websites]]");
+            }
+            $id = self::groupId($g['name']);
+            if ($id === '' || isset($out[$id])) {
+                throw self::wrong("stats.groups[$i]", "a name of its own -- \"{$g['name']}\" is " . ($id === '' ? 'empty' : 'used twice (or names the same as another: ' . $id . ')'));
+            }
+            $sites = [];
+            foreach ($g['sites'] as $site) {
+                if (is_string($site) && $site !== '') {
+                    $sites[] = rtrim(strtolower($site), '.');
+                }
+            }
+            $out[$id] = ['name' => $g['name'], 'sites' => $sites, 'rule' => is_string($g['rule'] ?? null) ? $g['rule'] : "stats.groups[$i]"];
+        }
+        return $out;
+    }
+
+    /** A group's ID for addresses: "Customer A" -> customer-a. */
+    public static function groupId(string $name): string
+    {
+        return trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($name)), '-');
+    }
+
+    /**
      * A list of path patterns (regular expressions, as the rule files compile them), each checked.
      *
      * @return list<string>
@@ -588,7 +625,14 @@ final class Settings
     {
         $stats = is_array($c['stats'] ?? null) ? $c['stats'] : [];
         $out = [];
-        foreach ((array) ($stats['hosts'] ?? []) as $name) {
+        // A group's websites are counted apart too: no need to name them twice.
+        $named = (array) ($stats['hosts'] ?? []);
+        foreach ((array) ($stats['groups'] ?? []) as $g) {
+            foreach (is_array($g) ? (array) ($g['sites'] ?? []) : [] as $site) {
+                $named[] = $site;
+            }
+        }
+        foreach ($named as $name) {
             if (!is_string($name)) {
                 throw self::wrong('stats.hosts', 'website names');
             }
@@ -1091,7 +1135,7 @@ final class Settings
     public const DENY_SHOWN = 100;
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 34;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip
+    private const FORMAT = 35;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

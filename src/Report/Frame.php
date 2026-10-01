@@ -18,7 +18,7 @@ final class Frame
 {
     /** The tabs, in their order: links key => [English, German]. */
     public const TABS = [
-        'all' => ['Dashboard', 'Dashboard'], 'site' => ['Visitors & pages', 'Besucher & Seiten'], 'shield' => ['Protection', 'Schutz'],
+        'sites' => ['All websites', 'Alle Websites'], 'all' => ['Dashboard', 'Dashboard'], 'site' => ['Visitors & pages', 'Besucher & Seiten'], 'shield' => ['Protection', 'Schutz'],
         'rules' => ['Rules & setup', 'Regeln & Einrichtung'], 'live' => ['Live', 'Live'], 'lists' => ['Lists', 'Listen'],
     ];
 
@@ -26,12 +26,12 @@ final class Frame
      * The addresses of the dashboard's pages under dashboard-path: the
      * statistics' four (with the stats plugin) and the core's live and lists.
      *
-     * @return array{all: string, site: string, shield: string, rules: string, live: string, lists: string}
+     * @return array{sites?: string, all: string, site: string, shield: string, rules: string, live: string, lists: string} sites: with stats-hosts
      */
     public static function links(\CjwNetwork\RequestShield\Settings $s, string $prefix = ''): array
     {
         $base = $prefix . $s->dashboardPath;
-        return ['all' => $base . '/dashboard', 'site' => $base . '/stats', 'shield' => $base . '/shield', 'rules' => $base . '/rules', 'live' => $base . '/live', 'lists' => $base . '/lists'];
+        return ($s->statsHosts !== [] ? ['sites' => $base . '/sites'] : []) + ['all' => $base . '/dashboard', 'site' => $base . '/stats', 'shield' => $base . '/shield', 'rules' => $base . '/rules', 'live' => $base . '/live', 'lists' => $base . '/lists'];
     }
 
     /** Which page a path asks for (a key of links()), or null; capitals do not matter. */

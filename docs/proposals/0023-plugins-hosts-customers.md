@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Phases 1–2 implemented** (2026-10-01): the plugin interface, the statistics as its first plugin; statistics per website; phases 3–6 accepted, to come |
+| Status | **Phases 1–3 implemented** (2026-10-01): the plugin interface, the statistics as its first plugin; statistics per website; groups and an overview of all websites; phases 4–6 accepted, to come |
 | Proposed | 2026-10-01 |
 | Affects | the core (`Shield::protect()`, `Shield::record()`), the statistics (`Stats`, `Report\*`), the dashboard and its login ([0012](0012-dashboard.md)), the visitors page ([0022](0022-visitors-page.md)), rule files (`plugin`, `stats-hosts`, `stats-group`, `stats-access`), packaging |
 
@@ -242,4 +242,15 @@ what was counted before in `stats/`), `StatsReport::read()` and the option
 `bin/request-shield stats --site=`. A quiet website's hour is rolled up by the
 first request of each hour in each process (`Stats::tend()`). The demo counts
 `localhost84` and `127.0.0.1` apart.
+
+Phase 3 as built: `stats-group "<name>" <websites>` (quotes for a name with
+spaces; an ID made from it, `customer-a`; a website in several groups; its
+websites counted apart without naming them in `stats-hosts`; above the site
+blocks). `Stats::all($s, 'group:<id>')`, `Stats::known()`; the website switch
+with a section per group; `bin/request-shield stats --group=`. **Added on
+request:** an overview of all websites (`/rs/sites`, the first tab with
+`stats-hosts`): every group with its websites below it, the rest, the other
+hosts -- page views with a bar, the change against the period before, people,
+crawlers, bots, stopped, not found, a small curve; sorted by page views; a
+click opens one (`StatsReport::sites()`).
 

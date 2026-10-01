@@ -12,7 +12,7 @@
  *   php bin/request-shield trace  site.rules "GET https://www.example.org/wp-login.php" [--ip=<address>] [--ua=<User-Agent>]
  *   php bin/request-shield crawlers site.rules [update] [--force]
  *   php bin/request-shield feeds site.rules [list|update|export] [--force] [--format=plain|nginx|nftables|ipset] [--write=<file>]
- *   php bin/request-shield stats site.rules [--days=7 | --from=2026-01-01 --to=2026-09-30] [--by=day|week|month|year] [--crawler=<ID>] [--path=/news/] [--sort=views|blocked|refused|checked|throttled] [--site=<website>|other] [--json]
+ *   php bin/request-shield stats site.rules [--days=7 | --from=2026-01-01 --to=2026-09-30] [--by=day|week|month|year] [--crawler=<ID>] [--path=/news/] [--sort=views|blocked|refused|checked|throttled] [--site=<website>|other | --group=<group>] [--json]
  *
  * check:  reads every file, reports the first error with file and line, and
  *         warns about rule files anyone else could change.
@@ -78,6 +78,8 @@ foreach ($args as $a) {
         $period['by'] = $m[1];
     } elseif (strncmp($a, '--site=', 7) === 0) {
         $period['site'] = strtolower(substr($a, 7));
+    } elseif (strncmp($a, '--group=', 8) === 0) {
+        $period['site'] = 'group:' . \CjwNetwork\RequestShield\Settings::groupId(substr($a, 8));
     } elseif (strncmp($a, '--crawler=', 10) === 0) {
         $period['crawler'] = substr($a, 10);
     } elseif (strncmp($a, '--path=', 7) === 0) {
@@ -114,7 +116,7 @@ if (!in_array($command, ['check', 'show', 'reload', 'trace', 'crawlers', 'feeds'
         . "       request-shield trace <main.rules> \"GET https://www.example.org/path\" [--ip=<address>] [--ua=<User-Agent>] [--source=<glob>]...\n"
         . "       request-shield crawlers <main.rules> [update] [--force]\n"
         . "       request-shield feeds <main.rules> [list|update|export] [--force] [--format=plain|nginx|nftables|ipset] [--write=<file>]\n"
-        . "       request-shield stats <main.rules> [--days=7 | --from=YYYY-MM-DD --to=YYYY-MM-DD] [--by=day|week|month|year] [--crawler=<ID>] [--path=/news/] [--sort=views|blocked|refused|checked|throttled] [--site=<website>|other] [--json]\n"
+        . "       request-shield stats <main.rules> [--days=7 | --from=YYYY-MM-DD --to=YYYY-MM-DD] [--by=day|week|month|year] [--crawler=<ID>] [--path=/news/] [--sort=views|blocked|refused|checked|throttled] [--site=<website>|other | --group=<group>] [--json]\n"
         . "       request-shield deny|allow <main.rules> <address|range> [--for=7d | --until=2026-10-07[T15:30]] [--reason=\"…\"] [--force]\n"
         . "       request-shield unlist <main.rules> <address|range>\n"
         . "       request-shield lists <main.rules>\n");
@@ -305,9 +307,10 @@ if ($command === 'stats') {
         fwrite(STDERR, "no crawler {$period['crawler']} -- see bin/request-shield crawlers " . basename($file) . "\n");
         exit(2);
     }
-    if (isset($period['site']) && $period['site'] !== 'other' && !in_array($period['site'], $settings->statsHosts, true)) {
-        fwrite(STDERR, $settings->statsHosts === [] ? "no statistics per website: set stats-hosts in the rule file\n"
-            : "no website {$period['site']} in stats-hosts (" . implode(', ', $settings->statsHosts) . ", other)\n");
+    if (isset($period['site']) && $period['site'] !== 'other' && !\CjwNetwork\RequestShield\Stats::known($settings, $period['site'])) {
+        fwrite(STDERR, $settings->statsHosts === [] ? "no statistics per website: set stats-hosts (or stats-group) in the rule file\n"
+            : (strncmp($period['site'], 'group:', 6) === 0 ? 'no group ' . substr($period['site'], 6) . ' (' . implode(', ', array_keys($settings->statsGroups)) . ")\n"
+            : "no website {$period['site']} in stats-hosts (" . implode(', ', $settings->statsHosts) . ", other)\n"));
         exit(2);
     }
     if (($period['site'] ?? null) === 'other') {
