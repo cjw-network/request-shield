@@ -643,7 +643,13 @@ final class Shield
         $base = Decision::allow();
         $budget = null;
         $this->alwaysAge = null;
+        // The dashboard's own pages, opened from an address their restrict rule
+        // allows: not counted against the pace (the live view asks every few seconds).
+        $ownPage = $this->settings->restricted !== [] && $this->dashboardOnly($request);
         foreach ($this->rules as $rule) {
+            if ($ownPage && $rule instanceof BudgetRule) {
+                continue;
+            }
             // strict: a request a cache must not keep counts twice -- the pattern
             // of floods that bust the cache with made-up addresses.
             $wants = $rule instanceof BudgetRule
@@ -683,6 +689,41 @@ final class Shield
             $budget = $budget === null ? Decision::challenge('feed') : $budget->stricter(Decision::challenge('feed'));
         }
         return $budget === null ? $base : $base->stricter($budget);
+    }
+
+    /**
+     * Whether a request is for one of the dashboard's pages (dashboard-path:
+     * /rs/live, /rs/stats … -- also below a prefix, /demo/rs/live) from an
+     * address the restrict rule over that path allows. Without such a rule
+     * the pages count like any other: an open dashboard keeps its flood guard.
+     */
+    private function dashboardOnly(Request $request): bool
+    {
+        $s = $this->settings;
+        $path = $request->matchPath();
+        if (stripos($path, $s->dashboardPath) === false) {
+            return false;                                   // the common case: one search
+        }
+        $p = strtolower(rtrim($path, '/'));
+        $own = false;
+        foreach (Report\Frame::links($s) as $link) {
+            $link = strtolower($link);
+            if ($p === $link || substr($p, -strlen($link)) === $link) {
+                $own = true;
+                break;
+            }
+        }
+        if (!$own) {
+            return false;
+        }
+        foreach ($s->restricted as $r) {
+            foreach ($r['paths'] as $pattern) {
+                if (@preg_match($pattern, $path) === 1) {
+                    return IpAddress::inRanges($request->clientIp, $r['ips']);
+                }
+            }
+        }
+        return false;
     }
 
     /** @var array<string, ?string> client|action => the rule found, this request */

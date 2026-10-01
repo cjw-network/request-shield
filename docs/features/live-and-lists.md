@@ -104,6 +104,12 @@ if ($page === 'live' && ($_GET['format'] ?? '') === 'json') {
 - `'user'` is noted with the entry ("· dashboard editor 2026-10-01 10:12"),
   `'ruleFile'` is touched so every server reads the lists within its recheck.
 - `allow POST **/rs/lists` when the site limits where forms may be sent.
+- **The pace:** the dashboard's own pages (`/rs/live`, its feed every 3 s,
+  `/rs/stats` …) do not count against the budgets when a `restrict` rule
+  covers them and allows the address asking, so a live view left open never
+  runs into the site's pace limit. Without such a rule they count like any
+  page: an open dashboard keeps its flood guard. Matched also below a prefix
+  (`/demo/rs/live`); one string search for every other request.
 
 ## Guards
 

@@ -221,6 +221,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   demo has them at `/rs/…`, restricted to this machine.
 
 ### Fixed
+- An open live view counted against the site's pace limit (its feed every
+  3 s) and ran into 429 or the browser check: the dashboard's own pages no
+  longer count against the budgets when a `restrict` rule covers them and
+  allows the address asking; without one they count as before.
 - Two `query` lines naming the same parameter (at different paths) were both
   shown as the later rule on the rules pages; each line now keeps its own ID.
 - `set widget-path` accepted a path with `..` in it (`/x/../y`), which could
