@@ -100,11 +100,53 @@ can do the same live, without keeping addresses:
   stable id, hashed the same way — `Stats::visitor($userId)`); changing IPv6
   privacy addresses and mobile networks count as more; one person on two devices
   is two visitors.
-- **Off by default.** It processes every visitor's address for statistics
-  (never stored, never sent anywhere): [docs/privacy.md](../privacy.md) gets a
-  section on it, and the page says how it counts. Whether a site may switch it
-  on is the site's decision (legitimate interest, its privacy notice); the
-  shield sets no cookie and reads nothing from the device.
+- **An objection is honoured:** a browser that sends `Sec-GPC: 1` (Global
+  Privacy Control) or `DNT: 1` is counted in the page views, but not as a
+  visitor and not in visits (`stats-visitors-respect off` to count it anyway).
+
+### Consent, legal basis — and the comparison with AWStats
+
+*The common reading, not legal advice — the site's data protection officer
+decides.*
+
+- **No consent under the cookie rule** (TDDDG §25, Art. 5(3) ePrivacy
+  directive) in the usual reading: that rule is about storing information on the
+  user's device or reading it from there. The option sets no cookie, runs no
+  script, reads nothing from the device — it uses the address and the browser
+  string every browser sends with every request, as server-log statistics do.
+  *The caveat:* the EDPB's guidelines 2/2023 read Art. 5(3) very broadly and
+  include IP-based tracking in some cases. Contested, not common practice — but
+  the reason nobody can promise "never consent".
+- **A legal basis and a line in the privacy notice under the GDPR:** hashing the
+  address is processing personal data, even if nothing is stored. The usual
+  basis is the site's legitimate interest in measuring its reach, Art. 6(1)(f),
+  with immediate anonymisation; visitors may object (Art. 21) — the GPC/DNT rule
+  above. [docs/privacy.md](../privacy.md#what-to-put-in-your-privacy-notice)
+  has a ready-made text, in English and German.
+- **Compared with AWStats**, which counts unique visitors from the web server's
+  log files and is commonly run without consent, the option processes less and
+  keeps nothing:
+
+  | | AWStats (from log files) | `set stats visitors on` |
+  |---|---|---|
+  | Source | the web server's log, processed later (cron) | the request itself, live |
+  | IP address | in the log in full (as long as the logs are kept); hosts also in AWStats' monthly data files | **never stored** — hashed in memory, the salt changes daily and is never written |
+  | Linking a person over time | possible as long as logs or data files exist | **within one day only** |
+  | Unique visitors | distinct addresses per month (one office behind one address is one visitor) | address + browser per day, a sketch merges any period |
+  | A visit | the same address again after an hour without requests | the same visitor again after 30 minutes (configurable) |
+  | Bots | by User-Agent lists | verified crawlers by address, bot families, the shield's decisions |
+  | Pages a cache in front of PHP answered | **counted** (they are in the log) | **not seen** — the shield runs in PHP |
+  | Consent (common practice) | none | none |
+
+  If a site runs log statistics without consent today, the option is at least
+  as defensible — in practice more. The one point where logs count more: pages a
+  cache in front of PHP (a CDN, Varnish, the web server's own cache) answers
+  never reach the shield.
+- **Default:** **off** in the library — it runs on sites in different countries
+  with different privacy notices, each switches it on knowingly; **on** in the
+  demo, with the notice text on its page. In an intranet consent is not the
+  question; employee data protection and the works council are (see
+  "Networks").
 
 ## Countries (`set stats geoip <file>`)
 
@@ -190,8 +232,8 @@ minutes plus 4 KB a day. Reading: the period and the period before (a week:
 ## Open questions
 
 1. **Replace "Visitors & pages", or a fifth view?** *Recommendation: replace.*
-2. **The visitor option: off or on by default?** *Recommendation: off — a site
-   decides, and the page says how it counts when it is on.*
+2. ~~The visitor option: off or on by default?~~ *Decided: off in the library,
+   on in the demo; the privacy notice text in docs/privacy.md.*
 3. **Visit timeout:** 30 minutes, or the hour server-log statistics often use?
    *Recommendation: 30 minutes, configurable.*
 4. **Networks: grouping by /16 or /24 by default, and the minimum group of 5?**

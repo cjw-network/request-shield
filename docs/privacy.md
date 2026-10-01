@@ -102,6 +102,51 @@ feature by feature, for what exists today and for the proposals.
   address (operators' servers); requests that only claim a crawler's name are
   masked like the log; `crawler-log-days`, `crawler-log-query off`.
 
+### Unique visitors and visits (planned: proposal [0022](proposals/0022-visitors-page.md), `set stats visitors on`)
+
+- **Processed:** for each page view by a person, a hash (HMAC-SHA256) of the
+  IP address and the browser string, keyed with a salt that is made at midnight,
+  lives only in memory and is replaced the next day. The address itself is
+  **never stored**, neither is the hash beyond the visit.
+- **Kept:** per day a HyperLogLog sketch (4 KB of registers — no list of
+  visitors, no hash in it can be read back); for a visit an entry with the hash,
+  its start, its last page view and its count of pages, **deleted 30 minutes
+  after the last page view**; aggregate counters (visits, bounces, duration,
+  entry pages) like the other statistics.
+- **Not done:** no cookie, no script, nothing read from the device, no linking
+  across days (the salt is gone), no profile, nothing sent anywhere.
+- **Objection:** a browser sending `Sec-GPC: 1` or `DNT: 1` is not counted as a
+  visitor (only as a page view, like everyone without the option).
+- **Basis:** legitimate interest in measuring the site's reach, Art. 6(1)(f)
+  GDPR, with immediate anonymisation; to be named in the privacy notice (text
+  below). **Consent** under TDDDG §25: not needed in the common reading —
+  nothing is stored on or read from the device; the EDPB's guidelines 2/2023 read
+  Art. 5(3) ePrivacy more broadly (contested).
+- **Default:** off. Switch it on knowingly, with the notice.
+- **Compared with log statistics (AWStats):**
+
+  | | AWStats (from log files) | `set stats visitors on` |
+  |---|---|---|
+  | IP address | in the log in full as long as it is kept; hosts in the monthly data files | never stored; hashed in memory, salt replaced daily |
+  | Linking over time | possible while logs or data files exist | within one day only |
+  | Unique visitors | distinct addresses per month | address + browser per day; a sketch, no list |
+  | Consent (common practice) | none | none |
+
+  So if a site runs log statistics today without consent, this option processes
+  less and keeps nothing that points to a person.
+
+**Countries** (`set stats geoip`, planned in 0022): the country is looked up at
+the page view and only the country is counted; the address is not stored. The
+lookup is cached per /24 (IPv6 /48) network for a day, in memory.
+
+**Network areas** (`network …`, `stats-networks`, planned in 0022): page views
+(and visitors) per area of an intranet — named ranges, or private addresses by
+their first two or three octets, never finer than /24, small areas folded into
+"other areas". Public addresses only by a range the site names. **In a company
+intranet:** employee data — in Germany the works council's co-determination
+(§87(1) no. 6 BetrVG) applies as soon as the numbers *could* be used to monitor
+behaviour or performance; off until configured.
+
 ### Proposals
 
 | Proposal | Personal data | Notes |
@@ -109,7 +154,8 @@ feature by feature, for what exists today and for the proposals.
 | [0013](proposals/0013-ip-lists.md) deny list, automatic bans | addresses, each with a reason and an end date; bans end by themselves (at most `ban-max`) | security; purpose and duration explicit; review permanent entries |
 | [0015](proposals/0015-page-statistics.md) page statistics | none: path, day, group, number | no cookie, no script |
 | [0018](proposals/0018-audience-statistics.md) sources, devices | none stored: host of the referring site, device class, browser family — from headers the browser sends | the screen-width beacon reads from the device: **consent**, off by default |
-| [0018](proposals/0018-audience-statistics.md), [0019](proposals/0019-seo-geo-dashboard.md) distinct visitors | a daily-salted hash of address + User-Agent, in memory for one day | opt-in only, contested; never a cookie of its own, never fingerprinting |
+| [0022](proposals/0022-visitors-page.md) unique visitors and visits (also asked in [0018](proposals/0018-audience-statistics.md), [0019](proposals/0019-seo-geo-dashboard.md)) | a daily-salted hash of address + User-Agent, in memory; a visit's entry for 30 minutes | off by default; no consent in the common reading, a line in the privacy notice — see above |
+| [0022](proposals/0022-visitors-page.md) countries, network areas | the country; the area of an intranet (named, or by two or three octets of private addresses) | countries: a GeoIP file; areas: off until configured, never finer than /24, works council |
 | [0016](proposals/0016-rule-advisor.md) rule advisor, optional language model | only aggregated shapes and counts leave the server — never addresses, raw values, cookies | off unless configured |
 
 ## What the shield does not do
@@ -150,6 +196,39 @@ Add a sentence for each further feature you switch on (statistics: "counted in
 aggregate, without IP addresses or cookies"; `log-ip full`: the full address and
 its retention).
 
+**With `set stats visitors on`** (planned, 0022) — in English:
+
+> **Reach measurement without cookies.** To know how many people use our
+> website and which pages they read, we count visits in aggregate. For this, the
+> IP address and the browser identification your browser sends with every request
+> are combined into a pseudonym (a keyed hash) that changes every day; the IP
+> address itself is not stored, and the pseudonym is deleted 30 minutes after
+> your last page view. Only aggregate numbers remain (for example "350 visitors
+> on 1 October"); no cookie is set, nothing is read from your device, nothing is
+> passed to third parties, and visits on different days cannot be linked. Legal
+> basis: our legitimate interest in measuring the reach of our website,
+> Art. 6(1)(f) GDPR. You can object at any time: if your browser sends the
+> "Global Privacy Control" or "Do Not Track" signal, you are not counted as a
+> visitor. [If countries are on:] From the IP address we determine the country
+> only; it is not stored.
+
+— in German:
+
+> **Reichweitenmessung ohne Cookies.** Um zu wissen, wie viele Menschen unsere
+> Website nutzen und welche Seiten sie lesen, zählen wir Besuche in
+> zusammengefasster Form. Dazu werden die IP-Adresse und die Browserkennung, die
+> Ihr Browser bei jedem Aufruf mitsendet, zu einem täglich wechselnden Pseudonym
+> (einem mit einem geheimen Schlüssel gebildeten Hashwert) verrechnet; die IP-Adresse selbst wird nicht
+> gespeichert, das Pseudonym wird 30 Minuten nach Ihrem letzten Seitenaufruf
+> gelöscht. Übrig bleiben nur zusammengefasste Zahlen (zum Beispiel „350 Besucher
+> am 1. Oktober“); es wird kein Cookie gesetzt, nichts von Ihrem Gerät gelesen,
+> nichts an Dritte weitergegeben, und Besuche an verschiedenen Tagen lassen sich
+> nicht verknüpfen. Rechtsgrundlage: unser berechtigtes Interesse an der Messung
+> der Reichweite unserer Website, Art. 6 Abs. 1 lit. f DSGVO. Sie können jederzeit
+> widersprechen: Sendet Ihr Browser das Signal „Global Privacy Control“ oder „Do
+> Not Track“, werden Sie nicht als Besucher gezählt. [Wenn Länder aktiv sind:]
+> Aus der IP-Adresse wird nur das Land ermittelt; es wird nicht gespeichert.
+
 ## Configured privacy-friendly — a checklist
 
 ```text
@@ -158,4 +237,5 @@ set log-ip masked            # the default
 set pass-ttl 1h              # or shorter
 set crawler-verify ranges    # no DNS lookups (or a local resolver)
 set stats off                # the default; on: aggregates only
+set stats visitors off       # the default (planned, 0022); on: a daily hash in memory, a line in the notice
 ```
