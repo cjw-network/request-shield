@@ -85,7 +85,8 @@ final class FileStore implements Store
         }
         @mkdir(dirname($file), 0700, true);
         $tmp = $file . '.' . bin2hex(random_bytes(4));
-        if (@file_put_contents($tmp, (string) $until) !== false && !@rename($tmp, $file)) {
+        // The key after the time, for marks(): the file name is only its hash.
+        if (@file_put_contents($tmp, $until . "\n" . $key) !== false && !@rename($tmp, $file)) {
             @unlink($tmp);
         }
     }
@@ -107,6 +108,27 @@ final class FileStore implements Store
             @unlink($file);                 // over: gone
         }
         return 0;
+    }
+
+    public function marks(string $prefix, float $now): array
+    {
+        $out = [];
+        foreach (glob($this->dir . '/*/*.m', GLOB_NOSORT) ?: [] as $file) {
+            $text = (string) @file_get_contents($file);
+            $nl = strpos($text, "\n");
+            $until = (int) $text;
+            if ($nl === false || $until <= $now) {
+                if ($until > 0 && $until <= $now) {
+                    @unlink($file);                 // over: gone
+                }
+                continue;
+            }
+            $key = substr($text, $nl + 1);
+            if (strncmp($key, $prefix, strlen($prefix)) === 0) {
+                $out[$key] = $until;
+            }
+        }
+        return $out;
     }
 
     private function markPath(string $key): string

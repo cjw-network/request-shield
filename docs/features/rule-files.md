@@ -194,7 +194,7 @@ site default {                              # any name no block lists
   and the words that drop a base rule for this website (`no-limit`, `unblock`,
   `challenge-exempt`, `replace`). Not inside — they are about the server:
   `trust`, `set store`, `store-dir`, `secret`, `recheck`, `dns-lookups`,
-  `ipv6-prefix`, `site-from`, `lists-dir`, `ban-growth`, `ban-max`, `ban` (a client
+  `ipv6-prefix`, `site-from`, `lists-dir`, `ban-growth`, `ban-max`, `ban-keep`, `live`, `live-keep`, `ban` (a client
   banned on one website is banned on all); and no `site` inside a `site` or a `match`.
   `deny` may stand inside: it then keeps the address off that website only.
 - **Order:** the base first; after the first `site` block only further `site`
@@ -328,6 +328,8 @@ keeps both the same.
 | `stats-depth` | folder levels a section's views are counted for exactly, 1 to 4 (2: `/news/`, `/news/2026/`; 3 where a language takes the first level: `/de/news/2026/`) |
 | `crawler-log`, `crawler-log-kinds`, `crawler-log-days`, `crawler-log-query` | one log per known crawler and day: its directory, the kinds logged, days kept (30), whether the query is kept ([statistics](statistics.md#one-log-per-crawler-optional)) |
 | `lists-dir` | where the list files `allow.rules` and `deny.rules` live (default `<store-dir>/lists`); they hold only `deny` and `exempt` lines ([IP lists](ip-lists.md#the-list-files)) |
+| `ban-keep` | `memory` (default) or `file`: a ban also as a file in store-dir, so it survives a restart of APCu ([live and lists](live-and-lists.md#bans-that-survive-a-restart-set-ban-keep-file)) |
+| `live`, `live-keep` | `on`: the live view from memory, with full addresses (APCu); how long an entry stays (1h; 1m to 1d) ([live and lists](live-and-lists.md)) |
 | `ban-growth`, `ban-max` | each ban within a day this many times as long (2), at most (`1d`) ([IP lists](ip-lists.md#bans)) |
 | `recheck` | how often the files are checked for changes, see below |
 

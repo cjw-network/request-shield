@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The live view and the lists in the dashboard** (proposal 0026):
+  `/rs/live` shows what the shield stops right now (the website, the address,
+  the request, what happened, why in words, and where from: a list, a ban, a
+  feed, the site's own rule, a built-in one, the pace, the crawler policy),
+  updated every 3 s with a cursor, filters kept in the address, pause.
+  `set live on` keeps the last 2,000 requests stopped in APCu with the full
+  address for `live-keep` (1 h; never on disk; ~5 µs per stopped request), so
+  "keep out" takes exactly that address; without it the log is read.
+  `/rs/lists`: add an entry with a comment of one's own, extend, change,
+  remove, search; the active bans with "lift" (`Store::marks()`); the guards
+  of the command line plus never the viewer's own address; POST with a token
+  (HMAC of the secret, address and hour). `set ban-keep file`: bans survive a
+  restart of APCu. `Report\LivePage`, `ListsPage`, `LogTail`, `Frame`, `Live`
+  ([docs](docs/features/live-and-lists.md)).
 - **IP lists and automatic bans** (proposal 0013): `deny <addresses> [until
   …]` keeps an address out with 403 before every other check; `exempt … until`
   lets one in for a while — never counted, never checked, still refused for

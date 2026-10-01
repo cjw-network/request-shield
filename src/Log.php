@@ -44,6 +44,20 @@ final class Log
     }
 
     /** @param bool $monitor what a rule in monitor would have decided: written as "monitor-<action>" */
+    /**
+     * A decision for the log (when its level wants it) and the live view's
+     * memory (set live on: anything that stopped or checked a request).
+     */
+    public static function note(Settings $s, Request $request, Decision $d, ?string $rule, float $now, bool $monitor = false): void
+    {
+        if ($s->logFile !== null && self::wants($s->logLevel, $d)) {
+            self::write($s, $request, $d, $rule, $now, $monitor);
+        }
+        if ($s->liveEnabled) {
+            Live::push($s, $request, $d, $rule, $now, $monitor);
+        }
+    }
+
     public static function write(Settings $s, Request $request, Decision $d, ?string $rule, ?float $now = null, bool $monitor = false): void
     {
         if ($s->logFile === null) {

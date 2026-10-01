@@ -103,7 +103,7 @@ final class StatsPage
         // the path names the view, GET parameters filter. Without links: ?view=.
         $links = [];
         foreach ((array) ($o['links'] ?? []) as $v => $u) {
-            if (in_array($v, ['all', 'site', 'shield', 'rules'], true) && $u !== '') {
+            if (in_array($v, ['all', 'site', 'shield', 'rules', 'live', 'lists'], true) && $u !== '') {
                 $links[$v] = $u;
             }
         }
@@ -140,7 +140,9 @@ final class StatsPage
 
         // The tabs: visitors and pages (editors) -- protection (admins). An
         // embedding page can show one only ('tabs' => false).
-        $tabs = $links !== [] ? array_intersect_key(['all' => $t['tabAll'], 'site' => $t['tabSite'], 'shield' => $t['tabShield'], 'rules' => $t['tabRules']], $links)
+        // Live and lists are the core's pages (Report\LivePage, ListsPage): tabs here when the site has them.
+        $tabs = $links !== [] ? array_intersect_key(['all' => $t['tabAll'], 'site' => $t['tabSite'], 'shield' => $t['tabShield'], 'rules' => $t['tabRules'],
+            'live' => \CjwNetwork\RequestShield\Report\Frame::TABS['live'][$lang === 'de' ? 1 : 0], 'lists' => \CjwNetwork\RequestShield\Report\Frame::TABS['lists'][$lang === 'de' ? 1 : 0]], $links)
             : ['site' => $t['tabSite'], 'shield' => $t['tabShield'], 'rules' => $t['tabRules']];
         $h = '';
         if (($o['tabs'] ?? true) && count($tabs) > 1) {

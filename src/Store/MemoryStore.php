@@ -34,6 +34,17 @@ final class MemoryStore implements Store
         return $until > $now ? $until : 0;
     }
 
+    public function marks(string $prefix, float $now): array
+    {
+        $out = [];
+        foreach ($this->marks as $key => $until) {
+            if ($until > $now && strncmp($key, $prefix, strlen($prefix)) === 0) {
+                $out[$key] = $until;
+            }
+        }
+        return $out;
+    }
+
     public function hit(string $key, int $window, float $now): float
     {
         [$slot, $weight] = SlidingWindow::position($window, $now);

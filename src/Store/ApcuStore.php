@@ -59,6 +59,22 @@ final class ApcuStore implements Store
         return is_int($until) && $until > $now ? $until : 0;
     }
 
+    public function marks(string $prefix, float $now): array
+    {
+        $out = [];
+        $start = $this->prefix . 'mark:';
+        if (!class_exists(\APCUIterator::class)) {
+            return $out;
+        }
+        foreach (new \APCUIterator('/^' . preg_quote($start . $prefix, '/') . '/', APC_ITER_KEY | APC_ITER_VALUE) as $item) {
+            /** @var array{key: string, value: mixed} $item */
+            if (is_int($item['value']) && $item['value'] > $now) {
+                $out[substr($item['key'], strlen($start))] = $item['value'];
+            }
+        }
+        return $out;
+    }
+
     public function peek(string $key, int $window, float $now): float
     {
         [$slot, $weight] = SlidingWindow::position($window, $now);

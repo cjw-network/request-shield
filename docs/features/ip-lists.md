@@ -200,5 +200,7 @@ single addresses spread over the internet:
   big list is read on every request: tens of milliseconds at 100,000 entries.
 - Lists and bans hold addresses: see [privacy](../privacy.md). Entries without an
   end should be reviewed; a ban ends by itself, at most after `ban-max`.
-- Still to come: the dashboard tab (add, remove, the active bans, "keep out for
-  good" next to a ban that keeps returning), with [0012](../proposals/0012-dashboard.md).
+- In the dashboard: [the live view and the lists](live-and-lists.md): add an
+  entry with a comment, extend, remove, the active bans with "lift", "keep out
+  for good?" after the third ban in a day. `set ban-keep file` lets bans
+  survive a restart of APCu.

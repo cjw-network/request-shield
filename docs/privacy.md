@@ -108,6 +108,21 @@ feature by feature, for what exists today and for the proposals.
   files 0640 in a 0750 directory; bans in APCu (gone with a restart) or as
   small files in store-dir.
 - **Never banned:** addresses let in, trusted proxies, verified crawlers.
+- **`set ban-keep file`:** a banned address is also kept in a file in
+  store-dir until its ban ends (at most `ban-max`), so the ban survives a
+  restart.
+
+### The live view (`set live on`, [docs](features/live-and-lists.md))
+
+- **What:** the last requests the shield stopped or checked (at most 2,000),
+  each with the **full address**, the request, the user agent and the rule.
+- **Where and how long:** in memory (APCu) only, never on disk, each entry for
+  `live-keep` (an hour by default, at most a day); gone with a restart.
+- **Basis:** security (Art. 6(1)(f)): seeing an attack and keeping exactly its
+  address out. Requests that pass are not kept. Without `set live on` the live
+  view shows the log's lines, masked as the log keeps them.
+- **Who sees it:** whoever the site lets open the dashboard (an address rule,
+  its login).
 
 ### Statistics (being built: proposals [0012](proposals/0012-dashboard.md), [0014](proposals/0014-crawler-statistics.md))
 

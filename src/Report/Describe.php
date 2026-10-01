@@ -125,6 +125,12 @@ final class Describe
         return 'bekommt ' . ($what[$d->status] ?? "einen Fehler ($d->status)");
     }
 
+    /** Whether a reason names a budget (a limit's name) rather than a check. */
+    public static function isBudget(string $reason): bool
+    {
+        return self::reason($reason) === "the budget \"$reason\"";
+    }
+
     /** Why, in words: a decision's reason (English or German). */
     public static function reason(string $reason, string $lang = 'en'): string
     {
@@ -139,6 +145,7 @@ final class Describe
                 'app' => 'die Website hat den Browser-Check verlangt (ein Formular)', 'attack' => 'ein Angriffsmuster in der Adresse oder den Headern',
                 'unknown parameter' => 'ein Parameter, den die Website nicht kennt, oder ein Wert nicht seines Typs', 'challenge solved' => 'der Browser-Check wurde gerade bestanden',
                 'denied' => 'eine ausgesperrte Adresse (die Sperrliste)', 'banned' => 'für eine Weile gesperrt: sie ging immer wieder über die Grenzen',
+                'crawler' => 'ein bekannter Crawler, den die Website so nicht will',
             ];
             return $de[$reason] ?? "das Budget „{$reason}“";
         }
@@ -163,6 +170,7 @@ final class Describe
             'challenge solved' => 'the browser check was just passed',
             'denied' => 'an address kept out (the deny list)',
             'banned' => 'banned for a while: it kept going past the limits',
+            'crawler' => 'a known crawler the site does not want this way',
         ];
         return $words[$reason] ?? "the budget \"$reason\"";
     }

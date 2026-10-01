@@ -134,6 +134,34 @@ if ($path === '/search') {
     }
     echo "</urlset>\n";
     exit;
+} elseif ($shield !== null && in_array(\CjwNetwork\RequestShield\Report\Frame::pageFor($shield->settings, $path), ['live', 'lists'], true)) {
+    // The live view and the lists (the core's pages, from the log and the list
+    // files): under dashboard-path like the statistics, and restricted the same way.
+    $panelLinks = array_map($url, \CjwNetwork\RequestShield\Report\Frame::links($shield->settings));
+    $panelOpts = ['links' => $panelLinks, 'lang' => (string) ($_GET['lang'] ?? 'auto'), 'accept' => $request->header('accept-language'),
+        'home' => $url('/'), 'homeLabel' => 'request-shield demo', 'ip' => $request->clientIp];
+    header('Cache-Control: no-store');
+    if (\CjwNetwork\RequestShield\Report\Frame::pageFor($shield->settings, $path) === 'live') {
+        if (($_GET['format'] ?? '') === 'json') {
+            // The new rows since the page's cursor, every few seconds.
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(\CjwNetwork\RequestShield\Report\LivePage::json($shield->settings, isset($_GET['cursor']) ? (string) $_GET['cursor'] : null,
+                ['lang' => \CjwNetwork\RequestShield\Texts::language((string) ($_GET['lang'] ?? 'auto'), $request->header('accept-language')), 'ip' => $request->clientIp]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+            exit;
+        }
+        header('Content-Type: text/html; charset=utf-8');
+        echo \CjwNetwork\RequestShield\Report\LivePage::render($shield->settings, $panelOpts + ['feed' => $panelLinks['live'] . '?format=json', 'lists' => $panelLinks['lists'],
+            'title' => 'Live — request-shield demo']);
+        exit;
+    }
+    // The lists: a change comes as POST with the page's token; the list files are
+    // written whole and the rule file touched, so every server reads them.
+    $message = $method === 'POST' ? \CjwNetwork\RequestShield\Report\ListsPage::handle($shield->settings, $_POST, ['ip' => $request->clientIp, 'ruleFile' => REQUEST_SHIELD_CONFIG,
+        'lang' => \CjwNetwork\RequestShield\Texts::language((string) ($_GET['lang'] ?? 'auto'), $request->header('accept-language'))]) : null;
+    header('Content-Type: text/html; charset=utf-8');
+    echo \CjwNetwork\RequestShield\Report\ListsPage::render($shield->settings, $panelOpts + ['action' => $panelLinks['lists'], 'get' => $_GET, 'message' => $message,
+        'title' => 'Lists — request-shield demo']);
+    exit;
 } elseif ($shield !== null && \CjwNetwork\RequestShield\Report\StatsPage::viewFor($shield->settings, $path) !== null) {
     // What the counters say (set stats on): the library's statistics page at
     // dashboard-path (/rs here, /admin/rs on a site that likes it so) -- the path names the view (the dashboard: everything; stats: visitors and
@@ -153,7 +181,7 @@ if ($path === '/search') {
         exit;
     }
     header('Content-Type: text/html; charset=utf-8');
-    echo \CjwNetwork\RequestShield\Report\StatsPage::render($shield->settings, ['view' => $view, 'links' => array_map($url, \CjwNetwork\RequestShield\Report\StatsPage::links($shield->settings)),
+    echo \CjwNetwork\RequestShield\Report\StatsPage::render($shield->settings, ['view' => $view, 'links' => array_map($url, \CjwNetwork\RequestShield\Report\Frame::links($shield->settings)),
         'days' => $days, 'crawler' => $only, 'path' => isset($_GET['path']) ? (string) $_GET['path'] : null, 'sort' => (string) ($_GET['sort'] ?? ''),
         'lang' => (string) ($_GET['lang'] ?? 'auto'), 'accept' => $request->header('accept-language'), 'fragment' => isset($_GET['fragment']),
         'check' => $_GET, 'ip' => $request->clientIp, 'from' => (string) ($_GET['from'] ?? ''), 'to' => (string) ($_GET['to'] ?? ''),
@@ -223,6 +251,8 @@ $groups = [
         ['/rs/dashboard', 'Statistics: the dashboard', 'everything at a glance: who came, what the shield did, pages, crawlers, rules (this machine only)'],
         ['/rs/stats', 'Statistics: visitors & pages', 'for editors: people, crawlers, bots; the most visited pages and sections, broken links, sitemaps'],
         ['/rs/shield', 'Statistics: protection', 'for admins: what the shield did, the answers, the rules, bots'],
+        ['/rs/live', 'Live', 'what the shield stops right now, from the log: website, address, request, why, and where from (a list, a ban, the site\'s own rule, a built-in one) (this machine only)'],
+        ['/rs/lists', 'Lists', 'keep an address out or let it in, with a comment of your own; extend, remove; the active bans (this machine only)'],
         ['/rs/rules', 'Statistics: rules & setup', 'the way of a request through the shield, every rule in words, every technical setting (this machine only)'],
         ['/rs/stats?lang=de', 'Statistik auf Deutsch', 'the same page in German (it also follows your browser\'s language)'],
         ['/rs/stats?path=' . rawurlencode($url('/page/')), 'Statistics: one subtree', 'the "path starts with" filter: views of one section, by people, crawlers, bots'],

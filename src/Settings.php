@@ -177,6 +177,12 @@ final class Settings
         public int $banGrowth = 2,
         /** @readonly the longest ban, in seconds */
         public int $banMax = 86400,
+        /** @readonly the live view's memory (APCu): the last requests stopped, with the full address */
+        public bool $liveEnabled = false,
+        /** @readonly how long an entry stays in it, in seconds */
+        public int $liveKeep = 3600,
+        /** @readonly where a ban is kept: memory (the store), or file (also a file in store-dir: it survives a restart of APCu) */
+        public string $banKeep = 'memory',
     ) {
     }
 
@@ -296,6 +302,7 @@ final class Settings
             ...[self::dashboardPath($c), self::plugins($c)],
             ...self::sites($c),
             ...self::lists($c, $budgets),
+            ...self::live($c),
         );
     }
 
@@ -530,6 +537,29 @@ final class Settings
         }
         $dir = $c['listsDir'] ?? null;
         return [$deny, $entries === [] ? [] : IpTable::build($entries), count($entries), $next, is_string($dir) && $dir !== '' ? $dir : null, $bans, $growth, $max];
+    }
+
+    /**
+     * The live view's memory: on or off, and how long an entry stays (at most
+     * a day); and where a ban is kept (memory, or also a file).
+     *
+     * @param array<mixed> $c
+     * @return array{0: bool, 1: int, 2: string}
+     */
+    private static function live(array $c): array
+    {
+        $l = $c['live'] ?? [];
+        $l = is_array($l) ? $l : ['enabled' => $l];
+        $on = $l['enabled'] ?? false;
+        $keep = $l['keep'] ?? 3600;
+        if (!is_bool($on) || !is_int($keep) || $keep < 60 || $keep > 86400) {
+            throw self::wrong('live', "['enabled' => true|false, 'keep' => seconds from 60 to 86400]");
+        }
+        $banKeep = $c['banKeep'] ?? 'memory';
+        if (!in_array($banKeep, ['memory', 'file'], true)) {
+            throw self::wrong('banKeep', 'memory or file');
+        }
+        return [$on, $keep, $banKeep];
     }
 
     /**
@@ -903,11 +933,11 @@ final class Settings
 
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
-    /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
     /** Deny entries kept as they were written, for the pages; the rest only in the table. */
     public const DENY_SHOWN = 100;
 
-    private const FORMAT = 30;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount
+    /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
+    private const FORMAT = 31;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

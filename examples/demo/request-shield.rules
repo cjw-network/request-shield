@@ -31,10 +31,10 @@ version 2026-09-29.1        # this rule set's own version: shown on /rules and b
 include @tracking
 [DEMO-PARAMS]       query page int   q text   start word   v id                            # page numbers, the search, how the form box starts, the script's version
 [DEMO-PARAMS-RULES] query method word   url text   ip /[0-9A-Fa-f.:]{1,45}/ at **/rules      # the check on the active rules page
-[DEMO-PARAMS-STATS] query days int   by word   crawler id   format word   lang word   fragment any   path text   sort word   from /[0-9]{4}-[0-9]{2}-[0-9]{2}/   to /[0-9]{4}-[0-9]{2}-[0-9]{2}/   method word   url text   ip /[0-9A-Fa-f.:]{1,45}/   ua text at **/rs/**   # the statistics: the period, one crawler, a subtree, the order, JSON, the rule tester
+[DEMO-PARAMS-STATS] query days int   by word   crawler id   format word   lang word   fragment any   path text   sort word   from /[0-9]{4}-[0-9]{2}-[0-9]{2}/   to /[0-9]{4}-[0-9]{2}-[0-9]{2}/   method word   url text   ip /[0-9A-Fa-f.:]{1,45}/   ua text   cursor /(m:[0-9]{1,20}|[0-9]{1,20}:[0-9]{1,20})/   host text   what word   source word   q text   address text   note text   kind word   for word at **/rs/**   # the statistics: the period, one crawler, a subtree, the order, JSON, the rule tester
 [DEMO-STRICT]       query strict                                  # any other parameter, or a value not of its type: 404
 
-[DEMO-FORMS]        allow POST  **/edit **/comment **/profile **/contact     # forms may only be sent to the edit, comment, profile and contact pages
+[DEMO-FORMS]        allow POST  **/edit **/comment **/profile **/contact **/rs/lists     # forms may only be sent to the edit, comment, profile and contact pages -- and the lists
 
 # The admin area, as a block: the rules of one area in one place, the path
 # written once (the same as "restrict **/admin/** to 192.0.2.0/24").
@@ -85,7 +85,15 @@ set         crawler-verify ranges
 # Statistics: what the shield did, per hour (bin/request-shield stats, or /rs/dashboard).
 [DEMO-STATS]        restrict **/rs/**     to 127.0.0.1 ::1        # the statistics -- /rs/dashboard, /rs/stats, /rs/shield: only this machine
 set         stats on
-set         dashboard-path /rs                                     # the statistics: /rs/dashboard, /rs/stats, /rs/shield (restricted above)
+set         dashboard-path /rs                                     # the statistics: /rs/dashboard, /rs/stats, /rs/shield; /rs/live and /rs/lists (restricted above)
+
+# The live view (/rs/live) from memory: the last requests stopped, with the full
+# address (so one can be kept out exactly), for an hour, never on disk (APCu).
+set         live on
+
+# Automatic bans -- watched only here (monitor): the log says whom they would
+# have banned, nobody is (a demo that bans this machine would be no demo).
+[DEMO-SCAN]         monitor ban after 5 refusals in 5m for 10m    # a scanner: five refusals for what only attackers ask for
 set         stats-depth 4                                          # sections to the fourth folder: the demo lives under /qbixserver/request-shield/examples/demo/
 
 # Counters, the generated secret and the log: outside the document root,

@@ -45,4 +45,9 @@ final class PeekStore implements Store
     {
         return $this->store->marked($key, $now);
     }
+
+    public function marks(string $prefix, float $now): array
+    {
+        return $this->store->marks($prefix, $now);
+    }
 }

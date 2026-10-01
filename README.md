@@ -30,7 +30,8 @@ else:
   they typed.
 - **Unwelcome addresses stay out** — keep an address out for a week with one
   command, let the office in, and ban for a while whoever keeps knocking
-  ([IP lists and automatic bans](docs/features/ip-lists.md)).
+  ([IP lists and automatic bans](docs/features/ip-lists.md)); a live view shows
+  what is stopped right now, and why ([live and lists](docs/features/live-and-lists.md)).
 - **Search engines stay welcome** — Google, Bing and others are recognised and
   let through.
 - **Readable rules** — one per line, in a plain text file; every refusal names
@@ -109,7 +110,10 @@ server and PHP slots, just very briefly.
   the statistics are its first plugin, and your own hang on the same two hooks
   ([docs](docs/features/plugins.md)); rules per website (`site` blocks); IP
   lists — `deny`, `exempt … until`, list files kept from the command line —
-  and automatic, temporary bans ([docs](docs/features/ip-lists.md)).
+  and automatic, temporary bans ([docs](docs/features/ip-lists.md)); the live
+  view and the lists in the dashboard — what is stopped right now, with the
+  reason and where it came from, an address kept out with one click and a
+  comment ([docs](docs/features/live-and-lists.md)).
 - **Next:** adapters for
   Exponential, WordPress and Ibexa; exporting the rules to nginx, Apache and
   Varnish.

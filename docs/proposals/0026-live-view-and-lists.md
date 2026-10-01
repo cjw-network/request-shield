@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Phases 1–3 implemented** (2026-10-01): live view (memory or log), lists page, `ban-keep file`; phase 4 (customers) waits for 0023's access per group |
 | Proposed | 2026-10-01 |
 | Affects | the dashboard ([0012](0012-dashboard.md)), the IP lists ([0013](0013-ip-lists.md)), the log, the feeds ([0025](0025-blocklist-feeds.md)) |
 
@@ -163,3 +163,30 @@ listed for review.
 4. Show the full address in the live tab when the log keeps it masked (from a
    separate short buffer)? *Recommendation: no; what is not logged is not
    shown. The masked /24 can still be kept out as a range.*
+
+## Decisions (2026-10-01)
+
+1. **Where the rows come from — changed after a review:** the log alone shows
+   masked addresses, too coarse to keep out exactly the address that attacked.
+   So: **`set live on`**, a ring of the last 2,000 requests stopped in APCu,
+   **with the full address**, for `live-keep` (an hour by default), never on
+   disk; ~5 µs for a request that was stopped, nothing for one that passes.
+   Without it (or without APCu) the page reads the log as proposed.
+2. **Lists per website for customers:** phase 4, with 0023's access per group.
+3. **The comment:** required for an entry for good; filled in from the rule's
+   reason when "keep out" comes from the live view.
+4. **Full addresses:** shown when `set live on` holds them; from the log as
+   the log keeps them.
+
+Also from the review: **`set ban-keep file`** — a ban also as a file in
+store-dir, restored into APCu by the first request after a restart (once,
+`apcu_add()`); lifted from both. Everything else stays in memory, briefly.
+
+As built: `Report\LivePage` (page, `json()`, the source of each row),
+`Report\LogTail` (the log from a cursor), `Live` (the memory), `Report\ListsPage`
+(page, `handle()`, `token()`), `Report\Frame` (tabs, `links()`, `pageFor()`),
+`Store::marks()` (the active bans), `Lists::update()/removeId()/notes()/find()/refusal()`,
+`Log::note()` (log and memory in one place), `Shield::liftBan()`. The guards of
+the command line, plus never the viewer's own address. No WebSocket, no
+library: ~3 KB of plain JavaScript; rows built with `textContent`.
+

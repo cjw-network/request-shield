@@ -83,6 +83,9 @@ final class RuleFile
         'crawler-log-days' => ['crawlerLog.days', 'int'],
         'crawler-log-query' => ['crawlerLog.query', 'bool'],
         'log-level' => ['log.level', 'loglevel'],
+        'live' => ['live.enabled', 'bool'],
+        'live-keep' => ['live.keep', 'seconds'],
+        'ban-keep' => ['banKeep', 'string'],
         'log-ip' => ['log.ip', 'logip'],
         'log-max-size' => ['log.maxSize', 'bytes'],
     ];
@@ -141,7 +144,7 @@ final class RuleFile
     private bool $sawSite = false;
 
     /** "set" keys that are about the server, not a website: not inside a site block. */
-    private const SERVER_WIDE = ['store', 'store-dir', 'secret', 'recheck', 'dns-lookups', 'ipv6-prefix', 'site-from', 'lists-dir', 'ban-growth', 'ban-max'];
+    private const SERVER_WIDE = ['store', 'store-dir', 'secret', 'recheck', 'dns-lookups', 'ipv6-prefix', 'site-from', 'lists-dir', 'ban-growth', 'ban-max', 'live', 'live-keep', 'ban-keep'];
 
     /** Reading a list file (allow.rules, deny.rules in lists-dir): only list lines there. */
     private bool $listing = false;

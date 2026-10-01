@@ -148,16 +148,18 @@ if (in_array($command, ['deny', 'allow', 'unlist', 'lists'], true)) {
             $n = \CjwNetwork\RequestShield\Rules\Lists::remove($dir, $address);
             touch($file);
             echo "unlisted $address: $n entr" . ($n === 1 ? 'y' : 'ies') . " removed\n";
-            if ($settings->store === 'file' && strpos($address, '/') === false) {
+            $bucket = strpos($address, '/') === false || strpos($address, ':') !== false ? \CjwNetwork\RequestShield\IpAddress::bucket((string) preg_replace('#/\d+$#', '', $address), $settings->ipv6Prefix) : null;
+            if ($bucket !== null && $settings->store === 'file') {
                 // The files are the servers' store too: a running ban is lifted at once.
-                $store = new \CjwNetwork\RequestShield\Store\FileStore($settings->storeDir);
-                $key = 'ban:' . \CjwNetwork\RequestShield\IpAddress::bucket($address, $settings->ipv6Prefix);
-                if ($store->marked($key, time()) > 0) {
-                    $store->mark($key, 0, time());
+                if (\CjwNetwork\RequestShield\Shield::liftBan($settings, new \CjwNetwork\RequestShield\Store\FileStore($settings->storeDir), $bucket)) {
                     echo "its ban lifted\n";
                 }
+            } elseif ($bucket !== null && $settings->banKeep === 'file' && (new \CjwNetwork\RequestShield\Store\FileStore($settings->storeDir))->marked('ban:' . $bucket, time()) > 0) {
+                // Only the file can be reached from here; the servers' APCu keeps its copy.
+                (new \CjwNetwork\RequestShield\Store\FileStore($settings->storeDir))->mark('ban:' . $bucket, 0, time());
+                echo "its kept ban removed (ban-keep file); the servers' memory holds it until it ends -- lift it on the dashboard's lists page, or: request-shield allow $file $address --for=1h\n";
             } elseif ($settings->bans !== []) {
-                echo "note: a running ban ends by itself (at most " . intdiv($settings->banMax, 3600) . " h) -- to lift it at once: request-shield allow $file $address --for=1h\n";
+                echo "note: a running ban ends by itself (at most " . intdiv($settings->banMax, 3600) . " h) -- to lift it at once: the dashboard's lists page, or request-shield allow $file $address --for=1h\n";
             }
             exit(0);
         }
@@ -169,16 +171,10 @@ if (in_array($command, ['deny', 'allow', 'unlist', 'lists'], true)) {
             throw new InvalidArgumentException('allow takes --for or --until -- an address let in for good belongs in the rule file (exempt)');
         }
         if ($command === 'deny') {
-            // Never the proxies the site trusts; a wide range only on purpose.
-            foreach ($settings->trustedProxies as $proxy) {
-                $one = strpos($proxy, '/') === false ? $proxy : substr($proxy, 0, (int) strpos($proxy, '/'));
-                if (\CjwNetwork\RequestShield\IpAddress::inRanges($one, [$address]) || \CjwNetwork\RequestShield\IpAddress::inRanges(strpos($address, '/') === false ? $address : substr($address, 0, (int) strpos($address, '/')), [$proxy])) {
-                    throw new InvalidArgumentException("$address holds a trusted proxy ($proxy) -- every visitor behind it would be kept out");
-                }
-            }
-            $wide = strpos($address, ':') === false ? 16 : 96;            // wider than /16 (IPv4), /32 (IPv6)
-            if (\CjwNetwork\RequestShield\Rules\Lists::width($address) > $wide && !$force) {
-                throw new InvalidArgumentException("$address is a wide range -- many people may be behind it; --force if that is meant");
+            // Never the proxies the site trusts (not even with --force); a wide range only on purpose.
+            $why = \CjwNetwork\RequestShield\Rules\Lists::refuse($address, $settings->trustedProxies, null, $force);
+            if ($why !== null) {
+                throw new InvalidArgumentException(str_replace('confirm if that is meant', '--force if that is meant', $why));
             }
         }
         $id = \CjwNetwork\RequestShield\Rules\Lists::add($dir, $command === 'deny' ? 'deny' : 'exempt', $address, $until, $listReason);

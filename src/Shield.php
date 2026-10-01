@@ -98,6 +98,9 @@ final class Shield
             $this->rules[] = new DenyRule($s->denyTable);
         }
         if ($s->bans !== [] && $s->mode !== 'monitor') {
+            if ($s->banKeep === 'file' && $this->store instanceof ApcuStore) {
+                self::restoreBans($s, $this->store);
+            }
             $this->rules[] = new BanRule($this->store, $s->exemptIps, $s->ipv6Prefix);
         }
         $this->rules[] = new MethodRule($s->methods);
@@ -210,9 +213,7 @@ final class Shield
             $settled = ['decision' => $decision, 'cookies' => $settled['cookies'], 'page' => null, 'json' => null, 'passed' => false];
         } elseif ($decision->action !== Decision::ALLOW || $s->logLevel === 'all') {
             $rule = $shield->explain($decision, $request);
-            if ($s->logFile !== null && Log::wants($s->logLevel, $decision)) {
-                Log::write($s, $request, $decision, $rule, $now);
-            }
+            Log::note($s, $request, $decision, $rule, $now);
         }
         if ($s->monitor !== null && $decision->passes() && $watched === null) {
             // Rules marked "monitor": what they would decide, for the log.
@@ -392,9 +393,7 @@ final class Shield
             return;                                         // a verified crawler gets the pause it understands, never a ban
         }
         if ($watch) {
-            if ($s->logFile !== null) {
-                Log::write($s, $request, Decision::throttle('banned', $b['for']), $b['rule'], $now, true);
-            }
+            Log::note($s, $request, Decision::throttle('banned', $b['for']), $b['rule'], $now, true);
             return;
         }
         $offences = (int) round($this->store->hit('bans:' . $bucket, 86400, $now));
@@ -404,9 +403,46 @@ final class Shield
             return;                                         // banned longer already
         }
         $this->store->mark('ban:' . $bucket, $until, $now);
-        if ($s->logFile !== null) {
-            Log::write($s, $request, Decision::throttle('banned', $duration), $b['rule'], $now);
+        if ($s->banKeep === 'file' && !$this->store instanceof FileStore) {
+            (new FileStore($s->storeDir))->mark('ban:' . $bucket, $until, $now);     // survives a restart of APCu
         }
+        Log::note($s, $request, Decision::throttle('banned', $duration), $b['rule'], $now);
+    }
+
+    /**
+     * set ban-keep file: after a restart of APCu (empty), the first request
+     * copies the bans still running from their files back -- once: apcu_add()
+     * lets one process do it. Every other request: that one call.
+     */
+    private static function restoreBans(Settings $s, Store $store): void
+    {
+        if (!function_exists('apcu_add') || !apcu_add('rshield-bans-restored:' . hash('crc32b', $s->storeDir), 1)) {
+            return;
+        }
+        $now = microtime(true);
+        foreach ((new FileStore($s->storeDir))->marks('ban:', $now) as $key => $until) {
+            if ($store->marked($key, $now) < $until) {
+                $store->mark($key, $until, $now);
+            }
+        }
+    }
+
+    /**
+     * Lifts a ban at once, wherever it is kept: the store and, with
+     * ban-keep file, its file. False when the address is not banned.
+     */
+    public static function liftBan(Settings $s, Store $store, string $bucket, ?float $now = null): bool
+    {
+        $now ??= microtime(true);
+        $key = 'ban:' . $bucket;
+        $was = $store->marked($key, $now) > 0;
+        $store->mark($key, 0, $now);
+        if ($s->banKeep === 'file' && !$store instanceof FileStore) {
+            $file = new FileStore($s->storeDir);
+            $was = $was || $file->marked($key, $now) > 0;
+            $file->mark($key, 0, $now);
+        }
+        return $was;
     }
 
     /** @var list<Plugin>|null */
@@ -480,9 +516,7 @@ final class Shield
     {
         $s = $this->settings;
         $rule = $by->explain($d, $request);
-        if ($s->logFile !== null && Log::wants($s->logLevel, $d)) {
-            Log::write($s, $request, $d, $rule, $now, true);
-        }
+        Log::note($s, $request, $d, $rule, $now, true);
         return $d->action . ($d->reason !== '' ? ' ' . $d->reason : '') . ($rule !== null ? '; rule=' . $rule : '');
     }
 
@@ -807,8 +841,8 @@ final class Shield
     {
         $s = $this->settings;
         $rule = $this->explain($d, $request);
-        if ($log && $s->logFile !== null && Log::wants($s->logLevel, $d)) {
-            Log::write($s, $request, $d, $rule, $now);
+        if ($log) {
+            Log::note($s, $request, $d, $rule, $now);
         }
         while ($echo && ob_get_level() > 0) {
             ob_end_clean();                 // nothing of the application's page
@@ -978,8 +1012,8 @@ final class Shield
             }
             return $d;
         }
-        if ($this->settings->logFile !== null && $d->action !== Decision::ALLOW && Log::wants($this->settings->logLevel, $d)) {
-            Log::write($this->settings, $request, $d, $this->explain($d, $request), $now);
+        if ($d->action !== Decision::ALLOW && ($this->settings->logFile !== null || $this->settings->liveEnabled)) {
+            Log::note($this->settings, $request, $d, $this->explain($d, $request), $now);
         }
         // answer: true -- the shield answers a refusal itself (a pause, the
         // check) and the request ends here: Shield::active()?->consume('posts', answer: true)

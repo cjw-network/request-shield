@@ -55,7 +55,10 @@ return [
             foreach ($stores as $name => $store) {
                 same(0, $store->marked('ban:x', 1000.0), "$name: nothing yet");
                 $store->mark('ban:x', 1060, 1000.0);
+                $store->mark('other:x', 1060, 1000.0);
+                same(['ban:x' => 1060], $store->marks('ban:', 1000.0), "$name: listed by prefix, while marked");
                 same([1060, 1060, 0], [$store->marked('ban:x', 1000.0), $store->marked('ban:x', 1059.0), $store->marked('ban:x', 1060.0)], "$name: until then, not after");
+                same([], $store->marks('ban:', 1060.0), "$name: not listed after");
                 $store->mark('ban:y', 2000, 1000.0);
                 $store->mark('ban:y', 0, 1000.0);
                 same(0, $store->marked('ban:y', 1000.0), "$name: 0 forgets at once");

@@ -29,29 +29,44 @@ final class LogStats
         $text = self::tail($file . '.1', $maxBytes) . self::tail($file, $maxBytes);
         $lines = [];
         foreach (explode("\n", $text) as $line) {
-            if (!preg_match('/^(\S+) (\S+) (\S+) (\d+) "([^"]*)"(?: rule=(.*?))?(?: claimed=(\S+))? "(\S+) ([^"]*)" "([^"]*)"$/', $line, $m)) {
+            $entry = self::parse($line);
+            if ($entry === null || $entry['time'] < $since) {
                 continue;
             }
-            $time = strtotime($m[1]);
-            if ($time === false || $time < $since) {
-                continue;
-            }
-            $entry = ['time' => $time, 'client' => $m[2], 'action' => $m[3], 'status' => (int) $m[4], 'reason' => $m[5],
-                'rule' => $m[6] !== '' ? $m[6] : null, 'method' => $m[8], 'url' => $m[9], 'agent' => $m[10]];
-            if ($m[7] !== '') {
+            $claimed = $entry['claimed'];
+            unset($entry['claimed']);
+            if ($claimed !== null) {
                 // Named a known crawler without coming from it.
-                $out['claims'][$m[7]] = ($out['claims'][$m[7]] ?? 0) + 1;
+                $out['claims'][$claimed] = ($out['claims'][$claimed] ?? 0) + 1;
             }
             $lines[] = $entry;
             $out['actions'][$entry['action']] = ($out['actions'][$entry['action']] ?? 0) + 1;
             if ($entry['rule'] !== null) {
                 $r = $out['rules'][$entry['rule']] ?? ['count' => 0, 'last' => 0];
-                $out['rules'][$entry['rule']] = ['count' => $r['count'] + 1, 'last' => max($r['last'], $time)];
+                $out['rules'][$entry['rule']] = ['count' => $r['count'] + 1, 'last' => max($r['last'], $entry['time'])];
             }
         }
         $out['lines'] = count($lines);
         $out['recent'] = array_reverse(array_slice($lines, -$recent));
         return $out;
+    }
+
+    /**
+     * One line of the log, or null for anything else.
+     *
+     * @return array{time: int, client: string, action: string, status: int, reason: string, rule: ?string, claimed: ?string, method: string, url: string, agent: string}|null
+     */
+    public static function parse(string $line): ?array
+    {
+        if (!preg_match('/^(\S+) (\S+) (\S+) (\d+) "([^"]*)"(?: rule=(.*?))?(?: claimed=(\S+))? "(\S+) ([^"]*)" "([^"]*)"$/', $line, $m)) {
+            return null;
+        }
+        $time = strtotime($m[1]);
+        if ($time === false) {
+            return null;
+        }
+        return ['time' => $time, 'client' => $m[2], 'action' => $m[3], 'status' => (int) $m[4], 'reason' => $m[5],
+            'rule' => $m[6] !== '' ? $m[6] : null, 'claimed' => $m[7] !== '' ? $m[7] : null, 'method' => $m[8], 'url' => $m[9], 'agent' => $m[10]];
     }
 
     private static function tail(string $file, int $maxBytes): string

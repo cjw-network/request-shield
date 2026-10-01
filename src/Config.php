@@ -143,6 +143,8 @@ final class Config
             // stop (rejected, throttled, challenged), flag (also allow-uncached),
             // all (every request), off. ip: masked (/24, /48) or full.
             'log' => ['file' => null, 'level' => 'stop', 'ip' => 'masked', 'maxSize' => 10485760],
+            // The live view's memory (APCu): the last requests stopped, with the full address, for keep seconds.
+            'live' => ['enabled' => false, 'keep' => 3600],
             // Counters for the dashboard (proposals 0012, 0014): per hour in the
             // store (APCu, else files in storeDir/stats); hours kept for 'hours'
             // days, day totals for 'days' days. Off: nothing is counted.

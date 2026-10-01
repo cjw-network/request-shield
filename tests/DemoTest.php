@@ -412,6 +412,38 @@ $pace = function (string $prefix): void {
         }, $prefix);
 };
 
+$panel = function (string $prefix): void {
+    withDemo(function (callable $get): void {
+        for ($i = 0; $i < 5; $i++) {
+            $get('GET', '/.env');                       // five refusals: the watched ban (monitor ban) notes it
+        }
+        $r = $get('GET', '/rs/live?lang=de');
+        same(200, $r['status'], 'the live view');
+        truthy(strpos($r['body'], 'SCAN-HIDDEN') !== false && strpos($r['body'], 'eingebaute Regel') !== false, 'the refusals, with where they came from');
+        truthy(strpos($r['body'], 'class="tab on" href="') !== false && strpos($r['body'], '/rs/lists?lang=de') !== false, 'tabs to the lists');
+        $first = json_decode($get('GET', '/rs/live?format=json')['body'], true);
+        $rows = (array) ($first['rows'] ?? []);
+        truthy(in_array('ban', array_column($rows, 'source'), true) && in_array(true, array_column($rows, 'watched'), true), 'the watched ban, in the live rows: ' . json_encode(array_column($rows, 'label')));
+        same([], array_filter($rows, static fn (array $x): bool => strpos((string) $x['request'], '/rs/') !== false), 'the dashboard\'s own requests are not shown');
+        $get('GET', '/.git/config');
+        $next = json_decode($get('GET', '/rs/live?format=json&cursor=' . rawurlencode((string) $first['cursor']))['body'], true);
+        same(['/.git/config'], array_values(array_unique(array_map(static fn (array $x): string => substr((string) $x['request'], -12), (array) $next['rows']))), 'with the cursor: only what is new');
+        $what = array_column((array) $next['rows'], 'what');
+        sort($what);
+        same(['banned', 'refused'], $what, 'the refusal, and the watched ban it would have set (the sixth)');
+        $page = $get('GET', '/rs/lists?address=203.0.113.0%2F24&note=scanner&for=7d');
+        same(200, $page['status'], 'the lists');
+        truthy(preg_match('/name="token" value="([0-9a-f]{32})"/', $page['body'], $m) === 1, 'the form token');
+        $added = $get('POST', '/rs/lists', [], http_build_query(['token' => $m[1], 'do' => 'add', 'kind' => 'deny', 'address' => '203.0.113.0/24', 'for' => '7d', 'note' => 'scanner']));
+        truthy($added['status'] === 200 && strpos($added['body'], 'LIST-D1: 203.0.113.0/24 added') !== false && strpos($added['body'], '<td class="mono">LIST-D1</td>') !== false, 'added, and listed');
+        $self = $get('POST', '/rs/lists', [], http_build_query(['token' => $m[1], 'do' => 'add', 'kind' => 'deny', 'address' => '127.0.0.1', 'for' => '1d', 'note' => 'x']));
+        truthy(strpos($self['body'], 'you would lock yourself out') !== false, 'never the address of the person clicking');
+        truthy(strpos($get('POST', '/rs/lists', [], 'do=remove&id=LIST-D1')['body'], 'too old or not from this page') !== false, 'without the token: refused');
+        $removed = $get('POST', '/rs/lists', [], http_build_query(['token' => $m[1], 'do' => 'remove', 'id' => 'LIST-D1']));
+        truthy(strpos($removed['body'], 'LIST-D1 removed') !== false, 'removed');
+    }, $prefix);
+};
+
 $sub = '/examples/demo/index.php';
 return [
     'the demo: every example link does what the page says' => fn () => $examples(''),
@@ -429,4 +461,6 @@ return [
     'the demo: earn a spent budget back -- an API with a header, a form sent again, twice as hard the second time' => fn () => $earnBack(''),
     'the demo: past 60 requests a minute, a check no pass gets past -- solved, the counter starts again' => fn () => $pace(''),
     'the demo in a subdirectory: earn a spent budget back' => fn () => $earnBack($sub),
+    'the demo: the live view (from the log, with where each refusal came from) and the lists (add with a comment, the guards, remove)' => fn () => $panel(''),
+    'the demo in a subdirectory: live and lists' => fn () => $panel($sub),
 ];

@@ -40,4 +40,12 @@ interface Store
 
     /** Until when $key is marked (a Unix time); 0 when it is not, or no longer. */
     public function marked(string $key, float $now): int;
+
+    /**
+     * The keys marked now that start with $prefix, and until when -- for a
+     * list of the active bans; never asked while a request is decided.
+     *
+     * @return array<string, int> key => until
+     */
+    public function marks(string $prefix, float $now): array;
 }
