@@ -34,7 +34,9 @@ final class StatsPage
             'allSites' => 'All websites', 'otherHosts' => 'other hosts (names the rules do not know)', 'website' => 'Website',
             'groupAll' => '%s: all %d websites', 'groupOne' => '%s: its website', 'ungrouped' => 'In no group', 'tabSites' => 'All websites',
             'sitesIntro' => 'where the traffic is: page views by people, against the period before', 'pageViews' => 'Page views', 'change' => 'Change', 'stoppedCol' => 'Stopped',
-            'new' => 'new', 'before' => 'the period before: %s', 'nSites' => '%d websites', 'oneSite' => '1 website',
+            'new' => 'new', 'before' => 'the period before: %s', 'peopleReq' => 'Requests by people', 'crawlerVisits' => 'Crawler visits', 'botReq' => 'Bot requests',
+            'peopleTip' => 'every request by a person, not only pages: forms sent, redirects, not found, JSON -- the page views are the pages shown (GET, 200, HTML)',
+            'botsTip' => 'requests from tools and scripts that say so (curl, python-requests, wget …), not a known crawler', 'nSites' => '%d websites', 'oneSite' => '1 website',
             'requests' => 'Requests', 'people' => 'People', 'crawlers' => 'Crawlers', 'bots' => 'Bots', 'checked' => 'Checked', 'refused' => 'Refused',
             'notFound' => 'Not found', 'through' => 'Let through', 'throttled' => 'Told to wait', 'who' => 'Who came', 'what' => 'What the shield did',
             'answers' => 'Answers', 'short' => 'In short', 'known' => 'Known crawlers', 'missing' => 'Pages not found', 'linked' => 'linked from',
@@ -50,7 +52,9 @@ final class StatsPage
             'allSites' => 'Alle Websites', 'otherHosts' => 'andere Hosts (Namen, die die Regeln nicht kennen)', 'website' => 'Website',
             'groupAll' => '%s: alle %d Websites', 'groupOne' => '%s: seine Website', 'ungrouped' => 'In keiner Gruppe', 'tabSites' => 'Alle Websites',
             'sitesIntro' => 'wo der Verkehr ist: Seitenaufrufe von Menschen, gegenüber dem Zeitraum davor', 'pageViews' => 'Seitenaufrufe', 'change' => 'Veränderung', 'stoppedCol' => 'Gestoppt',
-            'new' => 'neu', 'before' => 'der Zeitraum davor: %s', 'nSites' => '%d Websites', 'oneSite' => '1 Website',
+            'new' => 'neu', 'before' => 'der Zeitraum davor: %s', 'peopleReq' => 'Anfragen von Menschen', 'crawlerVisits' => 'Crawler-Besuche', 'botReq' => 'Bot-Anfragen',
+            'peopleTip' => 'jede Anfrage eines Menschen, nicht nur Seiten: gesendete Formulare, Weiterleitungen, nicht gefunden, JSON -- Seitenaufrufe sind die gezeigten Seiten (GET, 200, HTML)',
+            'botsTip' => 'Anfragen von Werkzeugen und Skripten, die sich so nennen (curl, python-requests, wget …), kein bekannter Crawler', 'nSites' => '%d Websites', 'oneSite' => '1 Website',
             'requests' => 'Anfragen', 'people' => 'Menschen', 'crawlers' => 'Crawler', 'bots' => 'Bots', 'checked' => 'Geprüft', 'refused' => 'Abgewiesen',
             'notFound' => 'Nicht gefunden', 'through' => 'Durchgelassen', 'throttled' => 'Gebremst', 'who' => 'Wer kam', 'what' => 'Was der Schutz tat',
             'answers' => 'Antworten', 'short' => 'Kurz gesagt', 'known' => 'Bekannte Crawler', 'missing' => 'Nicht gefundene Seiten', 'linked' => 'verlinkt von',
@@ -443,7 +447,8 @@ final class StatsPage
         $views = static fn (array $a, array $b): int => $b['views'] <=> $a['views'];
         $ctx = [$t, $lang, $most, $from, $to, $by];
         $h = '<section class="card"><h2>' . $e($t['tabSites']) . ' <small>' . $e($t['sitesIntro']) . '</small></h2><div class="wrap"><table class="sites"><thead><tr><th>' . $e($t['website'])
-            . '</th><th>' . $e($t['pageViews']) . '</th><th>' . $e($t['change']) . '</th><th>' . $e($t['people']) . '</th><th>' . $e($t['crawlers']) . '</th><th>' . $e($t['bots'])
+            . '</th><th>' . $e($t['pageViews']) . '</th><th>' . $e($t['change']) . '</th><th title="' . $e($t['peopleTip']) . '">' . $e($t['peopleReq']) . '</th><th>' . $e($t['crawlerVisits'])
+            . '</th><th title="' . $e($t['botsTip']) . '">' . $e($t['botReq'])
             . '</th><th>' . $e($t['stoppedCol']) . '</th><th>' . $e($t['notFound']) . '</th><th></th></tr></thead><tbody>';
         $h .= self::sitesRow($t['allSites'], $x['all'], $href(''), 'sall', '', ...$ctx);
         $groups = $x['groups'];

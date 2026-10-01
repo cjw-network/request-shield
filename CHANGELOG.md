@@ -240,6 +240,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   demo has them at `/rs/…`, restricted to this machine.
 
 ### Fixed
+- Looking at the statistics changed them: the dashboard's own requests (its
+  pages, the live view's feed every 3 s) were counted as requests by people.
+  They are left out when they pass; refused or checked they still count. The
+  overview of all websites says "requests by people", "crawler visits", "bot
+  requests" (with what each counts), as the tiles do.
 - An open live view counted against the site's pace limit (its feed every
   3 s) and ran into 429 or the browser check: the dashboard's own pages no
   longer count against the budgets when a `restrict` rule covers them and

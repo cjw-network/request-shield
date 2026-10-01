@@ -40,7 +40,10 @@ final class StatsPlugin implements Plugin
         $s = $this->settings;
         // stats-skip: a path that is no page of the site (a map proxy's tiles) -- not counted when it
         // passes; refused or checked, it still is (an attack there stays visible).
-        if ($s->statsSkip !== [] && $decision->passes() && $would === null && self::skipped($s->statsSkip, $request->matchPath())) {
+        // The dashboard's own pages (the statistics, the live view's feed every few
+        // seconds): looking at the numbers must not change them.
+        if ($decision->passes() && $would === null && (($s->statsSkip !== [] && self::skipped($s->statsSkip, $request->matchPath()))
+            || (stripos($request->path, $s->dashboardPath) !== false || stripos($request->path, $s->statsPath) !== false) && \CjwNetwork\RequestShield\Report\Frame::isPage($s, $request->matchPath()))) {
             $this->waiting = false;
             return;
         }

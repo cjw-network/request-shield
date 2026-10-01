@@ -244,6 +244,28 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'looking at the numbers does not change them: the dashboard\'s own requests that pass are not counted; refused, they are' => function (): void {
+        $dir = sitesStatsDir();
+        try {
+            $s = sitesStatsSettings($dir, "[R-RS] restrict **/rs/** to 127.0.0.1\n");
+            $shield = new Shield($s, new MemoryStore());
+            foreach (['/rs/stats/visitors', '/rs/waf/live', '/demo/index.php/rs/stats', '/page', '/rs/waf/lists'] as $i => $path) {
+                $r = Request::fromServer(['REQUEST_URI' => $path . ($i === 1 ? '?format=json' : ''), 'REQUEST_METHOD' => 'GET', 'HTTP_HOST' => 'a.de', 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_USER_AGENT' => 'Mozilla/5.0 Firefox/136.0']);
+                $d = $shield->decide($r, (float) SITES_T0);
+                $shield->record($r, $d, $shield->explain($d, $r), (float) SITES_T0);
+            }
+            $r = Request::fromServer(['REQUEST_URI' => '/rs/waf/live', 'REQUEST_METHOD' => 'GET', 'HTTP_HOST' => 'a.de', 'REMOTE_ADDR' => '198.51.100.7', 'HTTP_USER_AGENT' => 'Mozilla/5.0 Firefox/136.0']);
+            $d = $shield->decide($r, (float) SITES_T0);
+            $shield->record($r, $d, $shield->explain($d, $r), (float) SITES_T0);
+            $day = StatsReport::read($s, null, gmdate('Ymd', SITES_T0), gmdate('Ymd', SITES_T0))['days'][gmdate('Ymd', SITES_T0)] ?? [];
+            same(['allow' => 1, 'reject' => 1], ['allow' => ($day['a:allow'] ?? 0) + ($day['a:allow-uncached'] ?? 0), 'reject' => $day['a:reject'] ?? 0],
+                'only /page of the passing ones; the refusal from elsewhere is counted');
+            $h = StatsPage::render(sitesStatsSettings($dir, "set stats-hosts a.de\n"), ['view' => 'sites', 'lang' => 'de', 'now' => SITES_T0]);
+            truthy(strpos($h, '>Anfragen von Menschen</th>') !== false && strpos($h, '>Bot-Anfragen</th>') !== false && strpos($h, 'nicht nur Seiten') !== false, 'the overview names what it counts');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'set stats-path: the plugin\'s own address -- its pages below it, the core\'s stay at <dashboard-path>/waf/' => function (): void {
         $dir = sitesStatsDir();
         try {

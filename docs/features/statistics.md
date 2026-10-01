@@ -286,6 +286,20 @@ Reading costs about what the statistics page costs, once per website.
 - Next ([0023](../proposals/0023-plugins-hosts-customers.md)): each customer's
   own access (a token per group, signed links from a hosting panel).
 
+## What is counted how
+
+| Number | What it counts |
+|---|---|
+| **Page views** | pages shown to people: GET, answered 200 with HTML |
+| **Requests by people** | every request by a person, not only pages: forms sent, redirects, not found, JSON, and what the shield refused or checked |
+| **Crawler visits** | requests from a known crawler (Googlebot, …), proved by its address or only claimed |
+| **Bot requests** | tools and scripts that say so (`curl`, `python-requests`, `wget` …), not a known crawler |
+
+So page views are a part of the requests by people, and bots are apart from
+both. **The dashboard's own requests are not counted** when they pass (its
+pages, the live view's feed every few seconds): looking at the numbers does
+not change them. Refused or checked there, they are.
+
 ## Paths that are not counted: `stats-skip`
 
 Some PHP calls are no pages of the site: a proxy for map tiles
