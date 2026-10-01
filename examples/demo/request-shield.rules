@@ -34,7 +34,7 @@ include @tracking
 [DEMO-PARAMS-STATS] query days int   by word   crawler id   format word   lang word   fragment any   path text   sort word   from /[0-9]{4}-[0-9]{2}-[0-9]{2}/   to /[0-9]{4}-[0-9]{2}-[0-9]{2}/   method word   url text   ip /[0-9A-Fa-f.:]{1,45}/   ua text   site text   cursor /(m:[0-9]{1,20}|[0-9]{1,20}:[0-9]{1,20})/   host text   what word   source word   q text   address text   note text   kind word   for word at **/rs/**   # the statistics: the period, one crawler, a subtree, the order, JSON, the rule tester
 [DEMO-STRICT]       query strict                                  # any other parameter, or a value not of its type: 404
 
-[DEMO-FORMS]        allow POST  **/edit **/comment **/profile **/contact **/rs/lists     # forms may only be sent to the edit, comment, profile and contact pages -- and the lists
+[DEMO-FORMS]        allow POST  **/edit **/comment **/profile **/contact **/rs/waf/lists **/rs/lists     # forms may only be sent to the edit, comment, profile and contact pages -- and the lists (and their old address)
 
 # The admin area, as a block: the rules of one area in one place, the path
 # written once (the same as "restrict **/admin/** to 192.0.2.0/24").

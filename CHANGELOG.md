@@ -244,6 +244,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   never match; it is refused now, like `dashboard-path`.
 
 ### Changed
+- **The statistics plugin's pages have their own addresses** under
+  `<dashboard-path>/stats/`: `/rs/stats/overview`, `/rs/stats/visitors`,
+  `/rs/stats/protection`, `/rs/stats/sites`; `/rs/stats` is the plugin's start
+  (all websites with `stats-hosts`, else the overview). The core's — the
+  firewall's — pages under `<dashboard-path>/waf/`: `/rs/waf/live`,
+  `/rs/waf/lists`, `/rs/waf/rules` (`/rs/waf`: the live view). The old addresses
+  (`/rs/dashboard`, `/rs/shield`, `/rs/sites`, `/rs/live`, `/rs/lists`,
+  `/rs/rules`) are still answered.
+- Finding the website for the statistics keeps the last settings' names
+  instead of a `WeakMap` (0.10 µs; a crash seen once in CI on PHP 8.0 with APCu).
 - **The statistics are the first plugin** (`plugins/stats/`, `StatsPlugin`):
   `set stats on` (or `set crawler-log`) brings them, nothing changes for a site.
   Their classes moved there and keep their names (`Stats`, `Report\StatsReport`,

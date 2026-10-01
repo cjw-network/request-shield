@@ -206,11 +206,11 @@ return [
             same([9, 1], [$x['all']['views'], $x['all']['stopped']], 'all, and what was stopped (on another host)');
             $h = StatsPage::render($s, ['view' => 'sites', 'action' => '/rs/sites', 'links' => StatsPage::links($s), 'lang' => 'en', 'now' => $now]);
             $pos = static fn (string $needle): int => (int) strpos($h, $needle);
-            truthy(strpos($h, '<a class="tab on" href="/rs/sites') !== false, 'its own tab, first');
+            truthy(strpos($h, '<a class="tab on" href="/rs/stats/sites') !== false, 'its own tab, first');
             truthy($pos('>Customer A</a>') < $pos('>a.de</a>') && $pos('>a.de</a>') < $pos('>b.de</a>') && $pos('>b.de</a>') < $pos('>c.de</a>') && $pos('>c.de</a>') < $pos('>d.de</a>')
                 && $pos('>d.de</a>') < $pos('>other hosts'), 'the group with its websites (most traffic first), then the rest, then other hosts');
             truthy(strpos($h, '+50 %') !== false && strpos($h, '+150 %') !== false && strpos($h, '−50 %') !== false && strpos($h, '+0 %') !== false, 'the change: group, a.de, b.de, c.de');
-            truthy(strpos($h, 'href="/rs/stats?site=group%3Acustomer-a') !== false && strpos($h, 'href="/rs/stats?site=a.de') !== false, 'each opens its statistics');
+            truthy(strpos($h, 'href="/rs/stats/visitors?site=group%3Acustomer-a') !== false && strpos($h, 'href="/rs/stats/visitors?site=a.de') !== false, 'each opens its statistics');
             truthy(strpos($h, '<svg class="spark"') !== false, 'a curve each');
             $plain = sitesStatsSettings($dir, '');
             same(false, isset(StatsPage::links($plain)['sites']), 'without stats-hosts: no such view');

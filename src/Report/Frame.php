@@ -31,7 +31,34 @@ final class Frame
     public static function links(\CjwNetwork\RequestShield\Settings $s, string $prefix = ''): array
     {
         $base = $prefix . $s->dashboardPath;
-        return ($s->statsHosts !== [] ? ['sites' => $base . '/sites'] : []) + ['all' => $base . '/dashboard', 'site' => $base . '/stats', 'shield' => $base . '/shield', 'rules' => $base . '/rules', 'live' => $base . '/live', 'lists' => $base . '/lists'];
+        // The statistics plugin's pages under /stats/ (StatsPage::links()), the core's -- the firewall's -- under /waf/.
+        return ($s->statsHosts !== [] ? ['sites' => $base . '/stats/sites'] : []) + ['all' => $base . '/stats/overview', 'site' => $base . '/stats/visitors',
+            'shield' => $base . '/stats/protection', 'rules' => $base . '/waf/rules', 'live' => $base . '/waf/live', 'lists' => $base . '/waf/lists'];
+    }
+
+    /** Every address of the dashboard below dashboard-path: the pages, the plugin's start, the addresses before /stats/. */
+    private const PAGES = ['/stats', '/stats/sites', '/stats/overview', '/stats/visitors', '/stats/protection', '/waf', '/waf/rules', '/waf/live', '/waf/lists',
+        '/rules', '/live', '/lists', '/dashboard', '/shield', '/sites'];
+
+    /** The core's addresses before /waf/: still answered. */
+    private const OLD = ['/live' => 'live', '/lists' => 'lists', '/rules' => 'rules'];
+
+    /**
+     * Whether a path is one of the dashboard's pages -- also below a prefix
+     * (/demo/index.php/rs/live): for what the dashboard's own requests may
+     * skip (the pace), never for who may open them.
+     */
+    public static function isPage(\CjwNetwork\RequestShield\Settings $s, string $path): bool
+    {
+        $p = strtolower(rtrim($path, '/'));
+        $base = strtolower($s->dashboardPath);
+        foreach (self::PAGES as $page) {
+            $full = $base . $page;
+            if ($p === $full || substr($p, -strlen($full)) === $full) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Which page a path asks for (a key of links()), or null; capitals do not matter. */
@@ -40,6 +67,15 @@ final class Frame
         $p = strtolower(rtrim($path, '/'));
         foreach (self::links($s) as $key => $link) {
             if ($p === strtolower($link)) {
+                return $key;
+            }
+        }
+        $base = strtolower($s->dashboardPath);
+        if ($p === $base . '/waf') {
+            return 'live';                                  // the firewall's start: what it stops right now
+        }
+        foreach (self::OLD as $old => $key) {
+            if ($p === $base . $old) {
                 return $key;
             }
         }

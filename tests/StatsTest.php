@@ -73,11 +73,15 @@ return [
         same([false, null], [Settings::from([])->statsEnabled, Settings::from([])->crawlerLogDir], 'off by default');
         // Where the pages live: dashboard-path, something in front of it allowed.
         $page = \CjwNetwork\RequestShield\Report\StatsPage::class;
-        same(['all' => '/rs/dashboard', 'site' => '/rs/stats', 'shield' => '/rs/shield', 'rules' => '/rs/rules'], $page::links(Settings::from([])), 'the default: /rs');
+        same(['all' => '/rs/stats/overview', 'site' => '/rs/stats/visitors', 'shield' => '/rs/stats/protection', 'rules' => '/rs/waf/rules'], $page::links(Settings::from([])), 'the default: /rs, the plugin\'s pages under /rs/stats/');
         $admin = Settings::from(['dashboardPath' => '/admin/rs']);
-        same(['all' => '/admin/rs/dashboard', 'site' => '/admin/rs/stats', 'shield' => '/admin/rs/shield', 'rules' => '/admin/rs/rules'], $page::links($admin));
-        same(['all', 'site', 'shield', 'rules', null, null], [$page::viewFor($admin, '/admin/rs/dashboard'), $page::viewFor($admin, '/Admin/RS/stats/'), $page::viewFor($admin, '/admin/rs/shield'), $page::viewFor($admin, '/admin/rs/rules'),
-            $page::viewFor($admin, '/rs/stats'), $page::viewFor($admin, '/admin/rs/other')], 'which view a path is: capitals and a trailing slash do not matter');
+        same(['all' => '/admin/rs/stats/overview', 'site' => '/admin/rs/stats/visitors', 'shield' => '/admin/rs/stats/protection', 'rules' => '/admin/rs/waf/rules'], $page::links($admin));
+        same(['all', 'site', 'shield', 'rules', null, null], [$page::viewFor($admin, '/admin/rs/stats/overview'), $page::viewFor($admin, '/Admin/RS/stats/Visitors/'), $page::viewFor($admin, '/admin/rs/stats/protection'), $page::viewFor($admin, '/admin/rs/waf/rules'),
+            $page::viewFor($admin, '/rs/stats/visitors'), $page::viewFor($admin, '/admin/rs/other')], 'which view a path is: capitals and a trailing slash do not matter');
+        same(['all', 'all', 'shield', null], [$page::viewFor($admin, '/admin/rs/stats'), $page::viewFor($admin, '/admin/rs/dashboard'), $page::viewFor($admin, '/admin/rs/shield'), $page::viewFor($admin, '/admin/rs/sites')],
+            'the plugin\'s start (the overview without stats-hosts); the old addresses still answered');
+        $hosts = Settings::from(['stats' => ['enabled' => true, 'hosts' => ['a.de']]]);
+        same(['sites', 'sites', 'sites'], [$page::viewFor($hosts, '/rs/stats'), $page::viewFor($hosts, '/rs/stats/sites'), $page::viewFor($hosts, '/rs/sites')], 'with stats-hosts: all websites first');
         foreach (['admin/rs', '/a b', '/x/../y', ''] as $bad) {
             try {
                 Settings::from(['dashboardPath' => $bad]);
@@ -397,12 +401,12 @@ return [
             $blockedPage = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'view' => 'shield', 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]);
             truthy(strpos($blockedPage, 'Am häufigsten blockierte Seiten') !== false && strpos($blockedPage, '<code>/wp-login.php</code>') !== false
                 && strpos($blockedPage, '<option value="blocked" selected>') !== false, 'the protection\'s view: the pages stopped most');
-            truthy(strpos($blockedPage, 'href="/rs/shield?days=30&amp;by=day&amp;lang=de"') !== false, 'its own order is not carried in the links');
+            truthy(strpos($blockedPage, 'href="/rs/stats/protection?days=30&amp;by=day&amp;lang=de"') !== false, 'its own order is not carried in the links');
             $viewsPage = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]);
             truthy(strpos($viewsPage, '<label for="vp-p2">Gestoppt</label>') !== false && strpos($viewsPage, '<code>/wp-login.php</code>') !== false, 'the editors\' view: what was stopped, a tab of the pages card');
             same(['/wp-login.php', '/news/b', '/news'], array_keys($all['stopped']), 'the report: the pages stopped most, whatever the order of the list');
             truthy(strpos(\CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'en', 'sort' => 'refused', 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]),
-                'href="/rs/stats?days=30&amp;by=day&amp;lang=en&amp;sort=refused"') !== false, 'another order is carried in the links');
+                'href="/rs/stats/visitors?days=30&amp;by=day&amp;lang=en&amp;sort=refused"') !== false, 'another order is carried in the links');
             same(['/news/', '/news/2026/'], StatsPlugin::folders('/news/2026/10/x'));
             same(['/news/'], StatsPlugin::folders('/news/'), 'a folder\'s own page belongs to it');
             same([], StatsPlugin::folders('/about'));
@@ -428,7 +432,7 @@ return [
             truthy(strpos($linked, 'href="/rs/dashboard?days=7&amp;lang=en">Overview') !== false && strpos($linked, 'href="/rs/stats?days=7&amp;lang=en">Visitors') !== false, 'one address per view, three tabs');
             truthy(strpos($linked, 'view=') === false && strpos($linked, 'href="/rs/shield?days=30') !== false, 'the path names the view; the filters stay parameters');
             $form = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]);
-            truthy(strpos($form, 'name="view"') === false && strpos($form, 'action="/rs/stats"') !== false, 'the filter form sends no view where the address names it (a site with query strict would refuse it)');
+            truthy(strpos($form, 'name="view"') === false && strpos($form, 'action="/rs/stats/visitors"') !== false, 'the filter form sends no view where the address names it (a site with query strict would refuse it)');
             $en = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'accept' => 'en-US,en;q=0.9', 'fragment' => true]);
             truthy(strpos($en, '>Page views</span>') !== false && strpos($en, '<html') === false, 'the browser\'s language; only the content for the refresh');
             truthy(strpos(\CjwNetwork\RequestShield\Report\StatsPage::render(Settings::from([])), 'set stats on') !== false, 'without statistics: how to switch them on');
@@ -543,9 +547,9 @@ return [
             $st->count(['a:reject', 'r:T-AREA', 'r:built-in', 's:403'], STATS_T0);
             $links = \CjwNetwork\RequestShield\Report\StatsPage::links($s);
             $view = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'view' => 'rules', 'links' => $links]);
-            truthy(strpos($view, 'class="tab on" href="/rs/rules?days=7&amp;lang=de">Regeln &amp; Aufbau') !== false && strpos($view, 'Der Weg einer Anfrage') !== false, 'the view "Regeln & Aufbau"');
+            truthy(strpos($view, 'class="tab on" href="/rs/waf/rules?days=7&amp;lang=de">Regeln &amp; Aufbau') !== false && strpos($view, 'Der Weg einer Anfrage') !== false, 'the view "Regeln & Aufbau"');
             $shield = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'view' => 'shield', 'links' => $links]);
-            truthy(strpos($shield, 'href="/rs/rules?days=7&amp;lang=de#rule-T-AREA"><code>T-AREA</code></a><br>the intranet only<br><span class="note">site.rules:5') !== false,
+            truthy(strpos($shield, 'href="/rs/waf/rules?days=7&amp;lang=de#rule-T-AREA"><code>T-AREA</code></a><br>the intranet only<br><span class="note">site.rules:5') !== false,
                 'the protection view: a rule with what it does, where, and a link to it');
             truthy(strpos($shield, '#way"><code>built-in</code></a><br>die festen Prüfungen') !== false, 'the fixed checks, explained');
             truthy(strpos(\CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'view' => 'shield', 'action' => '/stats']), 'view=rules') !== false, 'without addresses: ?view=rules');
@@ -592,11 +596,11 @@ return [
             // A range, this month, last month.
             $range = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 3600, 'lang' => 'de', 'from' => '2026-09-01', 'to' => '2026-09-30', 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]);
             truthy(strpos($range, '01.09.2026 – 30.09.2026') !== false && substr_count($range, '<rect class="vcol"') === 30 * 6, 'a range: every day of it');
-            truthy(strpos($range, 'class="pill on" href="/rs/stats?from=2026-09-01&amp;to=2026-09-30&amp;lang=de">Dieser Monat') !== false, 'this month is that range');
-            truthy(strpos($range, 'href="/rs/stats?from=2026-08-01&amp;to=2026-08-31&amp;lang=de">Letzter Monat') !== false, 'last month');
+            truthy(strpos($range, 'class="pill on" href="/rs/stats/visitors?from=2026-09-01&amp;to=2026-09-30&amp;lang=de">Dieser Monat') !== false, 'this month is that range');
+            truthy(strpos($range, 'href="/rs/stats/visitors?from=2026-08-01&amp;to=2026-08-31&amp;lang=de">Letzter Monat') !== false, 'last month');
             truthy(strpos($range, 'name="from" value="2026-09-01"') !== false && strpos($range, 'name="lang" value="de"') !== false, 'the range form');
             $bad = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 3600, 'lang' => 'en', 'from' => '2026-02-30', 'to' => '"><x>', 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]);
-            truthy(strpos($bad, '<x>') === false && strpos($bad, 'class="pill on" href="/rs/stats?days=7') !== false, 'a range that is none: the last 7 days');
+            truthy(strpos($bad, '<x>') === false && strpos($bad, 'class="pill on" href="/rs/stats/visitors?days=7') !== false, 'a range that is none: the last 7 days');
             $today = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 3600, 'lang' => 'en', 'days' => 1, 'by' => 'hour']);
             same(24 * 6, substr_count($today, '<rect class="vcol"'), 'today: 24 hours, against the 24 before');
             // "now": with APCu a counter a minute, never on disk.

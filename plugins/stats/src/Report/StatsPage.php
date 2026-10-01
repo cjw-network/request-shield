@@ -69,7 +69,7 @@ final class StatsPage
      *   site: with stats-hosts, one website's numbers (a name of stats-hosts, or Stats::OTHER); without, all added up;
      *   action: the page's own address (links, refresh); view: site (visitors and pages, for editors), shield
      *   (what the protection did, for admins) or all (everything); links: an address per view -- 'all', 'site',
-     *   'shield' => '/rs/dashboard' … -- for the tabs (without: ?view=); tabs: the tabs between them; lang: en, de, or auto (the browser's, from accept);
+     *   'shield' => '/rs/stats/protection' … -- for the tabs (without: ?view=); tabs: the tabs between them; lang: en, de, or auto (the browser's, from accept);
      *   check: the rule tester's values in the rules view (method, url, ip, ua -- usually $_GET), ip: the address it starts with;
      *   fragment: only the content, for the refresh; sort: the pages by views, or by what the shield stopped there
      *   (blocked, refused, checked, throttled -- the protection's view starts with blocked)
@@ -113,7 +113,7 @@ final class StatsPage
         // What every link carries along besides the period and the language.
         $extra = $range + ($site !== null ? ['site' => $site] : []) + ($crawler !== null ? ['crawler' => $crawler] : []) + ($path !== null ? ['path' => $path] : []) + ($sort !== $sortDefault ? ['sort' => $sort] : []);
         $action = $o['action'] ?? '';
-        // One address per view ('links' => ['all' => '/rs/dashboard', 'site' => '/rs/stats', 'shield' => '/rs/shield']):
+        // One address per view ('links' => ['all' => '/rs/stats/overview', 'site' => '/rs/stats/visitors', 'shield' => '/rs/stats/protection']):
         // the path names the view, GET parameters filter. Without links: ?view=.
         $links = [];
         foreach ((array) ($o['links'] ?? []) as $v => $u) {
@@ -534,15 +534,34 @@ final class StatsPage
     public static function links(Settings $s, string $prefix = ''): array
     {
         $base = $prefix . $s->dashboardPath;
-        return ($s->statsHosts !== [] ? ['sites' => $base . '/sites'] : []) + ['all' => $base . '/dashboard', 'site' => $base . '/stats', 'shield' => $base . '/shield', 'rules' => $base . '/rules'];
+        // The statistics plugin's pages under <dashboard-path>/stats/; "rules" is the core's (Rules & setup, under /waf/).
+        return ($s->statsHosts !== [] ? ['sites' => $base . '/stats/sites'] : []) + ['all' => $base . '/stats/overview', 'site' => $base . '/stats/visitors',
+            'shield' => $base . '/stats/protection', 'rules' => $base . '/waf/rules'];
     }
 
-    /** Which view a path asks for (all, site, shield, rules), or null; capitals do not matter. */
+    /** The addresses before the plugin had its own (/rs/dashboard, /rs/shield, /rs/sites): still answered. */
+    private const OLD = ['/dashboard' => 'all', '/shield' => 'shield', '/sites' => 'sites', '/rules' => 'rules'];
+
+    /**
+     * Which view a path asks for (sites, all, site, shield, rules), or null;
+     * capitals do not matter. <dashboard-path>/stats is the plugin's start:
+     * all websites with stats-hosts, else the overview. The old addresses
+     * (/rs/dashboard, /rs/shield, /rs/sites) are still answered.
+     */
     public static function viewFor(Settings $s, string $path): ?string
     {
         $p = strtolower(rtrim($path, '/'));
         foreach (self::links($s) as $view => $link) {
             if ($p === strtolower($link)) {
+                return $view;
+            }
+        }
+        $base = strtolower($s->dashboardPath);
+        if ($p === $base . '/stats') {
+            return $s->statsHosts !== [] ? 'sites' : 'all';
+        }
+        foreach (self::OLD as $old => $view) {
+            if ($p === $base . $old && ($view !== 'sites' || $s->statsHosts !== [])) {
                 return $view;
             }
         }

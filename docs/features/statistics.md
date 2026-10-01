@@ -74,9 +74,17 @@ shows each known crawler's last 7 days next to its row.
 ![](../explained/stats-page.png)
 
 **Where it lives:** `set dashboard-path /rs` (the default; `/admin/rs` if the site
-wants it behind its admin area) gives four addresses — **`/rs/dashboard`**
-(everything), **`/rs/stats`** (visitors and pages), **`/rs/shield`** (the
-protection) and **`/rs/rules`** (rules & setup, below). The path names the view; the filters stay GET parameters
+wants it behind its admin area). The statistics plugin's pages live under
+`/rs/stats/`: **`/rs/stats/overview`** (everything), **`/rs/stats/visitors`**
+(visitors and pages), **`/rs/stats/protection`** (the protection), and with
+`stats-hosts` **`/rs/stats/sites`** (all websites, below). `/rs/stats` itself is
+the plugin's start: all websites with `stats-hosts`, else the overview. The
+core's — the firewall's — pages live under `/rs/waf/`: **`/rs/waf/rules`** (rules
+& setup, below), `/rs/waf/live`, `/rs/waf/lists` ([live and lists](live-and-lists.md));
+`/rs/waf` opens the live view. Every plugin gets its own prefix this way. The
+addresses from before (`/rs/dashboard`, `/rs/shield`, `/rs/sites`, `/rs/rules`,
+`/rs/live`, `/rs/lists`) are still answered.
+The path names the view; the filters stay GET parameters
 (`?days=30&by=week&lang=de&path=/news/&crawler=CRAWL-GOOGLE`, `format=json`).
 `StatsPage::links($settings)` returns the four addresses, `StatsPage::viewFor(
 $settings, $path)` which view a path is (capitals and a trailing slash do not
@@ -123,7 +131,7 @@ HTML, 7–8 KB gzipped. Print it where only the site's
 people see it — behind the CMS's login, or at a path restricted to some
 addresses. The demo has it at `/rs/…`.
 
-**Rules & setup** (`'view' => 'rules'`, `/rs/rules`) is for whoever runs the
+**Rules & setup** (`'view' => 'rules'`, `/rs/waf/rules`) is for whoever runs the
 shield and wants every technical detail in one place:
 
 - **the rule tester** — an address (a full URL or a path), the kind of request,
@@ -150,7 +158,7 @@ shield and wants every technical detail in one place:
   own open, the shipped ones closed), the rules in their order: the ID first,
   what it does (the comment after it), how it is written, its topic, its line,
   and how often it decided in the period shown. A link to a rule
-  (`/rs/rules#rule-DEMO-PACE` — the Protection view and the rule tester link
+  (`/rs/waf/rules#rule-DEMO-PACE` — the Protection view and the rule tester link
   there) opens its file;
 - **every technical setting** — mode, proxies, limits, counters and store,
   browser check (the secret only as "set" or "not set" — never its value),
@@ -259,7 +267,7 @@ stats-group Reseller b.de c.de                   # a website may be in several g
   group*, then each of its websites. `bin/request-shield stats --group="Customer A"`.
 - About the server: above the site blocks.
 
-### All websites at a glance (`/rs/sites`)
+### All websites at a glance (`/rs/stats/sites`)
 
 With `stats-hosts` or groups, the first tab is **All websites**: one table
 for the period chosen, showing where the traffic is:

@@ -108,18 +108,18 @@ $examples = function (string $prefix): void {
             $stats = json_decode($get('GET', '/rs/stats?format=json')['body'], true);
             $missing = array_filter(array_keys((array) ($stats['notFound'] ?? [])), static fn ($p): bool => substr((string) $p, -13) === '/no-such-page');
             truthy($missing !== [], 'the page not found, counted (under its full path): ' . json_encode($stats['notFound'] ?? null));
-            $one = $get('GET', '/rs/stats?days=30&by=week&site=127.0.0.1');
+            $one = $get('GET', '/rs/stats/visitors?days=30&by=week&site=127.0.0.1');
             truthy($one['status'] === 200 && strpos($one['body'], '<option value="127.0.0.1" selected>') !== false, 'the statistics page, one website (stats-hosts): the switch, this website chosen');
             $r = $get('GET', '/rs/dashboard');
             same(200, $r['status'], 'the dashboard');
-            truthy(strpos($r['body'], '/rs/shield?days=7') !== false && strpos($r['body'], 'class="tab on"') !== false, 'tabs: one address per view');
+            truthy(strpos($r['body'], '/rs/stats/protection?days=7') !== false && strpos($r['body'], 'class="tab on"') !== false, 'tabs: one address per view (the plugin\'s under /rs/stats/)');
             $sites = $get('GET', '/RS/sites');
             truthy($sites['status'] === 200 && strpos($sites['body'], '<table class="sites">') !== false && strpos($sites['body'], '>Customer A</a>') !== false,
                 'all websites at a glance, grouped (and the address in capitals too)');
-            $filtered = $get('GET', '/rs/stats?from=2026-09-01&to=2026-09-30&lang=de&path=%2Fpage%2F');
+            $filtered = $get('GET', '/rs/stats/visitors?from=2026-09-01&to=2026-09-30&lang=de&path=%2Fpage%2F');
             truthy($filtered['status'] === 200 && strpos($filtered['body'], '01.09.2026 – 30.09.2026') !== false && strpos($filtered['body'], 'Seitenaufrufe') !== false,
                 'the filter and a range, as their forms send them (query strict in the demo knows from and to)');
-            $rules = $get('GET', '/rs/rules?lang=de');
+            $rules = $get('GET', '/rs/waf/rules?lang=de');
             truthy($rules['status'] === 200 && strpos($rules['body'], 'Der Weg einer Anfrage') !== false && strpos($rules['body'], 'DEMO-PACE') !== false, 'rules & setup');
             $r = $get('GET', '/.env');
             same(404, $r['status'], 'scanner path');
@@ -420,11 +420,11 @@ $panel = function (string $prefix): void {
         for ($i = 0; $i < 5; $i++) {
             $get('GET', '/.env');                       // five refusals: the watched ban (monitor ban) notes it
         }
-        $r = $get('GET', '/rs/live?lang=de');
+        $r = $get('GET', '/rs/waf/live?lang=de');
         same(200, $r['status'], 'the live view');
         truthy(strpos($r['body'], 'SCAN-HIDDEN') !== false && strpos($r['body'], 'eingebaute Regel') !== false, 'the refusals, with where they came from');
-        truthy(strpos($r['body'], 'class="tab on" href="') !== false && strpos($r['body'], '/rs/lists?lang=de') !== false, 'tabs to the lists');
-        $first = json_decode($get('GET', '/rs/live?format=json')['body'], true);
+        truthy(strpos($r['body'], 'class="tab on" href="') !== false && strpos($r['body'], '/rs/waf/lists?lang=de') !== false, 'tabs to the lists (the firewall\'s pages under /rs/waf/)');
+        $first = json_decode($get('GET', '/rs/live?format=json')['body'], true);           // the old address: still answered
         $rows = (array) ($first['rows'] ?? []);
         truthy(in_array('ban', array_column($rows, 'source'), true) && in_array(true, array_column($rows, 'watched'), true), 'the watched ban, in the live rows: ' . json_encode(array_column($rows, 'label')));
         same([], array_filter($rows, static fn (array $x): bool => strpos((string) $x['request'], '/rs/') !== false), 'the dashboard\'s own requests are not shown');
@@ -434,10 +434,10 @@ $panel = function (string $prefix): void {
         $what = array_column((array) $next['rows'], 'what');
         sort($what);
         same(['banned', 'refused'], $what, 'the refusal, and the watched ban it would have set (the sixth)');
-        $page = $get('GET', '/rs/lists?address=203.0.113.0%2F24&note=scanner&for=7d');
+        $page = $get('GET', '/rs/waf/lists?address=203.0.113.0%2F24&note=scanner&for=7d');
         same(200, $page['status'], 'the lists');
         truthy(preg_match('/name="token" value="([0-9a-f]{32})"/', $page['body'], $m) === 1, 'the form token');
-        $added = $get('POST', '/rs/lists', [], http_build_query(['token' => $m[1], 'do' => 'add', 'kind' => 'deny', 'address' => '203.0.113.0/24', 'for' => '7d', 'note' => 'scanner']));
+        $added = $get('POST', '/rs/waf/lists', [], http_build_query(['token' => $m[1], 'do' => 'add', 'kind' => 'deny', 'address' => '203.0.113.0/24', 'for' => '7d', 'note' => 'scanner']));
         truthy($added['status'] === 200 && strpos($added['body'], 'LIST-D1: 203.0.113.0/24 added') !== false && strpos($added['body'], '<td class="mono">LIST-D1</td>') !== false, 'added, and listed');
         $self = $get('POST', '/rs/lists', [], http_build_query(['token' => $m[1], 'do' => 'add', 'kind' => 'deny', 'address' => '127.0.0.1', 'for' => '1d', 'note' => 'x']));
         truthy(strpos($self['body'], 'you would lock yourself out') !== false, 'never the address of the person clicking');

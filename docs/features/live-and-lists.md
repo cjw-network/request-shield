@@ -1,7 +1,7 @@
 # The live view and the lists in the dashboard
 
 From [proposal 0026](../proposals/0026-live-view-and-lists.md). Two pages beside
-the statistics, under `dashboard-path`: `/rs/live` and `/rs/lists`.
+the statistics, under `dashboard-path`: `/rs/waf/live` and `/rs/waf/lists`.
 
 ## What it does
 
@@ -18,7 +18,7 @@ the statistics, under `dashboard-path`: `/rs/live` and `/rs/lists`.
     a **built-in rule**, the **pace** (a budget), the **crawler policy**, or a
     **basic check**;
   - the rule ID, **a link to where the rule is written**: its line on the rules
-    page (`/rs/rules#rule-DEMO-PACE`, its file opened there), a list entry
+    page (`/rs/waf/rules#rule-DEMO-PACE`, its file opened there), a list entry
     (`LIST-D3`) on the lists page, a basic check without a rule on the way of a
     request;
   - "keep out", which opens the lists page with the address filled in.
@@ -61,7 +61,7 @@ only, for a short time.
 ## Configuration
 
 ```text
-set dashboard-path /rs        # /rs/live, /rs/lists (and the statistics' /rs/dashboard, /rs/stats, /rs/shield, /rs/rules)
+set dashboard-path /rs        # /rs/waf/live, /rs/waf/lists, /rs/waf/rules (and the statistics plugin's /rs/stats/…)
 set live on                   # the live view from memory, with full addresses (needs APCu)
 set live-keep 1h              # how long an entry stays (1m to 1d)
 set ban-keep file             # a ban also as a file: it survives a restart of APCu
@@ -103,13 +103,13 @@ if ($page === 'live' && ($_GET['format'] ?? '') === 'json') {
   `'csrfChecked' => true` to `handle()`.
 - `'user'` is noted with the entry ("· dashboard editor 2026-10-01 10:12"),
   `'ruleFile'` is touched so every server reads the lists within its recheck.
-- `allow POST **/rs/lists` when the site limits where forms may be sent.
-- **The pace:** the dashboard's own pages (`/rs/live`, its feed every 3 s,
-  `/rs/stats` …) do not count against the budgets when a `restrict` rule
+- `allow POST **/rs/waf/lists` when the site limits where forms may be sent.
+- **The pace:** the dashboard's own pages (`/rs/waf/live`, its feed every 3 s,
+  `/rs/stats/visitors` …) do not count against the budgets when a `restrict` rule
   covers them and allows the address asking, so a live view left open never
   runs into the site's pace limit. Without such a rule they count like any
   page: an open dashboard keeps its flood guard. Matched also below a prefix
-  (`/demo/rs/live`); one string search for every other request.
+  (`/demo/rs/waf/live`); one string search for every other request.
 
 ## Guards
 

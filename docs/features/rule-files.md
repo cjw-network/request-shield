@@ -324,7 +324,7 @@ keeps both the same.
 | `crawler-verify` | `both` (default), `ranges` (the published address lists only: no DNS, for a DMZ), `dns` ([known crawlers](known-crawlers.md)) |
 | `log`, `log-level`, `log-ip`, `log-max-size` | [the log](log-and-rule-ids.md) |
 | `stats` | `off` (default), `on`, or the parts: `requests`, `crawlers`, `not-found`, `bots` ([statistics](statistics.md)) |
-| `dashboard-path` | where the statistics pages live: `/rs` (default) gives `/rs/dashboard`, `/rs/stats`, `/rs/shield`; something in front is fine (`/admin/rs`) ([statistics](statistics.md#the-statistics-page)) |
+| `dashboard-path` | where the statistics pages live: `/rs` (default) gives the statistics under `/rs/stats/` (`overview`, `visitors`, `protection`, `sites`) and `/rs/waf/rules`, `/rs/waf/live`, `/rs/waf/lists`; something in front is fine (`/admin/rs`) ([statistics](statistics.md#the-statistics-page)) |
 | `stats-hours`, `stats-days`, `stats-months`, `stats-flush` | days the hours are kept (7), days the day totals are kept (400, then summed into months), months kept (0: for good), seconds between writes to disk with APCu (60) |
 | `site-from` | which name picks a site block: `server-name` (the default, the web server's) or `host` (the Host header) — [site blocks](#site-blocks-rules-per-website) |
 | `plugin` (a rule, not `set`) | `plugin Vendor\Package\MyPlugin`: a [plugin](plugins.md), told what was decided and how a request ended; the statistics need none (`set stats on`) |

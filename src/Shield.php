@@ -693,7 +693,7 @@ final class Shield
 
     /**
      * Whether a request is for one of the dashboard's pages (dashboard-path:
-     * /rs/live, /rs/stats … -- also below a prefix, /demo/rs/live) from an
+     * /rs/live, /rs/stats/visitors … -- also below a prefix, /demo/rs/live) from an
      * address the restrict rule over that path allows. Without such a rule
      * the pages count like any other: an open dashboard keeps its flood guard.
      */
@@ -704,16 +704,7 @@ final class Shield
         if (stripos($path, $s->dashboardPath) === false) {
             return false;                                   // the common case: one search
         }
-        $p = strtolower(rtrim($path, '/'));
-        $own = false;
-        foreach (Report\Frame::links($s) as $link) {
-            $link = strtolower($link);
-            if ($p === $link || substr($p, -strlen($link)) === $link) {
-                $own = true;
-                break;
-            }
-        }
-        if (!$own) {
+        if (!Report\Frame::isPage($s, $path)) {
             return false;
         }
         foreach ($s->restricted as $r) {

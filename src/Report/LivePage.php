@@ -82,10 +82,9 @@ final class LivePage
             : LogTail::read((string) $s->logFile, $cursor);
         // Not the dashboard's own requests that went through (its pages, this
         // feed every few seconds): the view would mostly show itself.
-        $own = array_values(Frame::links($s));
         $raw = [];
         foreach ($tail['rows'] as $r) {
-            if (($r['action'] === 'allow-uncached' || $r['action'] === 'allow') && self::ownPage((string) parse_url($r['url'], PHP_URL_PATH), $own)) {
+            if (($r['action'] === 'allow-uncached' || $r['action'] === 'allow') && Frame::isPage($s, (string) parse_url($r['url'], PHP_URL_PATH))) {
                 continue;
             }
             $raw[] = $r;
@@ -121,19 +120,6 @@ final class LivePage
     public static function fromMemory(Settings $s): bool
     {
         return $s->liveEnabled && \CjwNetwork\RequestShield\Live::usable();
-    }
-
-    /** @param list<string> $own the dashboard's addresses (Frame::links()), matched at the end: the site may live below a prefix */
-    private static function ownPage(string $path, array $own): bool
-    {
-        $path = strtolower(rtrim($path, '/'));
-        foreach ($own as $link) {
-            $link = strtolower($link);
-            if ($path === $link || substr($path, -strlen($link)) === $link) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**

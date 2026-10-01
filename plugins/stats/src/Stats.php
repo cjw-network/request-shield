@@ -109,8 +109,11 @@ final class Stats
         return new self($dir, $apcu, $s->statsHours, $s->statsDays, $s->crawlerLogDir, $s->crawlerLogDays, $s->statsFlush, $s->statsMonths);
     }
 
-    /** @var \WeakMap<Settings, array<string, true>>|null the names of stats-hosts, per settings (gone with them) */
-    private static ?\WeakMap $names = null;
+    /** The settings whose stats-hosts $names holds (one request, one settings: kept for the next lookup). */
+    private static ?Settings $namesFor = null;
+
+    /** @var array<string, true> */
+    private static array $names = [];
 
     /**
      * Whose statistics a request counts in: the website it names (lower case,
@@ -124,8 +127,11 @@ final class Stats
         if ($s->statsHosts === []) {
             return null;
         }
-        self::$names ??= new \WeakMap();
-        $names = self::$names[$s] ??= array_fill_keys($s->statsHosts, true);
+        if (self::$namesFor !== $s) {
+            self::$namesFor = $s;
+            self::$names = array_fill_keys($s->statsHosts, true);
+        }
+        $names = self::$names;
         if (isset($names[$host])) {
             return $host;
         }
