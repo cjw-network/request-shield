@@ -195,6 +195,8 @@ final class Settings
         public int $feedsMaxAge = 259200,
         /** @var list<string> @readonly the websites with statistics of their own (stats-hosts; *.domain: one label); [] one statistics for all */
         public array $statsHosts = [],
+        /** @var list<string> @readonly paths left out of the statistics when they pass (stats-skip), as patterns; protected all the same */
+        public array $statsSkip = [],
     ) {
     }
 
@@ -321,7 +323,7 @@ final class Settings
             ...self::withFeeds(self::lists($c, $budgets), $feeds = self::feeds($c)),
             ...self::live($c),
             ...array_slice($feeds, 0, 5),
-            ...[self::statsHosts($c)],
+            ...[self::statsHosts($c), self::patternList(is_array($c['stats'] ?? null) ? ($c['stats']['skip'] ?? []) : [], 'stats.skip')],
         );
     }
 
@@ -556,6 +558,23 @@ final class Settings
         }
         $dir = $c['listsDir'] ?? null;
         return [$deny, $entries === [] ? [] : IpTable::build($entries), count($entries), $next, is_string($dir) && $dir !== '' ? $dir : null, $bans, $growth, $max];
+    }
+
+    /**
+     * A list of path patterns (regular expressions, as the rule files compile them), each checked.
+     *
+     * @return list<string>
+     */
+    private static function patternList(mixed $list, string $key): array
+    {
+        $out = [];
+        foreach (is_array($list) ? $list : [] as $i => $p) {
+            if (!is_string($p) || @preg_match($p, '') === false) {
+                throw self::wrong("$key[$i]", 'a path pattern (stats-skip **/osm-proxy/** in a rule file)');
+            }
+            $out[] = $p;
+        }
+        return $out;
     }
 
     /**
@@ -1072,7 +1091,7 @@ final class Settings
     public const DENY_SHOWN = 100;
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 33;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts
+    private const FORMAT = 34;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

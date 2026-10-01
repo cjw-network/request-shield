@@ -738,6 +738,10 @@ final class RuleFile
             case 'challenge-exempt':
                 $this->patterns('challenge.exemptPaths', $args, $at, false);
                 return;
+            case 'stats-skip':
+                // Not in the statistics when they pass (a map proxy's tiles); protected all the same.
+                $this->patterns('stats.skip', $args, $at, false);
+                return;
             case 'api-path':
                 $this->patterns('challenge.apiPaths', $args, $at, false);
                 return;
@@ -790,7 +794,7 @@ final class RuleFile
                 return;
         }
         throw new RuleFileException("$at: unknown rule \"$keyword\"" . self::suggest($keyword,
-            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'api-path', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'set', 'include']));
+            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'stats-skip', 'api-path', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include']));
     }
 
     /**
@@ -1209,6 +1213,7 @@ final class RuleFile
                 return array_merge($args, $path);
             case 'challenge':
             case 'challenge-exempt':
+            case 'stats-skip':
             case 'cache-path':
             case 'api-path':
                 $noPaths();

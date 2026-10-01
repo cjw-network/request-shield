@@ -124,6 +124,25 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'stats-skip: paths that are no pages (a map proxy) are not counted when they pass -- refused or checked they are; protected all the same' => function (): void {
+        $dir = sitesStatsDir();
+        try {
+            $s = sitesStatsSettings($dir, "stats-skip **/osm-proxy/** /tiles/**\nmatch /app/** {\n  stats-skip\n}\n[P] limit requests 4/min\nexempt none\n");
+            same(3, count($s->statsSkip), 'two paths, and a match block\'s area');
+            $shield = new Shield($s, new MemoryStore());
+            foreach (['/', '/osm-proxy/12/2133/1390.png', '/tiles/a', '/app/x', '/osm-proxy/.env', '/osm-proxy/b', '/osm-proxy/c'] as $i => $path) {
+                sitesCount($shield, 'a.de', $path, SITES_T0 + $i);
+            }
+            $day = StatsReport::read($s, null, gmdate('Ymd', SITES_T0), gmdate('Ymd', SITES_T0))['days'][gmdate('Ymd', SITES_T0)] ?? [];
+            same(['allow' => 1, 'reject' => 1, 'challenge' => 2], ['allow' => ($day['a:allow'] ?? 0) + ($day['a:allow-uncached'] ?? 0), 'reject' => $day['a:reject'] ?? 0,
+                'challenge' => ($day['a:challenge'] ?? 0) + ($day['a:throttle'] ?? 0)], 'only "/" of the passing ones; the refusal (/.env) and the checks past the pace at the proxy are counted');
+            same('reject', $shield->decide(Request::fromServer(['REQUEST_URI' => '/osm-proxy/.git/config', 'HTTP_HOST' => 'a.de', 'REMOTE_ADDR' => '203.0.113.9']), SITES_T0 + 9.0)->action,
+                'protected all the same');
+            truthy(strpos(\CjwNetwork\RequestShield\Report\SetupPage::render($s, 'en', []), 'not counted when they pass (stats-skip)') !== false, 'shown with the settings');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'the page: a website switch (all, each, other), the choice kept in the links; the command line: --site' => function (): void {
         $dir = sitesStatsDir();
         try {

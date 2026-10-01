@@ -244,6 +244,29 @@ set stats-hosts sites                    # or: the site blocks' names (not "defa
 - Next ([0023](../proposals/0023-plugins-hosts-customers.md)): groups of websites
   per customer, and each customer's own access.
 
+## Paths that are not counted: `stats-skip`
+
+Some PHP calls are no pages of the site: a proxy for map tiles
+(OpenStreetMap), an image resizer, a heartbeat. A map page can make hundreds of
+them and drown the page views.
+
+```text
+stats-skip **/osm-proxy/** /tiles/**
+match /api/maps/** {
+  stats-skip                     # the area's own path
+}
+```
+
+- **Only the statistics leave them out**, and only the requests that **pass**
+  (page views, requests, status codes).
+- **Refused or checked requests there are still counted:** an attack on the
+  proxy stays visible in the protection numbers.
+- **Protected all the same:** every rule, budget, the log and the live view
+  are as before for these paths.
+- Per website (inside a site block) or for all; shown with the settings on
+  "Rules & setup". Cost: none without it; with it, the patterns are tried on
+  passing requests only.
+
 ## One log per crawler (optional)
 
 ```text

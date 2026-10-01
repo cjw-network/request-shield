@@ -63,6 +63,7 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `no-limit <name>` | `budgets` | switch a budget off, the default one too |
 | `challenge <paths> [max-age <duration>]` | `challenge.alwaysPaths`, `challenge.alwaysMaxAge` | always check the browser there; `max-age 5m`: a pass from the last five minutes there ([modes](modes.md)) |
 | `monitor <rule>` | `monitorRules` | before `block`, `restrict`, `allow`, `limit`, `challenge`, `ban`, `feed`, `query strict`: logged as it would decide, not enforced ([modes](modes.md)) |
+| `stats-skip <paths>` | `stats.skip` | not in the statistics when they pass (a map proxy's tiles); refused or checked they are counted; protected all the same ([statistics](statistics.md#paths-that-are-not-counted-stats-skip)) |
 | `challenge-exempt <paths>` | `challenge.exemptPaths` | never challenge there (APIs, feeds) |
 | `exempt <addresses or ranges> [until <day>[T<hh:mm>]]` | `exempt.ips` | never counted and never checked, still refused for blocked paths and attack patterns ([IP lists](ip-lists.md)) |
 | `deny <addresses or ranges> [until <day>[T<hh:mm>]]` | `deny` | kept out: 403 before every other check ([IP lists](ip-lists.md)) |

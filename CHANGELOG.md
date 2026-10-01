@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`stats-skip <paths>`**: paths that are no pages of the site (a map
+  proxy's tiles, an image resizer) are left out of the statistics when they
+  pass; refused or checked they are still counted, and every rule applies to
+  them as before. Also in match and site blocks
+  ([docs](docs/features/statistics.md#paths-that-are-not-counted-stats-skip)).
 - **Statistics per website** (proposal 0023, phase 2): `set stats-hosts a.de
   www.a.de *.b.de` (or `host`, `sites`) — each named website counted in its
   own directory (`stats/hosts/<name>/`), any other Host as "other hosts" (a

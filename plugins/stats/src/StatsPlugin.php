@@ -38,6 +38,12 @@ final class StatsPlugin implements Plugin
     public function decided(Request $request, Decision $decision, ?string $rule, Seen $seen, float $now, bool $continues, ?Decision $would = null): void
     {
         $s = $this->settings;
+        // stats-skip: a path that is no page of the site (a map proxy's tiles) -- not counted when it
+        // passes; refused or checked, it still is (an attack there stays visible).
+        if ($s->statsSkip !== [] && $decision->passes() && $would === null && self::skipped($s->statsSkip, $request->matchPath())) {
+            $this->waiting = false;
+            return;
+        }
         $parts = $s->statsEnabled ? $s->statsParts : [];
         $keys = [];
         if (in_array('requests', $parts, true)) {
@@ -188,6 +194,17 @@ final class StatsPlugin implements Plugin
         if ($keys !== []) {
             $this->stats->count($keys, $now);
         }
+    }
+
+    /** @param list<string> $patterns */
+    private static function skipped(array $patterns, string $path): bool
+    {
+        foreach ($patterns as $p) {
+            if (@preg_match($p, $path) === 1) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** A path as one word of a counter's name: spaces, "*" (a count in the file store) and the like escaped. */
