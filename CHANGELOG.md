@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Access to the statistics per group** (proposal 0023, phase 4):
+  `stats-access "Customer A"|* sha256:<hash> [until …]` (only the token's hash;
+  `bin/request-shield token` prints a token and the line), `set stats-session`.
+  `Access::gate()`: a login form (token by POST, `Origin` checked) and a signed
+  session cookie, signed links from a customer's own panel (`Access::link()`,
+  10 minutes, at most an hour), `Authorization: Bearer` for the JSON; wrong
+  tries counted (10 a minute, then 429) and logged without the token. A
+  customer sees only its group — the statistics page enforces it (`who`):
+  no Rules & setup, no server overview, no live view or lists, the protection
+  without the rules ([docs](docs/features/statistics.md#who-sees-what-tokens-a-login-signed-links)).
 - `set stats-path`: the statistics plugin's own address (default
   `<dashboard-path>/stats`); the core's pages stay at `<dashboard-path>/waf/`.
 - Several websites read together (all of them, a group): every page, section,

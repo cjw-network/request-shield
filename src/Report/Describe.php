@@ -146,6 +146,7 @@ final class Describe
                 'unknown parameter' => 'ein Parameter, den die Website nicht kennt, oder ein Wert nicht seines Typs', 'challenge solved' => 'der Browser-Check wurde gerade bestanden',
                 'denied' => 'eine ausgesperrte Adresse (die Sperrliste)', 'banned' => 'für eine Weile gesperrt: sie ging immer wieder über die Grenzen',
                 'crawler' => 'ein bekannter Crawler, den die Website so nicht will', 'feed' => 'auf einer öffentlichen Sperrliste',
+                'access' => 'ein falsches Token oder ein ungültiger Link für die Statistik',
             ];
             return $de[$reason] ?? "das Budget „{$reason}“";
         }
@@ -172,6 +173,7 @@ final class Describe
             'banned' => 'banned for a while: it kept going past the limits',
             'crawler' => 'a known crawler the site does not want this way',
             'feed' => 'on a public blocklist',
+            'access' => 'a wrong token or link for the statistics',
         ];
         return $words[$reason] ?? "the budget \"$reason\"";
     }

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Phases 1–3 implemented** (2026-10-01): the plugin interface, the statistics as its first plugin; statistics per website; groups and an overview of all websites; phases 4–6 accepted, to come |
+| Status | **Phases 1–4 implemented** (2026-10-01): the plugin interface, the statistics as its first plugin; statistics per website; groups and an overview of all websites; access per group; phases 5–6 accepted, to come |
 | Proposed | 2026-10-01 |
 | Affects | the core (`Shield::protect()`, `Shield::record()`), the statistics (`Stats`, `Report\*`), the dashboard and its login ([0012](0012-dashboard.md)), the visitors page ([0022](0022-visitors-page.md)), rule files (`plugin`, `stats-hosts`, `stats-group`, `stats-access`), packaging |
 
@@ -253,4 +253,18 @@ request:** an overview of all websites (`/rs/sites`, the first tab with
 hosts -- page views with a bar, the change against the period before, people,
 crawlers, bots, stopped, not found, a small curve; sorted by page views; a
 click opens one (`StatsReport::sites()`).
+
+Phase 4 as built: `stats-access "<group>"|* sha256:<hash> [until <day>]`,
+`set stats-session` (8 hours), `bin/request-shield token`. `Access::gate()`
+(the form by POST with `Origin` checked, a signed session cookie with a
+generation: a token added or removed ends the group's logins; signed links
+`Access::link()`, 10 minutes, at most an hour; `Authorization: Bearer`;
+10 wrong tries a minute per address, then 429; logged without the token;
+`?rs-logout=1`), `Access::site()`, `Access::links()`; `StatsPage` takes `who`
+and enforces it itself: a customer's views, tabs, website switch and overview
+show its group only, the protection without its rules, never Rules & setup or
+the server's overview. **One change from the sketch:** the cookie is
+`SameSite=Lax`, not `Strict`: with `Strict`, the cookie set after a signed link
+from another site (the panel) would not be sent on the redirect. The pages
+are read-only, so `Lax` gives nothing away.
 

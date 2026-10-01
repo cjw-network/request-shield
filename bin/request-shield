@@ -11,6 +11,7 @@
  *   php bin/request-shield reload site.rules [--source=<glob>]...
  *   php bin/request-shield trace  site.rules "GET https://www.example.org/wp-login.php" [--ip=<address>] [--ua=<User-Agent>]
  *   php bin/request-shield crawlers site.rules [update] [--force]
+ *   php bin/request-shield token site.rules "<group>"|'*'
  *   php bin/request-shield feeds site.rules [list|update|export] [--force] [--format=plain|nginx|nftables|ipset] [--write=<file>]
  *   php bin/request-shield stats site.rules [--days=7 | --from=2026-01-01 --to=2026-09-30] [--by=day|week|month|year] [--crawler=<ID>] [--path=/news/] [--sort=views|blocked|refused|checked|throttled] [--site=<website>|other | --group=<group>] [--json]
  *
@@ -27,6 +28,9 @@
  *         lists into store-dir (cron, a deploy -- or where there is internet,
  *         copying store-dir/crawlers/ into a DMZ); the servers read them on their
  *         next check. A list that shrank to less than half is kept unless --force.
+ * token:  a new access token for the statistics (proposal 0023): printed once,
+ *         with the stats-access line to paste -- only its hash goes into the
+ *         rule file. "*" for everything, a group's name for its websites only.
  * feeds:  the public blocklists the rules name (feed …): how many entries, how
  *         old. "update" fetches those that are due (cron, e.g. hourly; each at
  *         most as often as its terms allow) into store-dir/feeds; a list that
@@ -108,13 +112,15 @@ foreach ($args as $a) {
     }
 }
 [$command, $file, $what] = $rest + [null, null, null];
-if (!in_array($command, ['check', 'show', 'reload', 'trace', 'crawlers', 'feeds', 'stats', 'deny', 'allow', 'unlist', 'lists'], true) || $file === null
+if (!in_array($command, ['check', 'show', 'reload', 'trace', 'crawlers', 'feeds', 'stats', 'token', 'deny', 'allow', 'unlist', 'lists'], true) || $file === null
+    || ($command === 'token' && $what === null)
     || ($command === 'feeds' && $what !== null && !in_array($what, ['list', 'update', 'export'], true))
     || (in_array($command, ['trace', 'deny', 'allow', 'unlist'], true) && $what === null)
     || ($command === 'crawlers' && $what !== null && $what !== 'update')) {
     fwrite(STDERR, "usage: request-shield check|show|reload <main.rules> [--source=<glob>]...\n"
         . "       request-shield trace <main.rules> \"GET https://www.example.org/path\" [--ip=<address>] [--ua=<User-Agent>] [--source=<glob>]...\n"
         . "       request-shield crawlers <main.rules> [update] [--force]\n"
+        . "       request-shield token <main.rules> \"<group>\"|'*'\n"
         . "       request-shield feeds <main.rules> [list|update|export] [--force] [--format=plain|nginx|nftables|ipset] [--write=<file>]\n"
         . "       request-shield stats <main.rules> [--days=7 | --from=YYYY-MM-DD --to=YYYY-MM-DD] [--by=day|week|month|year] [--crawler=<ID>] [--path=/news/] [--sort=views|blocked|refused|checked|throttled] [--site=<website>|other | --group=<group>] [--json]\n"
         . "       request-shield deny|allow <main.rules> <address|range> [--for=7d | --until=2026-10-07[T15:30]] [--reason=\"…\"] [--force]\n"
@@ -140,6 +146,21 @@ try {
 } catch (InvalidArgumentException $e) {
     fwrite(STDERR, $e->getMessage() . "\n");
     exit(1);
+}
+
+if ($command === 'token') {
+    // A token for the statistics: shown once; the rule file keeps its hash.
+    $who = (string) $what;
+    if ($who !== '*' && !isset($settings->statsGroups[\CjwNetwork\RequestShield\Settings::groupId($who)])) {
+        fwrite(STDERR, "request-shield: no group \"$who\" (stats-group …" . ($settings->statsGroups === [] ? '' : ': ' . implode(', ', array_column($settings->statsGroups, 'name'))) . ") -- or '*' for everything\n");
+        exit(2);
+    }
+    [$token, $hash] = \CjwNetwork\RequestShield\Access::token();
+    $name = $who === '*' ? '*' : '"' . $settings->statsGroups[\CjwNetwork\RequestShield\Settings::groupId($who)]['name'] . '"';
+    echo "the token (give it to whoever reads; it is not kept anywhere):\n\n    $token\n\n";
+    echo "the line for the rule file (only the hash):\n\n    stats-access $name sha256:$hash\n\n";
+    echo "then: request-shield reload $file -- the token opens " . ($who === '*' ? 'everything' : "the statistics of $name only") . "\n";
+    exit(0);
 }
 
 if ($command === 'feeds') {

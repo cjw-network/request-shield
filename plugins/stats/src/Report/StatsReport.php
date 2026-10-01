@@ -264,9 +264,9 @@ final class StatsReport
      *
      * @return array{sites: array<string, array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>,
      *   groups: array<string, array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>,
-     *   all: array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}}
+     *   all: array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}|null} all: null for a customer
      */
-    public static function sites(Settings $s, string $from, string $to, string $by = 'day'): array
+    public static function sites(Settings $s, string $from, string $to, string $by = 'day', string $who = '*'): array
     {
         $len = (int) round(((int) strtotime($to . ' UTC') - (int) strtotime($from . ' UTC')) / 86400) + 1;
         $pTo = gmdate('Ymd', (int) strtotime($from . ' UTC') - 86400);
@@ -301,12 +301,14 @@ final class StatsReport
             }
             return $r;
         };
+        // A customer (who: a group's ID): its group and its websites, nothing else.
+        $own = $who === '*' ? null : $s->statsGroups[$who] ?? ['sites' => []];
         $sites = [];
-        foreach (array_merge($s->statsHosts, [Stats::OTHER]) as $name) {
+        foreach ($own === null ? array_merge($s->statsHosts, [Stats::OTHER]) : $own['sites'] as $name) {
             $sites[$name] = $row($name);
         }
         $groups = [];
-        foreach ($s->statsGroups as $id => $g) {
+        foreach ($own === null ? $s->statsGroups : array_intersect_key($s->statsGroups, [$who => 1]) as $id => $g) {
             $sum = ['views' => 0, 'people' => 0, 'crawlers' => 0, 'search' => 0, 'ai' => 0, 'bots' => 0, 'stopped' => 0, 'notFound' => 0, 'prev' => 0, 'curve' => []];
             foreach ($g['sites'] as $name) {
                 foreach ($sites[$name] ?? [] as $k => $v) {
@@ -322,7 +324,7 @@ final class StatsReport
             ksort($sum['curve']);
             $groups[(string) $id] = $sum;
         }
-        return ['sites' => $sites, 'groups' => $groups, 'all' => $row(null)];
+        return ['sites' => $sites, 'groups' => $groups, 'all' => $own === null ? $row(null) : null];
     }
 
     /**

@@ -201,6 +201,10 @@ final class Settings
         public array $statsGroups = [],
         /** @readonly where the statistics plugin's pages live (set stats-path; default <dashboard-path>/stats) */
         public string $statsPath = '/rs/stats',
+        /** @var list<array{who: string, hash: string, until: ?int, rule: string}> @readonly stats-access: who ('*' or a group's ID) by a token's SHA-256, in force */
+        public array $statsAccess = [],
+        /** @readonly how long a login to the statistics lasts, in seconds (set stats-session; 8 hours) */
+        public int $statsSession = 28800,
     ) {
     }
 
@@ -324,10 +328,11 @@ final class Settings
             ...self::stats($c),
             ...[self::dashboardPath($c), self::plugins($c)],
             ...self::sites($c),
-            ...self::withFeeds(self::lists($c, $budgets), $feeds = self::feeds($c)),
+            ...self::withFeeds(self::lists($c, $budgets), $feeds = self::feeds($c), self::accessNext($c)),
             ...self::live($c),
             ...array_slice($feeds, 0, 5),
             ...[self::statsHosts($c), self::patternList(is_array($c['stats'] ?? null) ? ($c['stats']['skip'] ?? []) : [], 'stats.skip'), self::statsGroups($c), self::statsPath($c)],
+            ...self::statsAccess($c),
         );
     }
 
@@ -664,12 +669,31 @@ final class Settings
      * @param array{0: list<mixed>, 1: array<string, mixed>, 2: list<mixed>, 3: array<string, int>, 4: int, 5: int} $feeds
      * @return array{0: list<array{ips: list<string>, until: ?int, rule: string}>, 1: array{4: string, 6: string, ids: string, dir?: string}|array{}, 2: int, 3: int, 4: ?string, 5: list<array{after: int, signal: string, in: int, for: int, rule: string}>, 6: int, 7: int}
      */
-    private static function withFeeds(array $lists, array $feeds): array
+    private static function withFeeds(array $lists, array $feeds, int $more = 0): array
     {
-        if ($feeds[5] > 0 && ($lists[3] === 0 || $feeds[5] < $lists[3])) {
-            $lists[3] = $feeds[5];
+        foreach ([$feeds[5], $more] as $next) {
+            if ($next > 0 && ($lists[3] === 0 || $next < $lists[3])) {
+                $lists[3] = $next;
+            }
         }
         return $lists;
+    }
+
+    /**
+     * When the next stats-access entry ends: the settings are built again then.
+     *
+     * @param array<mixed> $c
+     */
+    private static function accessNext(array $c): int
+    {
+        $next = 0;
+        foreach ((array) (is_array($c['stats'] ?? null) ? ($c['stats']['access'] ?? []) : []) as $a) {
+            $until = is_array($a) && is_int($a['until'] ?? null) ? $a['until'] : 0;
+            if ($until > time() && ($next === 0 || $until < $next)) {
+                $next = $until;
+            }
+        }
+        return $next;
     }
 
     /**
@@ -837,6 +861,40 @@ final class Settings
     }
 
     /** @param array<mixed> $c */
+    /**
+     * Who may read the statistics: '*' or a group of stats-group, by a
+     * token's SHA-256 (the entries whose "until" passed are left out); and
+     * how long a login lasts (1 minute to 30 days).
+     *
+     * @param array<mixed> $c
+     * @return array{0: list<array{who: string, hash: string, until: ?int, rule: string}>, 1: int}
+     */
+    private static function statsAccess(array $c): array
+    {
+        $stats = is_array($c['stats'] ?? null) ? $c['stats'] : [];
+        $groups = self::statsGroups($c);
+        $out = [];
+        foreach ((array) ($stats['access'] ?? []) as $i => $a) {
+            if (!is_array($a) || !is_string($a['who'] ?? null) || !is_string($a['hash'] ?? null) || preg_match('/^[0-9a-f]{64}$/', $a['hash']) !== 1) {
+                throw self::wrong("stats.access[$i]", "['who' => '*' or a group, 'hash' => the token's SHA-256 in hex]");
+            }
+            $who = $a['who'] === '*' ? '*' : self::groupId($a['who']);
+            if ($who !== '*' && !isset($groups[$who])) {
+                throw self::wrong("stats.access[$i]", "* or a group of stats-group -- there is no group \"{$a['who']}\"");
+            }
+            $until = is_int($a['until'] ?? null) ? $a['until'] : null;
+            if ($until !== null && $until <= time()) {
+                continue;                               // ended: left out
+            }
+            $out[] = ['who' => $who, 'hash' => $a['hash'], 'until' => $until, 'rule' => is_string($a['rule'] ?? null) ? $a['rule'] : "stats.access[$i]"];
+        }
+        $session = $stats['session'] ?? 28800;
+        if (!is_int($session) || $session < 60 || $session > 2592000) {
+            throw self::wrong('stats.session', 'seconds from 60 to 2592000 (30 days)');
+        }
+        return [$out, $session];
+    }
+
     /**
      * Where the statistics plugin's pages live: set stats-path, else
      * <dashboard-path>/stats. The plugin owns it; the core's pages stay at
@@ -1157,7 +1215,7 @@ final class Settings
     public const DENY_SHOWN = 100;
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 36;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath
+    private const FORMAT = 37;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

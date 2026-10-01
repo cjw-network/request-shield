@@ -288,6 +288,71 @@ Reading costs about what the statistics page costs, once per website.
 - Next ([0023](../proposals/0023-plugins-hosts-customers.md)): each customer's
   own access (a token per group, signed links from a hosting panel).
 
+## Who sees what: tokens, a login, signed links
+
+For a server with many customers ([proposal 0023](../proposals/0023-plugins-hosts-customers.md),
+phase 4): the admin sees everything, a customer only its group.
+
+```text
+stats-group "Customer A" a.de www.a.de
+stats-access *            sha256:3b4c…                        # the admin: everything
+stats-access "Customer A" sha256:9f2c… until 2027-12-31       # the agency
+stats-access "Customer A" sha256:71aa…                        # the customer's own
+set stats-session 8h                                          # how long a login lasts
+```
+
+- **A token** is 32 random bytes: `bin/request-shield token site.rules "Customer A"`
+  prints it once, and the line to paste. **The rule file holds only its SHA-256.**
+  Someone who reads the rules cannot get in. Several tokens per group (one for
+  the agency, one for the customer); each may end (`until`); withdrawn by
+  deleting its line, which also ends the group's running logins.
+- **What a customer sees:** its group only. Its websites side by side (the tab
+  carries the group's name), visitors and pages, the protection's numbers
+  without the rules that decided. **Never** another group, "Rules & setup", the
+  server's overview, the live view or the lists. The statistics page enforces
+  this itself, whatever address is asked for.
+- **Three ways in:**
+  1. **The form:** the token by POST (only from the page itself, `Origin`
+     checked), then a signed session cookie (`rs_stats`, HttpOnly,
+     SameSite=Lax, Secure on HTTPS) for `stats-session`. The token never
+     appears in an address. `?rs-logout=1` signs out.
+  2. **A signed link from the customer's own menu** (a hosting panel, the
+     customer's CMS), made on that server with the shield's secret:
+
+     ```php
+     $url = 'https://stats.example.net/rs/stats/sites?' . Access::link($settings, 'Customer A', 600);
+     ```
+
+     No token in it, only that group, valid 10 minutes (at most an hour).
+     Opened, it sets the cookie and redirects to the address without the
+     signature. (SameSite=Lax, not Strict, so that the cookie set after a link
+     from another site is sent.)
+  3. **JSON for a program:** `Authorization: Bearer <token>`.
+- **The door itself:** wrong tokens and links count against a budget of their
+  own (10 a minute per address, then 429), each logged without the token.
+  Every page: `X-Robots-Tag: noindex`, `Cache-Control: private, no-store`,
+  `Referrer-Policy: no-referrer`, `frame-ancestors 'self'`. A site's
+  `restrict /rs/** to …` still applies first.
+- **Without `stats-access` lines nothing is asked:** the site's own rules
+  decide, as before.
+
+In the site's front controller:
+
+```php
+use CjwNetwork\RequestShield\{Access, Request};
+use CjwNetwork\RequestShield\Report\StatsPage;
+
+$gate = Access::gate($settings, Request::fromServer($_SERVER), $_GET, $_POST);
+foreach ($gate['headers'] as $h) { header($h, false); }
+http_response_code($gate['status']);
+if ($gate['who'] === null) { echo $gate['body']; exit; }       // the form, a redirect, 429
+echo StatsPage::render($settings, ['view' => StatsPage::viewFor($settings, $path), 'who' => $gate['who'],
+    'links' => Access::links($gate['who'], StatsPage::links($settings)), 'site' => $_GET['site'] ?? null] + …);
+```
+
+For the JSON: `'site' => Access::site($settings, $gate['who'], $_GET['site'] ?? null)` in
+`StatsReport::build()`.
+
 ## What is counted how
 
 | Number | What it counts |

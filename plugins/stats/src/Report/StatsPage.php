@@ -81,7 +81,8 @@ final class StatsPage
 
     /**
      * @param array{action?: string, view?: string, tabs?: bool, links?: array<string, string>, days?: int, by?: string, crawler?: ?string, path?: ?string, sort?: string, lang?: string, accept?: ?string, home?: string, homeLabel?: string,
-     *   title?: string, fragment?: bool, now?: int, stats?: Stats, check?: array<mixed>, ip?: string, from?: string, to?: string, store?: \CjwNetwork\RequestShield\Store\Store, site?: string|null} $o
+     *   title?: string, fragment?: bool, now?: int, stats?: Stats, check?: array<mixed>, ip?: string, from?: string, to?: string, store?: \CjwNetwork\RequestShield\Store\Store, site?: string|null, who?: string} $o
+     *   who: who reads (Access::gate()): '*' everything (the default), a group's ID only its statistics;
      *   site: with stats-hosts, one website's numbers (a name of stats-hosts, or Stats::OTHER); without, all added up;
      *   action: the page's own address (links, refresh); view: site (visitors and pages, for editors), shield
      *   (what the protection did, for admins) or all (everything); links: an address per view -- 'all', 'site',
@@ -118,6 +119,15 @@ final class StatsPage
         $path = isset($o['path']) && $o['path'] !== '' ? (preg_match('#^[a-z0-9*+()][a-z0-9.*+()-]*/#i', (string) $o['path']) === 1 ? (string) $o['path'] : '/' . ltrim((string) $o['path'], '/')) : null;
         $filter = $path;                    // the subtree filter ($path is reused by the loops below)
         $view = in_array($o['view'] ?? 'site', ['site', 'shield', 'all', 'rules', 'sites'], true) ? ($o['view'] ?? 'site') : 'site';
+        // Who reads (Access::gate()): '*' everything; a customer's group only its statistics --
+        // never Rules & setup or the server's overview, whatever address was asked for.
+        $who = is_string($o['who'] ?? null) ? $o['who'] : '*';
+        if ($who !== '*' && in_array($view, ['rules', 'all'], true)) {
+            $view = 'site';
+        }
+        if ($who !== '*' && isset($s->statsGroups[$who])) {
+            $t['tabSites'] = $s->statsGroups[$who]['name'];     // a customer's tab: its group, not "all websites"
+        }
         if ($view === 'sites' && $s->statsHosts === []) {
             $view = 'all';                  // no websites to compare: the overview
         }
@@ -127,6 +137,9 @@ final class StatsPage
         $sort = in_array($o['sort'] ?? $sortDefault, $sorts, true) ? ($o['sort'] ?? $sortDefault) : $sortDefault;
         // stats-hosts: one website's numbers, or all added up (no "site").
         $site = is_string($o['site'] ?? null) && \CjwNetwork\RequestShield\Stats::known($s, $o['site']) ? $o['site'] : null;
+        if ($who !== '*') {
+            $site = \CjwNetwork\RequestShield\Access::site($s, $who, $site);
+        }
         // What every link carries along besides the period and the language.
         $extra = $range + ($site !== null ? ['site' => $site] : []) + ($crawler !== null ? ['crawler' => $crawler] : []) + ($path !== null ? ['path' => $path] : []) + ($sort !== $sortDefault ? ['sort' => $sort] : []);
         $action = $o['action'] ?? '';
@@ -134,7 +147,8 @@ final class StatsPage
         // the path names the view, GET parameters filter. Without links: ?view=.
         $links = [];
         foreach ((array) ($o['links'] ?? []) as $v => $u) {
-            if (in_array($v, ['sites', 'all', 'site', 'shield', 'rules', 'live', 'lists'], true) && $u !== '' && ($v !== 'sites' || $s->statsHosts !== [])) {
+            if (in_array($v, ['sites', 'all', 'site', 'shield', 'rules', 'live', 'lists'], true) && $u !== '' && ($v !== 'sites' || $s->statsHosts !== [])
+                && ($who === '*' || in_array($v, ['sites', 'site', 'shield'], true))) {
                 $links[$v] = $u;
             }
         }
@@ -216,7 +230,7 @@ final class StatsPage
             $opts = $option('', $t['allSites']);
             $grouped = [];
             // A section per group (stats-group): the whole group, then each of its websites.
-            foreach ($s->statsGroups as $id => $g) {
+            foreach ($who === '*' ? $s->statsGroups : array_intersect_key($s->statsGroups, [$who => 1]) as $id => $g) {
                 $opts .= '<optgroup label="' . $e($g['name']) . '">' . $option('group:' . $id, count($g['sites']) === 1 ? sprintf($t['groupOne'], $g['name']) : sprintf($t['groupAll'], $g['name'], count($g['sites'])));
                 foreach ($g['sites'] as $name) {
                     $opts .= $option($name, $name);
@@ -224,7 +238,7 @@ final class StatsPage
                 }
                 $opts .= '</optgroup>';
             }
-            $rest = array_values(array_filter($s->statsHosts, static fn (string $n): bool => !isset($grouped[$n])));
+            $rest = $who !== '*' ? [] : array_values(array_filter($s->statsHosts, static fn (string $n): bool => !isset($grouped[$n])));
             if ($rest !== []) {
                 $opts .= $s->statsGroups !== [] ? '<optgroup label="' . $e($t['ungrouped']) . '">' : '';
                 foreach ($rest as $name) {
@@ -232,7 +246,11 @@ final class StatsPage
                 }
                 $opts .= $s->statsGroups !== [] ? '</optgroup>' : '';
             }
-            $opts .= $option(\CjwNetwork\RequestShield\Stats::OTHER, $t['otherHosts']);
+            if ($who === '*') {
+                $opts .= $option(\CjwNetwork\RequestShield\Stats::OTHER, $t['otherHosts']);
+            } else {
+                $opts = (string) preg_replace('#^<option value=""[^>]*>[^<]*</option>#', '', $opts);    // a customer: no "all websites"
+            }
             // The form keeps the view, the period, the language and the filters; only the website changes.
             $keepSite = ['view' => $links === [] ? $view : null, 'days' => $range === [] ? $days : null, 'by' => $range === [] ? $by : null, 'lang' => $lang] + $range
                 + array_diff_key($plain, ['site' => 1]);
@@ -248,7 +266,7 @@ final class StatsPage
             . ($s->statsHosts !== [] ? ' · ' . $e(self::siteName($s, $site, $t)) : '') . ($crawler !== null ? ' · ' . $e($crawler) . ' · <a href="' . $e($query(['days' => $days, 'by' => $by, 'lang' => $lang])) . '">' . $e($t['all']) . '</a>' : '') . '</p>';
         if ($view === 'sites') {
             // All websites: the groups with their websites, the rest, where the traffic is.
-            $h .= self::sitesTable($s, StatsReport::sites($s, $r['from'], $r['to'], $by === 'hour' ? 'day' : $by), $t, $lang,
+            $h .= self::sitesTable($s, StatsReport::sites($s, $r['from'], $r['to'], $by === 'hour' ? 'day' : $by, $who), $t, $lang,
                 static fn (string $site): string => isset($links['site']) ? $links['site'] . '?' . http_build_query(['site' => $site, 'days' => $days, 'lang' => $lang] + $range)
                     : $query(['view' => 'site', 'site' => $site, 'days' => $days, 'lang' => $lang] + $range),
                 (int) strtotime($r['from'] . ' UTC'), (int) strtotime($r['to'] . ' UTC'), $by === 'hour' ? 'day' : $by);
@@ -397,7 +415,8 @@ final class StatsPage
             $bots[] = [$e((string) $family), $c];
         }
         $missingBlock = '<section class="card"><h2>' . $e($t['missing']) . '</h2>' . self::bars($missing, $lang, $t['nothing']) . '</section>';
-        $rulesBlock = '<section class="card"><h2>' . $e($t['rules']) . '</h2>' . self::bars($rules, $lang, $t['nothing'])
+        $rulesBlock = $who !== '*' ? '<section class="card"><h2>' . $e($t['botfam']) . '</h2>' . self::bars($bots, $lang, $t['nothing']) . '</section>'
+            : '<section class="card"><h2>' . $e($t['rules']) . '</h2>' . self::bars($rules, $lang, $t['nothing'])
             . ($setup !== null ? '<p class="note"><a href="' . $e($links !== [] ? $setup . '?' . http_build_query(['days' => $days, 'lang' => $lang]) : $query(['view' => 'rules', 'days' => $days, 'lang' => $lang])) . '">' . $e($t['ruleDetails']) . ' →</a></p>' : '')
             . '<h2>' . $e($t['botfam']) . '</h2>' . self::bars($bots, $lang, $t['nothing']) . '</section>';
         // Two views: the site's (for editors: visitors, pages, links, crawlers,
@@ -444,7 +463,7 @@ final class StatsPage
      * websites), the websites in no group, the other hosts -- sorted by page
      * views; each a link to its statistics.
      *
-     * @param array{sites: array<string, array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>, groups: array<string, array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>, all: array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}} $x
+     * @param array{sites: array<string, array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>, groups: array<string, array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}>, all: array{views: int, people: int, crawlers: int, search: int, ai: int, bots: int, stopped: int, notFound: int, prev: int, curve: array<string, int>}|null} $x
      * @param array<string, string> $t
      * @param callable(string): string $href the statistics of a website, a group (group:<id>), all ('')
      */
@@ -464,7 +483,9 @@ final class StatsPage
             . $th($t['website'], $t['websiteTip'], 'sname') . $th($t['hViews'], $t['viewsTip'], 'snum') . $th('±', $t['changeTip']) . $th($t['hPeople'], $t['peopleTip'])
             . $th($t['hSearch'], $t['searchTip']) . $th($t['hAi'], $t['aiTip']) . $th($t['hBots'], $t['botsTip']) . $th($t['hStopped'], $t['stoppedTip']) . $th('404', $t['notFoundTip'])
             . $th($t['hCurve'], $t['curveTip'], 'scurve') . '</tr></thead><tbody>';
-        $h .= self::sitesRow($t['allSites'], $x['all'], $href(''), 'sall', '', ...$ctx);
+        if ($x['all'] !== null) {
+            $h .= self::sitesRow($t['allSites'], $x['all'], $href(''), 'sall', '', ...$ctx);
+        }
         $groups = $x['groups'];
         uasort($groups, $views);
         $grouped = [];
@@ -483,8 +504,9 @@ final class StatsPage
         foreach ($rest as $name => $r) {
             $h .= self::sitesRow((string) $name, $r, $href((string) $name), 'ssite top', '', ...$ctx);
         }
-        $other = $x['sites'][\CjwNetwork\RequestShield\Stats::OTHER];
-        $h .= self::sitesRow($t['otherShort'], $other, $href(\CjwNetwork\RequestShield\Stats::OTHER), 'sother', '', ...$ctx);
+        if (isset($x['sites'][\CjwNetwork\RequestShield\Stats::OTHER])) {
+            $h .= self::sitesRow($t['otherShort'], $x['sites'][\CjwNetwork\RequestShield\Stats::OTHER], $href(\CjwNetwork\RequestShield\Stats::OTHER), 'sother', '', ...$ctx);
+        }
         return $h . '</tbody></table></div></section>';
     }
 

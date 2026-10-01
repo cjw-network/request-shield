@@ -78,6 +78,7 @@ final class RuleFile
         'stats-depth' => ['stats.depth', 'int'],
         'stats-hosts' => ['stats.hosts', 'hostnames'],
         'stats-path' => ['stats.path', 'string'],
+        'stats-session' => ['stats.session', 'seconds'],
         'stats-hours' => ['stats.hours', 'int'],
         'stats-days' => ['stats.days', 'int'],
         'crawler-log' => ['crawlerLog.dir', 'path'],
@@ -147,7 +148,7 @@ final class RuleFile
     private bool $sawSite = false;
 
     /** "set" keys that are about the server, not a website: not inside a site block. */
-    private const SERVER_WIDE = ['store', 'store-dir', 'secret', 'recheck', 'dns-lookups', 'ipv6-prefix', 'site-from', 'lists-dir', 'ban-growth', 'ban-max', 'live', 'live-keep', 'ban-keep', 'feeds-max-age', 'stats-hosts'];
+    private const SERVER_WIDE = ['store', 'store-dir', 'secret', 'recheck', 'dns-lookups', 'ipv6-prefix', 'site-from', 'lists-dir', 'ban-growth', 'ban-max', 'live', 'live-keep', 'ban-keep', 'feeds-max-age', 'stats-hosts', 'stats-session'];
 
     /** Reading a list file (allow.rules, deny.rules in lists-dir): only list lines there. */
     private bool $listing = false;
@@ -511,8 +512,8 @@ final class RuleFile
         if ($this->siteOpen !== null && ($keyword === 'trust' || ($keyword === 'set' && in_array(strtolower($parts[0] ?? ''), self::SERVER_WIDE, true)))) {
             throw new RuleFileException("$at: " . ($keyword === 'trust' ? 'trust' : 'set ' . strtolower($parts[0] ?? '')) . ' is about the server, not a website -- put it above the site blocks');
         }
-        if ($this->siteOpen !== null && $keyword === 'stats-group') {
-            throw new RuleFileException("$at: stats-group is about the server, not a website -- put it above the site blocks");
+        if ($this->siteOpen !== null && ($keyword === 'stats-group' || $keyword === 'stats-access')) {
+            throw new RuleFileException("$at: $keyword is about the server, not a website -- put it above the site blocks");
         }
         if ($this->siteOpen !== null && ($keyword === 'feed' || ($keyword === 'monitor' && strtolower($parts[0] ?? '') === 'feed'))) {
             throw new RuleFileException("$at: feed is about the server, not a website -- put it above the site blocks (at <paths> narrows it)");
@@ -555,8 +556,8 @@ final class RuleFile
             return;
         }
         $inBlock = $this->blocks !== [] && end($this->blocks)['file'] === $file;
-        if ($inBlock && $keyword === 'stats-group') {
-            throw new RuleFileException("$at: stats-group does not go inside a match block");
+        if ($inBlock && ($keyword === 'stats-group' || $keyword === 'stats-access')) {
+            throw new RuleFileException("$at: $keyword does not go inside a match block");
         }
         if ($inBlock && $keyword === 'feed') {
             throw new RuleFileException("$at: feed does not go inside a match block -- write it above, with at <paths>");
@@ -748,6 +749,9 @@ final class RuleFile
             case 'stats-group':
                 $this->statsGroup($line, $at);
                 return;
+            case 'stats-access':
+                $this->statsAccess($line, $at);
+                return;
             case 'stats-skip':
                 // Not in the statistics when they pass (a map proxy's tiles); protected all the same.
                 $this->patterns('stats.skip', $args, $at, false);
@@ -804,7 +808,7 @@ final class RuleFile
                 return;
         }
         throw new RuleFileException("$at: unknown rule \"$keyword\"" . self::suggest($keyword,
-            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'stats-skip', 'stats-group', 'api-path', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include']));
+            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'stats-skip', 'stats-group', 'stats-access', 'api-path', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include']));
     }
 
     /**
@@ -1025,6 +1029,30 @@ final class RuleFile
             $groups = [];
         }
         $groups[] = ['name' => $name, 'sites' => array_values(array_unique($sites)), 'rule' => $this->rid];
+    }
+
+    /**
+     * stats-access <group|*> sha256:<hash> [until <day>]: who may read the
+     * statistics -- a group (its name, in quotes when it has spaces) or *
+     * (everything). Only the token's hash is written here
+     * (bin/request-shield token "<group>").
+     */
+    private function statsAccess(string $line, string $at): void
+    {
+        $usage = 'stats-access "<group>"|* sha256:<64 hex> [until <day>] (bin/request-shield token "<group>" prints both)';
+        if (preg_match('/^\S+\s+(?:"([^"]{1,60})"|(\S{1,60}))\s+sha256:([0-9a-f]{64})(?:\s+until\s+(\S+))?\s*$/', trim($line), $m) !== 1) {
+            throw new RuleFileException("$at: $usage");
+        }
+        $who = trim($m[1] !== '' ? $m[1] : $m[2]);
+        $stats = &$this->c['stats'];
+        if (!is_array($stats)) {
+            $stats = [];
+        }
+        $list = &$stats['access'];
+        if (!is_array($list)) {
+            $list = [];
+        }
+        $list[] = ['who' => $who, 'hash' => $m[3], 'until' => isset($m[4]) ? self::until($m[4], $at) : null, 'rule' => $this->rid];
     }
 
     /**
