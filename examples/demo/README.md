@@ -30,6 +30,8 @@ named in a conversation or an issue. Among them:
 | `/reset` | forgets your pass cookie, so you can see the check again |
 | reload any page 20 times | the check appears (budget: 20 requests a minute), past 60 a pause (429) |
 | the form | a POST passes, never cached |
+| `/rs/stats/sites` | the statistics of both websites the demo answers to (`localhost84` is Customer A, `127.0.0.1` Customer B); this machine is the administrator, `?rs-login=1` shows the login form |
+| `/customer-menu` | a pretend hosting panel: its "Statistics" item is a signed link (`Access::link()`) that opens Customer A's statistics only; the firewall's pages (live, lists) stay closed to it; "Sign out" ends it |
 
 ### In a subdirectory of a web server
 

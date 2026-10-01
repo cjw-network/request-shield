@@ -106,10 +106,42 @@ statistics measured as before the split (decide plus statistics, APCu: about
 39 µs per request against 15 µs without — the same as when they were part of
 the core).
 
-## The statistics plugin
+## The statistics plugin: a plugin with pages of its own
 
 `plugins/stats/` — `StatsPlugin` (counting, the crawler logs), `Stats` (the
 counters), `Report\StatsReport`, `Report\StatsPage`, `Report\VisitorsPage`. For
 now in this repository and loaded by the same autoloader; a package of its own
-(`cjw-network/request-shield-stats`) when the interface has settled. Its
-settings are the `stats` words of the rule file ([statistics](statistics.md)).
+(`cjw-network/request-shield-stats`) when the interface has settled.
+
+It is the model for a plugin that does more than count. What it owns, and how
+it fits next to the core:
+
+| | The statistics plugin | The core |
+|---|---|---|
+| **Its words** in the rule file | `set stats …`, `stats-hosts`, `stats-group`, `stats-access`, `stats-skip`, `set stats-path`, `set stats-session` ([statistics](statistics.md)) | everything else |
+| **Its address** | `set stats-path` (default `<dashboard-path>/stats`): `/sites`, `/overview`, `/visitors`, `/protection` | `<dashboard-path>/waf/`: `live`, `lists`, `rules` |
+| **Its pages** | `StatsPage::viewFor($settings, $path)` says which page a path is (null: not one of its own), `StatsPage::render()` draws it, `StatsPage::links()` the tabs | `Frame::pageFor()`, `Frame::links()` |
+| **Who may read them** | `Access::gate()`: the admin everything, a customer its group (`who`) | the site's own rules (`restrict <dashboard-path>/** to …`) |
+| **Its data** | files per website and hour under `store-dir/stats/`, APCu as a buffer | the store (counters, bans) and the log |
+
+What a plugin with pages should do the same way:
+
+- **One address of its own, configurable.** A site with an `/rs/` of its own,
+  or two dashboards on one host, moves it with one line; the tabs and links
+  follow (`links()` builds them from the setting, never from a fixed path).
+- **Not count itself.** The core's `Frame::isPage()` knows the dashboard's
+  and the plugin's pages; a request to them is not a visitor, and the pace
+  leaves the admin's page views alone when a `restrict` rule lets the address
+  in.
+- **Say who asked.** A page that shows other people's data takes the `who`
+  the gate returned and filters by it itself (`StatsPage` refuses another
+  group's website whatever address is asked for). The links a customer gets
+  come through `Access::links($who, …)`: no tab it may not open.
+- **The site draws the frame.** The plugin returns HTML (or JSON with
+  `format=json`); headers, the status and the route stay with the site's
+  front controller, as in the [demo](../../examples/demo/index.php).
+
+In the demo, `/customer-menu` is a pretend hosting panel: its "Statistics"
+item is a signed link (`Access::link()`) that opens Customer A's statistics,
+and only those. This machine itself is the administrator (the `admin` option
+of `Access::gate()`); `?rs-login=1` shows the form all the same.

@@ -114,6 +114,11 @@ return [
             same('customer-a', Access::fromCookie(accessSettings($dir), $cookie, 1790800001), 'the same tokens: still in');
             $g = Access::gate($s, accessReq('/rs/stats/visitors?rs-logout=1', ['Cookie' => "rs_stats=$cookie"]), ['rs-logout' => '1'], [], $o);
             truthy($g['who'] === null && (bool) preg_grep('/^Set-Cookie: rs_stats=; Path=\/; Max-Age=0/', $g['headers']), 'signed out: the cookie deleted');
+            same(['*', 200], array_values(array_intersect_key(Access::gate($s, accessReq(), [], [], $o + ['admin' => true]), ['who' => 1, 'status' => 1])),
+                'admin: the site knows its administrator (say, by its address): everything, no form');
+            same([null, 401], array_values(array_intersect_key(Access::gate($s, accessReq('/rs/stats/sites?rs-login=1'), ['rs-login' => '1'], [], $o + ['admin' => true]), ['who' => 1, 'status' => 1])),
+                'with ?rs-login=1 the form all the same (to try a customer\'s view)');
+            same('customer-a', Access::gate($s, accessReq('/', ['Cookie' => "rs_stats=$cookie"]), [], [], $o + ['admin' => true])['who'], 'a customer\'s cookie first: its own view, on the administrator\'s machine too');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }

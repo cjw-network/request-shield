@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Phases 1–4 implemented** (2026-10-01): the plugin interface, the statistics as its first plugin; statistics per website; groups and an overview of all websites; access per group; phases 5–6 accepted, to come |
+| Status | **Phases 1–5 implemented** (2026-10-01): the plugin interface, the statistics as its first plugin; statistics per website; groups and an overview of all websites; access per group; the demo's customer menu and the plugin guide; phase 6 (two packages) accepted, to come |
 | Proposed | 2026-10-01 |
 | Affects | the core (`Shield::protect()`, `Shield::record()`), the statistics (`Stats`, `Report\*`), the dashboard and its login ([0012](0012-dashboard.md)), the visitors page ([0022](0022-visitors-page.md)), rule files (`plugin`, `stats-hosts`, `stats-group`, `stats-access`), packaging |
 
@@ -170,6 +170,12 @@ This is the dashboard login of [0012](0012-dashboard.md) (there: one password
 for the panel), extended to groups.
 
 ## 5. The demo
+
+*Built (phase 5): `/customer-menu` in the demo, `stats-access` with two public
+demo tokens, the gate's `admin` option (the demo's own machine is the
+administrator, `?rs-login=1` shows the form); the plugin guide in
+[plugins](../features/plugins.md#the-statistics-plugin-a-plugin-with-pages-of-its-own).
+The rule tester's "other hosts" example is left to the rules page.*
 
 Once 2–4 exist, the demo shows them with two websites it answers to anyway
 (`localhost84` and `127.0.0.1`):

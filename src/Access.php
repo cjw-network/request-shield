@@ -108,7 +108,9 @@ final class Access
      *
      * @param array<mixed> $get $_GET
      * @param array<mixed> $post $_POST
-     * @param array<string, mixed> $o store, now, lang, accept, action (the page's address), home, homeLabel, always (ask even without stats-access lines)
+     * @param array<string, mixed> $o store, now, lang, accept, action (the page's address), home, homeLabel, always (ask even without stats-access lines),
+     *                                admin (the site's own login says this reader is the admin -- a CMS's signed-in administrator; a customer's
+     *                                cookie or link still wins, and ?rs-login=1 shows the form)
      * @return array{who: ?string, status: int, headers: list<string>, body: ?string}
      */
     public static function gate(Settings $s, Request $request, array $get, array $post, array $o = []): array
@@ -178,6 +180,9 @@ final class Access
         $who = self::fromCookie($s, (string) $request->cookie(self::COOKIE), $now);
         if ($who !== null) {
             return self::answer($who, 200, $headers, null);
+        }
+        if (($o['admin'] ?? false) === true && !isset($get['rs-login'])) {
+            return self::answer('*', 200, $headers, null);       // the site knows its administrator
         }
         return $page(401, $t['intro']);
     }

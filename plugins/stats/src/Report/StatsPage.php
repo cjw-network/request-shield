@@ -35,7 +35,7 @@ final class StatsPage
             'groupAll' => '%s: all %d websites', 'groupOne' => '%s: its website', 'ungrouped' => 'In no group', 'tabSites' => 'All websites',
             'sitesIntro' => 'where the traffic is: page views by people, against the period before', 'pageViews' => 'Page views', 'change' => 'Change', 'stoppedCol' => 'Stopped',
             'new' => 'new', 'before' => 'the period before: %s', 'peopleReq' => 'Requests by people', 'crawlerVisits' => 'Crawler visits', 'botReq' => 'Bot requests',
-            'hViews' => 'Views', 'hPeople' => 'People', 'hCrawlers' => 'Crawlers', 'hBots' => 'Bots', 'hStopped' => 'Stopped', 'hCurve' => 'Trend', 'otherShort' => 'other hosts', 'hSearch' => 'Search', 'hAi' => 'AI',
+            'signOut' => 'Sign out', 'hViews' => 'Views', 'hPeople' => 'People', 'hCrawlers' => 'Crawlers', 'hBots' => 'Bots', 'hStopped' => 'Stopped', 'hCurve' => 'Trend', 'otherShort' => 'other hosts', 'hSearch' => 'Search', 'hAi' => 'AI',
             'searchTip' => 'visits of search engines\' crawlers (Googlebot, Bingbot …)', 'aiTip' => 'visits of AI crawlers: AI search, AI assistants fetching for a user, AI training',
             'websiteTip' => 'a website, a group of websites (stats-group) or the names the rules do not know (other hosts)',
             'viewsTip' => 'page views by people: pages shown (GET, answered 200 with HTML)', 'changeTip' => 'page views against the period before, as long as this one',
@@ -59,7 +59,7 @@ final class StatsPage
             'groupAll' => '%s: alle %d Websites', 'groupOne' => '%s: seine Website', 'ungrouped' => 'In keiner Gruppe', 'tabSites' => 'Alle Websites',
             'sitesIntro' => 'wo der Verkehr ist: Seitenaufrufe von Menschen, gegenüber dem Zeitraum davor', 'pageViews' => 'Seitenaufrufe', 'change' => 'Veränderung', 'stoppedCol' => 'Gestoppt',
             'new' => 'neu', 'before' => 'der Zeitraum davor: %s', 'peopleReq' => 'Anfragen von Menschen', 'crawlerVisits' => 'Crawler-Besuche', 'botReq' => 'Bot-Anfragen',
-            'hViews' => 'Aufrufe', 'hPeople' => 'Menschen', 'hCrawlers' => 'Crawler', 'hBots' => 'Bots', 'hStopped' => 'Gestoppt', 'hCurve' => 'Verlauf', 'otherShort' => 'andere Hosts', 'hSearch' => 'Suche', 'hAi' => 'KI',
+            'signOut' => 'Abmelden', 'hViews' => 'Aufrufe', 'hPeople' => 'Menschen', 'hCrawlers' => 'Crawler', 'hBots' => 'Bots', 'hStopped' => 'Gestoppt', 'hCurve' => 'Verlauf', 'otherShort' => 'andere Hosts', 'hSearch' => 'Suche', 'hAi' => 'KI',
             'searchTip' => 'Besuche der Crawler von Suchmaschinen (Googlebot, Bingbot …)', 'aiTip' => 'Besuche von KI-Crawlern: KI-Suche, KI-Assistenten für einen Nutzer, KI-Training',
             'websiteTip' => 'eine Website, eine Gruppe von Websites (stats-group) oder die Namen, die die Regeln nicht kennen (andere Hosts)',
             'viewsTip' => 'Seitenaufrufe von Menschen: gezeigte Seiten (GET, mit 200 und HTML beantwortet)', 'changeTip' => 'Seitenaufrufe gegenüber dem gleich langen Zeitraum davor',
@@ -263,7 +263,8 @@ final class StatsPage
             $h .= ' <button type="submit">' . $e($t['show']) . '</button></form>';
         }
         $h .= '<p class="sub">' . $e(self::date($r['from'], $lang) . ' – ' . self::date($r['to'], $lang))
-            . ($s->statsHosts !== [] ? ' · ' . $e(self::siteName($s, $site, $t)) : '') . ($crawler !== null ? ' · ' . $e($crawler) . ' · <a href="' . $e($query(['days' => $days, 'by' => $by, 'lang' => $lang])) . '">' . $e($t['all']) . '</a>' : '') . '</p>';
+            . ($s->statsHosts !== [] ? ' · ' . $e(self::siteName($s, $site, $t)) : '')
+            . ($who !== '*' ? ' · <a href="?' . $e(http_build_query(['rs-logout' => 1, 'lang' => $lang])) . '">' . $e($t['signOut']) . '</a>' : '') . ($crawler !== null ? ' · ' . $e($crawler) . ' · <a href="' . $e($query(['days' => $days, 'by' => $by, 'lang' => $lang])) . '">' . $e($t['all']) . '</a>' : '') . '</p>';
         if ($view === 'sites') {
             // All websites: the groups with their websites, the rest, where the traffic is.
             $h .= self::sitesTable($s, StatsReport::sites($s, $r['from'], $r['to'], $by === 'hour' ? 'day' : $by, $who), $t, $lang,

@@ -447,6 +447,30 @@ $panel = function (string $prefix): void {
     }, $prefix);
 };
 
+$customer = function (string $prefix): void {
+    withDemo(function (callable $get): void {
+        same(200, $get('GET', '/rs/stats/sites')['status'], 'this machine is the administrator: no form');
+        truthy(strpos($get('GET', '/rs/stats/sites?rs-login=1')['body'], 'name="rs-token"') !== false, 'unless it asks for the form');
+        $menu = $get('GET', '/customer-menu');
+        same(200, $menu['status'], 'the customer\'s menu');
+        truthy(preg_match('#href="([^"]*rs-sig=[^"]*)"#', $menu['body'], $m) === 1, 'a signed link to the statistics');
+        $link = html_entity_decode($m[1]);
+        $in = $get('GET', substr($link, strpos($link, '/rs/stats/') ?: 0));
+        same(303, $in['status'], 'the link: a redirect');
+        truthy(strpos((string) $in['location'], 'rs-sig') === false, 'the signature taken out of the address');
+        $cookie = 'rs_stats=' . ($in['cookies']['rs_stats'] ?? '');
+        $page = $get('GET', '/rs/stats/sites', ['Cookie' => $cookie]);
+        same(200, $page['status'], 'the customer\'s view');
+        truthy(strpos($page['body'], 'Customer A') !== false && strpos($page['body'], 'Customer B') === false, 'Customer A only');
+        truthy(strpos($page['body'], 'rs-logout=1') !== false, 'with a way to sign out');
+        same(403, $get('GET', '/rs/waf/live', ['Cookie' => $cookie])['status'], 'never the firewall\'s pages');
+        $json = json_decode($get('GET', '/rs/stats/overview?format=json&site=' . rawurlencode('Customer B'), ['Cookie' => $cookie])['body'], true);
+        truthy(is_array($json) && ($json['site'] ?? null) !== 'Customer B', 'asking for another customer\'s site does not show it');
+        $out = $get('GET', '/rs/stats/sites?rs-logout=1', ['Cookie' => $cookie]);
+        truthy(in_array($out['status'], [200, 303], true) && ($out['cookies']['rs_stats'] ?? 'x') === '', 'signed out: the cookie deleted');
+    }, $prefix);
+};
+
 $sub = '/examples/demo/index.php';
 return [
     'the demo: every example link does what the page says' => fn () => $examples(''),
@@ -466,4 +490,6 @@ return [
     'the demo in a subdirectory: earn a spent budget back' => fn () => $earnBack($sub),
     'the demo: the live view (from the log, with where each refusal came from) and the lists (add with a comment, the guards, remove)' => fn () => $panel(''),
     'the demo in a subdirectory: live and lists' => fn () => $panel($sub),
+    'the demo: a customer\'s menu -- a signed link opens that customer\'s statistics only, never the firewall\'s pages' => fn () => $customer(''),
+    'the demo in a subdirectory: a customer\'s menu' => fn () => $customer($sub),
 ];

@@ -335,6 +335,10 @@ set stats-session 8h                                          # how long a login
   `restrict /rs/** to …` still applies first.
 - **Without `stats-access` lines nothing is asked:** the site's own rules
   decide, as before.
+- **The site's administrator:** `Access::gate(…, ['admin' => true])` when the
+  site knows it is the administrator (an address of the office, its own login):
+  everything, no form. A customer's cookie still comes first (its own view),
+  and `?rs-login=1` shows the form all the same, to try a customer's view.
 
 In the site's front controller:
 

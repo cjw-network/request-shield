@@ -64,6 +64,25 @@ $request = Request::fromServer($_SERVER);
 $shield = Shield::active();
 $method = (string) ($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
+// Who reads the dashboard (stats-access in the rules): a customer by its cookie
+// or a signed link (the customer menu, /customer-menu); this machine -- the demo's
+// admin, as a CMS would say for its signed-in administrator -- without asking.
+// Not signed in: the shield's login form, and nothing else of the page.
+$dashGate = static function () use ($shield, $request, $url): array {
+    $g = \CjwNetwork\RequestShield\Access::gate($shield->settings, $request, $_GET, $_POST, ['admin' => \CjwNetwork\RequestShield\IpAddress::inRanges($request->clientIp, ['127.0.0.1', '::1']),
+        'lang' => (string) ($_GET['lang'] ?? 'auto'), 'home' => $url('/'), 'homeLabel' => 'request-shield demo']);
+    foreach ($g['headers'] as $h) {
+        header($h, false);
+    }
+    if ($g['who'] === null) {
+        http_response_code($g['status']);
+        header('Content-Type: text/html; charset=utf-8');
+        echo (string) $g['body'];
+        exit;
+    }
+    return $g;
+};
+
 // The pages behind the examples. Everything that gets here was let through.
 $content = null;
 if ($path === '/search') {
@@ -134,9 +153,37 @@ if ($path === '/search') {
     }
     echo "</urlset>\n";
     exit;
+} elseif ($path === '/customer-menu' && $shield !== null) {
+    // A pretend hosting panel: Customer A's own menu. Its "Statistics" item is a
+    // signed link made here, on the panel's server, with the shield's secret
+    // (Access::link()): no token in it, valid ten minutes, Customer A's websites only.
+    $stats = \CjwNetwork\RequestShield\Report\StatsPage::links($shield->settings);
+    $link = $url($stats['sites'] ?? $stats['site']) . '?' . \CjwNetwork\RequestShield\Access::link($shield->settings, 'Customer A', 600);
+    header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Panel — Customer A</title>'
+        . '<style>body{margin:0;font:15px/1.5 system-ui,sans-serif;background:#eef1f5;color:#1d2127}header{background:#1f3b5c;color:#fff;padding:12px 20px;font-weight:600}'
+        . 'main{display:flex;gap:20px;padding:20px;max-width:1000px;margin:0 auto}nav{background:#fff;border-radius:10px;padding:10px 0;min-width:220px;align-self:start}'
+        . 'nav a{display:block;padding:8px 18px;color:#1f3b5c;text-decoration:none}nav a.on{background:#e3eaf5;font-weight:600}section{background:#fff;border-radius:10px;padding:16px 20px;flex:1}'
+        . 'code{background:#f2f4f7;padding:2px 6px;border-radius:4px}.note{color:#5b6470;font-size:13px}</style></head><body>'
+        . '<header>Hosting panel · Customer A <span style="font-weight:400;opacity:.8">(a demo: a pretend panel)</span></header><main><nav>'
+        . '<a href="#">Domains</a><a href="#">Mail</a><a href="#">Databases</a><a class="on" href="' . $e($link) . '">Statistics</a><a href="#">Invoices</a></nav><section>'
+        . '<h2 style="margin-top:0">Your statistics</h2><p><a href="' . $e($link) . '">Open the statistics of your websites →</a></p>'
+        . '<p class="note">The link is made on the panel\'s server with <code>Access::link($settings, \'Customer A\', 600)</code>: no token in it, valid ten minutes, '
+        . 'and it opens Customer A\'s websites only (here: localhost84) — never Customer B\'s, never the rules or the live view. Opened, it signs the browser in for eight hours.</p>'
+        . '<h3>Or sign in with a token</h3><p>The demo\'s token for Customer A (a demo only — a real one is printed once by <code>bin/request-shield token</code>):<br><code>demo-customer-a-5b8e2d1f7c4a9e06b3d1f8a2c7e5</code></p>'
+        . '<p><a href="' . $e($url($stats['site']) . '?rs-login=1') . '">The login form</a> · <a href="' . $e($url($stats['site']) . '?rs-logout=1') . '">Sign out</a> (back to the admin\'s view on this machine)</p>'
+        . '</section></main></body></html>';
+    exit;
 } elseif ($shield !== null && in_array(\CjwNetwork\RequestShield\Report\Frame::pageFor($shield->settings, $path), ['live', 'lists'], true)) {
     // The live view and the lists (the core's pages, from the log and the list
     // files): under dashboard-path like the statistics, and restricted the same way.
+    // The admin's only: a customer signed in gets 403.
+    if ($dashGate()['who'] !== '*') {
+        http_response_code(403);
+        echo 'The live view and the lists are the admin\'s.';
+        exit;
+    }
     $panelLinks = array_map($url, \CjwNetwork\RequestShield\Report\Frame::links($shield->settings));
     $panelOpts = ['links' => $panelLinks, 'lang' => (string) ($_GET['lang'] ?? 'auto'), 'accept' => $request->header('accept-language'),
         'home' => $url('/'), 'homeLabel' => 'request-shield demo', 'ip' => $request->clientIp];
@@ -168,6 +215,8 @@ if ($path === '/search') {
     // pages, for editors; shield: the protection, for admins), GET parameters
     // filter; in the visitor's language (or ?lang=de|en); ?format=json for a CMS.
     $view = (string) \CjwNetwork\RequestShield\Report\StatsPage::viewFor($shield->settings, $path);
+    $who = (string) $dashGate()['who'];                 // '*' this machine (the admin), or a customer's group
+    $askedSite = isset($_GET['site']) && $_GET['site'] !== '' ? (string) $_GET['site'] : null;
     $days = max(1, min(400, (int) ($_GET['days'] ?? 7)));
     $by = in_array($_GET['by'] ?? '', ['hour', 'day', 'week', 'month', 'year'], true) ? (string) $_GET['by'] : null;
     $only = isset($_GET['crawler']) && isset($shield->settings->crawlers[(string) $_GET['crawler']]) ? (string) $_GET['crawler'] : null;
@@ -175,18 +224,20 @@ if ($path === '/search') {
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(\CjwNetwork\RequestShield\Report\StatsReport::build($shield->settings, null, $days, null, ['by' => $by === null || $by === 'hour' ? 'day' : $by] + ($only !== null ? ['crawler' => $only] : [])
             + (isset($_GET['path']) && $_GET['path'] !== '' ? ['path' => preg_match('#^[a-z0-9*+()][a-z0-9.*+()-]*/#i', (string) $_GET['path']) === 1 ? (string) $_GET['path'] : '/' . ltrim((string) $_GET['path'], '/')] : []) + (isset($_GET['sort']) ? ['sort' => (string) $_GET['sort']] : [])
-            + (isset($_GET['site']) && $_GET['site'] !== '' ? ['site' => (string) $_GET['site']] : [])
+            + (\CjwNetwork\RequestShield\Access::site($shield->settings, $who, $askedSite) !== null ? ['site' => (string) \CjwNetwork\RequestShield\Access::site($shield->settings, $who, $askedSite)] : [])
             + (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($_GET['from'] ?? '')) === 1 && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($_GET['to'] ?? '')) === 1
                 ? ['from' => str_replace('-', '', (string) $_GET['from']), 'to' => str_replace('-', '', (string) $_GET['to'])] : [])),
             JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         exit;
     }
     header('Content-Type: text/html; charset=utf-8');
-    echo \CjwNetwork\RequestShield\Report\StatsPage::render($shield->settings, ['view' => $view, 'links' => array_map($url, \CjwNetwork\RequestShield\Report\Frame::links($shield->settings)),
+    echo \CjwNetwork\RequestShield\Report\StatsPage::render($shield->settings, ['view' => $view, 'who' => $who,
+        'links' => array_map($url, \CjwNetwork\RequestShield\Access::links($who, \CjwNetwork\RequestShield\Report\Frame::links($shield->settings))),
         'days' => $days, 'crawler' => $only, 'path' => isset($_GET['path']) ? (string) $_GET['path'] : null, 'sort' => (string) ($_GET['sort'] ?? ''),
         'lang' => (string) ($_GET['lang'] ?? 'auto'), 'accept' => $request->header('accept-language'), 'fragment' => isset($_GET['fragment']),
         'check' => $_GET, 'ip' => $request->clientIp, 'from' => (string) ($_GET['from'] ?? ''), 'to' => (string) ($_GET['to'] ?? ''),
-        'home' => $url('/'), 'homeLabel' => 'request-shield demo', 'site' => isset($_GET['site']) && $_GET['site'] !== '' ? (string) $_GET['site'] : null] + ($by !== null ? ['by' => $by] : []));
+        'home' => $url('/'), 'homeLabel' => 'request-shield demo',
+        'site' => $askedSite] + ($by !== null ? ['by' => $by] : []));
     exit;
 } elseif ($path === '/api/status') {
     // 5 calls a minute; past that: 429 with the task as JSON and in the header
@@ -256,6 +307,7 @@ $groups = [
         ['/rs/waf/lists', 'Lists', 'keep an address out or let it in, with a comment of your own; extend, remove; the active bans (this machine only)'],
         ['/rs/waf/rules', 'Statistics: rules & setup', 'the way of a request through the shield, every rule in words, every technical setting (this machine only)'],
         ['/rs/stats/visitors?lang=de', 'Statistik auf Deutsch', 'the same page in German (it also follows your browser\'s language)'],
+        ['/customer-menu', 'A customer\'s menu', 'a pretend hosting panel: its "Statistics" item is a signed link (Access::link()) that opens Customer A\'s statistics only -- try it, then sign out'],
         ['/rs/stats/sites', 'Statistics: all websites', 'each customer (stats-group) with its websites, where the traffic is, against the period before; a click opens one'],
         ['/rs/stats/visitors?site=localhost84', 'Statistics: one website', 'set stats-hosts localhost84 127.0.0.1: each its own numbers, any other Host name as "other hosts"; the switch at the top'],
         ['/rs/stats/visitors?path=' . rawurlencode($url('/page/')), 'Statistics: one subtree', 'the "path starts with" filter: views of one section, by people, crawlers, bots'],

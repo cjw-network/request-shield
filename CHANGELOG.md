@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The demo's customer menu** (proposal 0023, phase 5): `/customer-menu`, a
+  pretend hosting panel whose "Statistics" item is a signed link to Customer A's
+  statistics only; two public demo tokens in its rules; a "Sign out" link on a
+  customer's statistics page. `Access::gate()` takes `admin` (the site knows its
+  administrator: everything, no form; `?rs-login=1` shows it anyway). The plugin
+  guide: what the statistics plugin owns (its words, its address, its pages, who
+  may read them) and what a plugin with pages should do the same way
+  ([docs](docs/features/plugins.md#the-statistics-plugin-a-plugin-with-pages-of-its-own)).
 - **Access to the statistics per group** (proposal 0023, phase 4):
   `stats-access "Customer A"|* sha256:<hash> [until …]` (only the token's hash;
   `bin/request-shield token` prints a token and the line), `set stats-session`.
