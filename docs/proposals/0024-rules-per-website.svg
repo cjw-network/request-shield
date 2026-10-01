@@ -1,0 +1,69 @@
+<svg class="rsd" role="img" viewBox="0 0 900 560" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>One rule file for every website on the server. Rules outside any block apply to all websites (the base: sizes, scanners, known crawlers, a pace per visitor for the whole server). A "site" block adds rules for some websites: shop.a.de and a.de get an admin area for the office and strict parameters; *.b.de, every subdomain of b.de, has its own include; api.c.de is a programs' interface without the browser check. When the files are read, each website becomes settings of its own (the base plus its block), compiled for OPcache. A request: its website is looked up in a small map — exact name, then *.domain, then "default" — and only that website's settings are loaded. Matching paths inside a website stays as it is (match blocks). The website is taken from the name the web server answers as, not blindly from the visitor's Host header.</title>
+<style>.rsd{font:13px/1.25 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .c{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}.rsd .base{fill:#eef3fd;stroke:#2f62c9}.rsd .site{fill:#fdf3dc;stroke:#b07400}.rsd .ok{fill:#e6f4ea;stroke:#1e7b43}.rsd .no{fill:#fbe9e5;stroke:#a3361f}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .arrow{stroke:#a0a8b3}.rsd .base{fill:#1b2740;stroke:#7aa2ff}.rsd .site{fill:#3a2f15;stroke:#e0a43c}.rsd .ok{fill:#17301f;stroke:#4cc38a}.rsd .no{fill:#3d1f19;stroke:#ff7a66}}</style>
+<defs><marker id="a24" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>
+
+<!-- The rule file -->
+<text class="t" x="16" y="26" font-weight="700">One rule file for the server</text>
+<rect class="base" x="16" y="40" width="380" height="108" rx="10" stroke-width="1.5"/>
+<text class="t" x="30" y="62" font-weight="700">For every website (the base)</text>
+<g class="c t"><text x="30" y="84">include @scanners @tracking</text><text x="30" y="102">crawlers ai-training block</text><text x="30" y="120">limit requests 300/min   # the whole server</text></g>
+<text class="m" x="30" y="140" font-size="11.5">one address flooding 50 websites is one flood</text>
+
+<rect class="site" x="16" y="156" width="380" height="94" rx="10" stroke-width="1.2"/>
+<g class="c t"><text x="30" y="178">site shop.a.de a.de {</text><text x="44" y="196">match /admin/** { restrict to 192.0.2.0/24 }</text><text x="44" y="214">query strict</text><text x="44" y="232">include-app cms-a.rules     # 0021</text></g><text class="c t" x="30" y="248" font-size="11.5">}</text>
+
+<rect class="site" x="16" y="262" width="380" height="58" rx="10" stroke-width="1.2"/>
+<g class="c t"><text x="30" y="284">site *.b.de {  include b.rules  }</text><text x="30" y="306" class="m" font-size="11.5">  # every subdomain of b.de</text></g>
+
+<rect class="site" x="16" y="332" width="380" height="58" rx="10" stroke-width="1.2"/>
+<g class="c t"><text x="30" y="354">site api.c.de {  challenge-exempt /**</text><text x="30" y="372">  limit calls 600/min  }</text></g>
+
+<rect class="no" x="16" y="402" width="380" height="40" rx="10" stroke-width="1.2"/>
+<text class="c t" x="30" y="427">site default {  set mode strict  }   # unknown names</text>
+
+<path class="arrow" d="M396 220 H446" marker-end="url(#a24)"/>
+<text class="m" x="402" y="210" font-size="10.5">read</text>
+
+<!-- Compiled -->
+<text class="t" x="448" y="26" font-weight="700">Compiled per website</text>
+<g class="c t">
+<rect class="ok" x="448" y="40" width="200" height="40" rx="8" stroke-width="1.2"/><text x="460" y="58">shop.a.de, a.de</text><text x="460" y="73" class="m" font-size="11">base + its block</text>
+<rect class="ok" x="448" y="88" width="200" height="40" rx="8" stroke-width="1.2"/><text x="460" y="106">*.b.de</text><text x="460" y="121" class="m" font-size="11">base + its block</text>
+<rect class="ok" x="448" y="136" width="200" height="40" rx="8" stroke-width="1.2"/><text x="460" y="154">api.c.de</text><text x="460" y="169" class="m" font-size="11">base + its block</text>
+<rect class="no" x="448" y="184" width="200" height="40" rx="8" stroke-width="1.2"/><text x="460" y="202">default</text><text x="460" y="217" class="m" font-size="11">base + strict</text>
+</g>
+<text class="m" x="448" y="246" font-size="11.5">a PHP file each, kept by OPcache;</text>
+<text class="m" x="448" y="261" font-size="11.5">one is loaded per request</text>
+
+<!-- A request -->
+<text class="t" x="672" y="26" font-weight="700">A request</text>
+<rect class="box" x="672" y="40" width="212" height="60" rx="8"/>
+<text class="c t" x="684" y="62">GET https://news.b.de/x</text>
+<text class="m" x="684" y="84" font-size="11.5">the website: news.b.de</text>
+<path class="arrow" d="M778 100 V122" marker-end="url(#a24)"/>
+<rect class="box" x="672" y="124" width="212" height="94" rx="8"/>
+<text class="t" x="684" y="144" font-weight="600">looked up, in this order</text>
+<g class="m" font-size="12"><text x="684" y="164">1. the exact name</text><text x="684" y="182">2. *.b.de (one label off)</text><text x="684" y="200">3. default — else the base</text></g>
+<path class="arrow" d="M672 170 H652" marker-end="url(#a24)"/>
+<text class="m" x="672" y="240" font-size="11.5">≈ 0.3 µs: two array lookups,</text>
+<text class="m" x="672" y="255" font-size="11.5">no expression</text>
+
+<!-- Where the name comes from -->
+<text class="t" x="448" y="304" font-weight="700">Which name decides — not blindly the Host header</text>
+<rect class="box" x="448" y="318" width="436" height="132" rx="10"/>
+<g class="m" font-size="12">
+<text x="462" y="340">The visitor writes the Host header. If the rules followed it blindly,</text>
+<text x="462" y="358">anyone could ask for the most lenient website's rules.</text>
+<text x="462" y="382"><tspan class="t" font-weight="600">set site-from server-name</tspan> (nginx): the name of the server block</text>
+<text x="462" y="400">that answers — from the web server's configuration, not the visitor.</text>
+<text x="462" y="424"><tspan class="t" font-weight="600">set site-from host</tspan>: the Host header (behind a trusted</text>
+<text x="462" y="440">proxy X-Forwarded-Host) — when the web server routes by it.</text>
+</g>
+
+<!-- Paths inside a site -->
+<rect class="box" x="16" y="466" width="868" height="86" rx="10"/>
+<text class="t" x="30" y="488" font-weight="700">Inside a website, nothing changes</text>
+<g class="m" font-size="11.3"><text x="30" y="508">match blocks for paths, IDs, revisions, monitor; the rule tester takes the website from the address it tests; the rules page gets a switch per website;</text>
+<text x="30" y="526">the statistics per website (0023: every site's names are statistics hosts); rules from a CMS per website (0021: include-app inside a site block).</text></g>
+</svg>
