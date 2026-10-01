@@ -112,22 +112,23 @@ php bin/request-shield feeds site.rules update      # cron, e.g. hourly; each fe
   fetched by each site under the list's own terms, and the repository never
   redistributes them.
 
-### Many addresses: a packed table
+### Many addresses: the packed table of 0013
 
-blocklist.de has tens of thousands of addresses. As a PHP array in the
-compiled settings that is several MB per worker's view of OPcache. So big
-feeds are compiled into **one sorted, packed binary string per family** (4 + 4
-bytes per IPv4 range, 16 + 16 per IPv6). It is an interned string in OPcache,
-shared by all workers, and searched by binary search with `substr()`:
+blocklist.de has tens of thousands of addresses. As PHP arrays in the
+compiled settings that outgrows OPcache (measured for 0013: from about
+200,000 entries the compiled file was read on every request). The deny list
+of [0013](0013-ip-lists.md) therefore already compiles into **one sorted table
+in a few strings** (`IpTable`: fixed-width hex records, a directory by the
+first two bytes for IPv4), shared by all workers through OPcache and searched
+by binary search. Feeds use the same table:
 
 | Feed size | Compiled | Lookup (expected) |
 |---|---|---|
-| 1,500 ranges (DROP) | ~12 KB | < 1 µs |
-| 40,000 addresses (blocklist.de) | ~320 KB | ~1–2 µs (16 steps) |
+| 1,500 ranges (DROP) | ~40 KB | 2–3 µs |
+| 40,000 addresses (blocklist.de) | ~1.5 MB | 2–3 µs (measured for 0013 up to 1,000,000) |
 
 All feeds of one action are merged into one table, so a request does **one**
-search per action, however many lists there are. This also suits the deny
-list of [0013](0013-ip-lists.md) when it grows big.
+search per action, however many lists there are.
 
 ### For the firewall: `feeds export`
 
@@ -264,8 +265,8 @@ What it writes, between markers, and nothing else in the file is touched:
    `monitor` in front.*
 2. `ban-signal` as a weight (3 signals) or "banned on the first refusal"?
    *Recommendation: a weight. It keeps the ban rules as they are.*
-3. The packed table also for the deny list of 0013 above a few thousand
-   entries? *Recommendation: yes, the same code.*
+3. ~~The packed table also for the deny list of 0013?~~ Done in 0013: the
+   deny list always uses it.
 4. `feeds export`: also write the deny list's entries and running bans (for
    fail2ban-like use)? *Recommendation: the deny list yes; bans no, they are
    short and per server.*
