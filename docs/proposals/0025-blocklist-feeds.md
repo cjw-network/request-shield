@@ -14,7 +14,8 @@ not: they list addresses shared by many people, or addresses that were bad
 last week. This proposal lets a site **subscribe to such lists ("feeds")**.
 A cron job fetches them, and each one gets **its own action**: refused,
 checked, or only counted towards a ban. The same lists can also be **exported
-for the server's firewall**, so the worst addresses never reach PHP at all.
+for the server's firewall**, or on shared hosting **as a block in
+`.htaccess`**, so the worst addresses never reach PHP at all.
 
 Nothing is looked up per request and nothing about the site's visitors is
 sent anywhere. The lists are fetched (pull only), compiled like the deny list
