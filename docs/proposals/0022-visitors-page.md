@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Phase 1 implemented** (2026-10-01); phases 2–5 draft |
 | Proposed | 2026-10-01 |
 | Affects | the statistics page (`Report\StatsPage`, the view "Visitors & pages"), page statistics ([0015](0015-page-statistics.md)), audience statistics ([0018](0018-audience-statistics.md)), the SEO and GEO dashboard ([0019](0019-seo-geo-dashboard.md)), campaign counting ([0020](0020-cache-keys-without-tracking.md)), privacy ([docs/privacy.md](../privacy.md)) |
 

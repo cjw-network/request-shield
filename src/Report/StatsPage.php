@@ -30,7 +30,7 @@ final class StatsPage
 {
     private const T = [
         'en' => [
-            'title' => 'Statistics', 'today' => '24 hours', 'd7' => '7 days', 'd30' => '30 days', 'm12' => '12 months',
+            'title' => 'Statistics', 'today' => '24 hours', 'd7' => '7 days', 'd30' => '30 days', 'm12' => '12 months', 'thisMonth' => 'This month', 'lastMonth' => 'Last month', 'from' => 'from', 'to' => 'to', 'show' => 'Show', 'nowPeople' => 'now: %s requests by people in the last 5 minutes',
             'requests' => 'Requests', 'people' => 'People', 'crawlers' => 'Crawlers', 'bots' => 'Bots', 'checked' => 'Checked', 'refused' => 'Refused',
             'notFound' => 'Not found', 'through' => 'Let through', 'throttled' => 'Told to wait', 'who' => 'Who came', 'what' => 'What the shield did',
             'answers' => 'Answers', 'short' => 'In short', 'known' => 'Known crawlers', 'missing' => 'Pages not found', 'linked' => 'linked from',
@@ -42,7 +42,7 @@ final class StatsPage
             'tabAll' => 'Overview', 'tabSite' => 'Visitors & pages', 'tabShield' => 'Protection', 'tabRules' => 'Rules & setup', 'ruleDetails' => 'all rules and settings', 'builtIn' => 'the fixed checks: kind of request, sizes, disguised addresses', 'filter' => 'Filter', 'pathStarts' => 'path starts with', 'subtree' => 'Subtree', 'views' => 'views', 'exact' => 'exact', 'approx' => 'the sum of its most visited pages', 'clear' => 'all pages', 'per' => 'per', 'hour' => 'hour', 'day' => 'day', 'week' => 'week', 'month' => 'month', 'year' => 'year',
         ],
         'de' => [
-            'title' => 'Statistik', 'today' => '24 Stunden', 'd7' => '7 Tage', 'd30' => '30 Tage', 'm12' => '12 Monate',
+            'title' => 'Statistik', 'today' => '24 Stunden', 'd7' => '7 Tage', 'd30' => '30 Tage', 'm12' => '12 Monate', 'thisMonth' => 'Dieser Monat', 'lastMonth' => 'Letzter Monat', 'from' => 'von', 'to' => 'bis', 'show' => 'Anzeigen', 'nowPeople' => 'jetzt: %s Anfragen von Menschen in den letzten 5 Minuten',
             'requests' => 'Anfragen', 'people' => 'Menschen', 'crawlers' => 'Crawler', 'bots' => 'Bots', 'checked' => 'Geprüft', 'refused' => 'Abgewiesen',
             'notFound' => 'Nicht gefunden', 'through' => 'Durchgelassen', 'throttled' => 'Gebremst', 'who' => 'Wer kam', 'what' => 'Was der Schutz tat',
             'answers' => 'Antworten', 'short' => 'Kurz gesagt', 'known' => 'Bekannte Crawler', 'missing' => 'Nicht gefundene Seiten', 'linked' => 'verlinkt von',
@@ -57,7 +57,7 @@ final class StatsPage
 
     /**
      * @param array{action?: string, view?: string, tabs?: bool, links?: array<string, string>, days?: int, by?: string, crawler?: ?string, path?: ?string, sort?: string, lang?: string, accept?: ?string, home?: string, homeLabel?: string,
-     *   title?: string, fragment?: bool, now?: int, stats?: Stats, check?: array<mixed>, ip?: string, store?: \CjwNetwork\RequestShield\Store\Store} $o
+     *   title?: string, fragment?: bool, now?: int, stats?: Stats, check?: array<mixed>, ip?: string, from?: string, to?: string, store?: \CjwNetwork\RequestShield\Store\Store} $o
      *   action: the page's own address (links, refresh); view: site (visitors and pages, for editors), shield
      *   (what the protection did, for admins) or all (everything); links: an address per view -- 'all', 'site',
      *   'shield' => '/rs/dashboard' … -- for the tabs (without: ?view=); tabs: the tabs between them; lang: en, de, or auto (the browser's, from accept);
@@ -76,17 +76,28 @@ final class StatsPage
         $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $n = static fn (int $v): string => StatsReport::number($v, $lang);
         $days = max(1, min(3660, $o['days'] ?? 7));
-        $by = $o['by'] ?? ($days === 1 ? 'hour' : ($days > 62 ? 'month' : 'day'));
+        $now = $o['now'] ?? time();
+        // A range instead of the last days: from and to (YYYY-MM-DD), at most ten years.
+        $from = self::day($o['from'] ?? null);
+        $to = self::day($o['to'] ?? null);
+        if ($from !== null && $to !== null && $from <= $to) {
+            $from = max($from, (int) strtotime('-3659 days', $to));
+            $days = (int) round(($to - $from) / 86400) + 1;
+        } else {
+            $from = $to = null;
+        }
+        $by = $o['by'] ?? ($days === 1 && $from === null ? 'hour' : ($days > 62 ? 'month' : 'day'));
+        $range = $from !== null ? ['from' => gmdate('Y-m-d', $from), 'to' => gmdate('Y-m-d', (int) $to)] : [];
         $crawler = $o['crawler'] ?? null;
         $path = isset($o['path']) && $o['path'] !== '' ? '/' . ltrim((string) $o['path'], '/') : null;
+        $filter = $path;                    // the subtree filter ($path is reused by the loops below)
         $view = in_array($o['view'] ?? 'site', ['site', 'shield', 'all', 'rules'], true) ? ($o['view'] ?? 'site') : 'site';
         // The pages by views, or by what the shield stopped (the protection's view starts there).
         $sorts = ['views', 'blocked', 'refused', 'checked', 'throttled'];
         $sortDefault = $view === 'shield' ? 'blocked' : 'views';
         $sort = in_array($o['sort'] ?? $sortDefault, $sorts, true) ? ($o['sort'] ?? $sortDefault) : $sortDefault;
         // What every link carries along besides the period and the language.
-        $extra = ($crawler !== null ? ['crawler' => $crawler] : []) + ($path !== null ? ['path' => $path] : []) + ($sort !== $sortDefault ? ['sort' => $sort] : []);
-        $now = $o['now'] ?? time();
+        $extra = $range + ($crawler !== null ? ['crawler' => $crawler] : []) + ($path !== null ? ['path' => $path] : []) + ($sort !== $sortDefault ? ['sort' => $sort] : []);
         $action = $o['action'] ?? '';
         // One address per view ('links' => ['all' => '/rs/dashboard', 'site' => '/rs/stats', 'shield' => '/rs/shield']):
         // the path names the view, GET parameters filter. Without links: ?view=.
@@ -103,7 +114,8 @@ final class StatsPage
             $body = '<p class="note">' . $e($t['noStats']) . '</p>';
             return ($o['fragment'] ?? false) ? $body : self::page($body, $t['title'], $lang, $o, $e);
         }
-        $r = StatsReport::build($s, $o['stats'] ?? null, $days, $now, ['by' => $by === 'hour' ? 'day' : $by, 'lang' => $lang, 'sort' => $sort] + $extra);
+        $r = StatsReport::build($s, $o['stats'] ?? null, $days, $now, ['by' => $by === 'hour' ? 'day' : $by, 'lang' => $lang, 'sort' => $sort]
+            + ($range !== [] ? ['from' => gmdate('Ymd', (int) $from), 'to' => gmdate('Ymd', (int) $to)] : []) + array_diff_key($extra, $range));
         // Hours: the last 48 for the small curves, today's for a "today" chart.
         $hours = [];
         for ($i = 47; $i >= 0; $i--) {
@@ -140,14 +152,26 @@ final class StatsPage
             $h .= '</nav>';
         }
         $h .= '<div class="bar"><div class="pills">';
+        $plain = array_diff_key($extra, $range);
         foreach ([[1, 'hour', 'today'], [7, 'day', 'd7'], [30, 'day', 'd30'], [365, 'month', 'm12']] as [$d, $b, $label]) {
-            $h .= '<a class="pill' . ($d === $days ? ' on' : '') . '" href="' . $e($query(['view' => $view, 'days' => $d, 'by' => $b, 'lang' => $lang] + $extra)) . '">' . $e($t[$label]) . '</a>';
+            $h .= '<a class="pill' . ($d === $days && $range === [] ? ' on' : '') . '" href="' . $e($query(['view' => $view, 'days' => $d, 'by' => $b, 'lang' => $lang] + $plain)) . '">' . $e($t[$label]) . '</a>';
         }
+        // This month, last month: a range each.
+        $first = (int) gmmktime(0, 0, 0, (int) gmdate('n', $now), 1, (int) gmdate('Y', $now));
+        foreach ([['thisMonth', $first, (int) $now], ['lastMonth', (int) strtotime('-1 month', $first), $first - 86400]] as [$label, $a, $z]) {
+            $span = ['from' => gmdate('Y-m-d', $a), 'to' => gmdate('Y-m-d', $z)];
+            $h .= '<a class="pill' . ($span === $range ? ' on' : '') . '" href="' . $e($query(['view' => $view] + $span + ['lang' => $lang] + $plain)) . '">' . $e($t[$label]) . '</a>';
+        }
+        // Any range: two dates (the browser's date picker), sent as GET.
+        $h .= '<form class="range" method="get" action="' . $e($action) . '">' . ($links === [] ? '<input type="hidden" name="view" value="' . $e($view) . '">' : '')
+            . '<input type="hidden" name="lang" value="' . $e($lang) . '">'
+            . '<label>' . $e($t['from']) . ' <input type="date" name="from" value="' . $e($range['from'] ?? gmdate('Y-m-d', (int) strtotime('-6 days', (int) $now))) . '"></label> '
+            . '<label>' . $e($t['to']) . ' <input type="date" name="to" value="' . $e($range['to'] ?? gmdate('Y-m-d', (int) $now)) . '"></label> <button type="submit">' . $e($t['show']) . '</button></form>';
         $h .= '</div><div class="pills">';
         foreach (['de' => 'DE', 'en' => 'EN'] as $l => $label) {
             $h .= '<a class="pill' . ($l === $lang ? ' on' : '') . '" href="' . $e($query(['view' => $view, 'days' => $days, 'by' => $by, 'lang' => $l] + $extra)) . '">' . $label . '</a>';
         }
-        $h .= '<a class="pill" href="' . $e($query(['days' => $days, 'by' => $by === 'hour' ? 'day' : $by, 'format' => 'json'])) . '">JSON</a></div></div>';
+        $h .= '<a class="pill" href="' . $e($query(['days' => $days, 'by' => $by === 'hour' ? 'day' : $by, 'format' => 'json'] + $range)) . '">JSON</a></div></div>';
         $h .= '<p class="sub">' . $e(self::date($r['from'], $lang) . ' – ' . self::date($r['to'], $lang)) . ($crawler !== null ? ' · ' . $e($crawler) . ' · <a href="' . $e($query(['days' => $days, 'by' => $by, 'lang' => $lang])) . '">' . $e($t['all']) . '</a>' : '') . '</p>';
         if ($view === 'rules') {
             // Rules & setup: the way of a request, every rule, every setting.
@@ -193,7 +217,7 @@ final class StatsPage
         // subtree filter ("path starts with") with its views.
         // What the filter form carries along: the period, the language -- and the
         // view only where no address names it (with links the path does).
-        $keep = ($links !== [] ? [] : ['view' => $view]) + ['days' => $days, 'by' => $by, 'lang' => $lang] + ($crawler !== null ? ['crawler' => $crawler] : []);
+        $keep = ($links !== [] ? [] : ['view' => $view]) + ($range !== [] ? $range : ['days' => $days, 'by' => $by]) + ['lang' => $lang] + ($crawler !== null ? ['crawler' => $crawler] : []);
         $sorted = $sort !== $sortDefault ? ['sort' => $sort] : [];
         $link = static fn (string $p): string => $query($keep + ['path' => $p] + $sorted);
         $h = '';
@@ -302,8 +326,21 @@ final class StatsPage
             $h = $body . '<div class="tiles">' . $tiles['requests'] . $tiles['bots'] . $tiles['checked'] . $tiles['refused'] . '</div>' . $hint
                 . $grid($chartWhat, $answers) . $topBlock . $crawlersBlock . $grid($rulesBlock, $chartWho);
         } elseif ($view === 'site') {
-            $h = $body . '<div class="tiles">' . $tiles['people'] . $tiles['crawlers'] . $tiles['notFound'] . '</div>' . $hint
-                . $topBlock . $grid($chartWho, $short) . $crawlersBlock . $grid($missingBlock, $sitemapsBlock);
+            // Visitors & pages (0022): six numbers against the period before, one chart, the pages and crawlers & AI.
+            if ($by === 'hour') {
+                $cur = $periods;                                        // the last 24 hours
+                $prev = array_values(array_slice($hours, 0, 24));       // the 24 before
+            } else {
+                $a = (int) strtotime($r['from'] . ' UTC');
+                $z = (int) strtotime($r['to'] . ' UTC');
+                $span = $z - $a + 86400;
+                $cur = self::filled($r['periods'], $a, $z, $by);
+                $prev = array_values(self::filled(StatsReport::periods($s, $o['stats'] ?? null, gmdate('Ymd', $a - $span), gmdate('Ymd', $a - 86400), $by), $a - $span, $a - 86400, $by));
+            }
+            $soon = ($o['stats'] ?? \CjwNetwork\RequestShield\Stats::of($s))->lastMinutes(5, (float) $now);
+            $h = $body . ($soon !== null ? '<p class="vnowl"><span class="dot crawlers"></span> ' . $e(sprintf($t['nowPeople'], $n($soon))) . '</p>' : '')
+                . VisitorsPage::render($r, $cur, $prev, ['lang' => $lang, 'by' => $by, 'action' => $action, 'keep' => $keep, 'link' => $link, 'clear' => $query($keep + $sorted), 'path' => $filter])
+                . $grid($short, $sitemapsBlock);
         } else {
             $h = $body . '<div class="tiles">' . implode('', $tiles) . '</div>' . $hint . $grid($chartWho, $chartWhat) . $grid($answers, $short) . $topBlock . $crawlersBlock
                 . $sitemapsBlock . $grid($missingBlock, $rulesBlock);
@@ -461,6 +498,35 @@ final class StatsPage
         return $out . '</table>';
     }
 
+    /** A day from a form (YYYY-MM-DD), as midnight UTC; null when it is none. */
+    private static function day(mixed $v): ?int
+    {
+        if (!is_string($v) || preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $v, $m) !== 1 || !checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+            return null;
+        }
+        return (int) gmmktime(0, 0, 0, (int) $m[2], (int) $m[3], (int) $m[1]);
+    }
+
+    /**
+     * Every period of a span, the empty ones too, in order: a chart has a point
+     * for each day (week, month, year), not only for the ones with numbers.
+     *
+     * @param array<array-key, array<string, int>> $periods
+     * @return array<string, array<string, int>>
+     */
+    private static function filled(array $periods, int $from, int $to, string $by): array
+    {
+        $out = [];
+        for ($d = $from; $d <= $to; $d += 86400) {
+            $out[['week' => gmdate('o-\\WW', $d), 'month' => gmdate('Y-m', $d), 'year' => gmdate('Y', $d)][$by] ?? gmdate('Y-m-d', $d)] = [];
+        }
+        foreach ($periods as $label => $b) {
+            $out[(string) $label] = $b;
+        }
+        uksort($out, static fn ($a, $b): int => strcmp((string) $a, (string) $b));
+        return $out;
+    }
+
     /**
      * @param array<string, mixed> $o
      * @param callable(string): string $e
@@ -469,7 +535,7 @@ final class StatsPage
     {
         $refresh = is_string($o['refresh'] ?? null) ? $o['refresh'] : '';
         return '<!doctype html><html lang="' . $e($lang) . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-            . '<meta name="robots" content="noindex,nofollow"><title>' . $e($title) . '</title><style>' . self::CSS . '</style></head><body>'
+            . '<meta name="robots" content="noindex,nofollow"><title>' . $e($title) . '</title><style>' . self::CSS . VisitorsPage::css() . '</style></head><body>'
             . (isset($o['home']) && is_string($o['home']) ? '<header><a href="' . $e($o['home']) . '">← ' . $e(is_string($o['homeLabel'] ?? null) ? $o['homeLabel'] : 'Back') . '</a></header>' : '')
             . '<main><h1>' . $e($title) . '</h1><div id="stats"' . ($refresh !== '' ? ' data-refresh="' . $e($refresh) . '"' : '') . '>' . $body . '</div></main>'
             . '<script>' . self::SCRIPT . '</script></body></html>';
@@ -601,7 +667,13 @@ final class StatsPage
   setInterval(function () {
     if (document.hidden) { return; }
     fetch(url, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : null; })
-      .then(function (html) { if (html) { box.innerHTML = html; } }, function () {});
+      .then(function (html) {
+        if (!html) { return; }
+        // The picked number and tabs stay picked: their radio buttons by id.
+        var on = [].map.call(box.querySelectorAll('input[type=radio]:checked'), function (i) { return i.id; });
+        box.innerHTML = html;
+        on.forEach(function (id) { var i = document.getElementById(id); if (i) { i.checked = true; } });
+      }, function () {});
   }, 60000);
 })();
 JS;

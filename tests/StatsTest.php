@@ -230,7 +230,7 @@ return [
             same([2, 0, 1], [$r['periods']['2026-01']['passed'], $r['periods']['2026-01']['refused'], $r['periods']['2026-02']['refused']]);
             same(3, $r['periods']['2026-09']['passed'], 'the running month: its days');
             $y = StatsReport::build($s, $st, 7, (int) $at('2026-09-30'), ['from' => '20260101', 'to' => '20260930', 'by' => 'year']);
-            same(['2026' => ['passed' => 5, 'uncached' => 0, 'checked' => 0, 'throttled' => 0, 'refused' => 1, 'people' => 6, 'crawlers' => 0, 'bots' => 0, 'notFound' => 0]], $y['periods'], 'a year');
+            same(['2026' => ['passed' => 5, 'uncached' => 0, 'checked' => 0, 'throttled' => 0, 'refused' => 1, 'people' => 6, 'crawlers' => 0, 'bots' => 0, 'notFound' => 0, 'views' => 0]], $y['periods'], 'a year');
             $w = StatsReport::build($s, $st, 7, (int) $at('2026-09-30'), ['from' => '20260901', 'to' => '20260930', 'by' => 'week']);
             same(['2026-W40'], array_keys($w['periods']), 'ISO weeks (28 and 30 September: week 40)');
             $c = StatsReport::build($s, $st, 7, (int) $at('2026-09-30'), ['from' => '20260101', 'to' => '20260930', 'by' => 'month', 'crawler' => 'CRAWL-GPTBOT']);
@@ -349,7 +349,7 @@ return [
             same(['200' => 1, '403' => 1, '404' => 1], array_combine(array_map('strval', array_keys($r['statuses'])), $r['statuses']));
             same(['/old' => ['count' => 1, 'referrers' => ['/news/x' => 1]]], $r['notFound']);
             same([1, 1, ['/news' => 1]], [$r['crawlers']['CRAWL-CLAUDEBOT']['verified'], $r['crawlers']['CRAWL-CLAUDEBOT']['allowed'], $r['crawlers']['CRAWL-CLAUDEBOT']['pages']]);
-            same(['passed' => 2, 'uncached' => 0, 'checked' => 0, 'throttled' => 0, 'refused' => 1, 'people' => 0, 'crawlers' => 3, 'bots' => 0, 'notFound' => 1], $r['daily']['20260930'], 'who: three crawlers (seen), no people');
+            same(['passed' => 2, 'uncached' => 0, 'checked' => 0, 'throttled' => 0, 'refused' => 1, 'people' => 0, 'crawlers' => 3, 'bots' => 0, 'notFound' => 1, 'views' => 0], $r['daily']['20260930'], 'who: three crawlers (seen), no people');
             $de = StatsReport::build($s, $st, 7, STATS_T0 + 10, ['lang' => 'de']);
             $worte = implode("\n", $de['sentences']);
             truthy(strpos($worte, "(CRAWL-GPTBOT) kam 1× in den letzten 7 Tagen: jedes Mal abgewiesen (so eingestellt: block).") !== false, $worte);
@@ -398,7 +398,8 @@ return [
                 && strpos($blockedPage, '<option value="blocked" selected>') !== false, 'the protection\'s view: the pages stopped most');
             truthy(strpos($blockedPage, 'href="/rs/shield?days=30&amp;by=day&amp;lang=de"') !== false, 'its own order is not carried in the links');
             $viewsPage = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]);
-            truthy(strpos($viewsPage, '1 blockiert</span>') !== false && strpos($viewsPage, '<code>/wp-login.php</code>') === false, 'the editors\' view: by views, with what was stopped');
+            truthy(strpos($viewsPage, '<label for="vp-p2">Gestoppt</label>') !== false && strpos($viewsPage, '<code>/wp-login.php</code>') !== false, 'the editors\' view: what was stopped, a tab of the pages card');
+            same(['/wp-login.php', '/news/b', '/news'], array_keys($all['stopped']), 'the report: the pages stopped most, whatever the order of the list');
             truthy(strpos(\CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'en', 'sort' => 'refused', 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]),
                 'href="/rs/stats?days=30&amp;by=day&amp;lang=en&amp;sort=refused"') !== false, 'another order is carried in the links');
             same(['/news/', '/news/2026/'], Shield::folders('/news/2026/10/x'));
@@ -416,7 +417,8 @@ return [
             // Two views: for editors (visitors and pages) and for admins (the protection).
             $site = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'action' => '/stats']);
             $shield = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'action' => '/stats', 'view' => 'shield']);
-            truthy(strpos($site, 'Meistbesuchte Seiten') !== false && strpos($site, 'Nicht gefundene Seiten') !== false && strpos($site, 'Regeln, die am meisten entschieden') === false, 'the site view (the default): pages, links -- no rules');
+            truthy(strpos($site, 'SEITENAUFRUFE') === false && strpos($site, '>Seitenaufrufe</span>') !== false && strpos($site, 'Crawler &amp; KI') !== false
+                && strpos($site, '<label for="vp-p3">Nicht gefunden</label>') !== false && strpos($site, 'Regeln, die am meisten entschieden') === false, 'the site view (the default): numbers, pages, crawlers -- no rules');
             truthy(strpos($shield, 'Regeln, die am meisten entschieden') !== false && strpos($shield, 'Was der Schutz tat') !== false && strpos($shield, 'Meistbesuchte Seiten') === false, 'the shield view: what it did, rules -- no pages');
             truthy(strpos($site, 'class="tab on"') !== false && strpos($site, 'view=shield') !== false, 'tabs between the two');
             truthy(strpos(\CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'tabs' => false]), 'class="tabs"') === false, 'embedded: one view, no tabs');
@@ -427,7 +429,7 @@ return [
             $form = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]);
             truthy(strpos($form, 'name="view"') === false && strpos($form, 'action="/rs/stats"') !== false, 'the filter form sends no view where the address names it (a site with query strict would refuse it)');
             $en = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'accept' => 'en-US,en;q=0.9', 'fragment' => true]);
-            truthy(strpos($en, 'Who came') !== false && strpos($en, '<html') === false, 'the browser\'s language; only the content for the refresh');
+            truthy(strpos($en, '>Page views</span>') !== false && strpos($en, '<html') === false, 'the browser\'s language; only the content for the refresh');
             truthy(strpos(\CjwNetwork\RequestShield\Report\StatsPage::render(Settings::from([])), 'set stats on') !== false, 'without statistics: how to switch them on');
             $html = RulesPage::render($s, ['now' => STATS_T0 + 10]);
             truthy(strpos($html, '7 days: 1 visits (1 let through), last') !== false, 'the rules page: what each crawler did');
@@ -560,6 +562,51 @@ return [
             same(0, (int) $store->hit('requests:198.51.100.7', 60, 1000.0) - 1, 'the tester counted nothing');
             $viewed = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'view' => 'rules', 'links' => $links, 'check' => ['url' => '/old-admin/'], 'ip' => '203.0.113.5', 'store' => $store]);
             truthy(strpos($viewed, 'href="#rule-T-OLD"') !== false && strpos($viewed, 'value="203.0.113.5"') !== false && strpos($viewed, 'name="view"') === false, 'in the view: its address, no view field');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+'the visitors page (0022): six numbers against the period before, one chart, cards with tabs -- no script, everything escaped' => function (): void {
+        $dir = statsDir();
+        try {
+            $s = Settings::from(['storeDir' => $dir, 'store' => 'file', 'stats' => ['enabled' => true]]);
+            $st = Stats::of($s);
+            $day = 86400;
+            // The 7 days before: 2 page views; these 7 days: 3, one of them a path with markup.
+            $st->count(['a:allow', 'pg:people|/a', 'pg:people|/a'], STATS_T0 - 8 * $day);
+            $st->count(['a:allow', 'pg:people|/a', 'pg:people|/b', 'pg:people|/<script>x', 'a:reject', 'pb:refused|/.env', 'pg:bots|/a'], STATS_T0 - $day);
+            $st->count(['a:allow'], STATS_T0 + 3600);                                      // rolled
+            $page = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 3600, 'lang' => 'en', 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]);
+            truthy(preg_match('~<label class="vt" for="vp-m0"><span class="l">Page views</span><span class="n">3</span><span class="d" title="before: 2">↑ 50 %</span></label>~', $page) === 1, 'page views by people, against the 7 days before');
+            truthy(strpos($page, '<span class="l">Stopped</span><span class="n">1</span><span class="d" title="before: 0">new</span>') !== false, 'stopped: new, nothing before');
+            same(6, substr_count($page, 'name="vp-m"'), 'six numbers, each a radio button for the chart');
+            same(1, substr_count($page, 'id="vp-m0" checked'), 'page views picked first');
+            truthy(substr_count($page, '<svg class="vline"') === 6 && strpos($page, 'class="vprev"') !== false, 'a chart for each number, the period before dashed');
+            same(7 * 6, substr_count($page, '<rect class="vcol"'), 'a point for each of the 7 days, the empty ones too');
+            truthy(strpos($page, '<title>Sep 29: 3 (before: 2)</title>') !== false, 'a point\'s numbers, and the same day a week before, as its tooltip');
+            truthy(strpos($page, '&lt;script&gt;x') !== false && strpos($page, '<script>x') === false, 'a path is never markup');
+            truthy(strpos($page, '<code>/.env</code>') !== false && strpos($page, '>Crawlers &amp; AI</h2>') !== false, 'the cards: pages (stopped) and crawlers & AI');
+            same(1, substr_count($page, '<script>'), 'one script: the refresh, which keeps the picked tabs');
+            truthy(strpos($page, "querySelectorAll('input[type=radio]:checked')") !== false, 'the refresh keeps what was picked');
+            // A range, this month, last month.
+            $range = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 3600, 'lang' => 'de', 'from' => '2026-09-01', 'to' => '2026-09-30', 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]);
+            truthy(strpos($range, '01.09.2026 – 30.09.2026') !== false && substr_count($range, '<rect class="vcol"') === 30 * 6, 'a range: every day of it');
+            truthy(strpos($range, 'class="pill on" href="/rs/stats?from=2026-09-01&amp;to=2026-09-30&amp;lang=de">Dieser Monat') !== false, 'this month is that range');
+            truthy(strpos($range, 'href="/rs/stats?from=2026-08-01&amp;to=2026-08-31&amp;lang=de">Letzter Monat') !== false, 'last month');
+            truthy(strpos($range, 'name="from" value="2026-09-01"') !== false && strpos($range, 'name="lang" value="de"') !== false, 'the range form');
+            $bad = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 3600, 'lang' => 'en', 'from' => '2026-02-30', 'to' => '"><x>', 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]);
+            truthy(strpos($bad, '<x>') === false && strpos($bad, 'class="pill on" href="/rs/stats?days=7') !== false, 'a range that is none: the last 7 days');
+            $today = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 3600, 'lang' => 'en', 'days' => 1, 'by' => 'hour']);
+            same(24 * 6, substr_count($today, '<rect class="vcol"'), 'today: 24 hours, against the 24 before');
+            // "now": with APCu a counter a minute, never on disk.
+            same(null, $st->lastMinutes(5, STATS_T0), 'without APCu: no "now"');
+            if (ApcuStore::usable()) {
+                $a = new Stats("$dir/apcu", true);
+                $a->minute(STATS_T0);
+                $a->minute(STATS_T0 + 61);
+                $a->minute(STATS_T0 - 400);                                                  // older than 5 minutes
+                same(2, $a->lastMinutes(5, STATS_T0 + 61), 'people\'s requests in the last 5 minutes');
+            }
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The visitors page** ("Visitors & pages", proposal 0022 phase 1): six
+  numbers with their change against the period before (page views by people,
+  requests by people, crawler visits, bot requests, stopped, not found), one
+  chart of the number picked with the period before dashed, "now" (people's
+  requests in the last 5 minutes, with APCu), and two cards with tabs: pages
+  (pages, sections, stopped, not found) and crawlers & AI (search, AI
+  assistants, AI training). Periods: also this month, last month and any range
+  (`from`/`to`). Tabs and the chart are radio buttons and CSS — no script; the
+  minute refresh keeps what was picked. `StatsReport::periods()` reads only the
+  numbers of a span; the buckets count page views (`views`); the report lists
+  the pages stopped most (`stopped`). 4–6 ms to render, 7–8 KB gzipped.
 - A friendlier check page: a ring around the site's logo that fills with the
   browser's progress while a dot circles it, a smile when it is done (the page
   goes on at once, nobody waits for it), a calm "!" when the check cannot

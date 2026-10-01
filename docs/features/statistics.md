@@ -90,9 +90,16 @@ if ($view !== null) {
 
 `Report\StatsPage::render()` prints the page, in **views** with tabs between them —
 the overview (`'view' => 'all'`) and two for different people: **Visitors & pages** (`'view' => 'site'`, the
-default — for editors: people, crawlers, pages not found, who came, the most
-visited pages and sections with the subtree filter, broken links, sitemaps,
-what the crawlers did) and **Protection** (`'view' => 'shield'` — for admins:
+default — for editors, [proposal 0022](../proposals/0022-visitors-page.md) phase 1: six numbers, each with its
+change against the period before — page views by people, requests by people,
+crawler visits, bot requests, stopped, not found —; one chart, of the number
+picked, with the period before dashed and a tooltip per point; "now", people's
+requests in the last five minutes (with APCu: one counter a minute, never on
+disk, ~0.7 µs a request); two cards with tabs — **pages** (pages, sections with
+the subtree filter, stopped, not found with their referrers) and **crawlers &
+AI** (search, AI assistants, AI training) —; then the sentences and the
+sitemaps. Picking a number or a tab is a radio button and CSS: no script, and
+the refresh keeps what was picked) and **Protection** (`'view' => 'shield'` — for admins:
 requests, bots, checked, refused, what the shield did, the pages it stopped most, the answers, the rules
 that decided most — each with what it does, where it is written and a link to it —,
 bot families). A CMS can put each where it belongs, one view without tabs
@@ -106,7 +113,11 @@ claimed), the sitemaps, pages not found with their referrers, the rules and the
 bot families. Charts are inline SVG and CSS — no script library, no external
 file; a tooltip on every bar; dark mode; **English and German** (the browser's
 language, or `'lang' => 'de'`); it refreshes itself every minute
-(`'fragment' => true` returns only the content). Print it where only the site's
+(`'fragment' => true` returns only the content). The period: 24 hours, 7 or 30
+days, 12 months, this month, last month, or any range (`'from'`, `'to'` as
+`YYYY-MM-DD`, at most ten years; the page has a form with two date fields). The
+visitors page renders in 4–6 ms (the period before included), 41–63 KB of
+HTML, 7–8 KB gzipped. Print it where only the site's
 people see it — behind the CMS's login, or at a path restricted to some
 addresses. The demo has it at `/rs/…`.
 

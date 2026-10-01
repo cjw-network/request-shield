@@ -39,7 +39,8 @@ final class StatsReport
      *   notFound: array<string, array{count: int, referrers: array<string, int>}>,
      *   sitemaps: array<string, array{statuses: array<string, int>, crawlers: array<string, array{count: int, last: ?int}>}>,
      *   pages: array<string, array{people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int}>, folders: array<string, array{people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int}>,
-     *   subtree: array{path: string, people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int, exact: bool}|null, sort: string, sentences: list<string>}
+     *   subtree: array{path: string, people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int, exact: bool}|null, sort: string,
+     *   stopped: array<string, array{people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int}>, sentences: list<string>}
      */
     public static function build(Settings $s, ?Stats $stats = null, int $days = 7, ?int $now = null, array $o = []): array
     {
@@ -51,16 +52,7 @@ final class StatsReport
         $by = in_array($o['by'] ?? 'day', ['day', 'week', 'month', 'year'], true) ? ($o['by'] ?? 'day') : 'day';
         $only = $o['crawler'] ?? null;
         $read = ($stats ?? Stats::of($s))->read($from, $to);
-        // Days and, where the days are gone, their months: each with the period it belongs to.
-        $sets = [];
-        foreach ($read['days'] as $day => $counts) {
-            $t = (int) strtotime($day . ' UTC');
-            $sets[] = [['day' => gmdate('Y-m-d', $t), 'week' => gmdate('o-\\WW', $t), 'month' => gmdate('Y-m', $t), 'year' => gmdate('Y', $t)][$by], $counts];
-        }
-        foreach ($read['months'] as $month => $counts) {
-            $t = (int) strtotime($month . '01 UTC');
-            $sets[] = [['day' => gmdate('Y-m', $t) . ' (month)', 'week' => gmdate('Y-m', $t) . ' (month)', 'month' => gmdate('Y-m', $t), 'year' => gmdate('Y', $t)][$by], $counts];
-        }
+        $sets = self::grouped($read, $by);
         $periods = [];
         foreach ($sets as [$label, $counts]) {
             $b = self::buckets($counts);
@@ -213,6 +205,10 @@ final class StatsReport
             $subtree = ['path' => $prefix] + $sum + ['exact' => $exact];
             $folders = array_filter($folders, static fn (string $p): bool => strncmp($p, $prefix, strlen($prefix)) === 0 && $p !== $prefix, ARRAY_FILTER_USE_KEY);
         }
+        // The pages the shield stopped most, whatever the list is sorted by (the visitors page's tab).
+        $stoppedTop = array_filter($views, static fn (array $v): bool => $v['blocked'] > 0);
+        uasort($stoppedTop, static fn (array $a, array $b): int => [$b['blocked'], $b['total']] <=> [$a['blocked'], $a['total']]);
+        $stoppedTop = array_slice($stoppedTop, 0, 20, true);
         // Only what has the number sorted by: a page nobody stopped is not on the blocked list.
         $views = array_filter($views, static fn (array $v): bool => $v[$key] > 0);
         $folders = array_filter($folders, static fn (array $v): bool => $v[$key] > 0);
@@ -254,8 +250,45 @@ final class StatsReport
                 'pages' => array_slice($top, 0, 10, true), 'last' => $read['last'][$id] ?? null];
         }
         return ['from' => $from, 'to' => $to, 'days' => $days, 'by' => $by, 'periods' => $periods, 'totals' => $totals, 'monitor' => $monitor, 'daily' => $daily, 'hourly' => $hourly,
-            'rules' => $rules, 'crawlers' => $out, 'bots' => $bots, 'statuses' => $statuses, 'notFound' => $notFound, 'sitemaps' => $maps, 'pages' => $views, 'folders' => $folders, 'subtree' => $subtree, 'sort' => $sort,
+            'rules' => $rules, 'crawlers' => $out, 'bots' => $bots, 'statuses' => $statuses, 'notFound' => $notFound, 'sitemaps' => $maps, 'pages' => $views, 'folders' => $folders, 'subtree' => $subtree, 'sort' => $sort, 'stopped' => $stoppedTop,
             'sentences' => array_merge(self::sentences($out, $days, $o['lang'] ?? 'en'), self::maps($maps, $days, $o['lang'] ?? 'en'), self::missing($notFound, $days, $o['lang'] ?? 'en'))];
+    }
+
+    /**
+     * Only the numbers per period of a span ("the period before" for a
+     * comparison): the buckets of each day, week, month or year, nothing else.
+     *
+     * @return array<string, array<string, int>>
+     */
+    public static function periods(Settings $s, ?Stats $stats, string $from, string $to, string $by = 'day'): array
+    {
+        $periods = [];
+        foreach (self::grouped(($stats ?? Stats::of($s))->read($from, $to), $by) as [$label, $counts]) {
+            $periods[$label] = Stats::add($periods[$label] ?? [], self::buckets($counts));
+        }
+        ksort($periods);
+        return $periods;
+    }
+
+    /**
+     * Days and, where the days are gone, their months: each with the period
+     * (day, week, month, year) it belongs to.
+     *
+     * @param array{days: array<string, array<string, int>>, months: array<string, array<string, int>>} $read
+     * @return list<array{0: string, 1: array<string, int>}>
+     */
+    private static function grouped(array $read, string $by): array
+    {
+        $sets = [];
+        foreach ($read['days'] as $day => $counts) {
+            $t = (int) strtotime($day . ' UTC');
+            $sets[] = [['day' => gmdate('Y-m-d', $t), 'week' => gmdate('o-\\WW', $t), 'month' => gmdate('Y-m', $t), 'year' => gmdate('Y', $t)][$by] ?? gmdate('Y-m-d', $t), $counts];
+        }
+        foreach ($read['months'] as $month => $counts) {
+            $t = (int) strtotime($month . '01 UTC');
+            $sets[] = [['day' => gmdate('Y-m', $t) . ' (month)', 'week' => gmdate('Y-m', $t) . ' (month)', 'month' => gmdate('Y-m', $t), 'year' => gmdate('Y', $t)][$by] ?? gmdate('Y-m', $t), $counts];
+        }
+        return $sets;
     }
 
     /**
@@ -376,9 +409,12 @@ final class StatsReport
         $crawlers = 0;
         $bots = 0;
         $requests = 0;
+        $views = 0;
         foreach ($counts as $k => $n) {
             $k = (string) $k;
-            if (strncmp($k, 'a:', 2) === 0) {
+            if (strncmp($k, 'pg:people|', 10) === 0) {
+                $views += $n;               // page views by people (part pages)
+            } elseif (strncmp($k, 'a:', 2) === 0) {
                 $requests += $n;
             } elseif (strncmp($k, 'o:', 2) === 0) {
                 $bots += $n;
@@ -390,7 +426,7 @@ final class StatsReport
             'throttled' => $counts['a:throttle'] ?? 0, 'refused' => $counts['a:reject'] ?? 0,
             // Who: people are what is neither a known crawler nor a bot that says so.
             'people' => max(0, $requests - $crawlers - $bots), 'crawlers' => $crawlers, 'bots' => $bots,
-            'notFound' => ($counts['s:404'] ?? 0) + ($counts['s:410'] ?? 0)];
+            'notFound' => ($counts['s:404'] ?? 0) + ($counts['s:410'] ?? 0), 'views' => $views];
     }
 
     /**

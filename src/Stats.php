@@ -53,6 +53,34 @@ final class Stats
     /** Sitemaps kept a day (and five times as many sitemap-crawler pairs); the rest count as "(other)". */
     public const SITEMAPS = 20;
 
+    /**
+     * "Now": one more request by a person in this minute -- with APCu only,
+     * never written to disk (it is gone after ten minutes).
+     */
+    public function minute(float $now): void
+    {
+        if ($this->apcu) {
+            apcu_inc($this->prefix . 'min:' . intdiv((int) $now, 60), 1, $ok, 600);
+        }
+    }
+
+    /** People's requests in the last $minutes minutes (this one included); null without APCu. */
+    public function lastMinutes(int $minutes, float $now): ?int
+    {
+        if (!$this->apcu) {
+            return null;
+        }
+        $keys = [];
+        for ($m = intdiv((int) $now, 60), $i = 0; $i < $minutes; $i++) {
+            $keys[] = $this->prefix . 'min:' . ($m - $i);
+        }
+        $sum = 0;
+        foreach ((array) apcu_fetch($keys) as $n) {
+            $sum += is_int($n) ? $n : 0;
+        }
+        return $sum;
+    }
+
     public function __construct(
         private string $dir,
         private bool $apcu,

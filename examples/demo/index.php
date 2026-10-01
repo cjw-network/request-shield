@@ -146,7 +146,9 @@ if ($path === '/search') {
     if (($_GET['format'] ?? '') === 'json') {
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(\CjwNetwork\RequestShield\Report\StatsReport::build($shield->settings, null, $days, null, ['by' => $by === null || $by === 'hour' ? 'day' : $by] + ($only !== null ? ['crawler' => $only] : [])
-            + (isset($_GET['path']) && $_GET['path'] !== '' ? ['path' => '/' . ltrim((string) $_GET['path'], '/')] : []) + (isset($_GET['sort']) ? ['sort' => (string) $_GET['sort']] : [])),
+            + (isset($_GET['path']) && $_GET['path'] !== '' ? ['path' => '/' . ltrim((string) $_GET['path'], '/')] : []) + (isset($_GET['sort']) ? ['sort' => (string) $_GET['sort']] : [])
+            + (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($_GET['from'] ?? '')) === 1 && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($_GET['to'] ?? '')) === 1
+                ? ['from' => str_replace('-', '', (string) $_GET['from']), 'to' => str_replace('-', '', (string) $_GET['to'])] : [])),
             JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -154,7 +156,7 @@ if ($path === '/search') {
     echo \CjwNetwork\RequestShield\Report\StatsPage::render($shield->settings, ['view' => $view, 'links' => array_map($url, \CjwNetwork\RequestShield\Report\StatsPage::links($shield->settings)),
         'days' => $days, 'crawler' => $only, 'path' => isset($_GET['path']) ? (string) $_GET['path'] : null, 'sort' => (string) ($_GET['sort'] ?? ''),
         'lang' => (string) ($_GET['lang'] ?? 'auto'), 'accept' => $request->header('accept-language'), 'fragment' => isset($_GET['fragment']),
-        'check' => $_GET, 'ip' => $request->clientIp,
+        'check' => $_GET, 'ip' => $request->clientIp, 'from' => (string) ($_GET['from'] ?? ''), 'to' => (string) ($_GET['to'] ?? ''),
         'home' => $url('/'), 'homeLabel' => 'request-shield demo'] + ($by !== null ? ['by' => $by] : []));
     exit;
 } elseif ($path === '/api/status') {

@@ -357,6 +357,9 @@ final class Shield
         $this->stats ??= Stats::of($s);
         $stats = $this->stats;
         $requests = in_array('requests', $parts, true);
+        if ($requests && $who === 'people') {
+            $stats->minute($now);           // "now" on the visitors page: one APCu counter a minute
+        }
         $missing = in_array('not-found', $parts, true);
         if (!$atEnd || (!$requests && !$missing && !$crawling && !$paging)) {
             if ($requests) {
