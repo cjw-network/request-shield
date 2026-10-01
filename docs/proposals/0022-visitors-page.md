@@ -9,135 +9,193 @@
 ## Summary
 
 An editor opening the statistics wants a few answers at a glance: how many
-pages were read, is it more or less than before, where did people come from,
-what did they read, on which devices — and, for this shield, who read the site
-for search engines and AI assistants. The best answer is **one calm page**: a
-row of numbers, one chart, four cards, every number compared with the period
-before.
+people came, how many pages they read, is it more or less than before, where
+did they come from — which country, which part of the company network —, what
+did they read, on which devices, did the contact form get sent — and, for this
+shield, who read the site for search engines and AI assistants. The best answer
+is **one calm page**: a row of numbers, one chart, six cards, every number
+compared with the period before.
 
-This proposal gives the **"Visitors & pages"** view that shape, **built only
-from what the shield counts or can count cheaply** — no script in the page, no
-cookie, no visitor identity. Most of the page works today; two cards need the
-small counters of proposals 0018 and 0020. Numbers that would need telling
-visitors apart (unique visitors, visits, bounce rate, visit duration, entry and
-exit pages) are not shown, and the page says so instead of guessing.
+This proposal gives the **"Visitors & pages"** view that shape, **built from
+what the shield sees anyway** — no script in the page, no cookie:
+
+- what it counts today (page views, pages, sections, crawlers, what it
+  stopped, what was not found) — **on**;
+- small new counters (sources, campaigns, devices, goals, "now") — **on with
+  statistics**;
+- **unique visitors and visits** (visitors, visits, pages per visit, bounce
+  rate, visit duration, entry pages) — **an option**, `set stats visitors on`,
+  counted the way server-log statistics have always counted them: by address
+  and browser, per day — but with a hash that changes every day and is never
+  written, and a sketch instead of a list;
+- **countries** — an option, with a GeoIP file;
+- **networks** — the areas of an intranet, by name or by their first two or
+  three octets, only for private addresses or ranges the site names.
 
 ## In one picture
 
-![The visitors page: the period and "compare with before"; six numbers with their change — page views by people, requests by people, crawler visits, bot requests, stopped by the shield, pages not found — and "now": people's requests in the last 5 minutes; a line chart of page views per day with the period before dashed; four cards — top sources (channels, sources, campaigns), pages (pages, sections, stopped, not found), crawlers and AI (search, AI search, training), devices (device class, browser, operating system); and goals. Green dots: counted today; blue: a small new counter.](0022-visitors-page.svg)
-
-A green dot marks what the shield counts today, a blue one what a small new
-counter adds.
+![The visitors page: the period and "compare with before", "now"; six numbers with their change — unique visitors, visits, page views, pages per visit, bounce rate, visit duration — and the shield's own numbers below them; a chart of visitors or page views per day with the period before dashed; six cards — top sources, pages (with entry pages), where from (countries, networks), devices, crawlers and AI, goals. Green: counted today; blue: a small new counter or an option; violet: only with "set stats visitors on".](0022-visitors-page.svg)
 
 ## Question by question — what the shield has
 
 | What an editor asks | The shield | How |
 |---|---|---|
 | How many pages were read? | **page views by people** ✓ | `pg:people|…` (part `pages`): GET, 200, HTML, not a crawler or bot — it also sees visitors who block scripts, and no bot that runs scripts inflates it |
+| How many people? How many visits? | **unique visitors, visits, pages per visit, bounce rate, visit duration** (option) | see "Visitors and visits" |
 | More or less than before? | **every number with its change**, the chart with the period before ✓ | the period before is read like the period itself |
-| What happens right now? | **requests by people in the last 5 minutes** (new, tiny) | one APCu counter per minute; it says "requests", not "visitors" |
-| Over time? | **page views by people per hour / day / week / month** ✓ | the counters per hour and day |
-| Which period? | ✓ today, 7/30 days, 12 months; **+ this month, last month, a range** | the report already takes `from`/`to`; the page gets the pills and a date field |
+| What happens right now? | **requests by people in the last 5 minutes** (new, tiny) | one APCu counter per minute; with the option: visitors with a page view in the last 5 minutes |
+| Which period? | ✓ today, 7/30 days, 12 months; **+ this month, last month, a range** | the report already takes `from`/`to` |
 | Where did people come from? | **channels and sources** (new, small: 0018 step 1) | the referrer's class at each page view: search, AI assistant, social, other sites, own site, direct — and the host for the top 50 |
 | Which campaign? | **campaigns** (new, small: 0020, part `campaigns`) | `utm_source`/`utm_medium`/`utm_campaign`, counted before 0020 removes them |
-| What did they read? | **pages** ✓, **sections** ✓ (subtree, `stats-depth`) | `pg:`, `pd:` |
+| Which country? | **countries** (option, with a GeoIP file) | see "Countries" |
+| Which site, plant, department network? | **networks** (new) | see "Networks" |
+| What did they read, where did they start? | **pages** ✓, **sections** ✓, **entry pages** (with the visitor option) | `pg:`, `pd:`; the first page of a visit |
 | What went wrong? | **stopped** ✓ and **not found** ✓, as tabs beside the pages | `pb:`, `n:` with their referrers |
-| Who reads the site for search and AI? | **crawlers & AI** ✓ — search, AI search, AI training, each with its last visit and the sitemap it read | 0011, 0014 |
+| Who reads the site for search and AI? | **crawlers & AI** ✓ | 0011, 0014 |
 | On which devices? | **device class, browser, OS** (new, small: 0018) | from the User-Agent at the page view |
-| Did the page do its job? | **goals** (new, small) | `goal <name> at <path>`: page views of a page that counts as a goal (a "thank you" page), "per 100 page views"; `Stats::goal()` from code |
-| Only this section / this crawler? | **filter by page or section** ✓, **by crawler** ✓, **by source → its landing pages** (new) | see "Filters" |
+| Did the page do its job? | **goals** (new, small) | `goal <name> at <path>` (a "thank you" page), `Stats::goal()` from code; per cent of visitors with the option, else per 100 page views |
 
 ## The page, from top to bottom
 
-1. **The period and "compare with before".** Today (by hour), 7 days, 30 days,
-   this month, last month, 12 months (by month), a range. Compare is on by
-   default: every number shows its change in per cent, the chart the period
-   before as a dashed grey line.
-2. **Six numbers** (tiles, each with its change):
-   page views by people · requests by people · crawler visits · bot requests ·
-   stopped by the shield · pages not found. Beside the site's name:
-   **now** — people's requests in the last 5 minutes (refreshed every 30 s).
-3. **The chart**: page views by people, one line; hover shows the day and
-   both periods' numbers. Clicking a tile switches the chart to that number.
-4. **Four cards**, each with tabs and a "more" link to the full list:
-   - **Top sources** — channels | sources | campaigns *(0018, 0020)*
-   - **Pages** — pages | sections | stopped | not found *(there today)*
-   - **Crawlers & AI** — search | AI search | AI training *(there today)*
-   - **Devices** — device class | browser | operating system *(0018)*
-5. **Goals** — the configured goals, each with its count and "per 100 page
-   views".
+1. **The period and "compare with before"** (on by default) and **now**.
+2. **Six numbers** with their change: unique visitors · visits · page views ·
+   pages per visit · bounce rate · visit duration. Without the visitor option
+   the row shows page views, requests by people, crawler visits, bot requests,
+   stopped, not found. Below the row, in one line, the shield's own numbers.
+3. **The chart**: visitors or page views (tabs), one line, the period before
+   dashed; clicking a number switches the chart to it.
+4. **Six cards**, each with tabs and a "more" link to the full list:
+   **top sources** (channels | sources | campaigns) · **pages** (pages | entry |
+   sections | stopped | not found) · **where from** (countries | networks) ·
+   **devices** (device | browser | operating system) · **crawlers & AI**
+   (search | AI search | AI training) · **goals**.
 
-The other views stay: **Protection** (what the shield did), **Rules & setup**,
-the **overview**.
+The other views stay: **Protection**, **Rules & setup**, the **overview**.
 
-## What the page does not show — and why
+## Visitors and visits (`set stats visitors on`)
 
-**Unique visitors, visits, views per visit, bounce rate, visit duration, entry
-and exit pages** all need to tell one visitor from another. Without a cookie
-that means a hash of the address and the browser string, salted anew every day.
-The shield **does not do this by default**: it would mean processing every
-visitor's address for statistics, which [docs/privacy.md](../privacy.md) keeps
-out of the default and 0018/0019 discuss as an **opt-in** (`set stats visitors
-on`, a daily salt in memory only, never written). If a site switches it on, the
-page gains those numbers and the tabs *entry* and *exit pages* — the layout
-leaves room for them. Without it, the page shows **what it counts, under the
-name of what it counts** ("page views", "requests"), never an estimate called
-"visitors".
+Statistics from web server logs have always counted unique visitors by the
+address (and a visit as the same address coming back after a pause). The shield
+can do the same live, without keeping addresses:
 
-**Countries** need a GeoIP database (DB-IP Lite, CC BY; GeoLite2 needs an
-account). Country only, looked up at the page view and never stored with the
-address, ~10–40 µs a page view. Possible as an option (`set stats geoip
-<file.mmdb>`); not in the first version — the card place goes to crawlers & AI.
+- **One visitor** is a hash of the address and the browser string
+  (`HMAC-SHA256`), keyed with a salt that is made at midnight, **lives only in
+  memory** (APCu) and is replaced the next day. The browser string keeps a whole
+  office behind one address from being one visitor; the daily salt makes
+  yesterday's hashes impossible to link to today's.
+- **Unique visitors** go into a **HyperLogLog sketch** per day (4 KB, about 1 %
+  error): no list of visitors at all, only registers. Sketches of days merge, so
+  a week, a month, a year have their real unique visitors, not a sum of days —
+  without keeping a salt longer than a day.
+- **Visits**: an APCu entry per hash that disappears after 30 minutes without a
+  page view (configurable: `stats-visit 30m`). No entry: a new visit begins, this
+  page is its **entry page**. A second page view: the visit is not a bounce.
+  The time since the last page view adds to the **visit duration**. From these
+  counters: visits, pages per visit, bounce rate, average duration.
+- **Not counted**: exit pages (an APCu entry does not say when it expires) and
+  anything a script would have to measure (time on the last page, scroll
+  depth).
+- **Accuracy**, as with any count without a cookie: many people behind one
+  proxy count as fewer (in a large intranet: let the CMS give the shield a
+  stable id, hashed the same way — `Stats::visitor($userId)`); changing IPv6
+  privacy addresses and mobile networks count as more; one person on two devices
+  is two visitors.
+- **Off by default.** It processes every visitor's address for statistics
+  (never stored, never sent anywhere): [docs/privacy.md](../privacy.md) gets a
+  section on it, and the page says how it counts. Whether a site may switch it
+  on is the site's decision (legitimate interest, its privacy notice); the
+  shield sets no cookie and reads nothing from the device.
 
-**Screen size, time on page, scroll depth** need a script in the page; out of
-scope (0018's beacon, with consent, if ever).
+## Countries (`set stats geoip <file>`)
+
+- A GeoIP country file: **DB-IP Lite** (CC BY 4.0 — the page shows "IP
+  geolocation by DB-IP", as its licence asks) or GeoLite2 (needs an account).
+  `bin/update-geoip` fetches the monthly file, like `bin/update-crawler-lists`.
+- Looked up at a page view by a person, **country only**, never stored with the
+  address. The result is cached per /24 (IPv6 /48) for a day in APCu, so most
+  page views pay ~1 µs; a lookup in the file ~10–40 µs (faster with the
+  `maxminddb` extension, which the shield uses when it is there).
+- Private addresses count as **"Intranet"**, unknown ones as **"unknown"**.
+
+## Networks: the areas of an intranet
+
+A company network is usually built by site: `10.12.x.x` is the Hamburg plant,
+`10.40.x.x` the head office, a VPN pool, the guest Wi-Fi. The shield can count
+page views (and, with the option, visitors) **per network area**:
+
+```
+network "Hamburg plant"  10.12.0.0/16
+network "Head office"    10.40.0.0/16 10.41.0.0/16
+network "VPN"            10.250.0.0/16 fd00:250::/32
+set stats-networks 16                 # any other private address: by its first two octets (8, 16 or 24; IPv6 32–64)
+```
+
+- **Named areas first** — the list shows "Hamburg plant", not `10.12.0.0/16`.
+- **Other private addresses** (10/8, 172.16/12, 192.168/16, IPv6 fc00::/7) by
+  their first two or three octets: `10.77.x.x`.
+- **Public addresses never by their octets**, only by a named range (a
+  partner's network) — for the internet a /24 is often a few households; the
+  country is enough.
+- The top 100 areas an hour, like every list.
+
+**Two cautions for an intranet:**
+
+- **Small areas identify people.** A /24 can be one department or one office.
+  So the finest grouping is /24 (never single addresses), and an area with fewer
+  than **5 visitors** in the period (with the option; else 20 page views) is
+  shown as "other areas" (`stats-min-group 5`).
+- **Employees' use of the intranet is a matter for the works council** in many
+  countries (in Germany co-determination under §87(1) no. 6 BetrVG, as soon as
+  data *could* be used to monitor performance or behaviour). The docs say so;
+  per-area numbers are off until a site names `network`s or sets
+  `stats-networks`.
 
 ## Filters
 
 The shield keeps **counters**, one dimension each, not every page view with all
 its details. So it filters only along what it counts together:
 
-- **a page or a section** → the chart and the numbers for it (page views by
-  people, crawlers, bots; stopped there) ✓ — the existing subtree filter
+- **a page or a section** → the chart and the numbers for it ✓ (the subtree
+  filter)
 - **one crawler** → its pages and visits ✓
-- **a source** → its **landing pages** (new: `src:<class>|<path>` for the top
-  50 pages per class) — the one cross-count worth its cost
-- anything else (a device *and* a page) — not offered; a card that cannot
-  follow a filter says so ("not by page")
-
-This keeps memory bounded (every list stops at its limit) and the cost per
-page view at a few counters.
+- **a source** → its **landing pages** (new: `src:<class>|<path>`, top 50 per
+  class)
+- **a network area** → its pages (new: `nwp:<area>|<path>`, top 50 per area)
+- anything else (a device *and* a country) — not offered; a card that cannot
+  follow a filter says so
 
 ## Cost
 
 Per page view by a person, with APCu: today one `pg:` and up to `stats-depth`
-`pd:` counters. New: the referrer class and host (2 counters), the landing page
-per source (1), device, browser, OS (3), a goal when the path is one (a
-precompiled expression, ~1 µs), the minute counter for "now" (1). About
-**+2–4 µs** a page view, in line with the measurements in
-[statistics.md](../features/statistics.md#cost). Reading: the page reads the
-period and the period before — twice the day files (a week: ~40 ms).
+`pd:` counters. New: referrer class and host (2), landing page (1), device,
+browser, OS (3), a goal when the path is one (~1 µs), the minute counter (1):
+**+2–4 µs**. With countries: ~1 µs (cached per /24), ~10–40 µs on a cache miss.
+With networks: a range check against the named areas (one precompiled list,
+~1 µs) and 1–2 counters. With visitors: one HMAC, one or two APCu calls, a
+sketch update: **+3–5 µs**, and ~100 bytes per visitor active in the last 30
+minutes plus 4 KB a day. Reading: the period and the period before (a week:
+~40 ms).
 
 ## Phases
 
-1. **The layout with today's data**: the tiles with their change, the chart
-   with the period before, the pages card with its four tabs, the crawlers & AI
-   card, "now", the extra periods and a range. *No new counters except the
-   minute one.*
-2. **Sources and devices** (0018 step 1) and **campaigns** (0020): the two blue
-   cards fill; landing pages per source.
-3. **Goals**: `goal <name> at <path>` and `Stats::goal()`.
-4. *Optional, later*: GeoIP countries; the opt-in visitor count (with visits,
-   bounce rate, duration, entry and exit pages).
+1. **The layout with today's data**: tiles with their change, the chart with
+   the period before, the pages card with its tabs, the crawlers & AI card,
+   "now", the extra periods and a range.
+2. **Sources, devices, campaigns** (0018 step 1, 0020) and **goals**.
+3. **Networks** (named areas, private ranges by octets, the minimum group).
+4. **Visitors and visits** (the option): the sketch, the visit entries, entry
+   pages, `Stats::visitor()`; docs/privacy.md.
+5. **Countries** (the option): `bin/update-geoip`, the lookup, the cache.
 
 ## Open questions
 
-1. **Replace "Visitors & pages", or a fifth view?** *Recommendation: replace —
-   the same audience (editors), one page instead of two.*
-2. **Compare on by default?** *Recommendation: yes.*
-3. **Goals in the rule file, or only from code?** *Recommendation: both — `goal
-   … at …` for pages, `Stats::goal()` for events.*
-4. **GeoIP countries in phase 4, or never?** *Recommendation: phase 4, off by
-   default, country only.*
-5. **The opt-in visitor count:** build it at all? *Recommendation: decide after
-   phases 1–3 — most questions are answered without it.*
+1. **Replace "Visitors & pages", or a fifth view?** *Recommendation: replace.*
+2. **The visitor option: off or on by default?** *Recommendation: off — a site
+   decides, and the page says how it counts when it is on.*
+3. **Visit timeout:** 30 minutes, or the hour server-log statistics often use?
+   *Recommendation: 30 minutes, configurable.*
+4. **Networks: grouping by /16 or /24 by default, and the minimum group of 5?**
+   *Recommendation: /16 (two octets) and 5; /24 only when a site sets it.*
+5. **Countries: DB-IP Lite as the default source?** *Recommendation: yes —
+   free, monthly, CC BY; GeoLite2 for sites that have an account.*
+6. **Goals in the rule file, or only from code?** *Recommendation: both.*

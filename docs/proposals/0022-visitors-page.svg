@@ -1,88 +1,107 @@
-<svg class="rsd" role="img" viewBox="0 0 900 820" width="100%" xmlns="http://www.w3.org/2000/svg">
-<title>The visitors page, built from the shield's own data. Top: the period (today, 7 days, 30 days, this month, last month, 12 months, a range) and "compare with the period before". A row of six numbers: page views by people, requests by people, crawler visits, bot requests, stopped by the shield, pages not found, each with its change against the period before, and "now": people's requests in the last 5 minutes. A line chart of page views per day, the period before as a dashed grey line. Then four cards: top sources (channels, sources, campaigns — needs the referrer counters of proposal 0018 and the campaign counter of 0020), pages (pages, sections, stopped, not found — there today), crawlers and AI instead of locations (search engines, AI search, AI training — there today), devices (device class, browser, operating system — 0018). Last: goals, page views of the pages that count as a goal (new, small). Green marks what the shield counts today, blue what a small counter adds. Not shown, on purpose: unique visitors, visits, bounce rate, visit duration, entry and exit pages, screen size, locations by default.</title>
-<style>.rsd{font:13px/1.25 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .page{fill:#f4f6f9}.rsd .card{fill:#fff;stroke:#e3e7ec}.rsd .pill{fill:#fff;stroke:#d5dae1}.rsd .on{fill:#2f62c9}.rsd .onT{fill:#fff}.rsd .grid{stroke:#e8ebef}.rsd .line{stroke:#2f62c9;stroke-width:2;fill:none}.rsd .prev{stroke:#9aa3ae;stroke-width:2;stroke-dasharray:5 4;fill:none}.rsd .area{fill:#2f62c9;opacity:.08}.rsd .bar{fill:#2f62c9;opacity:.14}.rsd .have{fill:#1e7b43}.rsd .add{fill:#2f62c9}.rsd .no{fill:#8a929c}.rsd .up{fill:#1e7b43}.rsd .down{fill:#a3361f}.rsd .tab{fill:#1d2127;font-weight:600}.rsd .tabm{fill:#5b6470}.rsd .ul{stroke:#2f62c9;stroke-width:2}.rsd .dot{fill:#1e7b43}@media (prefers-color-scheme:dark){.rsd .t,.rsd .tab{fill:#e7e9ec}.rsd .m,.rsd .tabm{fill:#a0a8b3}.rsd .page{fill:#121519}.rsd .card{fill:#1b1f24;stroke:#2d333b}.rsd .pill{fill:#1b1f24;stroke:#3a414b}.rsd .grid{stroke:#2d333b}.rsd .line{stroke:#7aa2ff}.rsd .area,.rsd .bar,.rsd .on,.rsd .add{fill:#7aa2ff}.rsd .ul{stroke:#7aa2ff}.rsd .have,.rsd .up,.rsd .dot{fill:#4cc38a}.rsd .down{fill:#ff7a66}}</style>
-<rect class="page" x="0" y="0" width="900" height="820" rx="10"/>
+<svg class="rsd" role="img" viewBox="0 0 900 1000" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>The visitors page, built from the shield's own data. Top: the period and "compare with the period before", and "now": people's requests in the last 5 minutes. A row of six numbers with their change: unique visitors, visits, page views by people, pages per visit, bounce rate and visit duration (all but page views only with the opt-in "set stats visitors on"), and below it the shield's own numbers: crawler visits, bot requests, stopped, not found. A line chart of visitors or page views per day, the period before dashed. Then six cards: top sources (channels, sources, campaigns), pages (pages, entry pages, sections, stopped, not found), where from (countries from a GeoIP database; networks: the intranet's areas by name or by their first two or three octets), devices (device class, browser, operating system), crawlers and AI (search, AI search, AI training), goals. Green dots: counted today; blue: a small new counter or option; violet: only with the visitor opt-in.</title>
+<style>.rsd{font:13px/1.25 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .page{fill:#f4f6f9}.rsd .card{fill:#fff;stroke:#e3e7ec}.rsd .pill{fill:#fff;stroke:#d5dae1}.rsd .on{fill:#2f62c9}.rsd .onT{fill:#fff}.rsd .grid{stroke:#e8ebef}.rsd .line{stroke:#2f62c9;stroke-width:2;fill:none}.rsd .prev{stroke:#9aa3ae;stroke-width:2;stroke-dasharray:5 4;fill:none}.rsd .area{fill:#2f62c9;opacity:.08}.rsd .bar{fill:#2f62c9;opacity:.14}.rsd .have{fill:#1e7b43}.rsd .add{fill:#2f62c9}.rsd .opt{fill:#8b5cf6}.rsd .up{fill:#1e7b43}.rsd .down{fill:#a3361f}.rsd .tab{fill:#1d2127;font-weight:600}.rsd .tabm{fill:#5b6470}.rsd .ul{stroke:#2f62c9;stroke-width:2}@media (prefers-color-scheme:dark){.rsd .t,.rsd .tab{fill:#e7e9ec}.rsd .m,.rsd .tabm{fill:#a0a8b3}.rsd .page{fill:#121519}.rsd .card{fill:#1b1f24;stroke:#2d333b}.rsd .pill{fill:#1b1f24;stroke:#3a414b}.rsd .grid{stroke:#2d333b}.rsd .line{stroke:#7aa2ff}.rsd .area,.rsd .bar,.rsd .on,.rsd .add{fill:#7aa2ff}.rsd .ul{stroke:#7aa2ff}.rsd .have,.rsd .up{fill:#4cc38a}.rsd .down{fill:#ff7a66}.rsd .opt{fill:#a78bfa}}</style>
+<rect class="page" x="0" y="0" width="900" height="1000" rx="10"/>
 
-<!-- Header: period, compare, now -->
+<!-- Header -->
 <text class="t" x="24" y="34" font-size="17" font-weight="700">example.org</text>
-<circle class="dot" cx="186" cy="29" r="4"/><text class="m" x="196" y="34">now: 14 requests by people (5 min)</text>
+<circle class="have" cx="186" cy="29" r="4"/><text class="m" x="196" y="34">now: 14 requests by people (5 min)</text>
 <rect class="pill" x="470" y="16" width="56" height="26" rx="13"/><text class="m" x="498" y="33" text-anchor="middle" font-size="12">Today</text>
 <rect class="on" x="532" y="16" width="62" height="26" rx="13"/><text class="onT" x="563" y="33" text-anchor="middle" font-size="12">7 days</text>
 <rect class="pill" x="600" y="16" width="66" height="26" rx="13"/><text class="m" x="633" y="33" text-anchor="middle" font-size="12">30 days</text>
 <rect class="pill" x="672" y="16" width="70" height="26" rx="13"/><text class="m" x="707" y="33" text-anchor="middle" font-size="12">12 months</text>
 <rect class="pill" x="748" y="16" width="128" height="26" rx="13"/><text class="m" x="812" y="33" text-anchor="middle" font-size="12">☑ compare: before</text>
 
-<!-- KPI row -->
-<rect class="card" x="16" y="56" width="868" height="96" rx="10"/>
+<!-- Numbers -->
+<rect class="card" x="16" y="56" width="868" height="124" rx="10"/>
 <g font-size="12">
-<text class="m" x="34" y="80">PAGE VIEWS · PEOPLE</text><text class="t" x="34" y="110" font-size="24" font-weight="700">12,480</text><text class="up" x="34" y="132">↑ 18 %</text>
-<text class="m" x="178" y="80">REQUESTS · PEOPLE</text><text class="t" x="178" y="110" font-size="24" font-weight="700">31,902</text><text class="up" x="178" y="132">↑ 9 %</text>
-<text class="m" x="322" y="80">CRAWLER VISITS</text><text class="t" x="322" y="110" font-size="24" font-weight="700">4,215</text><text class="down" x="322" y="132">↓ 4 %</text>
-<text class="m" x="466" y="80">BOT REQUESTS</text><text class="t" x="466" y="110" font-size="24" font-weight="700">2,031</text><text class="up" x="466" y="132">↑ 31 %</text>
-<text class="m" x="610" y="80">STOPPED</text><text class="t" x="610" y="110" font-size="24" font-weight="700">1,177</text><text class="up" x="610" y="132">↑ 12 %</text>
-<text class="m" x="754" y="80">NOT FOUND</text><text class="t" x="754" y="110" font-size="24" font-weight="700">96</text><text class="down" x="754" y="132">↓ 22 %</text>
-</g>
-<circle class="have" cx="870" cy="70" r="5"/>
-
-<!-- Main chart -->
-<rect class="card" x="16" y="164" width="868" height="200" rx="10"/>
-<text class="t" x="34" y="190" font-weight="600">Page views by people</text><text class="m" x="200" y="190" font-size="12">per day · dashed: the 7 days before</text>
-<circle class="have" cx="870" cy="178" r="5"/>
-<g class="grid"><path d="M60 214 H860"/><path d="M60 254 H860"/><path d="M60 294 H860"/><path d="M60 334 H860"/></g>
-<g class="m" font-size="11" text-anchor="end"><text x="52" y="218">2.4k</text><text x="52" y="258">1.6k</text><text x="52" y="298">0.8k</text><text x="52" y="338">0</text></g>
-<path class="area" d="M80 286 L210 270 L340 262 L470 240 L600 252 L730 226 L840 218 L840 334 L80 334 Z"/>
-<path class="prev" d="M80 296 L210 282 L340 288 L470 268 L600 276 L730 258 L840 262"/>
-<path class="line" d="M80 286 L210 270 L340 262 L470 240 L600 252 L730 226 L840 218"/>
-<g class="m" font-size="11" text-anchor="middle"><text x="80" y="354">Sep 24</text><text x="210" y="354">25</text><text x="340" y="354">26</text><text x="470" y="354">27</text><text x="600" y="354">28</text><text x="730" y="354">29</text><text x="840" y="354">30</text></g>
-
-<!-- Card: top sources -->
-<rect class="card" x="16" y="376" width="430" height="190" rx="10"/>
-<text class="t" x="34" y="402" font-weight="600">Top sources</text><circle class="add" cx="432" cy="390" r="5"/>
-<text class="tab" x="170" y="402" font-size="12">Channels</text><path class="ul" d="M170 408 H222"/><text class="tabm" x="234" y="402" font-size="12">Sources</text><text class="tabm" x="290" y="402" font-size="12">Campaigns</text>
-<g font-size="12">
-<rect class="bar" x="30" y="418" width="290" height="24" rx="4"/><text class="t" x="38" y="434">Search</text><text class="t" x="430" y="434" text-anchor="end">5,210</text>
-<rect class="bar" x="30" y="446" width="170" height="24" rx="4"/><text class="t" x="38" y="462">Direct / none</text><text class="t" x="430" y="462" text-anchor="end">3,044</text>
-<rect class="bar" x="30" y="474" width="96" height="24" rx="4"/><text class="t" x="38" y="490">AI assistants (chatgpt.com, perplexity.ai …)</text><text class="t" x="430" y="490" text-anchor="end">1,702</text>
-<rect class="bar" x="30" y="502" width="70" height="24" rx="4"/><text class="t" x="38" y="518">Social</text><text class="t" x="430" y="518" text-anchor="end">1,250</text>
-<rect class="bar" x="30" y="530" width="52" height="24" rx="4"/><text class="t" x="38" y="546">Other sites · Newsletter (utm)</text><text class="t" x="430" y="546" text-anchor="end">931</text>
+<circle class="opt" cx="38" cy="76" r="4"/><text class="m" x="48" y="80">UNIQUE VISITORS</text><text class="t" x="34" y="110" font-size="24" font-weight="700">4,912</text><text class="up" x="34" y="130">↑ 14 %</text>
+<circle class="opt" cx="182" cy="76" r="4"/><text class="m" x="192" y="80">VISITS</text><text class="t" x="178" y="110" font-size="24" font-weight="700">6,377</text><text class="up" x="178" y="130">↑ 11 %</text>
+<circle class="have" cx="326" cy="76" r="4"/><text class="m" x="336" y="80">PAGE VIEWS</text><text class="t" x="322" y="110" font-size="24" font-weight="700">12,480</text><text class="up" x="322" y="130">↑ 18 %</text>
+<circle class="opt" cx="470" cy="76" r="4"/><text class="m" x="480" y="80">PAGES / VISIT</text><text class="t" x="466" y="110" font-size="24" font-weight="700">1.96</text><text class="up" x="466" y="130">↑ 6 %</text>
+<circle class="opt" cx="614" cy="76" r="4"/><text class="m" x="624" y="80">BOUNCE RATE</text><text class="t" x="610" y="110" font-size="24" font-weight="700">54 %</text><text class="up" x="610" y="130">↓ 3 %</text>
+<circle class="opt" cx="758" cy="76" r="4"/><text class="m" x="768" y="80">VISIT DURATION</text><text class="t" x="754" y="110" font-size="24" font-weight="700">1m 48s</text><text class="up" x="754" y="130">↑ 9 %</text>
+<path class="grid" d="M34 144 H866"/>
+<circle class="have" cx="38" cy="162" r="4"/><text class="m" x="48" y="166">the shield:  4,215 crawler visits  ·  2,031 bot requests  ·  1,177 stopped  ·  96 not found</text>
 </g>
 
-<!-- Card: pages -->
-<rect class="card" x="454" y="376" width="430" height="190" rx="10"/>
-<text class="t" x="472" y="402" font-weight="600">Pages</text><circle class="have" cx="870" cy="390" r="5"/>
-<text class="tab" x="560" y="402" font-size="12">Pages</text><path class="ul" d="M560 408 H596"/><text class="tabm" x="608" y="402" font-size="12">Sections</text><text class="tabm" x="666" y="402" font-size="12">Stopped</text><text class="tabm" x="722" y="402" font-size="12">Not found</text>
+<!-- Chart -->
+<rect class="card" x="16" y="192" width="868" height="196" rx="10"/>
+<text class="tab" x="34" y="218">Visitors</text><path class="ul" d="M34 224 H88"/><text class="tabm" x="104" y="218">Page views</text>
+<text class="m" x="200" y="218" font-size="12">per day · dashed: the 7 days before</text>
+<g class="grid"><path d="M60 240 H860"/><path d="M60 278 H860"/><path d="M60 316 H860"/><path d="M60 354 H860"/></g>
+<g class="m" font-size="11" text-anchor="end"><text x="52" y="244">900</text><text x="52" y="282">600</text><text x="52" y="320">300</text><text x="52" y="358">0</text></g>
+<path class="area" d="M80 306 L210 292 L340 286 L470 262 L600 274 L730 250 L840 244 L840 354 L80 354 Z"/>
+<path class="prev" d="M80 316 L210 304 L340 310 L470 290 L600 298 L730 282 L840 286"/>
+<path class="line" d="M80 306 L210 292 L340 286 L470 262 L600 274 L730 250 L840 244"/>
+<g class="m" font-size="11" text-anchor="middle"><text x="80" y="376">Sep 24</text><text x="210" y="376">25</text><text x="340" y="376">26</text><text x="470" y="376">27</text><text x="600" y="376">28</text><text x="730" y="376">29</text><text x="840" y="376">30</text></g>
+
+<!-- Row 1: sources | pages -->
+<rect class="card" x="16" y="400" width="430" height="178" rx="10"/>
+<text class="t" x="34" y="426" font-weight="600">Top sources</text><circle class="add" cx="432" cy="414" r="5"/>
+<text class="tab" x="170" y="426" font-size="12">Channels</text><path class="ul" d="M170 432 H222"/><text class="tabm" x="234" y="426" font-size="12">Sources</text><text class="tabm" x="290" y="426" font-size="12">Campaigns</text>
 <g font-size="12">
-<rect class="bar" x="468" y="418" width="300" height="24" rx="4"/><text class="t" x="476" y="434">/</text><text class="t" x="868" y="434" text-anchor="end">3,980</text>
-<rect class="bar" x="468" y="446" width="190" height="24" rx="4"/><text class="t" x="476" y="462">/news/</text><text class="t" x="868" y="462" text-anchor="end">2,511</text>
-<rect class="bar" x="468" y="474" width="120" height="24" rx="4"/><text class="t" x="476" y="490">/news/2026/new-opening-hours</text><text class="t" x="868" y="490" text-anchor="end">1,604</text>
-<rect class="bar" x="468" y="502" width="80" height="24" rx="4"/><text class="t" x="476" y="518">/contact</text><text class="t" x="868" y="518" text-anchor="end">1,055</text>
-<rect class="bar" x="468" y="530" width="56" height="24" rx="4"/><text class="t" x="476" y="546">/about</text><text class="t" x="868" y="546" text-anchor="end">712</text>
+<rect class="bar" x="30" y="440" width="290" height="24" rx="4"/><text class="t" x="38" y="456">Search</text><text class="t" x="430" y="456" text-anchor="end">2,061</text>
+<rect class="bar" x="30" y="468" width="170" height="24" rx="4"/><text class="t" x="38" y="484">Direct / none</text><text class="t" x="430" y="484" text-anchor="end">1,204</text>
+<rect class="bar" x="30" y="496" width="96" height="24" rx="4"/><text class="t" x="38" y="512">AI assistants</text><text class="t" x="430" y="512" text-anchor="end">688</text>
+<rect class="bar" x="30" y="524" width="70" height="24" rx="4"/><text class="t" x="38" y="540">Social</text><text class="t" x="430" y="540" text-anchor="end">503</text>
+<text class="m" x="34" y="566" font-size="11">by visitors with the opt-in, else by page views</text>
+</g>
+<rect class="card" x="454" y="400" width="430" height="178" rx="10"/>
+<text class="t" x="472" y="426" font-weight="600">Pages</text><circle class="have" cx="870" cy="414" r="5"/>
+<text class="tab" x="530" y="426" font-size="12">Pages</text><path class="ul" d="M530 432 H566"/><text class="tabm" x="576" y="426" font-size="12">Entry</text><text class="tabm" x="614" y="426" font-size="12">Sections</text><text class="tabm" x="672" y="426" font-size="12">Stopped</text><text class="tabm" x="728" y="426" font-size="12">Not found</text>
+<circle class="opt" cx="604" cy="414" r="3"/>
+<g font-size="12">
+<rect class="bar" x="468" y="440" width="300" height="24" rx="4"/><text class="t" x="476" y="456">/</text><text class="t" x="868" y="456" text-anchor="end">3,980</text>
+<rect class="bar" x="468" y="468" width="190" height="24" rx="4"/><text class="t" x="476" y="484">/news/</text><text class="t" x="868" y="484" text-anchor="end">2,511</text>
+<rect class="bar" x="468" y="496" width="120" height="24" rx="4"/><text class="t" x="476" y="512">/news/2026/new-opening-hours</text><text class="t" x="868" y="512" text-anchor="end">1,604</text>
+<rect class="bar" x="468" y="524" width="80" height="24" rx="4"/><text class="t" x="476" y="540">/contact</text><text class="t" x="868" y="540" text-anchor="end">1,055</text>
 </g>
 
-<!-- Card: crawlers & AI -->
-<rect class="card" x="16" y="578" width="430" height="168" rx="10"/>
-<text class="t" x="34" y="604" font-weight="600">Crawlers &amp; AI</text><circle class="have" cx="432" cy="592" r="5"/>
-<text class="tab" x="276" y="604" font-size="12">Search</text><path class="ul" d="M276 610 H316"/><text class="tabm" x="326" y="604" font-size="12">AI search</text><text class="tabm" x="386" y="604" font-size="12">Training</text>
+<!-- Row 2: where from | devices -->
+<rect class="card" x="16" y="590" width="430" height="178" rx="10"/>
+<text class="t" x="34" y="616" font-weight="600">Where from</text><circle class="add" cx="432" cy="604" r="5"/>
+<text class="tab" x="170" y="616" font-size="12">Countries</text><path class="ul" d="M170 622 H226"/><text class="tabm" x="238" y="616" font-size="12">Networks</text>
 <g font-size="12">
-<rect class="bar" x="30" y="620" width="300" height="24" rx="4"/><text class="t" x="38" y="636">Googlebot · read /sitemap.xml 2 h ago</text><text class="t" x="430" y="636" text-anchor="end">2,904</text>
-<rect class="bar" x="30" y="648" width="110" height="24" rx="4"/><text class="t" x="38" y="664">Bingbot</text><text class="t" x="430" y="664" text-anchor="end">911</text>
-<rect class="bar" x="30" y="676" width="40" height="24" rx="4"/><text class="t" x="38" y="692">Applebot</text><text class="t" x="430" y="692" text-anchor="end">288</text>
-<text class="m" x="34" y="726" font-size="11">verified by their address · 3 only claimed a name</text>
+<rect class="bar" x="30" y="630" width="290" height="24" rx="4"/><text class="t" x="38" y="646">Germany</text><text class="t" x="430" y="646" text-anchor="end">3,402</text>
+<rect class="bar" x="30" y="658" width="62" height="24" rx="4"/><text class="t" x="38" y="674">Austria</text><text class="t" x="430" y="674" text-anchor="end">611</text>
+<rect class="bar" x="30" y="686" width="48" height="24" rx="4"/><text class="t" x="38" y="702">Switzerland</text><text class="t" x="430" y="702" text-anchor="end">498</text>
+<rect class="bar" x="30" y="714" width="40" height="24" rx="4"/><text class="t" x="38" y="730">Intranet (private addresses)</text><text class="t" x="430" y="730" text-anchor="end">401</text>
+<text class="m" x="34" y="758" font-size="11">Networks: "Plant Hamburg" 10.12.0.0/16 · 10.40.x.x · … (intranet only)</text>
+</g>
+<rect class="card" x="454" y="590" width="430" height="178" rx="10"/>
+<text class="t" x="472" y="616" font-weight="600">Devices</text><circle class="add" cx="870" cy="604" r="5"/>
+<text class="tab" x="600" y="616" font-size="12">Device</text><path class="ul" d="M600 622 H640"/><text class="tabm" x="652" y="616" font-size="12">Browser</text><text class="tabm" x="710" y="616" font-size="12">Operating system</text>
+<g font-size="12">
+<rect class="bar" x="468" y="630" width="250" height="24" rx="4"/><text class="t" x="476" y="646">Mobile</text><text class="t" x="868" y="646" text-anchor="end">58 %</text>
+<rect class="bar" x="468" y="658" width="160" height="24" rx="4"/><text class="t" x="476" y="674">Desktop</text><text class="t" x="868" y="674" text-anchor="end">37 %</text>
+<rect class="bar" x="468" y="686" width="22" height="24" rx="4"/><text class="t" x="476" y="702">Tablet</text><text class="t" x="868" y="702" text-anchor="end">5 %</text>
+<text class="m" x="472" y="758" font-size="11">from the browser string · no screen size (needs a script)</text>
 </g>
 
-<!-- Card: devices -->
-<rect class="card" x="454" y="578" width="430" height="168" rx="10"/>
-<text class="t" x="472" y="604" font-weight="600">Devices</text><circle class="add" cx="870" cy="592" r="5"/>
-<text class="tab" x="600" y="604" font-size="12">Device</text><path class="ul" d="M600 610 H640"/><text class="tabm" x="652" y="604" font-size="12">Browser</text><text class="tabm" x="710" y="604" font-size="12">Operating system</text>
+<!-- Row 3: crawlers & AI | goals -->
+<rect class="card" x="16" y="780" width="430" height="150" rx="10"/>
+<text class="t" x="34" y="806" font-weight="600">Crawlers &amp; AI</text><circle class="have" cx="432" cy="794" r="5"/>
+<text class="tab" x="276" y="806" font-size="12">Search</text><path class="ul" d="M276 812 H316"/><text class="tabm" x="326" y="806" font-size="12">AI search</text><text class="tabm" x="386" y="806" font-size="12">Training</text>
 <g font-size="12">
-<rect class="bar" x="468" y="620" width="250" height="24" rx="4"/><text class="t" x="476" y="636">Mobile</text><text class="t" x="868" y="636" text-anchor="end">58 %</text>
-<rect class="bar" x="468" y="648" width="160" height="24" rx="4"/><text class="t" x="476" y="664">Desktop</text><text class="t" x="868" y="664" text-anchor="end">37 %</text>
-<rect class="bar" x="468" y="676" width="22" height="24" rx="4"/><text class="t" x="476" y="692">Tablet</text><text class="t" x="868" y="692" text-anchor="end">5 %</text>
-<text class="m" x="472" y="726" font-size="11">from the browser string · no screen size (needs a script)</text>
+<rect class="bar" x="30" y="820" width="300" height="24" rx="4"/><text class="t" x="38" y="836">Googlebot · read /sitemap.xml 2 h ago</text><text class="t" x="430" y="836" text-anchor="end">2,904</text>
+<rect class="bar" x="30" y="848" width="110" height="24" rx="4"/><text class="t" x="38" y="864">Bingbot</text><text class="t" x="430" y="864" text-anchor="end">911</text>
+<rect class="bar" x="30" y="876" width="40" height="24" rx="4"/><text class="t" x="38" y="892">Applebot</text><text class="t" x="430" y="892" text-anchor="end">288</text>
+<text class="m" x="34" y="918" font-size="11">verified by their address · 3 only claimed a name</text>
+</g>
+<rect class="card" x="454" y="780" width="430" height="150" rx="10"/>
+<text class="t" x="472" y="806" font-weight="600">Goals</text><circle class="add" cx="870" cy="794" r="5"/>
+<g font-size="12">
+<rect class="bar" x="468" y="820" width="220" height="24" rx="4"/><text class="t" x="476" y="836">Contact form sent</text><text class="t" x="868" y="836" text-anchor="end">212 · 4.3 %</text>
+<rect class="bar" x="468" y="848" width="60" height="24" rx="4"/><text class="t" x="476" y="864">Newsletter sign-up</text><text class="t" x="868" y="864" text-anchor="end">58 · 1.2 %</text>
+<rect class="bar" x="468" y="876" width="32" height="24" rx="4"/><text class="t" x="476" y="892">Brochure PDF</text><text class="t" x="868" y="892" text-anchor="end">31 · 0.6 %</text>
+<text class="m" x="472" y="918" font-size="11">% of unique visitors with the opt-in, else per 100 page views</text>
 </g>
 
-<!-- Goals -->
-<rect class="card" x="16" y="758" width="868" height="48" rx="10"/>
-<text class="t" x="34" y="787" font-weight="600">Goals</text><circle class="add" cx="870" cy="772" r="5"/>
-<text class="t" x="96" y="787" font-size="12">Contact form sent (/contact/thanks) <tspan class="m">212 · 1.7 per 100 page views</tspan>   ·   Newsletter sign-up <tspan class="m">58</tspan>   ·   Brochure PDF <tspan class="m">31</tspan></text>
+<!-- Legend -->
+<g font-size="12">
+<circle class="have" cx="30" cy="958" r="5"/><text class="m" x="40" y="962">counted today</text>
+<circle class="add" cx="150" cy="958" r="5"/><text class="m" x="160" y="962">a small new counter, or an option (countries: a GeoIP file)</text>
+<circle class="opt" cx="530" cy="958" r="5"/><text class="m" x="540" y="962">only with "set stats visitors on"</text>
+</g>
 </svg>
