@@ -116,6 +116,12 @@ final class Inspector
         };
         $methods = implode(', ', $s->methods);
 
+        $step('Kept out', $s->denyIndex === [] ? null : (new \CjwNetwork\RequestShield\Rule\DenyRule($s->denyIndex))->check($request, $now),
+            $s->denyIndex === [] ? $w('no address is kept out') : $w('%s is not on the deny list', $request->clientIp),
+            static fn (): string => $w('%s is on the deny list: 403 before everything else', $request->clientIp));
+        $banned = $s->bans === [] ? null : (new \CjwNetwork\RequestShield\Rule\BanRule($this->store, $s->exemptIps, $s->ipv6Prefix))->check($request, $now);
+        $step('Banned', $banned, $s->bans === [] ? $w('no automatic bans') : $w('%s is not banned', $request->clientIp),
+            static fn (Decision $d): string => $w('banned for a while: %s more seconds, nothing but 429', (string) $d->retryAfter));
         $step('Kind of request', (new MethodRule($s->methods))->check($request, $now),
             $w('%s is accepted (%s)', $request->method, $methods),
             static fn (): string => $w('%s is not accepted — only %s', $request->method, $methods));
@@ -333,6 +339,9 @@ final class Inspector
 
     /** The tracer in German: the English text => its translation (%s: the same values). */
     private const DE = [
+        'Kept out' => 'Ausgesperrt', 'Banned' => 'Zeitsperre', 'no address is kept out' => 'keine Adresse ausgesperrt', '%s is not on the deny list' => '%s steht nicht auf der Sperrliste',
+        '%s is on the deny list: 403 before everything else' => '%s steht auf der Sperrliste: 403 vor allem anderen', 'no automatic bans' => 'keine automatischen Sperren',
+        '%s is not banned' => '%s ist nicht gesperrt', 'banned for a while: %s more seconds, nothing but 429' => 'für eine Weile gesperrt: noch %s Sekunden, nur 429',
         'Kind of request' => 'Art der Anfrage', 'Size' => 'Größe', 'Disguised address' => 'Getarnte Adresse', 'Website name' => 'Name der Website',
         'Addresses only attackers ask for' => 'Adressen, die nur Angreifer aufrufen', 'Where forms may be sent' => 'Wohin Formulare dürfen', 'Areas for certain visitors' => 'Bereiche für bestimmte Besucher',
         'Known crawlers' => 'Bekannte Crawler', 'Known parameters' => 'Bekannte Parameter', 'Attack patterns' => 'Angriffsmuster', 'May a cache keep the answer?' => 'Darf ein Cache die Antwort behalten?',

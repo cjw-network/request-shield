@@ -31,4 +31,13 @@ interface Store
 
     /** Forgets what was counted for $key in this window and the one before: a fresh start. */
     public function reset(string $key, int $window, float $now): void;
+
+    /**
+     * Remembers $key until the Unix time $until (a ban), then forgets it by
+     * itself; $until 0 forgets it at once.
+     */
+    public function mark(string $key, int $until, float $now): void;
+
+    /** Until when $key is marked (a Unix time); 0 when it is not, or no longer. */
+    public function marked(string $key, float $now): int;
 }

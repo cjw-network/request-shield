@@ -44,6 +44,21 @@ final class ApcuStore implements Store
         apcu_delete([$k . $slot, $k . ($slot - 1)]);
     }
 
+    public function mark(string $key, int $until, float $now): void
+    {
+        if ($until <= $now) {
+            apcu_delete($this->prefix . 'mark:' . $key);
+            return;
+        }
+        apcu_store($this->prefix . 'mark:' . $key, $until, max(1, $until - (int) $now));
+    }
+
+    public function marked(string $key, float $now): int
+    {
+        $until = apcu_fetch($this->prefix . 'mark:' . $key);
+        return is_int($until) && $until > $now ? $until : 0;
+    }
+
     public function peek(string $key, int $window, float $now): float
     {
         [$slot, $weight] = SlidingWindow::position($window, $now);

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **IP lists and automatic bans** (proposal 0013): `deny <addresses> [until
+  …]` keeps an address out with 403 before every other check; `exempt … until`
+  lets one in for a while — never counted, never checked, still refused for
+  blocked paths and attack patterns. The list files `allow.rules`/`deny.rules`
+  in `lists-dir` (default `<store-dir>/lists`) hold only those lines and are
+  kept with `bin/request-shield deny|allow|unlist|lists` (guards for trusted
+  proxies and wide ranges). The compiled settings are rebuilt when an entry
+  ends. `ban after <n> limits|refusals|checks|<budget> in <time> for <time>`:
+  nothing but 429 with `Retry-After` for a while, longer for a repeat
+  (`ban-growth`, `ban-max`), never for addresses let in, trusted proxies or
+  verified crawlers, one ban for every website; `monitor ban` to watch first.
+  The store has `mark()`/`marked()`. ~1 µs per request with APCu
+  ([docs](docs/features/ip-lists.md)).
 - **Rules per website** (proposal 0024, phase 1): `site <names> { … }` blocks
   in one rule file — the rules outside them for every website, a block adds
   (and sets) its own: `match` blocks, `include`, `no-limit` of a base budget …

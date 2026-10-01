@@ -56,7 +56,7 @@ return [
         same(Decision::REJECT, $t['decision']->action);
         same('site.rules:2', $t['rule']);
         same('gets "not found" (404) — the site never sees it', $t['verdict']);
-        same(['Kind of request' => 'pass', 'Size' => 'pass', 'Disguised address' => 'pass', 'Website name' => 'pass', 'Addresses only attackers ask for' => 'stop',
+        same(['Kept out' => 'pass', 'Banned' => 'pass', 'Kind of request' => 'pass', 'Size' => 'pass', 'Disguised address' => 'pass', 'Website name' => 'pass', 'Addresses only attackers ask for' => 'stop',
             'Where forms may be sent' => 'skip', 'Areas for certain visitors' => 'skip', 'Known crawlers' => 'skip', 'Known parameters' => 'skip', 'Attack patterns' => 'skip', 'May a cache keep the answer?' => 'skip', 'Pace: "requests"' => 'skip', 'Browser check' => 'skip'], steps($t));
         same('refused: /wp-admin/**', step($t, 'Addresses only attackers ask for')['text'], 'the pattern as it was written');
     },

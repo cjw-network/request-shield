@@ -13,11 +13,13 @@ namespace CjwNetwork\RequestShield;
 use CjwNetwork\RequestShield\Challenge\Crawlers;
 use CjwNetwork\RequestShield\Challenge\Gate;
 use CjwNetwork\RequestShield\Challenge\Secret;
+use CjwNetwork\RequestShield\Rule\BanRule;
 use CjwNetwork\RequestShield\Rule\BlockedPathRule;
 use CjwNetwork\RequestShield\Rule\BudgetRule;
 use CjwNetwork\RequestShield\Rule\CacheableRule;
 use CjwNetwork\RequestShield\Rule\ContentRule;
 use CjwNetwork\RequestShield\Rule\CrawlerRule;
+use CjwNetwork\RequestShield\Rule\DenyRule;
 use CjwNetwork\RequestShield\Rule\HostRule;
 use CjwNetwork\RequestShield\Rule\LimitsRule;
 use CjwNetwork\RequestShield\Rule\MethodPathRule;
@@ -91,6 +93,13 @@ final class Shield
             return;             // no checks at all
         }
 
+        // Kept out (the deny list), then banned for a while: before anything else.
+        if ($s->denyIndex !== []) {
+            $this->rules[] = new DenyRule($s->denyIndex);
+        }
+        if ($s->bans !== [] && $s->mode !== 'monitor') {
+            $this->rules[] = new BanRule($this->store, $s->exemptIps, $s->ipv6Prefix);
+        }
         $this->rules[] = new MethodRule($s->methods);
         $this->rules[] = new LimitsRule($s->maxUri, $s->maxQueryParameters, $s->maxHeaderBytes);
         $this->rules[] = new PathSanityRule();
@@ -184,6 +193,9 @@ final class Shield
         $settled = $shield->settle($decided, $request, $now);
         $decision = $settled['decision'];
         $shield->passed = $settled['passed'];
+        if (!$decision->passes() && ($s->bans !== [] || ($s->monitor !== null && $s->monitor->bans !== []))) {
+            $shield->signals($decision, $request, $now);         // what may lead to a ban: only when refused, slowed or checked
+        }
         // Which rule: looked up only for a request that was stopped or flagged
         // (or when every request is logged) -- a passing one costs nothing.
         $rule = null;
@@ -317,6 +329,86 @@ final class Shield
         });
     }
 
+    /**
+     * The signals a decision gives for the bans: past a limit (a pause, a spent
+     * check), a refusal for what only attackers ask for, a check page shown.
+     */
+    private function signals(Decision $d, Request $request, float $now): void
+    {
+        if ($d->action === Decision::THROTTLE && $d->reason !== 'banned') {
+            $this->signal('limits', $request, $now);
+        } elseif ($d->action === Decision::CHALLENGE) {
+            $this->signal('checks', $request, $now);
+            if ($d->spent) {
+                $this->signal('limits', $request, $now);
+            }
+        } elseif ($d->action === Decision::REJECT && ($d->reason === 'blocked path' || $d->reason === 'attack')) {
+            $this->signal('refusals', $request, $now);
+        }
+    }
+
+    /** One signal: counted for every ban that names it; past its number, the ban (or, watched, a line in the log). */
+    private function signal(string $name, Request $request, float $now): void
+    {
+        $s = $this->settings;
+        $enforced = $s->mode === 'monitor' ? [] : $s->bans;
+        $rules = array_column($enforced, 'rule');
+        // Watched: every ban in monitor mode, and those marked "monitor ban".
+        $watched = $s->mode === 'monitor' ? $s->bans : [];
+        foreach ($s->monitor !== null ? $s->monitor->bans : [] as $b) {
+            if (!in_array($b['rule'], $rules, true) && !in_array($b, $watched, true)) {
+                $watched[] = $b;
+            }
+        }
+        foreach ([[$enforced, false], [$watched, true]] as [$bans, $watch]) {
+            foreach ($bans as $b) {
+                if ($b['signal'] === $name) {
+                    $this->countBan($b, $request, $now, $watch);
+                }
+            }
+        }
+    }
+
+    /**
+     * A signal for one ban: past its number in its window, the client is
+     * banned -- longer each time within a day (ban-growth), at most ban-max.
+     * Never an address let in (exempt), a trusted proxy or a verified crawler.
+     *
+     * @param array{after: int, signal: string, in: int, for: int, rule: string} $b
+     */
+    private function countBan(array $b, Request $request, float $now, bool $watch): void
+    {
+        $s = $this->settings;
+        $ip = $request->clientIp;
+        if (IpAddress::inRanges($ip, $s->exemptIps) || IpAddress::inRanges($ip, $s->trustedProxies)) {
+            return;
+        }
+        $bucket = IpAddress::bucket($ip, $s->ipv6Prefix);
+        if ($this->store->hit(($watch ? 'monitor:' : '') . 'ban:' . $b['rule'] . ':' . $bucket, $b['in'], $now) < $b['after']) {
+            return;
+        }
+        $id = $s->crawlers === [] ? null : $this->crawlers()->claims((string) $request->header('user-agent'));
+        if ($id !== null && $this->crawlers()->verified($ip, $id)) {
+            return;                                         // a verified crawler gets the pause it understands, never a ban
+        }
+        if ($watch) {
+            if ($s->logFile !== null) {
+                Log::write($s, $request, Decision::throttle('banned', $b['for']), $b['rule'], $now, true);
+            }
+            return;
+        }
+        $offences = (int) round($this->store->hit('bans:' . $bucket, 86400, $now));
+        $duration = (int) min($s->banMax, $b['for'] * $s->banGrowth ** max(0, min($offences - 1, 30)));
+        $until = (int) $now + $duration;
+        if ($this->store->marked('ban:' . $bucket, $now) >= $until) {
+            return;                                         // banned longer already
+        }
+        $this->store->mark('ban:' . $bucket, $until, $now);
+        if ($s->logFile !== null) {
+            Log::write($s, $request, Decision::throttle('banned', $duration), $b['rule'], $now);
+        }
+    }
+
     /** @var list<Plugin>|null */
     private ?array $plugins = null;
 
@@ -439,6 +531,14 @@ final class Shield
             return null;
         };
         switch ($d->reason) {
+            case 'denied':
+                // The entry of the deny list that holds the address.
+                foreach ($s->deny as $entry) {
+                    if (IpAddress::inRanges($request->clientIp, $entry['ips'])) {
+                        return preg_replace('/[^\x21-\x7e ]/', '?', $entry['rule']) ?? 'deny';
+                    }
+                }
+                return 'deny';
             case 'blocked path':
                 $i = null;
                 foreach ($s->blockedPaths as $n => $p) {
@@ -507,8 +607,8 @@ final class Shield
             if ($wants === null) {
                 continue;
             }
-            if ($wants->action === Decision::REJECT) {
-                return $this->base = $wants;
+            if ($wants->action === Decision::REJECT || $rule instanceof BanRule) {
+                return $this->base = $wants;            // a banned client: one lookup, and the answer
             }
             if ($rule instanceof BudgetRule) {
                 $budget = $budget === null ? $wants : $budget->stricter($wants);
@@ -522,7 +622,8 @@ final class Shield
         // having loaded it. The gate lets a client with a pass cookie through,
         // shows the page to a GET and answers any other method with 429.
         $always = $this->settings->challenge->alwaysPaths;
-        if ($always !== []) {
+        // An address let in (exempt, the allow list) never meets the check.
+        if ($always !== [] && !($this->settings->exemptIps !== [] && IpAddress::inRanges($request->clientIp, $this->settings->exemptIps))) {
             foreach ($always as $pattern) {
                 if (@preg_match($pattern, $request->path) === 1) {
                     $budget = $budget === null ? Decision::challenge('always') : $budget->stricter(Decision::challenge('always'));
@@ -850,6 +951,9 @@ final class Shield
         }
         $times = $this->base->action === Decision::ALLOW_UNCACHED ? $this->settings->uncachedWeight : 1;
         $d = $this->budgetRule($b)->check($request, $now, $times) ?? Decision::allow();
+        if (!$d->passes()) {
+            $this->signal($budget, $request, $now);              // ban after 10 logins in 15m
+        }
         if ($this->settings->mode === 'monitor') {
             if (!$d->passes()) {
                 $this->watched($d, $request, $now, $this);

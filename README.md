@@ -28,6 +28,9 @@ else:
   it belongs; your CMS can ask for the browser check when content is sent —
   or run it inside the form while the visitor types — and nobody loses what
   they typed.
+- **Unwelcome addresses stay out** — keep an address out for a week with one
+  command, let the office in, and ban for a while whoever keeps knocking
+  ([IP lists and automatic bans](docs/features/ip-lists.md)).
 - **Search engines stay welcome** — Google, Bing and others are recognised and
   let through.
 - **Readable rules** — one per line, in a plain text file; every refusal names
@@ -104,7 +107,9 @@ server and PHP slots, just very briefly.
   to them, what each crawler did — kept per hour, `bin/request-shield stats`
   ([docs](docs/features/statistics.md)); plugins — the core is the firewall,
   the statistics are its first plugin, and your own hang on the same two hooks
-  ([docs](docs/features/plugins.md)).
+  ([docs](docs/features/plugins.md)); rules per website (`site` blocks); IP
+  lists — `deny`, `exempt … until`, list files kept from the command line —
+  and automatic, temporary bans ([docs](docs/features/ip-lists.md)).
 - **Next:** adapters for
   Exponential, WordPress and Ibexa; exporting the rules to nginx, Apache and
   Varnish.

@@ -62,9 +62,11 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `api-path <paths>` | `challenge.apiPaths` | the site's API: a check there is JSON with a header, not a page |
 | `no-limit <name>` | `budgets` | switch a budget off, the default one too |
 | `challenge <paths> [max-age <duration>]` | `challenge.alwaysPaths`, `challenge.alwaysMaxAge` | always check the browser there; `max-age 5m`: a pass from the last five minutes there ([modes](modes.md)) |
-| `monitor <rule>` | `monitorRules` | before `block`, `restrict`, `allow`, `limit`, `challenge`, `query strict`: logged as it would decide, not enforced ([modes](modes.md)) |
+| `monitor <rule>` | `monitorRules` | before `block`, `restrict`, `allow`, `limit`, `challenge`, `ban`, `query strict`: logged as it would decide, not enforced ([modes](modes.md)) |
 | `challenge-exempt <paths>` | `challenge.exemptPaths` | never challenge there (APIs, feeds) |
-| `exempt <addresses or ranges>` | `exempt.ips` | never counted |
+| `exempt <addresses or ranges> [until <day>[T<hh:mm>]]` | `exempt.ips` | never counted and never checked, still refused for blocked paths and attack patterns ([IP lists](ip-lists.md)) |
+| `deny <addresses or ranges> [until <day>[T<hh:mm>]]` | `deny` | kept out: 403 before every other check ([IP lists](ip-lists.md)) |
+| `ban after <n> <signal> in <time> for <time>` | `bans` | a client past `<n>` signals (`limits`, `refusals`, `checks`, a budget's name) is answered only 429 for a while; above the site blocks ([IP lists](ip-lists.md#bans)) |
 | `crawlers <kind> allow\|check\|block` / `crawler <ID> allow\|check\|block` | `crawlerPolicy` | what the site does with verified crawlers, by kind (`search`, `ai-search`, `ai-user`, `ai-training`) or one by one ([known crawlers](known-crawlers.md)) |
 | `crawler <kind> ua /<pattern>/ [dns <suffixes>] [ranges <lists>]` | `crawlers` | a crawler of the site's own, verified by DNS or an address list (`ranges ./ours.json`) |
 | `set <key> <value>` | any other setting | see below |
@@ -192,7 +194,9 @@ site default {                              # any name no block lists
   and the words that drop a base rule for this website (`no-limit`, `unblock`,
   `challenge-exempt`, `replace`). Not inside — they are about the server:
   `trust`, `set store`, `store-dir`, `secret`, `recheck`, `dns-lookups`,
-  `ipv6-prefix`, `site-from`; and no `site` inside a `site` or a `match`.
+  `ipv6-prefix`, `site-from`, `lists-dir`, `ban-growth`, `ban-max`, `ban` (a client
+  banned on one website is banned on all); and no `site` inside a `site` or a `match`.
+  `deny` may stand inside: it then keeps the address off that website only.
 - **Order:** the base first; after the first `site` block only further `site`
   blocks, `include`, `ids` and `version` — an `include sites/*.rules` with a
   `site` block in each file is the same thing as one file.
@@ -323,6 +327,8 @@ keeps both the same.
 | `plugin` (a rule, not `set`) | `plugin Vendor\Package\MyPlugin`: a [plugin](plugins.md), told what was decided and how a request ended; the statistics need none (`set stats on`) |
 | `stats-depth` | folder levels a section's views are counted for exactly, 1 to 4 (2: `/news/`, `/news/2026/`; 3 where a language takes the first level: `/de/news/2026/`) |
 | `crawler-log`, `crawler-log-kinds`, `crawler-log-days`, `crawler-log-query` | one log per known crawler and day: its directory, the kinds logged, days kept (30), whether the query is kept ([statistics](statistics.md#one-log-per-crawler-optional)) |
+| `lists-dir` | where the list files `allow.rules` and `deny.rules` live (default `<store-dir>/lists`); they hold only `deny` and `exempt` lines ([IP lists](ip-lists.md#the-list-files)) |
+| `ban-growth`, `ban-max` | each ban within a day this many times as long (2), at most (`1d`) ([IP lists](ip-lists.md#bans)) |
 | `recheck` | how often the files are checked for changes, see below |
 
 `${NAME}` is an environment variable, `${NAME:-default}` one that may be unset.
@@ -379,6 +385,10 @@ old settings quietly kept: `bin/request-shield check` first.
 php bin/request-shield check  site.rules [--source=<glob>]...   # errors with file:line; warns about world-writable files
 php bin/request-shield show   site.rules [--source=<glob>]...   # the rules in effect, each with its origin
 php bin/request-shield reload site.rules [--source=<glob>]...   # check, then mark changed for every server
+php bin/request-shield deny   site.rules 203.0.113.7 --for=7d --reason="scraper"   # the list files (IP lists)
+php bin/request-shield allow  site.rules 192.0.2.50 --for=30d
+php bin/request-shield unlist site.rules 203.0.113.7
+php bin/request-shield lists  site.rules
 ```
 
 `show` prints every rule as the regular expression it became, with the line it

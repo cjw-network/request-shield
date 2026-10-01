@@ -60,6 +60,9 @@ final class RuleFile
         'dns-lookups' => ['challenge.dnsLookups', 'int'],
         'recheck' => ['recheck', 'seconds'],
         'site-from' => ['siteFrom', 'sitefrom'],
+        'lists-dir' => ['listsDir', 'string'],
+        'ban-growth' => ['banGrowth', 'int'],
+        'ban-max' => ['banMax', 'seconds'],
         'language' => ['challenge.language', 'language'],
         'home' => ['challenge.home', 'string'],
         'widget-path' => ['challenge.widgetPath', 'string'],
@@ -138,7 +141,10 @@ final class RuleFile
     private bool $sawSite = false;
 
     /** "set" keys that are about the server, not a website: not inside a site block. */
-    private const SERVER_WIDE = ['store', 'store-dir', 'secret', 'recheck', 'dns-lookups', 'ipv6-prefix', 'site-from'];
+    private const SERVER_WIDE = ['store', 'store-dir', 'secret', 'recheck', 'dns-lookups', 'ipv6-prefix', 'site-from', 'lists-dir', 'ban-growth', 'ban-max'];
+
+    /** Reading a list file (allow.rules, deny.rules in lists-dir): only list lines there. */
+    private bool $listing = false;
 
     /** The shipped rule files: rules/<name>.rules ("@scanners", "@wordpress"). */
     public static function shipped(string $name): ?string
@@ -196,6 +202,24 @@ final class RuleFile
         $r->file((string) self::shipped('crawlers'), null, null);
         foreach ($files as $file) {
             $r->source($file, null, null);
+        }
+        // The list files (allow.rules, deny.rules in lists-dir): list lines only,
+        // for every website; the directory recorded, so a new file is noticed.
+        $listsDir = $r->c['listsDir'] ?? null;
+        $listsDir = is_string($listsDir) && $listsDir !== '' ? $listsDir : (is_string($r->c['storeDir'] ?? null) ? $r->c['storeDir'] . '/lists' : null);
+        if ($listsDir !== null) {
+            $r->c['listsDir'] = $listsDir;
+            $stat = self::stat($listsDir);
+            if ($stat !== null) {
+                $r->seen[$listsDir] = $stat;
+            }
+            $r->listing = true;
+            foreach (['allow.rules', 'deny.rules'] as $name) {
+                if (is_file("$listsDir/$name")) {
+                    $r->file("$listsDir/$name", null, null);
+                }
+            }
+            $r->listing = false;
         }
         $r->resolveLists();
         $recheck = $r->c['recheck'];
@@ -376,6 +400,11 @@ final class RuleFile
         }
         $parts = preg_split('/\s+/', $line) ?: [];
         $keyword = strtolower((string) array_shift($parts));
+        // A list file holds list lines only: the dashboard and the command line
+        // write it, so it must never become a way to write rules.
+        if ($this->listing && !in_array($keyword, ['deny', 'exempt'], true)) {
+            throw new RuleFileException("$at: a list file holds only deny and exempt lines (written by bin/request-shield deny, allow, unlist) -- not \"$keyword\"");
+        }
         // Another website's block: skipped to its }, the blocks inside counted
         // (a site inside a site is an error when that website's block is read).
         if ($this->siteOpen !== null && $this->siteOpen['skip']) {
@@ -408,7 +437,11 @@ final class RuleFile
         if ($this->siteOpen !== null && ($keyword === 'trust' || ($keyword === 'set' && in_array(strtolower($parts[0] ?? ''), self::SERVER_WIDE, true)))) {
             throw new RuleFileException("$at: " . ($keyword === 'trust' ? 'trust' : 'set ' . strtolower($parts[0] ?? '')) . ' is about the server, not a website -- put it above the site blocks');
         }
-        if ($this->sawSite && $this->siteOpen === null && !in_array($keyword, ['include', 'ids', 'version', '}'], true)) {
+        if ($this->siteOpen !== null && ($keyword === 'ban' || ($keyword === 'monitor' && strtolower($parts[0] ?? '') === 'ban'))) {
+            // A ban keeps an address off the whole server, whichever website it offended.
+            throw new RuleFileException("$at: ban is about the server, not a website -- put it above the site blocks (a budget the website counts can still be its signal)");
+        }
+        if ($this->sawSite && $this->siteOpen === null && !$this->listing && !in_array($keyword, ['include', 'ids', 'version', '}'], true)) {
             throw new RuleFileException("$at: a rule for every website after a site block -- the rules for every website go above the first site block");
         }
         // monitor <rule>: logged as it would decide, never enforced.
@@ -418,10 +451,10 @@ final class RuleFile
             $keyword = strtolower((string) array_shift($parts));
             $line = (string) preg_replace('/^\S+\s*/', '', $line);
             // The rules that refuse or check someone; the others refuse nobody.
-            $watchable = in_array($keyword, ['block', 'restrict', 'allow', 'limit', 'challenge'], true)
+            $watchable = in_array($keyword, ['block', 'restrict', 'allow', 'limit', 'challenge', 'ban'], true)
                 || ($keyword === 'query' && $parts === ['strict']);
             if (!$watchable) {
-                throw new RuleFileException("$at: monitor <rule> -- for block, restrict, allow, limit, challenge and query strict"
+                throw new RuleFileException("$at: monitor <rule> -- for block, restrict, allow, limit, challenge, ban and query strict"
                     . ($keyword === '' ? '' : ", not \"$keyword\" (use set mode monitor to watch everything)"));
             }
         }
@@ -540,8 +573,34 @@ final class RuleFile
                 return;
             case 'trust':
             case 'exempt':
+                if ($keyword === 'exempt' && in_array('until', $args, true)) {
+                    // exempt <addresses> until <when>: let in for a while (the allow list).
+                    [$ips, $until] = $this->addressesUntil($args, $at, 'exempt');
+                    $list = (array) $this->get('exemptUntil');
+                    $list[] = ['ips' => $ips, 'until' => $until];
+                    $this->put('exemptUntil', $list);
+                    $this->origins['exempt'][$ips[0]] = $this->rid;
+                    return;
+                }
                 $key = $keyword === 'trust' ? 'trustedProxies' : 'exempt.ips';
                 $this->list($key, $args, $at, static fn (string $ip): string => self::address($ip, $at));
+                if ($keyword === 'exempt') {
+                    foreach ($args as $a) {
+                        if ($a !== 'none') {
+                            $this->origins['exempt'][self::address($a, $at)] = $this->rid;
+                        }
+                    }
+                }
+                return;
+            case 'deny':
+                // deny <addresses> [until <when>]: kept out, 403 before every other check.
+                [$ips, $until] = $this->addressesUntil($args, $at, 'deny');
+                $list = (array) $this->get('deny');
+                $list[] = ['ips' => $ips, 'until' => $until, 'rule' => $this->rid];
+                $this->put('deny', $list);
+                return;
+            case 'ban':
+                $this->ban($args, $at);
                 return;
             case 'method':
                 $this->list('methods', $args, $at, static function (string $m) use ($at): string {
@@ -639,7 +698,7 @@ final class RuleFile
                 return;
         }
         throw new RuleFileException("$at: unknown rule \"$keyword\"" . self::suggest($keyword,
-            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'api-path', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'set', 'include']));
+            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'api-path', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'set', 'include']));
     }
 
     /**
@@ -790,6 +849,68 @@ final class RuleFile
             }
         }
         return $found;
+    }
+
+    /**
+     * <addresses> [until <when>]: the addresses (checked) and the end, a Unix
+     * time (null: for good). <when> is a day (2026-10-07: to its end) or a
+     * moment (2026-10-07T15:30), in the server's time zone.
+     *
+     * @param list<string> $args
+     * @return array{0: list<string>, 1: ?int}
+     */
+    private function addressesUntil(array $args, string $at, string $keyword): array
+    {
+        $until = null;
+        $i = array_search('until', $args, true);
+        if ($i !== false) {
+            if ($i !== count($args) - 2) {
+                throw new RuleFileException("$at: $keyword <addresses> until <day or moment> -- until and its time come last");
+            }
+            $until = self::until($args[$i + 1], $at);
+            array_splice($args, (int) $i, 2);
+        }
+        if ($args === []) {
+            throw new RuleFileException("$at: $keyword needs at least one address or range");
+        }
+        return [array_map(static fn (string $ip): string => self::address($ip, $at), $args), $until];
+    }
+
+    /** "2026-10-07" (to its end) or "2026-10-07T15:30": a Unix time in the server's time zone. */
+    private static function until(string $v, string $at): int
+    {
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?$/', $v, $m) !== 1 || !checkdate((int) $m[2], (int) $m[3], (int) $m[1])
+            || (isset($m[5]) && ((int) $m[4] > 23 || (int) $m[5] > 59))) {
+            throw new RuleFileException("$at: until takes a day (2026-10-07) or a moment (2026-10-07T15:30), not \"$v\"");
+        }
+        return isset($m[5]) ? (int) mktime((int) $m[4], (int) $m[5], 0, (int) $m[2], (int) $m[3], (int) $m[1])
+            : (int) mktime(23, 59, 59, (int) $m[2], (int) $m[3], (int) $m[1]);
+    }
+
+    /**
+     * ban after <n> <signal> in <time> for <time>: a client that sends <n> of
+     * these signals within <time> gets nothing but 429 for a while. Signals:
+     * limits (past a limit), refusals (blocked paths, attack patterns), checks
+     * (a check page shown again and again), or the name of a budget the site
+     * counts itself (consume('logins')).
+     *
+     * @param list<string> $args
+     */
+    private function ban(array $args, string $at): void
+    {
+        $usage = 'ban after <n> <limits|refusals|checks|budget> in <time> for <time>';
+        if (count($args) !== 7 || $args[0] !== 'after' || $args[3] !== 'in' || $args[5] !== 'for' || !preg_match('/^[1-9]\d*$/', $args[1])
+            || !preg_match('/^[A-Za-z0-9_-]+$/', $args[2])) {
+            throw new RuleFileException("$at: $usage");
+        }
+        $window = self::seconds($args[4], 'in', $at);
+        $for = self::seconds($args[6], 'for', $at);
+        if ($window < 1 || $for < 1) {
+            throw new RuleFileException("$at: $usage -- both times at least a second");
+        }
+        $list = (array) $this->get('bans');
+        $list[] = ['after' => (int) $args[1], 'signal' => strtolower($args[2]), 'in' => $window, 'for' => $for, 'rule' => $this->rid];
+        $this->put('bans', $list);
     }
 
     /**

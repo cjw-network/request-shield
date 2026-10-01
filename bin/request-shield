@@ -52,6 +52,9 @@ $ua = null;
 $days = 7;
 $json = false;
 $period = [];
+$listFor = null;
+$listUntil = null;
+$listReason = '';
 foreach ($args as $a) {
     if ($a === '--force') {
         $force = true;
@@ -75,17 +78,27 @@ foreach ($args as $a) {
         $ip = substr($a, 5);
     } elseif (strncmp($a, '--source=', 9) === 0) {
         $sources[] = substr($a, 9);
+    } elseif (preg_match('/^--for=(\d+)(s|m|h|d|w)$/', $a, $m) === 1) {
+        $listFor = (int) $m[1] * ['s' => 1, 'm' => 60, 'h' => 3600, 'd' => 86400, 'w' => 604800][$m[2]];
+    } elseif (strncmp($a, '--until=', 8) === 0) {
+        $listUntil = substr($a, 8);
+    } elseif (strncmp($a, '--reason=', 9) === 0) {
+        $listReason = substr($a, 9);
     } else {
         $rest[] = $a;
     }
 }
 [$command, $file, $what] = $rest + [null, null, null];
-if (!in_array($command, ['check', 'show', 'reload', 'trace', 'crawlers', 'stats'], true) || $file === null || ($command === 'trace' && $what === null)
+if (!in_array($command, ['check', 'show', 'reload', 'trace', 'crawlers', 'stats', 'deny', 'allow', 'unlist', 'lists'], true) || $file === null
+    || (in_array($command, ['trace', 'deny', 'allow', 'unlist'], true) && $what === null)
     || ($command === 'crawlers' && $what !== null && $what !== 'update')) {
     fwrite(STDERR, "usage: request-shield check|show|reload <main.rules> [--source=<glob>]...\n"
         . "       request-shield trace <main.rules> \"GET https://www.example.org/path\" [--ip=<address>] [--ua=<User-Agent>] [--source=<glob>]...\n"
         . "       request-shield crawlers <main.rules> [update] [--force]\n"
-        . "       request-shield stats <main.rules> [--days=7 | --from=YYYY-MM-DD --to=YYYY-MM-DD] [--by=day|week|month|year] [--crawler=<ID>] [--path=/news/] [--sort=views|blocked|refused|checked|throttled] [--json]\n");
+        . "       request-shield stats <main.rules> [--days=7 | --from=YYYY-MM-DD --to=YYYY-MM-DD] [--by=day|week|month|year] [--crawler=<ID>] [--path=/news/] [--sort=views|blocked|refused|checked|throttled] [--json]\n"
+        . "       request-shield deny|allow <main.rules> <address|range> [--for=7d | --until=2026-10-07[T15:30]] [--reason=\"…\"] [--force]\n"
+        . "       request-shield unlist <main.rules> <address|range>\n"
+        . "       request-shield lists <main.rules>\n");
     exit(2);
 }
 if (substr($file, -6) !== '.rules') {
@@ -106,6 +119,76 @@ try {
 } catch (InvalidArgumentException $e) {
     fwrite(STDERR, $e->getMessage() . "\n");
     exit(1);
+}
+
+if (in_array($command, ['deny', 'allow', 'unlist', 'lists'], true)) {
+    // The list files (allow.rules, deny.rules in lists-dir): written whole, then
+    // the main file touched, so every server reads them within its recheck.
+    $dir = $settings->listsDir;
+    if ($dir === null) {
+        fwrite(STDERR, "no lists directory: set lists-dir (or store-dir) in the rule file\n");
+        exit(1);
+    }
+    try {
+        if ($command === 'lists') {
+            $now = time();
+            foreach (['deny' => 'kept out (deny)', 'exempt' => 'let in (allow)'] as $kind => $title) {
+                $entries = array_filter(\CjwNetwork\RequestShield\Rules\Lists::read($dir), static fn (array $e): bool => $e['kind'] === $kind);
+                echo "$title: " . count($entries) . "\n";
+                foreach ($entries as $e) {
+                    $state = $e['until'] === null ? 'for good' : ($e['until'] > $now ? 'until ' . date('Y-m-d H:i', $e['until']) : 'ended ' . date('Y-m-d H:i', $e['until']));
+                    echo '  ' . str_pad($e['id'], 10) . str_pad(implode(' ', $e['addresses']), 28) . str_pad($state, 24) . $e['note'] . "\n";
+                }
+            }
+            exit(0);
+        }
+        $address = (string) $what;
+        \CjwNetwork\RequestShield\Rules\Lists::check($address);
+        if ($command === 'unlist') {
+            $n = \CjwNetwork\RequestShield\Rules\Lists::remove($dir, $address);
+            touch($file);
+            echo "unlisted $address: $n entr" . ($n === 1 ? 'y' : 'ies') . " removed\n";
+            if ($settings->store === 'file' && strpos($address, '/') === false) {
+                // The files are the servers' store too: a running ban is lifted at once.
+                $store = new \CjwNetwork\RequestShield\Store\FileStore($settings->storeDir);
+                $key = 'ban:' . \CjwNetwork\RequestShield\IpAddress::bucket($address, $settings->ipv6Prefix);
+                if ($store->marked($key, time()) > 0) {
+                    $store->mark($key, 0, time());
+                    echo "its ban lifted\n";
+                }
+            } elseif ($settings->bans !== []) {
+                echo "note: a running ban ends by itself (at most " . intdiv($settings->banMax, 3600) . " h) -- to lift it at once: request-shield allow $file $address --for=1h\n";
+            }
+            exit(0);
+        }
+        $until = $listUntil !== null ? \CjwNetwork\RequestShield\Rules\Lists::time($listUntil) : ($listFor !== null ? time() + $listFor : null);
+        if ($listUntil !== null && $until === null) {
+            throw new InvalidArgumentException("--until takes a day (2026-10-07) or a moment (2026-10-07T15:30), not \"$listUntil\"");
+        }
+        if ($command === 'allow' && $until === null) {
+            throw new InvalidArgumentException('allow takes --for or --until -- an address let in for good belongs in the rule file (exempt)');
+        }
+        if ($command === 'deny') {
+            // Never the proxies the site trusts; a wide range only on purpose.
+            foreach ($settings->trustedProxies as $proxy) {
+                $one = strpos($proxy, '/') === false ? $proxy : substr($proxy, 0, (int) strpos($proxy, '/'));
+                if (\CjwNetwork\RequestShield\IpAddress::inRanges($one, [$address]) || \CjwNetwork\RequestShield\IpAddress::inRanges(strpos($address, '/') === false ? $address : substr($address, 0, (int) strpos($address, '/')), [$proxy])) {
+                    throw new InvalidArgumentException("$address holds a trusted proxy ($proxy) -- every visitor behind it would be kept out");
+                }
+            }
+            $wide = strpos($address, ':') === false ? 16 : 96;            // wider than /16 (IPv4), /32 (IPv6)
+            if (\CjwNetwork\RequestShield\Rules\Lists::width($address) > $wide && !$force) {
+                throw new InvalidArgumentException("$address is a wide range -- many people may be behind it; --force if that is meant");
+            }
+        }
+        $id = \CjwNetwork\RequestShield\Rules\Lists::add($dir, $command === 'deny' ? 'deny' : 'exempt', $address, $until, $listReason);
+        touch($file);
+        echo ($command === 'deny' ? 'kept out' : 'let in') . " $address" . ($until !== null ? ' until ' . date('Y-m-d H:i', $until) : ' for good') . " ($id); every server reads it within its recheck\n";
+    } catch (InvalidArgumentException | RuntimeException $e) {
+        fwrite(STDERR, 'request-shield: ' . $e->getMessage() . "\n");
+        exit(1);
+    }
+    exit(0);
 }
 
 if ($command === 'trace') {

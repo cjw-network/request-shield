@@ -161,6 +161,20 @@ final class Settings
         public ?string $site = null,
         /** @readonly which name picks the site: server-name (the web server's, the default) or host (the Host header) */
         public string $siteFrom = 'server-name',
+        /** @var list<array{ips: list<string>, until: ?int, rule: string}> @readonly addresses kept out (deny), the ones in force */
+        public array $deny = [],
+        /** @var array<string, list<array{0: string, 1: int}>> @readonly the same, as a lookup (IpAddress::index()) */
+        public array $denyIndex = [],
+        /** @readonly when the next list entry ends (a Unix time; 0: none) -- the settings are built again then */
+        public int $listsUntil = 0,
+        /** @readonly where the list files are (allow.rules, deny.rules); null: none */
+        public ?string $listsDir = null,
+        /** @var list<array{after: int, signal: string, in: int, for: int, rule: string}> @readonly automatic, temporary bans */
+        public array $bans = [],
+        /** @readonly a ban within a day of the last lasts this many times longer */
+        public int $banGrowth = 2,
+        /** @readonly the longest ban, in seconds */
+        public int $banMax = 86400,
     ) {
     }
 
@@ -250,7 +264,7 @@ final class Settings
             self::stringsOrNull($cacheable, 'paths', 'cacheable.paths'),
             self::stringsOrNull($cacheable, 'query', 'cacheable.query'),
             $budgets,
-            self::strings($exempt, 'ips', 'exempt.ips'),
+            array_values(array_unique(array_merge(self::strings($exempt, 'ips', 'exempt.ips'), self::exemptForNow($c)))),
             max(0, min(128, self::int($c, 'ipv6Prefix'))),
             self::string($c, 'store'),
             self::string($c, 'storeDir'),
@@ -279,6 +293,7 @@ final class Settings
             ...self::stats($c),
             ...[self::dashboardPath($c), self::plugins($c)],
             ...self::sites($c),
+            ...self::lists($c, $budgets),
         );
     }
 
@@ -425,6 +440,90 @@ final class Settings
             $out[] = $name;
         }
         return array_values(array_unique($out));
+    }
+
+    /**
+     * The addresses let in for a while (exempt … until), those still in force.
+     *
+     * @param array<mixed> $c
+     * @return list<string>
+     */
+    private static function exemptForNow(array $c): array
+    {
+        $out = [];
+        $now = time();
+        foreach ((array) ($c['exemptUntil'] ?? []) as $e) {
+            if (is_array($e) && (!is_int($e['until'] ?? null) || $e['until'] > $now)) {
+                foreach ((array) ($e['ips'] ?? []) as $ip) {
+                    if (is_string($ip)) {
+                        $out[] = $ip;
+                    }
+                }
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * The deny list (the entries in force, and as a lookup), when the next
+     * entry ends (exempt … until included), the list files' directory, and
+     * the automatic bans.
+     *
+     * @param array<mixed> $c
+     * @param array<string, Budget> $budgets
+     * @return array{0: list<array{ips: list<string>, until: ?int, rule: string}>, 1: array<string, list<array{0: string, 1: int}>>, 2: int, 3: ?string, 4: list<array{after: int, signal: string, in: int, for: int, rule: string}>, 5: int, 6: int}
+     */
+    private static function lists(array $c, array $budgets): array
+    {
+        $now = time();
+        $next = 0;
+        $deny = [];
+        $ips = [];
+        foreach ((array) ($c['deny'] ?? []) as $i => $e) {
+            if (!is_array($e) || !is_array($e['ips'] ?? null)) {
+                throw self::wrong("deny[$i]", "['ips' => [addresses], 'until' => a Unix time or null]");
+            }
+            $until = is_int($e['until'] ?? null) ? $e['until'] : null;
+            if ($until !== null && $until <= $now) {
+                continue;                       // over: left out
+            }
+            $list = [];
+            foreach ($e['ips'] as $ip) {
+                if (!is_string($ip) || @inet_pton((string) preg_replace('#/\d+$#', '', $ip)) === false) {
+                    throw self::wrong("deny[$i].ips", 'addresses or ranges (203.0.113.7, 198.51.100.0/24, 2001:db8::/32)');
+                }
+                $list[] = $ip;
+                $ips[] = $ip;
+            }
+            $deny[] = ['ips' => $list, 'until' => $until, 'rule' => is_string($e['rule'] ?? null) ? $e['rule'] : "deny[$i]"];
+            if ($until !== null && ($next === 0 || $until < $next)) {
+                $next = $until;
+            }
+        }
+        foreach ((array) ($c['exemptUntil'] ?? []) as $e) {
+            $until = is_array($e) && is_int($e['until'] ?? null) ? $e['until'] : 0;
+            if ($until > $now && ($next === 0 || $until < $next)) {
+                $next = $until;
+            }
+        }
+        $bans = [];
+        foreach ((array) ($c['bans'] ?? []) as $i => $b) {
+            if (!is_array($b) || !is_int($b['after'] ?? null) || !is_string($b['signal'] ?? null) || !is_int($b['in'] ?? null) || !is_int($b['for'] ?? null)
+                || $b['after'] < 1 || $b['in'] < 1 || $b['for'] < 1) {
+                throw self::wrong("bans[$i]", "['after' => n, 'signal' => limits|refusals|checks|<budget>, 'in' => seconds, 'for' => seconds]");
+            }
+            if (!in_array($b['signal'], ['limits', 'refusals', 'checks'], true) && !isset($budgets[$b['signal']])) {
+                throw self::wrong("bans[$i].signal", "limits, refusals, checks or a budget's name -- there is no budget \"{$b['signal']}\"");
+            }
+            $bans[] = ['after' => $b['after'], 'signal' => $b['signal'], 'in' => $b['in'], 'for' => $b['for'], 'rule' => is_string($b['rule'] ?? null) ? $b['rule'] : "bans[$i]"];
+        }
+        $growth = $c['banGrowth'] ?? 2;
+        $max = $c['banMax'] ?? 86400;
+        if (!is_int($growth) || $growth < 1 || !is_int($max) || $max < 1) {
+            throw self::wrong('banGrowth/banMax', 'a whole number of at least 1');
+        }
+        $dir = $c['listsDir'] ?? null;
+        return [$deny, IpAddress::index($ips), $next, is_string($dir) && $dir !== '' ? $dir : null, $bans, $growth, $max];
     }
 
     /**
@@ -799,7 +898,7 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 28;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site
+    private const FORMAT = 29;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 
@@ -847,7 +946,7 @@ final class Settings
         // Written by write() below, so trusted beyond its format and file.
         if (is_array($e) && ($e['format'] ?? 0) === self::FORMAT && ($e['file'] ?? '') === $file) {
             /** @var array{seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, settings: array<string, mixed>} $e */
-            if (($e['env'] === [] || self::sameEnv($e['env'])) && self::fresh($e['seen'], $e['recheck'], $key)) {
+            if (($e['env'] === [] || self::sameEnv($e['env'])) && self::inForce($e['settings']) && self::fresh($e['seen'], $e['recheck'], $key)) {
                 self::$checked[$key] = $e['seen'];
                 return self::import($e['settings']);
             }
@@ -870,7 +969,7 @@ final class Settings
         $e = @include $cacheDir . '/settings-' . $key . '.php';
         if (is_array($e) && ($e['format'] ?? 0) === self::FORMAT && ($e['file'] ?? '') === $file) {
             /** @var array{seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, settings: array{sites: array<string, string>, siteFrom: string, trustedProxies: list<string>}} $e */
-            if (($e['env'] === [] || self::sameEnv($e['env'])) && self::fresh($e['seen'], $e['recheck'], $key)) {
+            if (($e['env'] === [] || self::sameEnv($e['env'])) && self::inForce($e['settings']) && self::fresh($e['seen'], $e['recheck'], $key)) {
                 self::$checked[$key] = $e['seen'];
                 $raw = $e['settings'];
                 $site = $raw['sites'] === [] ? null : self::pick($raw['sites'], $raw['siteFrom'], $raw['trustedProxies'], $server);
@@ -984,6 +1083,18 @@ final class Settings
         }
         self::$checked[$key] = $seen;
         return $settings;
+    }
+
+    /**
+     * Whether compiled settings still hold: no list entry (deny … until,
+     * exempt … until) has ended since -- one comparison.
+     *
+     * @param array<mixed> $settings what export() wrote
+     */
+    private static function inForce(array $settings): bool
+    {
+        $until = $settings['listsUntil'] ?? 0;
+        return !is_int($until) || $until === 0 || time() < $until;
     }
 
     /** @param array<string, string|null> $env the environment variables a rule file used, with their values then */

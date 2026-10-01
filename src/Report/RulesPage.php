@@ -177,6 +177,32 @@ final class RulesPage
         $pattern = static fn (string $p): string => Describe::pattern($s, $p);
         $g = [];
 
+        // Kept out and let in: the deny list, exempt (also for a while), the lists' files.
+        $rows = [];
+        $when = static fn (?int $until): string => $until === null ? '' : $w(' — until %s', date($lang === 'de' ? 'd.m.Y H:i' : 'Y-m-d H:i', $until));
+        foreach ($s->deny as $e) {
+            $rows[] = $row($w('kept out: %s', implode(', ', $e['ips'])) . $when($e['until']), $e['rule'], $e['rule']);
+        }
+        foreach ($s->exemptIps as $ip) {
+            $rows[] = $row($w('let in, never counted or checked: %s', $ip), $o('exempt', $ip), '');
+        }
+        if ($rows !== [] || $s->listsDir !== null) {
+            $g[] = [$w('Kept out and let in'), $w('A kept-out address gets 403 before every other check; one let in is never counted or checked, but still refused for blocked addresses and attack patterns.')
+                . ($s->listsDir !== null ? $w(' The lists: %s (bin/request-shield deny, allow, unlist, lists).', $s->listsDir) : ''), $rows];
+        }
+
+        // Automatic, temporary bans.
+        $rows = [];
+        $signals = ['limits' => $w('times past a limit'), 'refusals' => $w('refusals for what only attackers ask for'), 'checks' => $w('check pages not solved')];
+        foreach ($s->bans as $b) {
+            $rows[] = $row($w('after %s %s in %s: banned for %s', (string) $b['after'], $signals[$b['signal']] ?? $w('"%s" past its limit', $b['signal']),
+                Describe::span($b['in'], $lang), Describe::span($b['for'], $lang)), $b['rule'], $b['rule']);
+        }
+        if ($rows !== []) {
+            $g[] = [$w('Banned for a while'), $w('Nothing but 429 with the time to wait, longer each time within a day (%s×, at most %s); never an address let in, a trusted proxy or a verified crawler.',
+                (string) $s->banGrowth, Describe::span($s->banMax, $lang)), $rows];
+        }
+
         $rows = [];
         foreach ($s->blockedPaths as $i => $p) {
             $id = $o('blockedPaths', $p);
@@ -327,6 +353,12 @@ final class RulesPage
 
     /** groups() in German: the English text => its translation (%s: the same values). */
     private const DE = [
+        ' — until %s' => ' — bis %s', 'kept out: %s' => 'ausgesperrt: %s', 'let in, never counted or checked: %s' => 'hereingelassen, nie gezählt oder geprüft: %s', 'Kept out and let in' => 'Ausgesperrt und hereingelassen',
+        'A kept-out address gets 403 before every other check; one let in is never counted or checked, but still refused for blocked addresses and attack patterns.' => 'Eine ausgesperrte Adresse bekommt 403 vor jeder anderen Prüfung; eine hereingelassene wird nie gezählt oder geprüft, aber bei gesperrten Adressen und Angriffsmustern trotzdem abgewiesen.',
+        ' The lists: %s (bin/request-shield deny, allow, unlist, lists).' => ' Die Listen: %s (bin/request-shield deny, allow, unlist, lists).', 'times past a limit' => 'Mal über einer Grenze',
+        'refusals for what only attackers ask for' => 'Abweisungen für das, was nur Angreifer aufrufen', 'check pages not solved' => 'nicht gelöste Check-Seiten', '"%s" past its limit' => '„%s“ über seiner Grenze',
+        'after %s %s in %s: banned for %s' => 'nach %s %s in %s: gesperrt für %s', 'Banned for a while' => 'Für eine Weile gesperrt',
+        'Nothing but 429 with the time to wait, longer each time within a day (%s×, at most %s); never an address let in, a trusted proxy or a verified crawler.' => 'Nur noch 429 mit der Wartezeit, bei jeder Wiederholung am selben Tag länger (%s×, höchstens %s); nie eine hereingelassene Adresse, ein vertrauenswürdiger Proxy oder ein bestätigter Crawler.',
         ' · revision %s' => ' · Revision %s', ' · in match %s' => ' · im match %s', 'every block above' => 'jede Sperre oben',
         'Open at %s: %s' => 'Offen unter %s: %s', ' — only for %s' => ' — nur für %s', ' — ⚠ for everyone: make sure only admins reach it' => ' — ⚠ für alle: nur Admins dürfen dorthin kommen',
         'Addresses only attackers ask for' => 'Adressen, die nur Angreifer aufrufen', 'None are refused.' => 'Keine wird abgewiesen.',

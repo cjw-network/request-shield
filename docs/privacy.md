@@ -93,6 +93,22 @@ feature by feature, for what exists today and for the proposals.
   resolver; `set dns-lookups 0`. The lists are fetched only by an administrator
   (`crawlers update`, `bin/update-crawler-lists`), never while a request runs.
 
+### IP lists and automatic bans ([docs](features/ip-lists.md))
+
+- **What:** the list files (`allow.rules`, `deny.rules` in `lists-dir`) hold
+  addresses or ranges, each with its reason, who added it and when, and an end
+  if one was given. A ban keeps the client's address (IPv6: its /64) in the
+  store with its end time; the counters behind it expire with their windows,
+  the record of earlier bans after a day.
+- **Basis:** security (Art. 6(1)(f)): defence against an attack, a stated
+  purpose. **Retention:** an entry's end date; a ban at most `ban-max` (a day
+  by default). Give deny entries an end (`--for=7d`) and review those without
+  one (`request-shield lists`).
+- **Where:** outside the document root by default (`<store-dir>/lists`),
+  files 0640 in a 0750 directory; bans in APCu (gone with a restart) or as
+  small files in store-dir.
+- **Never banned:** addresses let in, trusted proxies, verified crawlers.
+
 ### Statistics (being built: proposals [0012](proposals/0012-dashboard.md), [0014](proposals/0014-crawler-statistics.md))
 
 - **Processed:** counters per hour — decisions, rules, status codes, known
@@ -161,7 +177,6 @@ behaviour or performance; off until configured.
 
 | Proposal | Personal data | Notes |
 |---|---|---|
-| [0013](proposals/0013-ip-lists.md) deny list, automatic bans | addresses, each with a reason and an end date; bans end by themselves (at most `ban-max`) | security; purpose and duration explicit; review permanent entries |
 | [0015](proposals/0015-page-statistics.md) page statistics | none: path, day, group, number | no cookie, no script |
 | [0018](proposals/0018-audience-statistics.md) sources, devices | none stored: host of the referring site, device class, browser family — from headers the browser sends | the screen-width beacon reads from the device: **consent**, off by default |
 | [0022](proposals/0022-visitors-page.md) unique visitors and visits (also asked in [0018](proposals/0018-audience-statistics.md), [0019](proposals/0019-seo-geo-dashboard.md)) | a daily-salted hash of address + User-Agent, in memory; a visit's entry for 30 minutes | off by default; no consent in the common reading, a line in the privacy notice — see above |
@@ -182,7 +197,7 @@ The shield keeps no profile to hand out or correct: budget counters live for
 seconds to minutes, statistics are aggregates without identifiers. What can hold
 an address for longer: the log (masked by default; full with `log-ip full`),
 per-crawler logs of requests that only claim a crawler's name (masked), and the
-deny list and bans of 0013. For a request about those, search the files for the
+deny list and bans ([IP lists](features/ip-lists.md)). For a request about those, search the files for the
 address or its network — and keep their retention short, so there is little to
 find.
 

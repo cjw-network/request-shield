@@ -17,6 +17,7 @@
   [the check inside the form](features/browser-check-in-the-form.md) ·
   [known query parameters](features/known-parameters.md) ·
   [modes: monitor and strict](features/modes.md) ·
+  [IP lists and automatic bans](features/ip-lists.md) ·
   [known crawlers](features/known-crawlers.md) ·
   [statistics](features/statistics.md) ·
   [plugins](features/plugins.md) ·
@@ -39,7 +40,7 @@
   [0010 the browser check inside the form](proposals/0010-browser-check-in-the-form.md) (implemented) ·
   [0011 known crawlers](proposals/0011-known-crawlers.md) (implemented) ·
   [0012 a dashboard](proposals/0012-dashboard.md) (counters implemented) ·
-  [0013 IP lists](proposals/0013-ip-lists.md) (draft) ·
+  [0013 IP lists](proposals/0013-ip-lists.md) (implemented, dashboard tab to come) ·
   [0014 crawler statistics](proposals/0014-crawler-statistics.md) (implemented, dashboard tab to come) ·
   [0015 page statistics](proposals/0015-page-statistics.md) (draft) ·
   [0016 the rule advisor](proposals/0016-rule-advisor.md) (draft) ·

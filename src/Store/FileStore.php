@@ -71,6 +71,50 @@ final class FileStore implements Store
         );
     }
 
+    /**
+     * A mark is a small file holding its end; written whole (a temporary file,
+     * then renamed), so a reader never sees half of one. Read on every request
+     * while bans are on: one failed open when there is none.
+     */
+    public function mark(string $key, int $until, float $now): void
+    {
+        $file = $this->markPath($key);
+        if ($until <= $now) {
+            @unlink($file);
+            return;
+        }
+        @mkdir(dirname($file), 0700, true);
+        $tmp = $file . '.' . bin2hex(random_bytes(4));
+        if (@file_put_contents($tmp, (string) $until) !== false && !@rename($tmp, $file)) {
+            @unlink($tmp);
+        }
+    }
+
+    public function marked(string $key, float $now): int
+    {
+        $file = $this->markPath($key);
+        // Nearly always asked for an address nobody banned: a stat is far
+        // cheaper than a failed open (whose warning PHP builds, then drops).
+        clearstatcache(false, $file);
+        if (!is_file($file)) {
+            return 0;
+        }
+        $until = (int) @file_get_contents($file);
+        if ($until > $now) {
+            return $until;
+        }
+        if ($until > 0) {
+            @unlink($file);                 // over: gone
+        }
+        return 0;
+    }
+
+    private function markPath(string $key): string
+    {
+        $hash = substr(hash('sha256', 'mark:' . $key), 0, 24);
+        return $this->dir . '/' . substr($hash, 0, 2) . '/' . $hash . '.m';
+    }
+
     /** Removes counter files whose window ended more than one window ago. */
     public function sweep(float $now): int
     {

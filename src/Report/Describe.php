@@ -138,6 +138,7 @@ final class Describe
                 'unknown url' => 'eine Adresse, die die Website nicht kennt', 'always' => 'eine Seite, auf der jeder Besucher geprüft wird',
                 'app' => 'die Website hat den Browser-Check verlangt (ein Formular)', 'attack' => 'ein Angriffsmuster in der Adresse oder den Headern',
                 'unknown parameter' => 'ein Parameter, den die Website nicht kennt, oder ein Wert nicht seines Typs', 'challenge solved' => 'der Browser-Check wurde gerade bestanden',
+                'denied' => 'eine ausgesperrte Adresse (die Sperrliste)', 'banned' => 'für eine Weile gesperrt: sie ging immer wieder über die Grenzen',
             ];
             return $de[$reason] ?? "das Budget „{$reason}“";
         }
@@ -160,6 +161,8 @@ final class Describe
             'attack' => 'an attack pattern in the address or the headers',
             'unknown parameter' => 'a parameter the site does not know, or a value not of its type',
             'challenge solved' => 'the browser check was just passed',
+            'denied' => 'an address kept out (the deny list)',
+            'banned' => 'banned for a while: it kept going past the limits',
         ];
         return $words[$reason] ?? "the budget \"$reason\"";
     }

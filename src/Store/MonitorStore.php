@@ -41,4 +41,14 @@ final class MonitorStore implements Store
     public function reset(string $key, int $window, float $now): void
     {
     }
+
+    /** A watched rule bans nobody. */
+    public function mark(string $key, int $until, float $now): void
+    {
+    }
+
+    public function marked(string $key, float $now): int
+    {
+        return $this->store->marked($key, $now);
+    }
 }

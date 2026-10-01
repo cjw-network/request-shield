@@ -524,8 +524,8 @@ return [
                 && strpos($de, '„requests“: 30 Anfragen pro Minute, der Browser-Check ab 10, dann eine Pause') !== false && strpos($de, '<span class="tag">Bereiche für bestimmte Besucher</span>') !== false && in_array(['Bereiche für bestimmte Besucher', 'Alle anderen bekommen „kein Zugriff“ (403):'], array_map(static fn (array $g): array => [$g[0], $g[1]], RulesPage::groups($s, [], null, 'de')), true), 'in German');
             truthy(strpos($en, 'Technical settings') !== false && strpos($en, "<th>store directory</th><td><code>$dir/store</code>") !== false && strpos($en, 'set (never shown)') !== false, 'the settings');
             truthy(strpos($en . $de, $secret) === false, 'the secret is never shown');
-            truthy(strpos($en, '<svg class="rsd setup"') !== false && substr_count($en, '<a href="#step-') === 13 && strpos($en, 'id="step-13"') !== false
-                && strpos($en, 'id="step-before"') !== false && strpos($en, 'After: log and statistics') !== false, 'the way as a picture: 13 checks, each a link to its line; before and after');
+            truthy(strpos($en, '<svg class="rsd setup"') !== false && substr_count($en, '<a href="#step-') === 15 && strpos($en, 'id="step-15"') !== false
+                && strpos($en, 'id="step-before"') !== false && strpos($en, 'After: log and statistics') !== false, 'the way as a picture: 15 checks, each a link to its line; before and after');
             truthy(strpos($de, 'Log: sofort, nur Gestopptes (Stufe stop).') !== false && strpos($de, 'was zur Website geht, am Ende der Anfrage') !== false && strpos($de, '>Mensch · Crawler · Bot</text>') !== false,
                 'after: when the log and the statistics write; the line from the crawler check to the statistics');
             truthy(preg_match('~<details class="rfile" open><summary><code>site.rules</code> <span class="note">· 3 rules · 6× decided</span></summary><table class="rtable"><tr id="rule-T-AREA"><td class="rid"><code>T-AREA</code></td><td>the intranet only~', $en) === 1,
@@ -534,10 +534,10 @@ return [
             same(['id' => 'T-AREA', 'text' => 'the intranet only', 'where' => 'site.rules:5'], $page::rule($s, 'site.rules:5'), 'a rule counted by its place: found by it');
             same(['id' => 'T-OLD', 'text' => 'the old admin area', 'where' => 'site.rules:6'], $page::rule($s, 'T-OLD'));
             file_put_contents("$dir/q.rules", "[Q-ONE] query page int at **/a/**   # the first\n[Q-TWO] query page int   sort word at **/b/**   # the second\n");
-            $rows = RulesPage::groups(Settings::from(RuleFile::read(["$dir/q.rules"])['config']))[1][2];
+            $rows = array_values(array_filter(RulesPage::groups(Settings::from(RuleFile::read(["$dir/q.rules"])['config'])), static fn (array $g): bool => $g[0] === 'Known parameters'))[0][2];
             same([['Q-ONE', 'the first'], ['Q-TWO', 'the second']], array_map(static fn (array $r): array => [$r['id'], $r['text']], $rows), 'two query lines with the same parameter: each its own rule');
             same(['Minute', '10 Sekunden', 'einen Tag', 'eine Stunde'], [Describe::duration(60, 'de'), Describe::duration(10, 'de'), Describe::span(86400, 'de'), Describe::span(3600, 'de')]);
-            same('Addresses only attackers ask for', RulesPage::groups($s)[0][0], 'the rules page stays English');
+            same(['Kept out and let in', 'Addresses only attackers ask for'], [RulesPage::groups($s)[0][0], RulesPage::groups($s)[1][0]], 'the rules page stays English');
             // The statistics page: a fourth view, and the protection view explains its rules.
             $st = Stats::of($s);
             $st->count(['a:reject', 'r:T-AREA', 'r:built-in', 's:403'], STATS_T0);

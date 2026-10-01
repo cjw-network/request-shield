@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Implemented** (2026-10-01): `deny`, `exempt … until`, list files, the command line, automatic bans; the dashboard tab comes with [0012](0012-dashboard.md) |
 | Proposed | 2026-09-30 |
 | Affects | rule files (new rules `deny` and `ban`, list files), the store, the dashboard ([0012](0012-dashboard.md)), the command line |
 
@@ -165,6 +165,10 @@ trusted proxies anyway.
 | bans switched on | one store lookup per request (APCu ~0.2 µs, the file store ~1–2 µs); counting only when a limit, refusal or unsolved check happens |
 | a banned client | that lookup and a short answer — nothing else runs |
 
+Measured once built (PHP 8.4, OPcache; [details](../features/ip-lists.md#cost)):
+5,000 deny ranges +0.3–2 µs with APCu; bans on +0.5–1 µs with APCu and +3–6 µs
+with the file store (one stat per request for the address's ban).
+
 ## Privacy
 
 The lists hold addresses — personal data under the GDPR when they belong to
@@ -194,3 +198,30 @@ against an attack); the counters behind it expire with their windows.
 6. Should a ban that keeps returning be offered for the deny list?
    *Recommendation: offered on the dashboard and by the rule advisor
    ([0016](0016-rule-advisor.md)); a person decides.*
+
+## Decisions (2026-10-01)
+
+1. **`deny` first** — before the method and the path; **403** with the usual
+   short page, the reason stays out of it (the log names the entry).
+2. **The allow list is never counted and never checked** (not at
+   always-checked pages either), and **never let past** blocked paths or
+   attack patterns.
+3. **Bans: off by default, the four signals** (`limits`, `refusals`, `checks`,
+   a budget's name), 429 with `Retry-After`, ×2 for a repeat within a day
+   (`ban-growth`), at most a day (`ban-max`), `monitor ban` to watch first.
+4. **A ban that keeps returning is offered for the deny list** — on the
+   dashboard and by the rule advisor ([0016](0016-rule-advisor.md)); a person
+   decides. Both wait for [0012](0012-dashboard.md).
+
+As built, beyond the design above:
+
+- `ban` and the list settings (`lists-dir`, `ban-growth`, `ban-max`) are about
+  the server: above the site blocks ([0024](0024-rules-per-website.md)), so a
+  client banned on one website is banned on all. `deny` may stand in a site
+  block and then keeps an address off that website only.
+- The command line writes the list files; `allow` always takes an end (an
+  address let in for good belongs in the rule file); a range holding a trusted
+  proxy is refused even with `--force`. With the file store `unlist` lifts a
+  running ban at once.
+- The store learned `mark()`/`marked()`: a key held until a time, ending by
+  itself (APCu TTL; a small file, removed when read after its end).
