@@ -123,6 +123,46 @@ request-shield code site.rules --revoke=K7…
   for how long, how many uses, the note), the active ones, revoke. The live view
   shows "a code for A-FILES taken (order 4711)".
 
+### The application asks: a header (or one line of PHP)
+
+The rules name the areas; **which page belongs to one, the application can
+decide**. An editor ticks "protected" on a page or a section in the CMS, and
+the template says so, without touching a rule file. This is the way
+[0006](0006-the-site-asks-for-the-check.md) works for the browser check
+(`X-Request-Shield-Challenge: required`), now for a password or a code:
+
+```text
+[A-PREVIEW] protect area with password $2y$12$… or code for 8h     # an area without paths: only when the application asks
+```
+
+```php
+// In the template of a page marked "protected" (needs set app-challenge on):
+header('X-Request-Shield-Access: A-PREVIEW');
+
+// Or before rendering, cheaper (the page is not rendered twice; a POST is sent again after the login):
+Shield::active()?->requireAccess('A-PREVIEW');
+```
+
+- **The header names an area of the rule file, nothing else.** A password,
+  a hash or a code never travel in it. The shield removes it before the answer
+  leaves.
+- **A valid cookie for the area:** the page goes through as rendered.
+- **None:** the rendered page is thrown away (it was held back, as for the
+  check header), and the shield's form answers instead. Right → the cookie,
+  and a redirect to the same address: the application renders the page again,
+  says so again, and this time it goes through.
+- **An area the rules do not know:** 403, logged. The door fails closed, so a
+  typo in a template never opens anything.
+- **Codes** the application issues for that area (`Access::issue($settings,
+  'A-PREVIEW', …)`) are taken on the same form or by link (`?rs-code=…`).
+- **The cost:** a page that asks is held back until it is finished (only with
+  `set app-challenge on`); without a cookie it is rendered twice. That is why
+  `requireAccess()` is the better way where the application knows early.
+- **Limits:** the page must not be sent early (no `flush()` before the end);
+  files the web server serves itself never reach PHP; a cache in front of the
+  site must not keep such a page (the shield marks the form `no-store`, and a
+  protected page should send `Cache-Control: private`).
+
 ### Parts of a website by address (exists, extended)
 
 - `restrict <paths> to <ranges>` exists: everyone else gets 403.
@@ -168,7 +208,9 @@ request-shield code site.rules --revoke=K7…
 ## Phases
 
 1. `protect … with password` (the form, the cookie, the budget, the log, the
-   live view); `bin/request-shield password`; `restrict … or password`.
+   live view); `bin/request-shield password`; `restrict … or password`; areas
+   without paths that the application asks for (`X-Request-Shield-Access`,
+   `requireAccess()`).
 2. Codes: `Access::issue()/revoke()`, `request-shield code/codes`, the store
    (files), `?rs-code=` taken out of the address; the dashboard's Codes tab.
 3. Times of day for `restrict`/`protect`; `Authorization: Bearer` for APIs.
@@ -185,6 +227,10 @@ request-shield code site.rules --revoke=K7…
 4. **Short codes for typing** (`XXXX-XXXX-XXXX`, ~60 bits): allowed?
    *Recommendation: yes, with a stricter budget (3 wrong a minute per
    address and area), long ones for links.*
-5. **Per user?** A code with a user ID the application can read back
+5. **The header names an area only** (proposed), or may it carry a
+   password hash of the application's own? *Recommendation: the area only:
+   anything that could be a credential stays out of headers, and the rule
+   file stays the one place the passwords' hashes are.*
+6. **Per user?** A code with a user ID the application can read back
    (`Shield::active()->area()['note']`). *Recommendation: the note only, read
    back by the application if it wants; no user accounts in the shield.*
