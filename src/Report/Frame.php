@@ -31,13 +31,16 @@ final class Frame
     public static function links(\CjwNetwork\RequestShield\Settings $s, string $prefix = ''): array
     {
         $base = $prefix . $s->dashboardPath;
-        // The statistics plugin's pages under /stats/ (StatsPage::links()), the core's -- the firewall's -- under /waf/.
-        return ($s->statsHosts !== [] ? ['sites' => $base . '/stats/sites'] : []) + ['all' => $base . '/stats/overview', 'site' => $base . '/stats/visitors',
-            'shield' => $base . '/stats/protection', 'rules' => $base . '/waf/rules', 'live' => $base . '/waf/live', 'lists' => $base . '/waf/lists'];
+        $stats = $prefix . $s->statsPath;
+        // The statistics plugin's pages under its own path (set stats-path), the core's -- the firewall's -- under /waf/.
+        return ($s->statsHosts !== [] ? ['sites' => $stats . '/sites'] : []) + ['all' => $stats . '/overview', 'site' => $stats . '/visitors',
+            'shield' => $stats . '/protection', 'rules' => $base . '/waf/rules', 'live' => $base . '/waf/live', 'lists' => $base . '/waf/lists'];
     }
 
-    /** Every address of the dashboard below dashboard-path: the pages and the two starts (/stats, /waf). */
-    private const PAGES = ['/stats', '/stats/sites', '/stats/overview', '/stats/visitors', '/stats/protection', '/waf', '/waf/rules', '/waf/live', '/waf/lists'];
+    /** The core's addresses below dashboard-path, and the statistics plugin's below stats-path. */
+    private const PAGES = ['/waf', '/waf/rules', '/waf/live', '/waf/lists'];
+
+    private const STATS = ['', '/sites', '/overview', '/visitors', '/protection'];
 
     /**
      * Whether a path is one of the dashboard's pages -- also below a prefix
@@ -47,10 +50,15 @@ final class Frame
     public static function isPage(\CjwNetwork\RequestShield\Settings $s, string $path): bool
     {
         $p = strtolower(rtrim($path, '/'));
-        $base = strtolower($s->dashboardPath);
+        $full = [];
         foreach (self::PAGES as $page) {
-            $full = $base . $page;
-            if ($p === $full || substr($p, -strlen($full)) === $full) {
+            $full[] = strtolower($s->dashboardPath) . $page;
+        }
+        foreach (self::STATS as $page) {
+            $full[] = strtolower($s->statsPath) . $page;
+        }
+        foreach ($full as $f) {
+            if ($p === $f || substr($p, -strlen($f)) === $f) {
                 return true;
             }
         }

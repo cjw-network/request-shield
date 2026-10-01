@@ -145,7 +145,8 @@ final class VisitorsPage
         }
         $cards .= self::card('vp-c', $t['crawlersAi'], '', [$t['tSearch'] => $kinds['search'], $t['tAi'] => $kinds['ai'], $t['tTraining'] => $kinds['training']], $t, $lang, false);
 
-        return $h . '<div class="grid2">' . $cards . '</div>';
+        // One under the other, each the full width: the pages' addresses (with their website) need room.
+        return $h . $cards;
     }
 
     /**

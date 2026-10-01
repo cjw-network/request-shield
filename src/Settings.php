@@ -199,6 +199,8 @@ final class Settings
         public array $statsSkip = [],
         /** @var array<string, array{name: string, sites: list<string>, rule: string}> @readonly stats-group: id (customer-a) => its name, its websites */
         public array $statsGroups = [],
+        /** @readonly where the statistics plugin's pages live (set stats-path; default <dashboard-path>/stats) */
+        public string $statsPath = '/rs/stats',
     ) {
     }
 
@@ -325,7 +327,7 @@ final class Settings
             ...self::withFeeds(self::lists($c, $budgets), $feeds = self::feeds($c)),
             ...self::live($c),
             ...array_slice($feeds, 0, 5),
-            ...[self::statsHosts($c), self::patternList(is_array($c['stats'] ?? null) ? ($c['stats']['skip'] ?? []) : [], 'stats.skip'), self::statsGroups($c)],
+            ...[self::statsHosts($c), self::patternList(is_array($c['stats'] ?? null) ? ($c['stats']['skip'] ?? []) : [], 'stats.skip'), self::statsGroups($c), self::statsPath($c)],
         );
     }
 
@@ -835,6 +837,26 @@ final class Settings
     }
 
     /** @param array<mixed> $c */
+    /**
+     * Where the statistics plugin's pages live: set stats-path, else
+     * <dashboard-path>/stats. The plugin owns it; the core's pages stay at
+     * <dashboard-path>/waf/.
+     *
+     * @param array<mixed> $c
+     */
+    private static function statsPath(array $c): string
+    {
+        $p = is_array($c['stats'] ?? null) ? ($c['stats']['path'] ?? null) : null;
+        if ($p === null) {
+            return self::dashboardPath($c) . '/stats';
+        }
+        if (!is_string($p) || !preg_match('#^(/[A-Za-z0-9._~-]+)+$#', $p) || preg_match('#/\.+(/|$)#', $p)) {
+            throw self::wrong('stats.path', 'a path such as /rs/stats or /admin/statistics');
+        }
+        return $p;
+    }
+
+    /** @param array<mixed> $c */
     private static function dashboardPath(array $c): string
     {
         $p = $c['dashboardPath'] ?? '/rs';
@@ -1135,7 +1157,7 @@ final class Settings
     public const DENY_SHOWN = 100;
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 35;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups
+    private const FORMAT = 36;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

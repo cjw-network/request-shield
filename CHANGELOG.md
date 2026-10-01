@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `set stats-path`: the statistics plugin's own address (default
+  `<dashboard-path>/stats`); the core's pages stay at `<dashboard-path>/waf/`.
+- Several websites read together (all of them, a group): every page, section,
+  page not found and sitemap with its website in front (`a.de/news/x`), and the
+  "path starts with" filter takes `a.de/news/`. The pages card, "In short" and
+  the pages not found use the full width of the statistics page.
 - **Groups of websites and an overview of all websites** (proposal 0023,
   phase 3): `stats-group "Customer A" a.de www.a.de b.de` — a group's
   statistics add its websites up, the website switch has a section per group,

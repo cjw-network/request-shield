@@ -219,6 +219,53 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'several websites read together: every page with its website in front -- the same path on two is two pages; the filter takes website/path' => function (): void {
+        $dir = sitesStatsDir();
+        try {
+            $s = sitesStatsSettings($dir, "stats-group \"Customer A\" a.de b.de\n");
+            foreach (['a.de' => ['/', '/news/x'], 'b.de' => ['/', '/kontakt']] as $site => $paths) {
+                foreach ($paths as $path) {
+                    Stats::of($s, $site)->count(['a:allow', 'pg:people|' . $path, 'n:/gone', 'pb:refused|/wp-login.php', 'pg:people|(other)'], (float) SITES_T0);
+                }
+            }
+            $all = StatsReport::build($s, null, 1, SITES_T0);
+            same(['a.de/', 'a.de/news/x', 'b.de/', 'b.de/kontakt'], array_values(array_filter(array_keys($all['pages']), static fn (string $p): bool => $p !== '(other)')), 'each page with its website');
+            same(['a.de/gone', 'b.de/gone'], array_keys($all['notFound']), 'not found too');
+            same(['pg:people|a.de/x' => 1, 'pg:people|(other)' => 2, 'n:a.de/y' => 3, 'nr:a.de/y|/z' => 1, 'pb:refused|a.de/w' => 1, 'p:CRAWL-GOOGLE:a.de/v' => 1, 'sm:a.de/sitemap.xml|200' => 1, 'a:allow' => 5],
+                Stats::withHost(['pg:people|/x' => 1, 'pg:people|(other)' => 2, 'n:/y' => 3, 'nr:/y|/z' => 1, 'pb:refused|/w' => 1, 'p:CRAWL-GOOGLE:/v' => 1, 'sm:/sitemap.xml|200' => 1, 'a:allow' => 5], 'a.de'),
+                'only real paths get the website; "(other)", counters without a path stay');
+            same(['a.de/news/x'], array_keys(StatsReport::build($s, null, 1, SITES_T0, ['path' => 'a.de/news/'])['pages']), 'the filter: a website and its path');
+            same(['/', '/news/x'], array_values(array_filter(array_keys(StatsReport::build($s, null, 1, SITES_T0, ['site' => 'a.de'])['pages']), static fn (string $p): bool => $p !== '(other)')), 'one website: the paths as they are');
+            same(['a.de/', 'a.de/news/x'], array_values(array_filter(array_keys(StatsReport::build($s, null, 1, SITES_T0, ['site' => 'group:customer-a', 'path' => 'a.de/'])['pages']),
+                static fn (string $p): bool => $p !== '(other)')), 'a group: its websites in front as well');
+            $h = StatsPage::render($s, ['view' => 'site', 'action' => '/rs/stats/visitors', 'lang' => 'en', 'now' => SITES_T0, 'path' => 'a.de/news/']);
+            truthy(strpos($h, 'a.de/news/x') !== false, 'the page takes the filter as it is');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'set stats-path: the plugin\'s own address -- its pages below it, the core\'s stay at <dashboard-path>/waf/' => function (): void {
+        $dir = sitesStatsDir();
+        try {
+            same('/rs/stats', sitesStatsSettings($dir, '')->statsPath, 'the default: <dashboard-path>/stats');
+            same('/admin/rs/stats', sitesStatsSettings($dir, "set dashboard-path /admin/rs\n")->statsPath);
+            $s = sitesStatsSettings($dir, "set stats-path /statistik\nset stats-hosts a.de\n");
+            same(['sites' => '/statistik/sites', 'all' => '/statistik/overview', 'site' => '/statistik/visitors', 'shield' => '/statistik/protection', 'rules' => '/rs/waf/rules'],
+                StatsPage::links($s), 'the plugin\'s pages below its path; rules is the core\'s');
+            same(['sites', 'site', null], [StatsPage::viewFor($s, '/statistik'), StatsPage::viewFor($s, '/statistik/visitors'), StatsPage::viewFor($s, '/rs/stats/visitors')]);
+            same('/statistik/visitors', \CjwNetwork\RequestShield\Report\Frame::links($s)['site'], 'the tabs know it');
+            same([true, true, false], [\CjwNetwork\RequestShield\Report\Frame::isPage($s, '/demo/statistik/overview'), \CjwNetwork\RequestShield\Report\Frame::isPage($s, '/rs/waf/live'),
+                \CjwNetwork\RequestShield\Report\Frame::isPage($s, '/rs/stats/overview')], 'the dashboard\'s pages (for the pace, the live view)');
+            try {
+                sitesStatsSettings($dir, "set stats-path statistik\n");
+                throw new TestFailure('accepted a path without /');
+            } catch (InvalidArgumentException $e) {
+                truthy(strpos($e->getMessage(), 'stats.path') !== false, $e->getMessage());
+            }
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'the page: a website switch (all, each, other), the choice kept in the links; the command line: --site' => function (): void {
         $dir = sitesStatsDir();
         try {

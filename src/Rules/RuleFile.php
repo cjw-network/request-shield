@@ -77,6 +77,7 @@ final class RuleFile
         'stats-months' => ['stats.months', 'int'],
         'stats-depth' => ['stats.depth', 'int'],
         'stats-hosts' => ['stats.hosts', 'hostnames'],
+        'stats-path' => ['stats.path', 'string'],
         'stats-hours' => ['stats.hours', 'int'],
         'stats-days' => ['stats.days', 'int'],
         'crawler-log' => ['crawlerLog.dir', 'path'],

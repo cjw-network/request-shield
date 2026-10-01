@@ -701,8 +701,8 @@ final class Shield
     {
         $s = $this->settings;
         $path = $request->matchPath();
-        if (stripos($path, $s->dashboardPath) === false) {
-            return false;                                   // the common case: one search
+        if (stripos($path, $s->dashboardPath) === false && stripos($path, $s->statsPath) === false) {
+            return false;                                   // the common case: a search or two
         }
         if (!Report\Frame::isPage($s, $path)) {
             return false;

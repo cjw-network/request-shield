@@ -75,7 +75,7 @@ shows each known crawler's last 7 days next to its row.
 
 **Where it lives:** `set dashboard-path /rs` (the default; `/admin/rs` if the site
 wants it behind its admin area). The statistics plugin's pages live under
-`/rs/stats/`: **`/rs/stats/overview`** (everything), **`/rs/stats/visitors`**
+its own path, **`set stats-path`** (default `<dashboard-path>/stats`, so `/rs/stats/`): **`/rs/stats/overview`** (everything), **`/rs/stats/visitors`**
 (visitors and pages), **`/rs/stats/protection`** (the protection), and with
 `stats-hosts` **`/rs/stats/sites`** (all websites, below). `/rs/stats` itself is
 the plugin's start: all websites with `stats-hosts`, else the overview. The
@@ -238,6 +238,10 @@ set stats-hosts sites                    # or: the site blocks' names (not "defa
 - **Kept apart:** `store-dir/stats/hosts/<name>/` (the same files as before;
   `*` written `+`), `store-dir/stats/hosts/(other)/`. The APCu names carry the
   directory, so websites never count into each other.
+- **Several websites read together** (all of them, a group): every page, section,
+  page not found and sitemap carries its website in front (`a.de/news/x`), so the
+  same path on two websites stays two entries; the filter takes `a.de/news/`.
+  One website alone shows its paths as they are.
 - **Read:** the pages get a switch (*All websites* · each website · *other
   hosts*), kept in every link and in the JSON (`?site=a.de`); `bin/request-shield
   stats … --site=a.de` (or `--site=other`). *All websites* adds every website up,

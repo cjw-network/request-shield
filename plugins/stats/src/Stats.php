@@ -106,7 +106,9 @@ final class Stats
     {
         $apcu = $s->store === 'apcu' || ($s->store === 'auto' && Store\ApcuStore::usable());
         $dir = $s->storeDir . '/stats' . ($site === null ? '' : '/hosts/' . str_replace('*', '+', $site));
-        return new self($dir, $apcu, $s->statsHours, $s->statsDays, $s->crawlerLogDir, $s->crawlerLogDays, $s->statsFlush, $s->statsMonths);
+        $stats = new self($dir, $apcu, $s->statsHours, $s->statsDays, $s->crawlerLogDir, $s->crawlerLogDays, $s->statsFlush, $s->statsMonths);
+        $stats->site = $site;
+        return $stats;
     }
 
     /** The settings whose stats-hosts $names holds (one request, one settings: kept for the next lookup). */
@@ -140,6 +142,35 @@ final class Stats
             return '*' . substr($host, $dot);
         }
         return self::OTHER;
+    }
+
+    /**
+     * The counters with the website in front of every path: pages, sections,
+     * pages stopped, not found and their links, sitemaps, a crawler's pages.
+     * Only a real path ("/…"); "(other)" and the like stay as they are.
+     *
+     * @param array<string, int> $counts
+     * @return array<string, int>
+     */
+    public static function withHost(array $counts, string $site): array
+    {
+        $out = [];
+        foreach ($counts as $k => $n) {
+            $k = (string) $k;
+            $colon = strpos($k, ':');
+            $type = $colon === false ? '' : substr($k, 0, $colon);
+            $at = match ($type) {
+                'pg', 'pd', 'pb' => strpos($k, '|'),               // pg:people|/x
+                'n', 'nr', 'sm', 'smc' => $colon,                  // n:/x, nr:/x|ref
+                'p' => strpos($k, ':', (int) $colon + 1),           // p:<crawler>:/x
+                default => false,
+            };
+            if ($at !== false && ($k[$at + 1] ?? '') === '/') {
+                $k = substr($k, 0, $at + 1) . $site . substr($k, $at + 1);
+            }
+            $out[$k] = ($out[$k] ?? 0) + $n;
+        }
+        return $out;
     }
 
     /** Whether $site names something to read: a website of stats-hosts, OTHER, or group:<id>. */
@@ -184,10 +215,16 @@ final class Stats
     public static function readAll(array $all, string $fromDay, string $toDay): array
     {
         $out = ['days' => [], 'hours' => [], 'months' => [], 'last' => []];
+        $several = count($all) > 1;
         foreach ($all as $stats) {
             $r = $stats->read($fromDay, $toDay);
             foreach (['days', 'hours', 'months'] as $part) {
                 foreach ($r[$part] as $k => $counts) {
+                    // Several websites: each page with its website in front (a.de/news/x), or
+                    // the same path on two websites would be one page.
+                    if ($several && $stats->site !== null) {
+                        $counts = self::withHost($counts, $stats->site);
+                    }
                     $out[$part][(string) $k] = self::add($out[$part][(string) $k] ?? [], $counts);
                 }
             }
@@ -206,6 +243,9 @@ final class Stats
         }
         return $out;
     }
+
+    /** The website these counters are of (stats-hosts), or null: one statistics, or what was counted before. */
+    public ?string $site = null;
 
     /** The directory these counters are kept in. */
     public function dir(): string

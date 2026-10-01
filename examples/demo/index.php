@@ -174,7 +174,7 @@ if ($path === '/search') {
     if (($_GET['format'] ?? '') === 'json') {
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(\CjwNetwork\RequestShield\Report\StatsReport::build($shield->settings, null, $days, null, ['by' => $by === null || $by === 'hour' ? 'day' : $by] + ($only !== null ? ['crawler' => $only] : [])
-            + (isset($_GET['path']) && $_GET['path'] !== '' ? ['path' => '/' . ltrim((string) $_GET['path'], '/')] : []) + (isset($_GET['sort']) ? ['sort' => (string) $_GET['sort']] : [])
+            + (isset($_GET['path']) && $_GET['path'] !== '' ? ['path' => preg_match('#^[a-z0-9*+()][a-z0-9.*+()-]*/#i', (string) $_GET['path']) === 1 ? (string) $_GET['path'] : '/' . ltrim((string) $_GET['path'], '/')] : []) + (isset($_GET['sort']) ? ['sort' => (string) $_GET['sort']] : [])
             + (isset($_GET['site']) && $_GET['site'] !== '' ? ['site' => (string) $_GET['site']] : [])
             + (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($_GET['from'] ?? '')) === 1 && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($_GET['to'] ?? '')) === 1
                 ? ['from' => str_replace('-', '', (string) $_GET['from']), 'to' => str_replace('-', '', (string) $_GET['to'])] : [])),

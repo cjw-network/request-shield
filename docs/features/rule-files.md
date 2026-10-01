@@ -328,6 +328,7 @@ keeps both the same.
 | `stats-hours`, `stats-days`, `stats-months`, `stats-flush` | days the hours are kept (7), days the day totals are kept (400, then summed into months), months kept (0: for good), seconds between writes to disk with APCu (60) |
 | `site-from` | which name picks a site block: `server-name` (the default, the web server's) or `host` (the Host header) — [site blocks](#site-blocks-rules-per-website) |
 | `plugin` (a rule, not `set`) | `plugin Vendor\Package\MyPlugin`: a [plugin](plugins.md), told what was decided and how a request ended; the statistics need none (`set stats on`) |
+| `stats-path` | where the statistics plugin's pages live (default `<dashboard-path>/stats`): `…/sites`, `/overview`, `/visitors`, `/protection` below it; the core's stay at `<dashboard-path>/waf/` |
 | `stats-hosts` | the websites with statistics of their own: names, `*.domain`, `host` (the host rule's), `sites` (the site blocks'); any other name counts as "other hosts" ([statistics per website](statistics.md#statistics-per-website)) |
 | `stats-depth` | folder levels a section's views are counted for exactly, 1 to 4 (2: `/news/`, `/news/2026/`; 3 where a language takes the first level: `/de/news/2026/`) |
 | `crawler-log`, `crawler-log-kinds`, `crawler-log-days`, `crawler-log-query` | one log per known crawler and day: its directory, the kinds logged, days kept (30), whether the query is kept ([statistics](statistics.md#one-log-per-crawler-optional)) |

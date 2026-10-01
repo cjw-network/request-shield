@@ -98,7 +98,8 @@ final class StatsPage
         $by = $o['by'] ?? ($days === 1 && $from === null ? 'hour' : ($days > 62 ? 'month' : 'day'));
         $range = $from !== null ? ['from' => gmdate('Y-m-d', $from), 'to' => gmdate('Y-m-d', (int) $to)] : [];
         $crawler = $o['crawler'] ?? null;
-        $path = isset($o['path']) && $o['path'] !== '' ? '/' . ltrim((string) $o['path'], '/') : null;
+        // A path, or with several websites read together a website and its path (a.de/news/).
+        $path = isset($o['path']) && $o['path'] !== '' ? (preg_match('#^[a-z0-9*+()][a-z0-9.*+()-]*/#i', (string) $o['path']) === 1 ? (string) $o['path'] : '/' . ltrim((string) $o['path'], '/')) : null;
         $filter = $path;                    // the subtree filter ($path is reused by the loops below)
         $view = in_array($o['view'] ?? 'site', ['site', 'shield', 'all', 'rules', 'sites'], true) ? ($o['view'] ?? 'site') : 'site';
         if ($view === 'sites' && $s->statsHosts === []) {
@@ -409,10 +410,10 @@ final class StatsPage
             }
             $h = $body . ($soon !== null ? '<p class="vnowl"><span class="dot crawlers"></span> ' . $e(sprintf($t['nowPeople'], $n($soon))) . '</p>' : '')
                 . VisitorsPage::render($r, $cur, $prev, ['lang' => $lang, 'by' => $by, 'action' => $action, 'keep' => $keep, 'link' => $link, 'clear' => $query($keep + $sorted), 'path' => $filter])
-                . $grid($short, $sitemapsBlock);
+                . $short . $sitemapsBlock;                   // full width: sentences and addresses need room
         } else {
-            $h = $body . '<div class="tiles">' . implode('', $tiles) . '</div>' . $hint . $grid($chartWho, $chartWhat) . $grid($answers, $short) . $topBlock . $crawlersBlock
-                . $sitemapsBlock . $grid($missingBlock, $rulesBlock);
+            $h = $body . '<div class="tiles">' . implode('', $tiles) . '</div>' . $hint . $grid($chartWho, $chartWhat) . $short . $grid($answers, $rulesBlock) . $topBlock . $crawlersBlock
+                . $sitemapsBlock . $missingBlock;
         }
         $h .= '<p class="foot">' . $e($t['updated'] . ' ' . date($lang === 'de' ? 'd.m.Y H:i:s' : 'Y-m-d H:i:s', $now) . ' · ' . $t['refresh']) . '</p>';
 
@@ -533,10 +534,11 @@ final class StatsPage
      */
     public static function links(Settings $s, string $prefix = ''): array
     {
-        $base = $prefix . $s->dashboardPath;
-        // The statistics plugin's pages under <dashboard-path>/stats/; "rules" is the core's (Rules & setup, under /waf/).
-        return ($s->statsHosts !== [] ? ['sites' => $base . '/stats/sites'] : []) + ['all' => $base . '/stats/overview', 'site' => $base . '/stats/visitors',
-            'shield' => $base . '/stats/protection', 'rules' => $base . '/waf/rules'];
+        // The plugin's pages under its own path (set stats-path, default <dashboard-path>/stats);
+        // "rules" is the core's (Rules & setup, under <dashboard-path>/waf/).
+        $own = $prefix . $s->statsPath;
+        return ($s->statsHosts !== [] ? ['sites' => $own . '/sites'] : []) + ['all' => $own . '/overview', 'site' => $own . '/visitors',
+            'shield' => $own . '/protection', 'rules' => $prefix . $s->dashboardPath . '/waf/rules'];
     }
 
     /**
@@ -552,8 +554,7 @@ final class StatsPage
                 return $view;
             }
         }
-        $base = strtolower($s->dashboardPath);
-        if ($p === $base . '/stats') {
+        if ($p === strtolower($s->statsPath)) {
             return $s->statsHosts !== [] ? 'sites' : 'all';
         }
         return null;
