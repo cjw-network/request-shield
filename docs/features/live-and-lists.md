@@ -17,8 +17,11 @@ the statistics, under `dashboard-path`: `/rs/live` and `/rs/lists`.
   - **where from**: a **list**, a **ban**, a **feed**, the site's **own rule**,
     a **built-in rule**, the **pace** (a budget), the **crawler policy**, or a
     **basic check**;
-  - the rule ID and "keep out", which opens the lists page with the address
-    filled in.
+  - the rule ID, **a link to where the rule is written**: its line on the rules
+    page (`/rs/rules#rule-DEMO-PACE`, its file opened there), a list entry
+    (`LIST-D3`) on the lists page, a basic check without a rule on the way of a
+    request;
+  - "keep out", which opens the lists page with the address filled in.
 
   Filters for the website, what happened and the source, plus a text search,
   are kept in the page's address. **Pause** holds new rows back and counts them.

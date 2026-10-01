@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Phase 1 implemented** (2026-10-01): the plugin interface, the statistics as its first plugin; phases 2–6 accepted, to come |
+| Status | **Phases 1–2 implemented** (2026-10-01): the plugin interface, the statistics as its first plugin; statistics per website; phases 3–6 accepted, to come |
 | Proposed | 2026-10-01 |
 | Affects | the core (`Shield::protect()`, `Shield::record()`), the statistics (`Stats`, `Report\*`), the dashboard and its login ([0012](0012-dashboard.md)), the visitors page ([0022](0022-visitors-page.md)), rule files (`plugin`, `stats-hosts`, `stats-group`, `stats-access`), packaging |
 
@@ -231,3 +231,15 @@ plugin's own pages need it. `Seen` as described, lazily. `plugin <class>` and
    hour.*
 6. **Groups also for the protection settings** (a customer's own rules for its
    websites)? *Recommendation: later — 0021 (rules from the CMS) per host first.*
+
+Phase 2 as built: `set stats-hosts <names>` (also `host`: the host rule's
+names, `sites`: the site blocks'; `*.domain` one label deep, as site blocks),
+above the site blocks. `Stats::siteOf()` (a `WeakMap` per settings: 0.15–0.35
+µs with 51 names), `Stats::of($settings, $site)` (`stats/hosts/<name>/`,
+`stats/hosts/(other)/`), `Stats::all()`/`readAll()` (all websites added up, with
+what was counted before in `stats/`), `StatsReport::read()` and the option
+`site`; the pages' website switch, kept in every link and the JSON;
+`bin/request-shield stats --site=`. A quiet website's hour is rolled up by the
+first request of each hour in each process (`Stats::tend()`). The demo counts
+`localhost84` and `127.0.0.1` apart.
+

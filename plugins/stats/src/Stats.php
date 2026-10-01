@@ -94,11 +94,107 @@ final class Stats
         $this->prefix = 'rshield:stat:' . substr(md5($dir), 0, 8) . ':';
     }
 
-    /** The counters of these settings: in store-dir/stats, with APCu where the store would use it. */
-    public static function of(Settings $s): self
+    /** Where the websites no stats-hosts name are counted (not a name a website can have). */
+    public const OTHER = '(other)';
+
+    /**
+     * The counters of these settings: in store-dir/stats, with APCu where the
+     * store would use it -- with stats-hosts, a website's in
+     * store-dir/stats/hosts/<name> ($site: a name of statsHosts, or OTHER).
+     */
+    public static function of(Settings $s, ?string $site = null): self
     {
         $apcu = $s->store === 'apcu' || ($s->store === 'auto' && Store\ApcuStore::usable());
-        return new self($s->storeDir . '/stats', $apcu, $s->statsHours, $s->statsDays, $s->crawlerLogDir, $s->crawlerLogDays, $s->statsFlush, $s->statsMonths);
+        $dir = $s->storeDir . '/stats' . ($site === null ? '' : '/hosts/' . str_replace('*', '+', $site));
+        return new self($dir, $apcu, $s->statsHours, $s->statsDays, $s->crawlerLogDir, $s->crawlerLogDays, $s->statsFlush, $s->statsMonths);
+    }
+
+    /** @var \WeakMap<Settings, array<string, true>>|null the names of stats-hosts, per settings (gone with them) */
+    private static ?\WeakMap $names = null;
+
+    /**
+     * Whose statistics a request counts in: the website it names (lower case,
+     * without port and trailing dot) if stats-hosts names it -- exactly, or by
+     * *.domain (one label more) -- else OTHER; null without stats-hosts (one
+     * statistics). The Host header comes from the client: a made-up name gets
+     * no statistics of its own.
+     */
+    public static function siteOf(Settings $s, string $host): ?string
+    {
+        if ($s->statsHosts === []) {
+            return null;
+        }
+        self::$names ??= new \WeakMap();
+        $names = self::$names[$s] ??= array_fill_keys($s->statsHosts, true);
+        if (isset($names[$host])) {
+            return $host;
+        }
+        $dot = strpos($host, '.');
+        if ($dot !== false && $dot > 0 && isset($names['*' . substr($host, $dot)])) {
+            return '*' . substr($host, $dot);
+        }
+        return self::OTHER;
+    }
+
+    /**
+     * The statistics to read for $site: that website's, or (null) every
+     * website's and the shared directory's -- what was counted before
+     * stats-hosts was set stays in the sum.
+     *
+     * @return list<self>
+     */
+    public static function all(Settings $s, ?string $site = null): array
+    {
+        if ($s->statsHosts === []) {
+            return [self::of($s)];
+        }
+        if ($site !== null) {
+            return [self::of($s, $site)];
+        }
+        $out = [self::of($s)];
+        foreach (array_merge($s->statsHosts, [self::OTHER]) as $name) {
+            $out[] = self::of($s, $name);
+        }
+        return $out;
+    }
+
+    /**
+     * read() of several statistics, added up: the counters exactly; the lists
+     * in them (pages, referrers …) are summed per entry, as a day's hours are.
+     *
+     * @param list<self> $all
+     * @return array{days: array<string, array<string, int>>, hours: array<string, array<string, int>>, months: array<string, array<string, int>>, last: array<string, array{0: int, 1: string}>}
+     */
+    public static function readAll(array $all, string $fromDay, string $toDay): array
+    {
+        $out = ['days' => [], 'hours' => [], 'months' => [], 'last' => []];
+        foreach ($all as $stats) {
+            $r = $stats->read($fromDay, $toDay);
+            foreach (['days', 'hours', 'months'] as $part) {
+                foreach ($r[$part] as $k => $counts) {
+                    $out[$part][(string) $k] = self::add($out[$part][(string) $k] ?? [], $counts);
+                }
+            }
+            foreach ($r['last'] as $id => $seen) {
+                if ($seen[0] > ($out['last'][$id][0] ?? 0)) {
+                    $out['last'][$id] = $seen;
+                }
+            }
+        }
+        foreach (['days', 'hours', 'months'] as $part) {
+            ksort($out[$part]);
+            foreach ($out[$part] as &$counts) {
+                ksort($counts);
+            }
+            unset($counts);
+        }
+        return $out;
+    }
+
+    /** The directory these counters are kept in. */
+    public function dir(): string
+    {
+        return $this->dir;
     }
 
     /**
@@ -129,22 +225,7 @@ final class Stats
                 }
                 apcu_inc($this->prefix . $hour . ':' . $k, 1, $ok, 86400 * 8);
             }
-            $closed = self::$closedHour;
-            // Once per process and hour: has the finished hour been rolled up?
-            if ((self::$checked[$this->dir] ?? null) !== $closed) {
-                self::$checked[$this->dir] = $closed;
-                if (apcu_fetch($this->prefix . 'rolled') !== $closed) {
-                    $this->later(fn () => $this->roll($now));
-                }
-            }
-            // Every $flush seconds one request writes what APCu holds to the
-            // hour's file: a restart of PHP-FPM loses at most that much.
-            if ($this->flush > 0 && $now - (self::$flushed[$this->dir] ?? 0.0) >= $this->flush) {
-                self::$flushed[$this->dir] = $now;
-                if (apcu_add($this->prefix . 'flush', 1, $this->flush)) {
-                    $this->later(fn () => $this->flush());
-                }
-            }
+            $this->tend($now);
             return;
         }
         $file = $this->dir . '/h-' . $hour . '.log';
@@ -153,7 +234,39 @@ final class Stats
             @mkdir($this->dir, 0750, true);
             @file_put_contents($file, implode(' ', $keys) . "\n", FILE_APPEND);
         }
+        $this->tend($now);
+    }
+
+    /**
+     * Housekeeping, once per process and hour: the finished hour rolled up;
+     * with APCu, every $flush seconds what it holds written to the hour's file
+     * (a restart of PHP-FPM loses at most that much). Called by count(), and
+     * for the websites a request did not count in (a quiet website's hour is
+     * rolled up too).
+     */
+    public function tend(float $now): void
+    {
+        $n = intdiv((int) $now, 3600);
+        if (self::$hourN !== $n) {
+            [self::$hourN, self::$hour, self::$closedHour] = [$n, gmdate('YmdH', (int) $now), self::closed($now)];
+        }
         $closed = self::$closedHour;
+        if ($this->apcu) {
+            // Once per process and hour: has the finished hour been rolled up?
+            if ((self::$checked[$this->dir] ?? null) !== $closed) {
+                self::$checked[$this->dir] = $closed;
+                if (apcu_fetch($this->prefix . 'rolled') !== $closed) {
+                    $this->later(fn () => $this->roll($now));
+                }
+            }
+            if ($this->flush > 0 && $now - (self::$flushed[$this->dir] ?? 0.0) >= $this->flush) {
+                self::$flushed[$this->dir] = $now;
+                if (apcu_add($this->prefix . 'flush', 1, $this->flush)) {
+                    $this->later(fn () => $this->flush());
+                }
+            }
+            return;
+        }
         if ((self::$checked[$this->dir] ?? null) !== $closed) {
             self::$checked[$this->dir] = $closed;
             if (!is_file($this->dir . '/rolled-' . $closed)) {

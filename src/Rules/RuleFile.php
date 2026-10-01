@@ -76,6 +76,7 @@ final class RuleFile
         'dashboard-path' => ['dashboardPath', 'string'],
         'stats-months' => ['stats.months', 'int'],
         'stats-depth' => ['stats.depth', 'int'],
+        'stats-hosts' => ['stats.hosts', 'hostnames'],
         'stats-hours' => ['stats.hours', 'int'],
         'stats-days' => ['stats.days', 'int'],
         'crawler-log' => ['crawlerLog.dir', 'path'],
@@ -145,7 +146,7 @@ final class RuleFile
     private bool $sawSite = false;
 
     /** "set" keys that are about the server, not a website: not inside a site block. */
-    private const SERVER_WIDE = ['store', 'store-dir', 'secret', 'recheck', 'dns-lookups', 'ipv6-prefix', 'site-from', 'lists-dir', 'ban-growth', 'ban-max', 'live', 'live-keep', 'ban-keep', 'feeds-max-age'];
+    private const SERVER_WIDE = ['store', 'store-dir', 'secret', 'recheck', 'dns-lookups', 'ipv6-prefix', 'site-from', 'lists-dir', 'ban-growth', 'ban-max', 'live', 'live-keep', 'ban-keep', 'feeds-max-age', 'stats-hosts'];
 
     /** Reading a list file (allow.rules, deny.rules in lists-dir): only list lines there. */
     private bool $listing = false;
@@ -1842,6 +1843,17 @@ final class RuleFile
                 $this->put('stats.enabled', true);
                 $this->put('stats.parts', $words);
                 return;
+            case 'hostnames':
+                // Website names (*.domain: one label), or "host" (the host rule's), "sites" (the site blocks').
+                $v = [];
+                foreach (preg_split('/\s+/', strtolower($value)) ?: [] as $name) {
+                    $name = rtrim($name, '.');
+                    if ($name !== 'host' && $name !== 'sites' && preg_match('/^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/', $name) !== 1) {
+                        throw new RuleFileException("$at: $key takes website names (www.example.org, *.example.org), host or sites -- not \"$name\"");
+                    }
+                    $v[] = $name;
+                }
+                break;
             case 'kinds':
                 $v = preg_split('/\s+/', $value) ?: [];
                 foreach ($v as $k) {

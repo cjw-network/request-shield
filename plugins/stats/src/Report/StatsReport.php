@@ -30,7 +30,8 @@ final class StatsReport
      * $o['crawler'] to look at one crawler only. Days older than the stats
      * keep them are only in their month's total: counted under the month.
      *
-     * @param array{from?: string, to?: string, by?: string, crawler?: string, lang?: string, path?: string, sort?: string} $o  lang: the sentences' language, en or de;
+     * @param array{from?: string, to?: string, by?: string, crawler?: string, lang?: string, path?: string, sort?: string, site?: string|null} $o  lang: the sentences' language, en or de;
+     *   site: with stats-hosts, one website's numbers (a name, or Stats::OTHER), else all added up;
      *   path: only pages below it (a subtree: /news/), and how many views it had; sort: views (the default),
      *   blocked (refused + checked + told to wait), refused, checked or throttled -- the pages and sections with most of it
      * @return array{from: string, to: string, days: int, by: string, periods: array<string, array<string, int>>, totals: array<string, int>, monitor: array<string, int>,
@@ -51,7 +52,7 @@ final class StatsReport
         $days = (int) round(((int) strtotime($to . ' UTC') - (int) strtotime($from . ' UTC')) / 86400) + 1;
         $by = in_array($o['by'] ?? 'day', ['day', 'week', 'month', 'year'], true) ? ($o['by'] ?? 'day') : 'day';
         $only = $o['crawler'] ?? null;
-        $read = ($stats ?? Stats::of($s))->read($from, $to);
+        $read = self::read($s, $stats, $from, $to, $o['site'] ?? null);
         $sets = self::grouped($read, $by);
         $periods = [];
         foreach ($sets as [$label, $counts]) {
@@ -255,15 +256,30 @@ final class StatsReport
     }
 
     /**
+     * What was counted: the statistics given, or with stats-hosts one
+     * website's ($site) or every website's added up (null).
+     *
+     * @return array{days: array<string, array<string, int>>, hours: array<string, array<string, int>>, months: array<string, array<string, int>>, last: array<string, array{0: int, 1: string}>}
+     */
+    public static function read(Settings $s, ?Stats $stats, string $from, string $to, ?string $site = null): array
+    {
+        if ($stats !== null) {
+            return $stats->read($from, $to);
+        }
+        $all = Stats::all($s, $site !== null && ($site === Stats::OTHER || in_array($site, $s->statsHosts, true)) ? $site : null);
+        return count($all) === 1 ? $all[0]->read($from, $to) : Stats::readAll($all, $from, $to);
+    }
+
+    /**
      * Only the numbers per period of a span ("the period before" for a
      * comparison): the buckets of each day, week, month or year, nothing else.
      *
      * @return array<string, array<string, int>>
      */
-    public static function periods(Settings $s, ?Stats $stats, string $from, string $to, string $by = 'day'): array
+    public static function periods(Settings $s, ?Stats $stats, string $from, string $to, string $by = 'day', ?string $site = null): array
     {
         $periods = [];
-        foreach (self::grouped(($stats ?? Stats::of($s))->read($from, $to), $by) as [$label, $counts]) {
+        foreach (self::grouped(self::read($s, $stats, $from, $to, $site), $by) as [$label, $counts]) {
             $periods[$label] = Stats::add($periods[$label] ?? [], self::buckets($counts));
         }
         ksort($periods);

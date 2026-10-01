@@ -211,6 +211,39 @@ cost). A per-crawler log is a separate switch (below).
 - The hours' files are plain text (`name` or `name*count` per word), the day
   files JSON: nothing to install, easy to back up, easy to read for other tools.
 
+## Statistics per website
+
+For a server where many websites share one PHP pool, one rule file and one
+store ([proposal 0023](../proposals/0023-plugins-hosts-customers.md), phase 2):
+
+```text
+set stats-hosts a.de www.a.de *.b.de     # these websites, each its own statistics
+set stats-hosts host                     # or: every name the host rule allows
+set stats-hosts sites                    # or: the site blocks' names (not "default")
+```
+
+- **The website** is the `Host` the request names, normalised: lower case,
+  without the port and a trailing dot (`WWW.A.DE:443` → `www.a.de`). `a.de` and
+  `www.a.de` are two websites. `*.b.de` takes every name one label deeper
+  (`news.b.de`, `shop.b.de`) into one statistics, as site blocks do.
+- **Only the names given get statistics of their own;** any other name is
+  counted as **"other hosts"**. The `Host` header comes from the client:
+  otherwise anyone could create unlimited statistics with made-up names.
+- **Kept apart:** `store-dir/stats/hosts/<name>/` (the same files as before;
+  `*` written `+`), `store-dir/stats/hosts/(other)/`. The APCu names carry the
+  directory, so websites never count into each other.
+- **Read:** the pages get a switch (*All websites* · each website · *other
+  hosts*), kept in every link and in the JSON (`?site=a.de`); `bin/request-shield
+  stats … --site=a.de` (or `--site=other`). *All websites* adds every website up,
+  and what was counted before `stats-hosts` was set (in `store-dir/stats/`).
+- **A quiet website** has its finished hour rolled up and APCu written out too:
+  the first request of an hour in each process tends the other websites.
+- About the server: `set stats-hosts` belongs above the site blocks.
+- **Cost:** finding the website, 0.15–0.35 µs per request (51 names, measured);
+  once an hour per process, one look at each website's directory.
+- Next ([0023](../proposals/0023-plugins-hosts-customers.md)): groups of websites
+  per customer, and each customer's own access.
+
 ## One log per crawler (optional)
 
 ```text

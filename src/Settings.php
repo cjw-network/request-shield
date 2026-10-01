@@ -193,6 +193,8 @@ final class Settings
         public array $feedWeights = [],
         /** @readonly a fetched list older than this is no longer used, in seconds */
         public int $feedsMaxAge = 259200,
+        /** @var list<string> @readonly the websites with statistics of their own (stats-hosts; *.domain: one label); [] one statistics for all */
+        public array $statsHosts = [],
     ) {
     }
 
@@ -319,6 +321,7 @@ final class Settings
             ...self::withFeeds(self::lists($c, $budgets), $feeds = self::feeds($c)),
             ...self::live($c),
             ...array_slice($feeds, 0, 5),
+            ...[self::statsHosts($c)],
         );
     }
 
@@ -553,6 +556,39 @@ final class Settings
         }
         $dir = $c['listsDir'] ?? null;
         return [$deny, $entries === [] ? [] : IpTable::build($entries), count($entries), $next, is_string($dir) && $dir !== '' ? $dir : null, $bans, $growth, $max];
+    }
+
+    /**
+     * The websites with statistics of their own: the names given, "host" for
+     * the host rule's, "sites" for the site blocks' (not "default").
+     *
+     * @param array<mixed> $c
+     * @return list<string>
+     */
+    private static function statsHosts(array $c): array
+    {
+        $stats = is_array($c['stats'] ?? null) ? $c['stats'] : [];
+        $out = [];
+        foreach ((array) ($stats['hosts'] ?? []) as $name) {
+            if (!is_string($name)) {
+                throw self::wrong('stats.hosts', 'website names');
+            }
+            $names = match ($name) {
+                'host' => (array) ($c['hosts'] ?? []),
+                'sites' => array_keys((array) ($c['sites'] ?? [])),
+                default => [$name],
+            };
+            foreach ($names as $n) {
+                if (!is_string($n)) {
+                    continue;
+                }
+                $n = rtrim(strtolower($n), '.');
+                if ($n !== '' && $n !== 'default' && preg_match('/^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/', $n) === 1) {
+                    $out[$n] = true;
+                }
+            }
+        }
+        return array_map('strval', array_keys($out));
     }
 
     /**
@@ -1036,7 +1072,7 @@ final class Settings
     public const DENY_SHOWN = 100;
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 32;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge
+    private const FORMAT = 33;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

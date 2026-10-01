@@ -100,6 +100,11 @@ return [
             same(['198.51.100.0/24', null], [$r[0]['client'], $r[0]['keep']], 'on a list already: no "keep out"');
             same('203.0.113.0/24', $r[2]['keep'], 'a masked address: kept out as its /24');
             same(null, LivePage::json($s, null, ['ip' => '203.0.113.50'])['rows'][2]['keep'], 'never offered for the range the viewer is in');
+            $linked = LivePage::json($s, null, ['links' => ['rules' => '/rs/rules', 'lists' => '/rs/lists']])['rows'];
+            same(['/rs/lists?q=%5BLIST-D7%5D', '/rs/rules#rule-SCAN-HIDDEN', '/rs/rules#rule-SITE-ADMIN', '/rs/rules#rule-SITE-PACE', null],
+                [$linked[0]['ruleHref'], $linked[2]['ruleHref'], $linked[3]['ruleHref'], $linked[4]['ruleHref'], $linked[6]['ruleHref']],
+                'a rule\'s ID: where it is written (a list entry: its list); a basic check without one: no link');
+            same(null, LivePage::json($s, null)['rows'][3]['ruleHref'], 'without the pages\' addresses: no link');
             $de = LivePage::json($s, null, ['lang' => 'de'])['rows'];
             same(['abgewiesen 403', 'Sperre', 'auf der Sperrliste: scraper, 900 a minute'], [$de[0]['label'], $de[1]['sourceLabel'], $de[0]['why']], 'in German');
         } finally {

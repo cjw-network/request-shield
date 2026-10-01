@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Statistics per website** (proposal 0023, phase 2): `set stats-hosts a.de
+  www.a.de *.b.de` (or `host`, `sites`) — each named website counted in its
+  own directory (`stats/hosts/<name>/`), any other Host as "other hosts" (a
+  made-up name gets no statistics of its own). The pages get a website switch
+  (all added up · each · other hosts), kept in every link and the JSON;
+  `bin/request-shield stats --site=`. 0.15–0.35 µs per request to find the
+  website ([docs](docs/features/statistics.md#statistics-per-website)).
+- The live view links each rule ID to where it is written: its line on the
+  rules page, a list entry on the lists page (`LivePage::json(…, ['links' => …])`).
 - **Public blocklists as feeds** (proposal 0025): `feed <name> [<https-url>]
   deny|check|count|ban-signal <n> [at <paths>]` — a catalog of ten lists
   (`rules/feeds.json`: Spamhaus DROP, DShield, Feodo, FireHOL level 1, ET,

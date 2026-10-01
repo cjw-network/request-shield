@@ -146,7 +146,7 @@ if ($path === '/search') {
             // The new rows since the page's cursor, every few seconds.
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode(\CjwNetwork\RequestShield\Report\LivePage::json($shield->settings, isset($_GET['cursor']) ? (string) $_GET['cursor'] : null,
-                ['lang' => \CjwNetwork\RequestShield\Texts::language((string) ($_GET['lang'] ?? 'auto'), $request->header('accept-language')), 'ip' => $request->clientIp]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+                ['lang' => \CjwNetwork\RequestShield\Texts::language((string) ($_GET['lang'] ?? 'auto'), $request->header('accept-language')), 'ip' => $request->clientIp, 'links' => $panelLinks]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
             exit;
         }
         header('Content-Type: text/html; charset=utf-8');
@@ -175,6 +175,7 @@ if ($path === '/search') {
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(\CjwNetwork\RequestShield\Report\StatsReport::build($shield->settings, null, $days, null, ['by' => $by === null || $by === 'hour' ? 'day' : $by] + ($only !== null ? ['crawler' => $only] : [])
             + (isset($_GET['path']) && $_GET['path'] !== '' ? ['path' => '/' . ltrim((string) $_GET['path'], '/')] : []) + (isset($_GET['sort']) ? ['sort' => (string) $_GET['sort']] : [])
+            + (isset($_GET['site']) && $_GET['site'] !== '' ? ['site' => (string) $_GET['site']] : [])
             + (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($_GET['from'] ?? '')) === 1 && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($_GET['to'] ?? '')) === 1
                 ? ['from' => str_replace('-', '', (string) $_GET['from']), 'to' => str_replace('-', '', (string) $_GET['to'])] : [])),
             JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -185,7 +186,7 @@ if ($path === '/search') {
         'days' => $days, 'crawler' => $only, 'path' => isset($_GET['path']) ? (string) $_GET['path'] : null, 'sort' => (string) ($_GET['sort'] ?? ''),
         'lang' => (string) ($_GET['lang'] ?? 'auto'), 'accept' => $request->header('accept-language'), 'fragment' => isset($_GET['fragment']),
         'check' => $_GET, 'ip' => $request->clientIp, 'from' => (string) ($_GET['from'] ?? ''), 'to' => (string) ($_GET['to'] ?? ''),
-        'home' => $url('/'), 'homeLabel' => 'request-shield demo'] + ($by !== null ? ['by' => $by] : []));
+        'home' => $url('/'), 'homeLabel' => 'request-shield demo', 'site' => isset($_GET['site']) && $_GET['site'] !== '' ? (string) $_GET['site'] : null] + ($by !== null ? ['by' => $by] : []));
     exit;
 } elseif ($path === '/api/status') {
     // 5 calls a minute; past that: 429 with the task as JSON and in the header
@@ -255,6 +256,7 @@ $groups = [
         ['/rs/lists', 'Lists', 'keep an address out or let it in, with a comment of your own; extend, remove; the active bans (this machine only)'],
         ['/rs/rules', 'Statistics: rules & setup', 'the way of a request through the shield, every rule in words, every technical setting (this machine only)'],
         ['/rs/stats?lang=de', 'Statistik auf Deutsch', 'the same page in German (it also follows your browser\'s language)'],
+        ['/rs/stats?site=localhost84', 'Statistics: one website', 'set stats-hosts localhost84 127.0.0.1: each its own numbers, any other Host name as "other hosts"; the switch at the top'],
         ['/rs/stats?path=' . rawurlencode($url('/page/')), 'Statistics: one subtree', 'the "path starts with" filter: views of one section, by people, crawlers, bots'],
     ],
     'The site asks for the check' => [

@@ -100,7 +100,15 @@ final class StatsPlugin implements Plugin
         if (!$s->statsEnabled) {
             return;
         }
-        $stats = $this->stats ??= Stats::of($s);
+        $stats = $this->stats;
+        if ($stats === null) {
+            // stats-hosts: the website's own statistics (a name the rules do not know: "other").
+            $site = Stats::siteOf($s, $seen->host());
+            $stats = $this->stats = Stats::of($s, $site);
+            if ($site !== null) {
+                self::tendOthers($s, $site, $now);
+            }
+        }
         $requests = in_array('requests', $parts, true);
         if ($requests && $who === 'people') {
             $stats->minute($now);           // "now" on the visitors page: one APCu counter a minute
@@ -122,6 +130,28 @@ final class StatsPlugin implements Plugin
         $this->pending = $keys;
         $this->who = $who;
         $this->waiting = true;
+    }
+
+    /** @var int the hour (since 1970) this process last tended the other websites' statistics */
+    private static int $tended = -1;
+
+    /**
+     * Once per process and hour: the websites this request does not count in
+     * have their finished hour rolled up and APCu written out too -- a quiet
+     * website would otherwise wait for its next visitor.
+     */
+    private static function tendOthers(Settings $s, string $site, float $now): void
+    {
+        $hour = intdiv((int) $now, 3600);
+        if (self::$tended === $hour) {
+            return;
+        }
+        self::$tended = $hour;
+        foreach (array_merge($s->statsHosts, [Stats::OTHER]) as $name) {
+            if ($name !== $site) {
+                Stats::of($s, $name)->tend($now);
+            }
+        }
     }
 
     private string $who = 'people';

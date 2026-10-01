@@ -31,6 +31,7 @@ final class StatsPage
     private const T = [
         'en' => [
             'title' => 'Statistics', 'today' => '24 hours', 'd7' => '7 days', 'd30' => '30 days', 'm12' => '12 months', 'thisMonth' => 'This month', 'lastMonth' => 'Last month', 'from' => 'from', 'to' => 'to', 'show' => 'Show', 'nowPeople' => 'now: %s requests by people in the last 5 minutes',
+            'allSites' => 'All websites', 'otherHosts' => 'other hosts (names the rules do not know)', 'website' => 'Website',
             'requests' => 'Requests', 'people' => 'People', 'crawlers' => 'Crawlers', 'bots' => 'Bots', 'checked' => 'Checked', 'refused' => 'Refused',
             'notFound' => 'Not found', 'through' => 'Let through', 'throttled' => 'Told to wait', 'who' => 'Who came', 'what' => 'What the shield did',
             'answers' => 'Answers', 'short' => 'In short', 'known' => 'Known crawlers', 'missing' => 'Pages not found', 'linked' => 'linked from',
@@ -43,6 +44,7 @@ final class StatsPage
         ],
         'de' => [
             'title' => 'Statistik', 'today' => '24 Stunden', 'd7' => '7 Tage', 'd30' => '30 Tage', 'm12' => '12 Monate', 'thisMonth' => 'Dieser Monat', 'lastMonth' => 'Letzter Monat', 'from' => 'von', 'to' => 'bis', 'show' => 'Anzeigen', 'nowPeople' => 'jetzt: %s Anfragen von Menschen in den letzten 5 Minuten',
+            'allSites' => 'Alle Websites', 'otherHosts' => 'andere Hosts (Namen, die die Regeln nicht kennen)', 'website' => 'Website',
             'requests' => 'Anfragen', 'people' => 'Menschen', 'crawlers' => 'Crawler', 'bots' => 'Bots', 'checked' => 'Geprüft', 'refused' => 'Abgewiesen',
             'notFound' => 'Nicht gefunden', 'through' => 'Durchgelassen', 'throttled' => 'Gebremst', 'who' => 'Wer kam', 'what' => 'Was der Schutz tat',
             'answers' => 'Antworten', 'short' => 'Kurz gesagt', 'known' => 'Bekannte Crawler', 'missing' => 'Nicht gefundene Seiten', 'linked' => 'verlinkt von',
@@ -57,7 +59,8 @@ final class StatsPage
 
     /**
      * @param array{action?: string, view?: string, tabs?: bool, links?: array<string, string>, days?: int, by?: string, crawler?: ?string, path?: ?string, sort?: string, lang?: string, accept?: ?string, home?: string, homeLabel?: string,
-     *   title?: string, fragment?: bool, now?: int, stats?: Stats, check?: array<mixed>, ip?: string, from?: string, to?: string, store?: \CjwNetwork\RequestShield\Store\Store} $o
+     *   title?: string, fragment?: bool, now?: int, stats?: Stats, check?: array<mixed>, ip?: string, from?: string, to?: string, store?: \CjwNetwork\RequestShield\Store\Store, site?: string|null} $o
+     *   site: with stats-hosts, one website's numbers (a name of stats-hosts, or Stats::OTHER); without, all added up;
      *   action: the page's own address (links, refresh); view: site (visitors and pages, for editors), shield
      *   (what the protection did, for admins) or all (everything); links: an address per view -- 'all', 'site',
      *   'shield' => '/rs/dashboard' … -- for the tabs (without: ?view=); tabs: the tabs between them; lang: en, de, or auto (the browser's, from accept);
@@ -96,8 +99,10 @@ final class StatsPage
         $sorts = ['views', 'blocked', 'refused', 'checked', 'throttled'];
         $sortDefault = $view === 'shield' ? 'blocked' : 'views';
         $sort = in_array($o['sort'] ?? $sortDefault, $sorts, true) ? ($o['sort'] ?? $sortDefault) : $sortDefault;
+        // stats-hosts: one website's numbers, or all added up (no "site").
+        $site = is_string($o['site'] ?? null) && ($o['site'] === \CjwNetwork\RequestShield\Stats::OTHER || in_array($o['site'], $s->statsHosts, true)) ? $o['site'] : null;
         // What every link carries along besides the period and the language.
-        $extra = $range + ($crawler !== null ? ['crawler' => $crawler] : []) + ($path !== null ? ['path' => $path] : []) + ($sort !== $sortDefault ? ['sort' => $sort] : []);
+        $extra = $range + ($site !== null ? ['site' => $site] : []) + ($crawler !== null ? ['crawler' => $crawler] : []) + ($path !== null ? ['path' => $path] : []) + ($sort !== $sortDefault ? ['sort' => $sort] : []);
         $action = $o['action'] ?? '';
         // One address per view ('links' => ['all' => '/rs/dashboard', 'site' => '/rs/stats', 'shield' => '/rs/shield']):
         // the path names the view, GET parameters filter. Without links: ?view=.
@@ -173,8 +178,26 @@ final class StatsPage
         foreach (['de' => 'DE', 'en' => 'EN'] as $l => $label) {
             $h .= '<a class="pill' . ($l === $lang ? ' on' : '') . '" href="' . $e($query(['view' => $view, 'days' => $days, 'by' => $by, 'lang' => $l] + $extra)) . '">' . $label . '</a>';
         }
-        $h .= '<a class="pill" href="' . $e($query(['days' => $days, 'by' => $by === 'hour' ? 'day' : $by, 'format' => 'json'] + $range)) . '">JSON</a></div></div>';
-        $h .= '<p class="sub">' . $e(self::date($r['from'], $lang) . ' – ' . self::date($r['to'], $lang)) . ($crawler !== null ? ' · ' . $e($crawler) . ' · <a href="' . $e($query(['days' => $days, 'by' => $by, 'lang' => $lang])) . '">' . $e($t['all']) . '</a>' : '') . '</p>';
+        $h .= '<a class="pill" href="' . $e($query(['days' => $days, 'by' => $by === 'hour' ? 'day' : $by, 'format' => 'json'] + $range + ($site !== null ? ['site' => $site] : []))) . '">JSON</a></div></div>';
+        // The website switch (stats-hosts): all added up, one website, or the names the rules do not know.
+        if ($s->statsHosts !== [] && $view !== 'rules') {
+            $opts = '<option value=""' . ($site === null ? ' selected' : '') . '>' . $e($t['allSites']) . '</option>';
+            foreach (array_merge($s->statsHosts, [\CjwNetwork\RequestShield\Stats::OTHER]) as $name) {
+                $opts .= '<option value="' . $e($name) . '"' . ($name === $site ? ' selected' : '') . '>' . $e($name === \CjwNetwork\RequestShield\Stats::OTHER ? $t['otherHosts'] : $name) . '</option>';
+            }
+            // The form keeps the view, the period, the language and the filters; only the website changes.
+            $keepSite = ['view' => $links === [] ? $view : null, 'days' => $range === [] ? $days : null, 'by' => $range === [] ? $by : null, 'lang' => $lang] + $range
+                + array_diff_key($plain, ['site' => 1]);
+            $h .= '<form class="range sites" method="get" action="' . $e($action) . '"><label>' . $e($t['website']) . ' <select name="site">' . $opts . '</select></label>';
+            foreach ($keepSite as $k => $v) {
+                if ($v !== null) {
+                    $h .= '<input type="hidden" name="' . $e((string) $k) . '" value="' . $e((string) $v) . '">';
+                }
+            }
+            $h .= ' <button type="submit">' . $e($t['show']) . '</button></form>';
+        }
+        $h .= '<p class="sub">' . $e(self::date($r['from'], $lang) . ' – ' . self::date($r['to'], $lang))
+            . ($s->statsHosts !== [] ? ' · ' . $e($site === null ? $t['allSites'] : ($site === \CjwNetwork\RequestShield\Stats::OTHER ? $t['otherHosts'] : $site)) : '') . ($crawler !== null ? ' · ' . $e($crawler) . ' · <a href="' . $e($query(['days' => $days, 'by' => $by, 'lang' => $lang])) . '">' . $e($t['all']) . '</a>' : '') . '</p>';
         if ($view === 'rules') {
             // Rules & setup: the way of a request, every rule, every setting.
             $h .= SetupPage::render($s, $lang, $r['rules'], ['check' => (array) ($o['check'] ?? []), 'action' => $action, 'now' => (float) $now,
@@ -219,7 +242,7 @@ final class StatsPage
         // subtree filter ("path starts with") with its views.
         // What the filter form carries along: the period, the language -- and the
         // view only where no address names it (with links the path does).
-        $keep = ($links !== [] ? [] : ['view' => $view]) + ($range !== [] ? $range : ['days' => $days, 'by' => $by]) + ['lang' => $lang] + ($crawler !== null ? ['crawler' => $crawler] : []);
+        $keep = ($links !== [] ? [] : ['view' => $view]) + ($range !== [] ? $range : ['days' => $days, 'by' => $by]) + ['lang' => $lang] + ($site !== null ? ['site' => $site] : []) + ($crawler !== null ? ['crawler' => $crawler] : []);
         $sorted = $sort !== $sortDefault ? ['sort' => $sort] : [];
         $link = static fn (string $p): string => $query($keep + ['path' => $p] + $sorted);
         $h = '';
@@ -337,9 +360,13 @@ final class StatsPage
                 $z = (int) strtotime($r['to'] . ' UTC');
                 $span = $z - $a + 86400;
                 $cur = self::filled($r['periods'], $a, $z, $by);
-                $prev = array_values(self::filled(StatsReport::periods($s, $o['stats'] ?? null, gmdate('Ymd', $a - $span), gmdate('Ymd', $a - 86400), $by), $a - $span, $a - 86400, $by));
+                $prev = array_values(self::filled(StatsReport::periods($s, $o['stats'] ?? null, gmdate('Ymd', $a - $span), gmdate('Ymd', $a - 86400), $by, $site), $a - $span, $a - 86400, $by));
             }
-            $soon = ($o['stats'] ?? \CjwNetwork\RequestShield\Stats::of($s))->lastMinutes(5, (float) $now);
+            $soon = null;
+            foreach (isset($o['stats']) ? [$o['stats']] : \CjwNetwork\RequestShield\Stats::all($s, $site) as $one) {
+                $m = $one->lastMinutes(5, (float) $now);
+                $soon = $m === null ? $soon : (int) $soon + $m;
+            }
             $h = $body . ($soon !== null ? '<p class="vnowl"><span class="dot crawlers"></span> ' . $e(sprintf($t['nowPeople'], $n($soon))) . '</p>' : '')
                 . VisitorsPage::render($r, $cur, $prev, ['lang' => $lang, 'by' => $by, 'action' => $action, 'keep' => $keep, 'link' => $link, 'clear' => $query($keep + $sorted), 'path' => $filter])
                 . $grid($short, $sitemapsBlock);

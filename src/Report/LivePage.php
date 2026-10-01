@@ -42,7 +42,7 @@ final class LivePage
             'skipped' => '%d KB of the log were skipped (more than one read): the newest rows are shown.', 'keepOut' => 'keep out', 'unlist' => 'lists',
             'w.refused' => 'refused', 'w.banned' => 'banned', 'w.paused' => 'told to wait', 'w.checked' => 'checked', 'w.uncached' => 'not cached', 'w.passed' => 'let through', 'w.watched' => 'watched: would be ',
             's.list' => 'list', 's.ban' => 'ban', 's.feed' => 'feed', 's.own' => 'own rule', 's.builtin' => 'built-in rule', 's.pace' => 'pace', 's.crawler' => 'crawler policy', 's.shield' => 'basic check',
-            'onList' => 'on the deny list', 'onFeed' => 'on the public list %s', 'error' => 'The live view cannot reach the server — trying again.',
+            'whereRule' => 'where this rule is written', 'onList' => 'on the deny list', 'onFeed' => 'on the public list %s', 'error' => 'The live view cannot reach the server — trying again.',
             'memory' => 'From the live memory: the last requests stopped, with the full address, kept %s (set live on).', 'skippedRows' => '%d rows skipped (more than one read): the newest are shown.',
             'noMemory' => 'set live on: the live memory needs APCu, which this server does not have — the log is read instead.',
         ],
@@ -57,7 +57,7 @@ final class LivePage
             'skipped' => '%d KB des Logs übersprungen (mehr als ein Lesen): die neuesten Zeilen stehen hier.', 'keepOut' => 'aussperren', 'unlist' => 'Listen',
             'w.refused' => 'abgewiesen', 'w.banned' => 'gesperrt', 'w.paused' => 'zum Warten geschickt', 'w.checked' => 'geprüft', 'w.uncached' => 'nicht gecacht', 'w.passed' => 'durchgelassen', 'w.watched' => 'beobachtet: wäre ',
             's.list' => 'Liste', 's.ban' => 'Sperre', 's.feed' => 'Feed', 's.own' => 'eigene Regel', 's.builtin' => 'eingebaute Regel', 's.pace' => 'Tempo', 's.crawler' => 'Crawler-Regel', 's.shield' => 'Grundprüfung',
-            'onList' => 'auf der Sperrliste', 'onFeed' => 'auf der öffentlichen Liste %s', 'error' => 'Die Live-Ansicht erreicht den Server nicht — neuer Versuch.',
+            'whereRule' => 'wo diese Regel steht', 'onList' => 'auf der Sperrliste', 'onFeed' => 'auf der öffentlichen Liste %s', 'error' => 'Die Live-Ansicht erreicht den Server nicht — neuer Versuch.',
             'memory' => 'Aus dem Live-Speicher: die zuletzt aufgehaltenen Anfragen, mit voller Adresse, gehalten %s (set live on).', 'skippedRows' => '%d Zeilen übersprungen (mehr als ein Lesen): die neuesten stehen hier.',
             'noMemory' => 'set live on: der Live-Speicher braucht APCu, das dieser Server nicht hat — stattdessen wird das Log gelesen.',
         ],
@@ -66,7 +66,8 @@ final class LivePage
     /**
      * The new rows since $cursor (null: the end of the log), as the page shows them.
      *
-     * @param array<string, mixed> $o lang (en, de), ip (the viewer's address: no "keep out" for a range that holds it)
+     * @param array<string, mixed> $o lang (en, de), ip (the viewer's address: no "keep out" for a range that holds it),
+     *                                links (the dashboard's pages, Frame::links(): a rule's ID links to its line on "rules", a list entry to "lists")
      * @return array{cursor: string, rows: list<array<string, mixed>>, skipped: int, log: bool, memory?: bool}
      */
     public static function json(Settings $s, ?string $cursor, array $o = []): array
@@ -99,9 +100,15 @@ final class LivePage
         }
         $notes = $ids !== [] && $s->listsDir !== null ? Lists::notes($s->listsDir, array_keys($ids)) : [];
         $viewer = is_string($o['ip'] ?? null) ? $o['ip'] : null;
+        $links = [];
+        foreach ((array) ($o['links'] ?? []) as $k => $v) {
+            if (is_string($v)) {
+                $links[(string) $k] = $v;
+            }
+        }
         $rows = [];
         foreach ($raw as $r) {
-            $row = self::row($s, $r, $lang, $notes);
+            $row = self::row($s, $r, $lang, $notes, $links);
             if ($viewer !== null && is_string($row['keep']) && \CjwNetwork\RequestShield\IpAddress::inRanges($viewer, [$row['keep']])) {
                 $row['keep'] = null;                        // never offered: it would lock out the person looking
             }
@@ -134,9 +141,10 @@ final class LivePage
      *
      * @param array{time: int, client: string, action: string, status: int, reason: string, rule: ?string, claimed: ?string, method: string, url: string, agent: string} $r
      * @param array<string, string> $notes list entry ID => its comment
+     * @param array<string, string> $links the dashboard's pages: rules (a rule's line), lists (a list entry)
      * @return array<string, mixed>
      */
-    public static function row(Settings $s, array $r, string $lang, array $notes = []): array
+    public static function row(Settings $s, array $r, string $lang, array $notes = [], array $links = []): array
     {
         $t = self::T[$lang];
         $watched = strncmp($r['action'], 'monitor-', 8) === 0;
@@ -175,7 +183,30 @@ final class LivePage
             'label' => ($watched ? $t['w.watched'] : '') . $t['w.' . $what] . ($what !== 'passed' && $what !== 'uncached' ? ' ' . $r['status'] : ''),
             'why' => $why, 'reason' => $reason, 'source' => $source, 'sourceLabel' => $t['s.' . $source], 'rule' => $r['rule'],
             'keep' => $r['client'] !== '-' && $source !== 'list' ? $r['client'] : null, 'agent' => $r['agent'],
+            'ruleHref' => self::ruleHref($s, $r['rule'], $links),
         ];
+    }
+
+    /**
+     * Where a rule is written, as a link: a list entry on the lists page
+     * (searched for its ID), a basic check on the way of a request, any other
+     * rule on its line of the rules page (#rule-<ID>, its file opened there).
+     *
+     * @param array<string, string> $links
+     */
+    private static function ruleHref(Settings $s, ?string $rule, array $links): ?string
+    {
+        if ($rule === null || $rule === '') {
+            return null;
+        }
+        if (strncmp($rule, 'LIST-', 5) === 0 && isset($links['lists'])) {
+            return $links['lists'] . '?' . http_build_query(['q' => "[$rule]"]);
+        }
+        if (!isset($links['rules'])) {
+            return null;
+        }
+        $id = SetupPage::rule($s, str_replace(' ', '_', $rule))['id'];
+        return $links['rules'] . ($id === 'built-in' || $id === 'application' ? '#way' : '#rule-' . SetupPage::anchor($id));
     }
 
     /**
@@ -234,7 +265,7 @@ final class LivePage
         if (!$memory && $s->logFile === null) {
             return Frame::page(is_string($o['title'] ?? null) ? $o['title'] : $t['title'], $lang, $h . '<div class="msg">' . $e($t['noLog']) . '</div>', $o);
         }
-        $first = self::json($s, null, ['lang' => $lang] + (is_string($o['ip'] ?? null) ? ['ip' => $o['ip']] : []));
+        $first = self::json($s, null, ['lang' => $lang, 'links' => $links] + (is_string($o['ip'] ?? null) ? ['ip' => $o['ip']] : []));
         $opt = static fn (string $v, string $label): string => '<option value="' . $e($v) . '">' . $e($label) . '</option>';
         $whats = $opt('', $t['allWhat']);
         foreach (['refused', 'banned', 'paused', 'checked', 'uncached'] as $w) {
@@ -253,7 +284,7 @@ final class LivePage
             . '<div class="card wrap"><table><thead><tr><th>' . $e($t['time']) . '</th><th>' . $e($t['site']) . '</th><th>' . $e($t['client']) . '</th><th>' . $e($t['request'])
             . '</th><th>' . $e($t['what']) . '</th><th>' . $e($t['why']) . '</th><th>' . $e($t['source']) . '</th><th>' . $e($t['rule']) . '</th><th></th></tr></thead>'
             . '<tbody id="rows"></tbody></table><p id="empty" class="note">' . $e($t['empty']) . '</p></div>';
-        $js = ['pause' => $t['pause'], 'resume' => $t['resume'], 'waiting' => $t['waiting'], 'shown' => $t['shown'], 'skipped' => $memory ? $t['skippedRows'] : $t['skipped'], 'keepOut' => $t['keepOut']];
+        $js = ['whereRule' => $t['whereRule'], 'pause' => $t['pause'], 'resume' => $t['resume'], 'waiting' => $t['waiting'], 'shown' => $t['shown'], 'skipped' => $memory ? $t['skippedRows'] : $t['skipped'], 'keepOut' => $t['keepOut']];
         $feed = is_string($o['feed'] ?? null) ? $o['feed'] : '';
         $feed .= $feed === '' ? '' : (strpos($feed, '?') === false ? '?' : '&') . 'lang=' . $lang;   // the rows in the page's language
         $h = '<div id="live" data-feed="' . $e($feed) . '" data-lists="' . $e(is_string($o['lists'] ?? null) ? $o['lists'] : '') . '" data-every="' . $every . '"'
@@ -304,7 +335,8 @@ CSS;
     td(x, r.label, 'w ' + r.what + (r.watched ? ' watched' : ''));
     td(x, r.why, 'why', r.reason);
     var b = document.createElement('span'); b.className = 'badge ' + r.source; b.textContent = r.sourceLabel; td(x, '').appendChild(b);
-    td(x, r.rule, 'mono rule');
+    var rc = td(x, r.ruleHref ? '' : r.rule, 'mono rule');
+    if (r.ruleHref) { var ra = document.createElement('a'); ra.href = r.ruleHref; ra.textContent = r.rule; ra.title = T.whereRule; rc.appendChild(ra); }
     var a = td(x, '');
     if (r.keep && lists) {
       var l = document.createElement('a');
