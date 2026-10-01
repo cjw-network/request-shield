@@ -19,7 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (`ban-growth`, `ban-max`), never for addresses let in, trusted proxies or
   verified crawlers, one ban for every website; `monitor ban` to watch first.
   The store has `mark()`/`marked()`. ~1 µs per request with APCu
-  ([docs](docs/features/ip-lists.md)).
+  ([docs](docs/features/ip-lists.md)). Big lists: the deny entries compile into
+  one sorted table (`IpTable`), so loading the settings costs the same with a
+  million entries as with none and a lookup 2–3 µs; while one request rebuilds
+  the settings, the others keep the last ones (`bench/big-lists.php`).
 - **Rules per website** (proposal 0024, phase 1): `site <names> { … }` blocks
   in one rule file — the rules outside them for every website, a block adds
   (and sets) its own: `match` blocks, `include`, `no-limit` of a base budget …

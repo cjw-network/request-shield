@@ -183,6 +183,9 @@ final class RulesPage
         foreach ($s->deny as $e) {
             $rows[] = $row($w('kept out: %s', implode(', ', $e['ips'])) . $when($e['until']), $e['rule'], $e['rule']);
         }
+        if ($s->denyCount > count($s->deny)) {
+            $rows[] = $row($w('and %s more kept out (bin/request-shield lists)', number_format($s->denyCount - count($s->deny), 0, '', $lang === 'de' ? '.' : ',')), null, '');
+        }
         foreach ($s->exemptIps as $ip) {
             $rows[] = $row($w('let in, never counted or checked: %s', $ip), $o('exempt', $ip), '');
         }
@@ -353,7 +356,7 @@ final class RulesPage
 
     /** groups() in German: the English text => its translation (%s: the same values). */
     private const DE = [
-        ' — until %s' => ' — bis %s', 'kept out: %s' => 'ausgesperrt: %s', 'let in, never counted or checked: %s' => 'hereingelassen, nie gezählt oder geprüft: %s', 'Kept out and let in' => 'Ausgesperrt und hereingelassen',
+        ' — until %s' => ' — bis %s', 'kept out: %s' => 'ausgesperrt: %s', 'and %s more kept out (bin/request-shield lists)' => 'und %s weitere ausgesperrt (bin/request-shield lists)', 'let in, never counted or checked: %s' => 'hereingelassen, nie gezählt oder geprüft: %s', 'Kept out and let in' => 'Ausgesperrt und hereingelassen',
         'A kept-out address gets 403 before every other check; one let in is never counted or checked, but still refused for blocked addresses and attack patterns.' => 'Eine ausgesperrte Adresse bekommt 403 vor jeder anderen Prüfung; eine hereingelassene wird nie gezählt oder geprüft, aber bei gesperrten Adressen und Angriffsmustern trotzdem abgewiesen.',
         ' The lists: %s (bin/request-shield deny, allow, unlist, lists).' => ' Die Listen: %s (bin/request-shield deny, allow, unlist, lists).', 'times past a limit' => 'Mal über einer Grenze',
         'refusals for what only attackers ask for' => 'Abweisungen für das, was nur Angreifer aufrufen', 'check pages not solved' => 'nicht gelöste Check-Seiten', '"%s" past its limit' => '„%s“ über seiner Grenze',

@@ -151,6 +151,35 @@ A denied client is refused before any other check; a banned one costs that
 lookup and a short answer, and nothing else runs. Counting happens only on
 a request that was refused, throttled or checked anyway.
 
+### Big lists
+
+A list fed by a script can hold hundreds of thousands of addresses. The deny
+entries are compiled into **one sorted table** (per family a string of
+fixed-width records, plus one string of their IDs), not into an array with an
+element per entry. OPcache keeps the strings once for every worker; loading
+the settings copies nothing, and a lookup is a binary search, for IPv4 from a
+directory by the first two bytes. `bench/big-lists.php`, PHP 8.4 with OPcache,
+single addresses spread over the internet:
+
+| Entries | Build (once) | Compiled | Loading the settings, per request | Lookup |
+|---|---|---|---|---|
+| 0 | 39 ms | 0.4 MB | 14 µs | — |
+| 10,000 | 0.2 s | 1.2 MB | 16 µs | 2–3 µs |
+| 200,000 | 2.1 s | 7.8 MB | 16 µs | 2–3 µs |
+| 1,000,000 | 11 s | 36 MB | 10–15 µs | 2–3 µs |
+
+- **Building** happens once after a list or rule file changed, or when an
+  entry ends. While one request builds, the others **keep the last compiled
+  settings** (a lock taken without waiting), so a big list never makes every
+  request under load build at once. Deny lines as the command line writes them
+  are read on a fast path; the list files are read once per build, not once
+  per website.
+- The settings keep the first 100 entries as written (`Settings::DENY_SHOWN`),
+  for the pages; the rules page counts the rest, `request-shield lists` shows
+  them all.
+- Overlapping ranges are merged; the merged range answers with the ID of the
+  one that starts first.
+
 ## Limits
 
 - Many people can share one address (an office, a school, a mobile carrier).
@@ -162,6 +191,13 @@ a request that was refused, throttled or checked anyway.
 - Behind a load balancer the client address must be right
   ([trusted proxies](trusted-proxies.md)), or the balancer would be counted,
   which the shield refuses for trusted proxies anyway.
+- **OPcache's memory:** the table is compiled into the settings file, which
+  OPcache keeps in its shared memory, and its strings may go into the interned
+  strings buffer (PHP's default is 8 MB, shared by every script on the
+  server). From about 100,000 entries, give OPcache room:
+  `opcache.memory_consumption` above the settings file's size plus what the
+  sites need, `opcache.interned_strings_buffer=16` or more. Without OPcache a
+  big list is read on every request: tens of milliseconds at 100,000 entries.
 - Lists and bans hold addresses: see [privacy](../privacy.md). Entries without an
   end should be reviewed; a ban ends by itself, at most after `ban-max`.
 - Still to come: the dashboard tab (add, remove, the active bans, "keep out for

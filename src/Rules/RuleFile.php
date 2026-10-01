@@ -216,7 +216,7 @@ final class RuleFile
             $r->listing = true;
             foreach (['allow.rules', 'deny.rules'] as $name) {
                 if (is_file("$listsDir/$name")) {
-                    $r->file("$listsDir/$name", null, null);
+                    $r->listFile("$listsDir/$name");
                 }
             }
             $r->listing = false;
@@ -373,6 +373,63 @@ final class RuleFile
         array_pop($this->stack);
     }
 
+    /**
+     * A list file: a deny line as the command line writes it is read on a
+     * fast path (a list may hold hundreds of thousands); everything else --
+     * exempt, comments, a line written by hand, a mistake -- the usual way.
+     * Kept for the rest of the build (forgetLists()), which reads the files
+     * again for each website and the monitor rules.
+     */
+    private function listFile(string $file): void
+    {
+        $stat = self::stat($file);
+        $memo = self::$listMemo[$file] ?? null;
+        if ($memo === null || $stat === null || $memo[0] !== $stat) {
+            $text = @file_get_contents($file);
+            if ($stat === null || $text === false) {
+                throw new RuleFileException("request-shield: cannot read the list file $file");
+            }
+            $name = $this->base !== '' && strncmp($file, $this->base, strlen($this->base)) === 0 ? substr($file, strlen($this->base)) : $file;
+            $deny = [];
+            $other = [];
+            foreach (explode("\n", $text) as $i => $line) {
+                if (preg_match('/^\[([A-Za-z0-9-]+)\][ \t]+deny[ \t]+([^#\\\\]*?)(?:[ \t]+#.*)?\r?$/', $line, $m) === 1) {
+                    [$ips, $until] = $this->addressesUntil(preg_split('/[ \t]+/', trim($m[2])) ?: [], "$name:" . ($i + 1), 'deny');
+                    $deny[] = ['ips' => $ips, 'until' => $until, 'rule' => $m[1]];
+                } elseif (trim($line) !== '') {
+                    $other[] = [$line, "$name:" . ($i + 1)];
+                }
+            }
+            self::$listMemo[$file] = $memo = [$stat, $deny, $other];
+        }
+        $this->seen[$file] = $stat;
+        foreach ($memo[1] as $e) {
+            $this->deny($e);
+        }
+        foreach ($memo[2] as [$line, $at]) {
+            $this->line($line, $at, $file);
+        }
+    }
+
+    /** @param array{ips: list<string>, until: ?int, rule: string} $e appended in place */
+    private function deny(array $e): void
+    {
+        $list = &$this->c['deny'];
+        if (!is_array($list)) {
+            $list = [];
+        }
+        $list[] = $e;
+    }
+
+    /** @var array<string, array{0: array{0: int, 1: int}, 1: list<array{ips: list<string>, until: ?int, rule: string}>, 2: list<array{0: string, 1: string}>}> */
+    private static array $listMemo = [];
+
+    /** Drops the list files read during a build -- a worker must not keep them. */
+    public static function forgetLists(): void
+    {
+        self::$listMemo = [];
+    }
+
     private function line(string $line, string $at, string $file): void
     {
         // "#" starts a comment at the start of a line or after a space; "\#"
@@ -506,7 +563,11 @@ final class RuleFile
                 throw new RuleFileException("$at: [$id] is used twice -- already at {$this->ids[$id]}");
             }
             $this->ids[$id] = $at;
-            $this->origins['at'][$id] = $at;
+            if (!$this->listing) {
+                // Not for the list files: tens of thousands of lines, each the
+                // ID's line in the compiled settings; their IDs are in the table.
+                $this->origins['at'][$id] = $at;
+            }
             if ($rev !== null) {
                 $this->origins['rev'][$id] = $rev;
             }
@@ -595,9 +656,9 @@ final class RuleFile
             case 'deny':
                 // deny <addresses> [until <when>]: kept out, 403 before every other check.
                 [$ips, $until] = $this->addressesUntil($args, $at, 'deny');
-                $list = (array) $this->get('deny');
-                $list[] = ['ips' => $ips, 'until' => $until, 'rule' => $this->rid];
-                $this->put('deny', $list);
+                // Appended in place: a list file may hold tens of thousands of
+                // lines, and a copy of the list per line made reading quadratic.
+                $this->deny(['ips' => $ips, 'until' => $until, 'rule' => $this->rid]);
                 return;
             case 'ban':
                 $this->ban($args, $at);

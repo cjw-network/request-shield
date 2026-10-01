@@ -116,8 +116,8 @@ final class Inspector
         };
         $methods = implode(', ', $s->methods);
 
-        $step('Kept out', $s->denyIndex === [] ? null : (new \CjwNetwork\RequestShield\Rule\DenyRule($s->denyIndex))->check($request, $now),
-            $s->denyIndex === [] ? $w('no address is kept out') : $w('%s is not on the deny list', $request->clientIp),
+        $step('Kept out', $s->denyTable === [] ? null : (new \CjwNetwork\RequestShield\Rule\DenyRule($s->denyTable))->check($request, $now),
+            $s->denyTable === [] ? $w('no address is kept out') : $w('%s is not on the deny list', $request->clientIp),
             static fn (): string => $w('%s is on the deny list: 403 before everything else', $request->clientIp));
         $banned = $s->bans === [] ? null : (new \CjwNetwork\RequestShield\Rule\BanRule($this->store, $s->exemptIps, $s->ipv6Prefix))->check($request, $now);
         $step('Banned', $banned, $s->bans === [] ? $w('no automatic bans') : $w('%s is not banned', $request->clientIp),

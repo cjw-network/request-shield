@@ -94,8 +94,8 @@ final class Shield
         }
 
         // Kept out (the deny list), then banned for a while: before anything else.
-        if ($s->denyIndex !== []) {
-            $this->rules[] = new DenyRule($s->denyIndex);
+        if ($s->denyTable !== []) {
+            $this->rules[] = new DenyRule($s->denyTable);
         }
         if ($s->bans !== [] && $s->mode !== 'monitor') {
             $this->rules[] = new BanRule($this->store, $s->exemptIps, $s->ipv6Prefix);
@@ -533,12 +533,8 @@ final class Shield
         switch ($d->reason) {
             case 'denied':
                 // The entry of the deny list that holds the address.
-                foreach ($s->deny as $entry) {
-                    if (IpAddress::inRanges($request->clientIp, $entry['ips'])) {
-                        return preg_replace('/[^\x21-\x7e ]/', '?', $entry['rule']) ?? 'deny';
-                    }
-                }
-                return 'deny';
+                $id = $s->denyTable === [] ? null : IpTable::find($request->clientIp, $s->denyTable);
+                return $id === null ? 'deny' : (preg_replace('/[^\x21-\x7e ]/', '?', $id) ?? 'deny');
             case 'blocked path':
                 $i = null;
                 foreach ($s->blockedPaths as $n => $p) {

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use CjwNetwork\RequestShield\Decision;
+use CjwNetwork\RequestShield\IpTable;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rules\Lists;
 use CjwNetwork\RequestShield\Rules\RuleFile;
@@ -112,6 +113,27 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'the table: ranges and single addresses, IPv4 and IPv6, edges, overlaps -- the same answers as the range check, at random' => function (): void {
+        $t = IpTable::build([[['203.0.113.0/24', '192.0.2.7'], 'A'], [['2001:db8::/48'], 'B'], [['198.51.100.0/22'], 'C'], [['198.51.101.0/24'], 'D']]);
+        same(['A', 'A', 'A', 'B', 'B', null, null], [IpTable::find('203.0.113.0', $t), IpTable::find('203.0.113.255', $t), IpTable::find('192.0.2.7', $t),
+            IpTable::find('2001:db8::1', $t), IpTable::find('2001:db8:0:ffff:ffff:ffff:ffff:ffff', $t), IpTable::find('2001:db9::', $t), IpTable::find('nonsense', $t)], 'edges of each range');
+        same([null, 'W'], [IpTable::find('192.0.2.8', $t), IpTable::find('192.0.2.8', IpTable::build([[['0.0.0.0/0'], 'W']]))], 'next to an entry: nothing; everything: the widest range');
+        same('C', IpTable::find('198.51.101.9', $t), 'overlapping ranges merged: the ID of the one that starts first (C)');
+        mt_srand(7);
+        $entries = [];
+        $ranges = [];
+        for ($i = 0; $i < 3000; $i++) {
+            $r = mt_rand(1, 223) . '.' . mt_rand(0, 255) . '.' . mt_rand(0, 255) . '.' . mt_rand(0, 255) . ['', '/24', '/20', '/32'][mt_rand(0, 3)];
+            $entries[] = [[$r], "R$i"];
+            $ranges[] = $r;
+        }
+        $t = IpTable::build($entries);
+        for ($i = 0; $i < 3000; $i++) {
+            $ip = $i % 3 === 0 ? (string) preg_replace('#/.*#', '', $ranges[$i]) : mt_rand(1, 223) . '.' . mt_rand(0, 255) . '.' . mt_rand(0, 255) . '.' . mt_rand(0, 255);
+            same(\CjwNetwork\RequestShield\IpAddress::inRanges($ip, $ranges), IpTable::find($ip, $t) !== null, "$ip: as the range check says");
+        }
+        same(['4' => '', '6' => '', 'ids' => ''], IpTable::build([]), 'nothing');
+    },
     'kept out: 403 before every other check, named by its entry -- thousands of entries, about as quick' => function (): void {
         $dir = listsDir();
         try {
@@ -127,7 +149,7 @@ return [
             }
             $big = new Shield(listsSettings($dir, $many), new MemoryStore());
             same(['reject', 'allow'], [$big->decide(listsReq('/', '10.19.249.7'), 1000.0)->action, $big->decide(listsReq('/', '10.20.0.7'), 1000.0)->action], '5,000 ranges: the last one, and one outside');
-            $rule = new \CjwNetwork\RequestShield\Rule\DenyRule($big->settings->denyIndex);
+            $rule = new \CjwNetwork\RequestShield\Rule\DenyRule($big->settings->denyTable);
             $hit = listsReq('/', '10.19.249.7');
             $t = hrtime(true);
             for ($i = 0; $i < 2000; $i++) {
@@ -257,6 +279,66 @@ return [
                 @opcache_invalidate($files[0], true);
             }
             same(1, count(Settings::load("$dir/site.rules", "$dir/cache")->deny), 'an entry ended: built again from the files (here: the entry still in force)');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'while one request rebuilds the settings, the others keep the last ones -- no stampede' => function (): void {
+        $dir = listsDir();
+        try {
+            file_put_contents("$dir/site.rules", "set store-dir $dir/store\ndeny 203.0.113.7 until " . date('Y-m-d', time() + 86400) . "\n");
+            Settings::load("$dir/site.rules", "$dir/cache");
+            $file = (glob("$dir/cache/settings-*.php") ?: [])[0];
+            $e = require $file;
+            $e['settings']['listsUntil'] = time() - 1;                      // to be rebuilt
+            $e['settings']['denyCount'] = 0;
+            file_put_contents($file, '<?php return ' . var_export($e, true) . ";\n");
+            if (function_exists('opcache_invalidate')) {
+                @opcache_invalidate($file, true);
+            }
+            $lock = fopen(str_replace('.php', '.lock', $file), 'c');
+            truthy($lock !== false && flock($lock, LOCK_EX | LOCK_NB), 'the test holds the lock');
+            same(0, Settings::load("$dir/site.rules", "$dir/cache")->denyCount, 'being built elsewhere: the last settings');
+            flock($lock, LOCK_UN);
+            fclose($lock);
+            same(1, Settings::load("$dir/site.rules", "$dir/cache")->denyCount, 'then built');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'a big list file: the fast path and the usual one side by side, mistakes named by their line; the compiled settings stay small' => function (): void {
+        $dir = listsDir();
+        try {
+            mkdir("$dir/store/lists", 0750, true);
+            $lines = ['# kept by the command line', '', 'deny 192.0.2.66                # written by hand, no ID', '[LIST-A1] exempt 192.0.2.50 until ' . date('Y-m-d', time() + 86400)];
+            for ($i = 0; $i < 20000; $i++) {
+                $lines[] = "[LIST-D$i] deny 10." . ($i >> 8) . '.' . ($i & 255) . '.0/24' . ($i % 3 === 0 ? "   # scraper · cli 2026-10-01 10:00" : '') . ($i === 5 ? '' : '');
+            }
+            $lines[] = '[LIST-DX] deny 198.51.100.0/24 until ' . date('Y-m-d', time() + 86400) . '   # for a while';
+            file_put_contents("$dir/store/lists/deny.rules", implode("\n", $lines) . "\n");
+            $s = listsSettings($dir, '');
+            same([20002, Settings::DENY_SHOWN], [$s->denyCount, count($s->deny)], 'every entry counted; the first hundred kept as written');
+            $shield = new Shield($s, new MemoryStore());
+            foreach (['10.0.0.9' => 'LIST-D0', '10.78.31.200' => 'LIST-D19999', '192.0.2.66' => null, '198.51.100.3' => 'LIST-DX', '10.78.32.1' => false] as $ip => $id) {
+                $r = listsReq('/', $ip);
+                $d = $shield->decide($r, 1000.0);
+                same($id === false ? 'allow' : 'reject', $d->action, $ip);
+                if (is_string($id)) {
+                    same($id, $shield->explain($d, $r), "$ip: its entry");
+                }
+            }
+            truthy(in_array('192.0.2.50', $s->exemptIps, true), 'an exempt line in the same file');
+            $file = (glob("$dir/cache/settings-*.php") ?: []);
+            Settings::load("$dir/site.rules", "$dir/cache");
+            $file = (glob("$dir/cache/settings-*.php") ?: [])[0];
+            truthy(filesize($file) < 2000000, 'compiled: ' . filesize($file) . ' bytes -- a table, not an array of 20,000');
+            file_put_contents("$dir/store/lists/deny.rules", "[LIST-D1] deny 10.0.0.0/24\n[LIST-D2] deny 10.0.1.300\n");
+            try {
+                listsSettings($dir, '');
+                throw new TestFailure('accepted a wrong address');
+            } catch (RuleFileException $e) {
+                truthy(strpos($e->getMessage(), 'deny.rules:2: "10.0.1.300" is not an address') !== false, $e->getMessage());
+            }
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }

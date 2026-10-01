@@ -147,7 +147,7 @@ final class SetupPage
         $client = $f('d.client', $s->trustedProxies === [] ? '' : $f('d.proxies', implode(', ', $s->trustedProxies)), $s->ipv6Prefix, $s->exemptIps === [] ? '' : $f('d.exempt', implode(', ', $s->exemptIps)));
         // The checks, in the order the shield runs them: key, on, what it answers, how it is set.
         $steps = [
-            ['deny', $s->denyIndex !== [], $t['a.403'], $s->deny === [] ? $t['d.none'] : $f('d.deny', count($s->deny), $s->listsUntil > 0 ? $f('d.next', date($lang === 'de' ? 'd.m.Y H:i' : 'Y-m-d H:i', $s->listsUntil)) : '')],
+            ['deny', $s->denyTable !== [], $t['a.403'], $s->denyCount === 0 ? $t['d.none'] : $f('d.deny', $s->denyCount, $s->listsUntil > 0 ? $f('d.next', date($lang === 'de' ? 'd.m.Y H:i' : 'Y-m-d H:i', $s->listsUntil)) : '')],
             ['ban', $s->bans !== [], $t['a.429'], $s->bans === [] ? $t['d.none'] : $f('d.ban', count($s->bans), $s->banGrowth, Describe::span($s->banMax, $lang))],
             ['method', true, $t['a.405'], $f('d.method', implode(', ', $s->methods))],
             ['size', true, $t['a.400'], $f('d.size', $s->maxUri, $s->maxQueryParameters, (int) round($s->maxHeaderBytes / 1024))],

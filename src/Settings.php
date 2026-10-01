@@ -161,10 +161,12 @@ final class Settings
         public ?string $site = null,
         /** @readonly which name picks the site: server-name (the web server's, the default) or host (the Host header) */
         public string $siteFrom = 'server-name',
-        /** @var list<array{ips: list<string>, until: ?int, rule: string}> @readonly addresses kept out (deny), the ones in force */
+        /** @var list<array{ips: list<string>, until: ?int, rule: string}> @readonly addresses kept out (deny), the ones in force -- the first DENY_SHOWN, for the pages */
         public array $deny = [],
-        /** @var array<string, list<array{0: string, 1: int}>> @readonly the same, as a lookup (IpAddress::index()) */
-        public array $denyIndex = [],
+        /** @var array{4: string, 6: string, ids: string, dir?: string}|array{} @readonly all of them, as a sorted table (IpTable); [] none */
+        public array $denyTable = [],
+        /** @readonly how many entries are in force */
+        public int $denyCount = 0,
         /** @readonly when the next list entry ends (a Unix time; 0: none) -- the settings are built again then */
         public int $listsUntil = 0,
         /** @readonly where the list files are (allow.rules, deny.rules); null: none */
@@ -471,14 +473,14 @@ final class Settings
      *
      * @param array<mixed> $c
      * @param array<string, Budget> $budgets
-     * @return array{0: list<array{ips: list<string>, until: ?int, rule: string}>, 1: array<string, list<array{0: string, 1: int}>>, 2: int, 3: ?string, 4: list<array{after: int, signal: string, in: int, for: int, rule: string}>, 5: int, 6: int}
+     * @return array{0: list<array{ips: list<string>, until: ?int, rule: string}>, 1: array{4: string, 6: string, ids: string, dir?: string}|array{}, 2: int, 3: int, 4: ?string, 5: list<array{after: int, signal: string, in: int, for: int, rule: string}>, 6: int, 7: int}
      */
     private static function lists(array $c, array $budgets): array
     {
         $now = time();
         $next = 0;
         $deny = [];
-        $ips = [];
+        $entries = [];
         foreach ((array) ($c['deny'] ?? []) as $i => $e) {
             if (!is_array($e) || !is_array($e['ips'] ?? null)) {
                 throw self::wrong("deny[$i]", "['ips' => [addresses], 'until' => a Unix time or null]");
@@ -489,13 +491,17 @@ final class Settings
             }
             $list = [];
             foreach ($e['ips'] as $ip) {
-                if (!is_string($ip) || @inet_pton((string) preg_replace('#/\d+$#', '', $ip)) === false) {
+                $slash = is_string($ip) ? strpos($ip, '/') : false;
+                if (!is_string($ip) || @inet_pton($slash === false ? $ip : substr($ip, 0, $slash)) === false) {
                     throw self::wrong("deny[$i].ips", 'addresses or ranges (203.0.113.7, 198.51.100.0/24, 2001:db8::/32)');
                 }
                 $list[] = $ip;
-                $ips[] = $ip;
             }
-            $deny[] = ['ips' => $list, 'until' => $until, 'rule' => is_string($e['rule'] ?? null) ? $e['rule'] : "deny[$i]"];
+            $rule = is_string($e['rule'] ?? null) ? $e['rule'] : "deny[$i]";
+            $entries[] = [$list, $rule];
+            if (count($deny) < self::DENY_SHOWN) {
+                $deny[] = ['ips' => $list, 'until' => $until, 'rule' => $rule];
+            }
             if ($until !== null && ($next === 0 || $until < $next)) {
                 $next = $until;
             }
@@ -523,7 +529,7 @@ final class Settings
             throw self::wrong('banGrowth/banMax', 'a whole number of at least 1');
         }
         $dir = $c['listsDir'] ?? null;
-        return [$deny, IpAddress::index($ips), $next, is_string($dir) && $dir !== '' ? $dir : null, $bans, $growth, $max];
+        return [$deny, $entries === [] ? [] : IpTable::build($entries), count($entries), $next, is_string($dir) && $dir !== '' ? $dir : null, $bans, $growth, $max];
     }
 
     /**
@@ -898,7 +904,10 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 29;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans
+    /** Deny entries kept as they were written, for the pages; the rest only in the table. */
+    public const DENY_SHOWN = 100;
+
+    private const FORMAT = 30;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 
@@ -950,6 +959,15 @@ final class Settings
                 self::$checked[$key] = $e['seen'];
                 return self::import($e['settings']);
             }
+            $lock = self::lock($cacheDir, $key);
+            if ($lock === null) {
+                return self::import($e['settings']);        // another request is building them: the last ones meanwhile
+            }
+            try {
+                return self::build($file, $cacheDir, $sources, $key);
+            } finally {
+                self::unlock($lock);
+            }
         }
         return self::build($file, $cacheDir, $sources, $key);
     }
@@ -975,6 +993,26 @@ final class Settings
                 $site = $raw['sites'] === [] ? null : self::pick($raw['sites'], $raw['siteFrom'], $raw['trustedProxies'], $server);
                 return $site === null ? self::import($raw) : self::loadSite($file, $cacheDir, $sources, $site, $key);
             }
+            $lock = self::lock($cacheDir, $key);
+            if ($lock === null) {
+                // Another request is building them: the last ones meanwhile, the website's too.
+                $raw = $e['settings'];
+                $site = $raw['sites'] === [] ? null : self::pick($raw['sites'], $raw['siteFrom'], $raw['trustedProxies'], $server);
+                $one = $site === null ? null : @include $cacheDir . '/settings-' . $key . '-' . hash('crc32b', $site) . '.php';
+                if (is_array($one) && ($one['format'] ?? 0) === self::FORMAT && ($one['file'] ?? '') === $file && ($one['site'] ?? null) === $site) {
+                    /** @var array{settings: array<string, mixed>} $one */
+                    return self::import($one['settings']);
+                }
+                /** @var array<string, mixed> $raw */
+                return self::import($raw);
+            }
+            try {
+                $base = self::build($file, $cacheDir, $sources, $key);
+            } finally {
+                self::unlock($lock);
+            }
+            $site = $base->siteFor($server);
+            return $site === null ? $base : self::loadSite($file, $cacheDir, $sources, $site, $key);
         }
         $base = self::build($file, $cacheDir, $sources, $key);
         $site = $base->siteFor($server);
@@ -1020,6 +1058,39 @@ final class Settings
     }
 
     /**
+     * The right to build these settings: a handle, true when there is no lock
+     * file to be had (built anyway, as before), or null while another request
+     * holds it -- with a big list a build takes seconds, and every request
+     * under load building at once would take the server down with it.
+     *
+     * @return resource|true|null
+     */
+    private static function lock(string $cacheDir, string $key)
+    {
+        if (!is_dir($cacheDir)) {
+            @mkdir($cacheDir, 0700, true);
+        }
+        $h = @fopen($cacheDir . '/settings-' . $key . '.lock', 'c');
+        if ($h === false) {
+            return true;
+        }
+        if (!flock($h, LOCK_EX | LOCK_NB)) {
+            fclose($h);
+            return null;
+        }
+        return $h;
+    }
+
+    /** @param resource|true $lock */
+    private static function unlock($lock): void
+    {
+        if (is_resource($lock)) {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    /**
      * Reads and checks the settings, writes them compiled -- and, for a rule
      * file with site blocks, each website's settings beside them (all checked
      * now: a mistake in any block is an error here, not at that website's
@@ -1028,6 +1099,16 @@ final class Settings
      * @param list<string> $sources
      */
     private static function build(string $file, string $cacheDir, array $sources, string $key): self
+    {
+        try {
+            return self::compile($file, $cacheDir, $sources, $key);
+        } finally {
+            Rules\RuleFile::forgetLists();         // read once per build, kept by no worker
+        }
+    }
+
+    /** @param list<string> $sources */
+    private static function compile(string $file, string $cacheDir, array $sources, string $key): self
     {
         $sites = [];
         if (substr($file, -6) === '.rules') {

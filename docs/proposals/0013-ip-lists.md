@@ -159,7 +159,7 @@ trusted proxies anyway.
 |---|---|
 | no list entries | nothing |
 | a few dozen entries | ~0.1 µs per entry (as `exempt` today) |
-| thousands of entries | a binary search, ~1 µs |
+| thousands of entries | a binary search, 2–3 µs (measured up to 1,000,000) |
 | expiry | one integer comparison |
 | a denied client | refused before any other check: less than any other refusal |
 | bans switched on | one store lookup per request (APCu ~0.2 µs, the file store ~1–2 µs); counting only when a limit, refusal or unsolved check happens |
@@ -225,3 +225,10 @@ As built, beyond the design above:
   running ban at once.
 - The store learned `mark()`/`marked()`: a key held until a time, ending by
   itself (APCu TTL; a small file, removed when read after its end).
+- **Big lists** (measured with 10,000 to 1,000,000 entries): the first version
+  compiled the entries into PHP arrays, read the list quadratically (50,000:
+  15 s) and at 200,000 entries outgrew OPcache, so every request read the
+  compiled file again (2 s). Now one sorted table in a few strings (`IpTable`):
+  loading the settings costs the same with a million entries as with none, a
+  lookup 2–3 µs; building 200,000 takes 2 s, once, while the other requests
+  keep the last settings ([cost](../features/ip-lists.md#big-lists)).
