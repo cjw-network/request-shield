@@ -1,0 +1,76 @@
+<svg class="rsd" role="img" viewBox="0 0 900 580" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>Forms, protected end to end and counted. A form sent (POST) passes, in this order: where it comes from -- the Origin header, else the Referer, must be one of the website's own names (all names of the host rule or the site block); a payment provider's callback, single sign-on and webhooks are exceptions; neither header: the browser check by default -- then the pace, with a budget of its own for the backend where editors save often, then the browser check inside the form, then the site. What happened is counted per form: sent, from which page of the site, how it ended (saved, an error, refused or checked by the shield). The backend is counted apart from the visitors' forms. Nothing of what was typed is kept.</title>
+<style>.rsd{font:13px/1.25 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .c{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;white-space:pre}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}.rsd .base{fill:#eef3fd;stroke:#2f62c9}.rsd .site{fill:#fdf3dc;stroke:#b07400}.rsd .ok{fill:#e6f4ea;stroke:#1e7b43}.rsd .no{fill:#fbe9e5;stroke:#a3361f}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .arrow{stroke:#a0a8b3}.rsd .base{fill:#1b2740;stroke:#7aa2ff}.rsd .site{fill:#3a2f15;stroke:#e0a43c}.rsd .ok{fill:#17301f;stroke:#4cc38a}.rsd .no{fill:#3d1f19;stroke:#ff7a66}}</style>
+<defs><marker id="a28" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>
+
+<!-- The rules -->
+<text class="t" x="16" y="26" font-weight="700">The rule file</text>
+<rect class="base" x="16" y="38" width="500" height="112" rx="10" stroke-width="1.5"/>
+<g class="c t">
+<text x="30" y="60">[F-ORIGIN] post-origin same missing check</text>
+<text x="30" y="80">[F-ORIGIN-X] post-origin except /pay/notify /sso/**</text>
+<text x="30" y="100">[F-BACKEND] backend /admin/**   # editors: apart</text>
+<text x="30" y="120">match /admin/** { limit edits 600/min }</text>
+</g>
+<text class="m" x="30" y="140" font-size="11.5">"same": every name of the host rule (or the site block)</text>
+
+<!-- The way of a POST -->
+<text class="t" x="16" y="182" font-weight="700">A form sent: POST /kontakt</text>
+<rect class="box" x="16" y="194" width="500" height="58" rx="8"/>
+<text class="t" x="28" y="214" font-weight="700">1 · Where from?</text>
+<text class="m" x="28" y="232" font-size="11.5">Origin (else Referer) one of the website's names → on; another site → 403</text>
+<text class="m" x="28" y="246" font-size="11.5">neither (privacy settings) → the browser check (default), never locks an editor out</text>
+<path class="arrow" d="M266 252 V270" marker-end="url(#a28)"/>
+<rect class="box" x="16" y="272" width="500" height="44" rx="8"/>
+<text class="t" x="28" y="292" font-weight="700">2 · The pace</text>
+<text class="m" x="28" y="308" font-size="11.5">per visitor; the backend with a budget of its own (autosave every few seconds)</text>
+<path class="arrow" d="M266 316 V334" marker-end="url(#a28)"/>
+<rect class="box" x="16" y="336" width="500" height="44" rx="8"/>
+<text class="t" x="28" y="356" font-weight="700">3 · The browser check inside the form (exists, 0010)</text>
+<text class="m" x="28" y="372" font-size="11.5">solved while typing: against bots, which set any Origin they like</text>
+<path class="arrow" d="M266 380 V398" marker-end="url(#a28)"/>
+<rect class="ok" x="16" y="400" width="500" height="40" rx="8" stroke-width="1.3"/>
+<text class="t" x="28" y="425" font-weight="700">4 · The site saves it — and its answer is counted</text>
+
+<rect class="no" x="16" y="456" width="240" height="58" rx="8" stroke-width="1.3"/>
+<text class="t" x="28" y="476" font-weight="700">Not on</text>
+<text class="m" x="28" y="494" font-size="11.5">payment callbacks, single sign-on,</text>
+<text class="m" x="28" y="508" font-size="11.5">webhooks, APIs (except, api-path)</text>
+<rect class="box" x="276" y="456" width="240" height="58" rx="8"/>
+<text class="t" x="288" y="476" font-weight="700">Never kept</text>
+<text class="m" x="288" y="494" font-size="11.5">what was typed; a foreign</text>
+<text class="m" x="288" y="508" font-size="11.5">page only by its host</text>
+
+<!-- Statistics -->
+<text class="t" x="552" y="26" font-weight="700">Counted: a card "Forms"</text>
+<rect class="box" x="552" y="38" width="332" height="230" rx="10"/>
+<g class="t">
+<text x="566" y="62" font-weight="700">Visitors' forms</text>
+<text x="566" y="84" class="c">/kontakt          142 sent</text>
+<text x="566" y="100" class="m" font-size="11.5">  from /kontakt 120 · /produkt/x 22</text>
+<text x="566" y="116" class="m" font-size="11.5">  saved 128 · errors 3 · stopped 11</text>
+<text x="566" y="138" class="c">/newsletter        57 sent</text>
+<text x="566" y="154" class="m" font-size="11.5">  stopped 31: another site 25, check 6</text>
+<text x="566" y="182" font-weight="700">Backend (apart)</text>
+<text x="566" y="204" class="c">/admin/**       1,240 saves</text>
+<text x="566" y="220" class="m" font-size="11.5">  errors 4 · stopped 0</text>
+<text x="566" y="248" class="m" font-size="11.5">a wave of POSTs without a page before: spam</text>
+</g>
+
+<rect class="box" x="552" y="284" width="332" height="156" rx="10"/>
+<text class="t" x="566" y="306" font-weight="700">What the numbers show</text>
+<text class="m" x="566" y="326" font-size="11.5">which forms are used, from which pages</text>
+<text class="m" x="566" y="344" font-size="11.5">which break (errors after sending)</text>
+<text class="m" x="566" y="362" font-size="11.5">spam waves and cross-site submissions</text>
+<text class="m" x="566" y="380" font-size="11.5">what the shield stopped where, and why</text>
+<text class="m" x="566" y="398" font-size="11.5">(the live view links each to its rule)</text>
+<text class="m" x="566" y="424" font-size="11.5">cost: one or two counters per POST</text>
+
+<rect class="site" x="552" y="456" width="332" height="58" rx="10" stroke-width="1.3"/>
+<text class="t" x="566" y="476" font-weight="700">Forms protected end to end</text>
+<text class="m" x="566" y="494" font-size="11.5">where from · pace · check in the form · counted</text>
+<text class="m" x="566" y="508" font-size="11.5">one rule file, no service</text>
+
+<text class="m" x="16" y="548" font-size="12">Same-origin checks (Origin, else Referer) are what OWASP recommends against cross-site requests (CSRF):</text>
+<text class="m" x="16" y="566" font-size="12">they stop a foreign page sending a form in the visitor's name. Against bots the check inside the form does the work.</text>
+</svg>

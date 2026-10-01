@@ -56,7 +56,8 @@
   [0024 rules per website](proposals/0024-rules-per-website.md) (phase 1 implemented) ·
   [0025 public blocklists](proposals/0025-blocklist-feeds.md) (phases 1–3 implemented; .htaccess dropped after measuring) ·
   [0026 the live view and the lists in the dashboard](proposals/0026-live-view-and-lists.md) (phases 1–3 implemented) ·
-  [0027 protected areas: passwords, one-time codes](proposals/0027-protected-areas.md) (draft)
+  [0027 protected areas: passwords, one-time codes](proposals/0027-protected-areas.md) (draft) ·
+  [0028 forms: counted, and sent only from the website itself](proposals/0028-forms.md) (draft)
   (0002, a single-file build, is reserved)
 - **Roadmap for 0012–0016** (the reasons in [0012](proposals/0012-dashboard.md#roadmap-for-00120016)):
   counters and crawler statistics first (they answer "did GPTBot crawl the
