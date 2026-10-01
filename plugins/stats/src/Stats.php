@@ -660,17 +660,6 @@ final class Stats
      */
     public static function botFamily(string $userAgent): ?string
     {
-        if ($userAgent === '') {
-            return 'empty';
-        }
-        // One expression for all families; the first alternative that matches names it.
-        $m = [];
-        if (preg_match('/(?:HeadlessChrome|PhantomJS|Puppeteer|Playwright|Selenium)(*MARK:headless)|(?:python-requests|python-urllib|aiohttp|httpx|Python\/)(*MARK:python)'
-            . '|(?:^curl\/)(*MARK:curl)|(?:^Wget\/)(*MARK:wget)|(?:Go-http-client)(*MARK:go)|(?:^Java\/|okhttp|Apache-HttpClient)(*MARK:java)'
-            . '|(?:node-fetch|axios|undici|^got |Node\.js)(*MARK:node)|(?:GuzzleHttp|^PHP\/|Symfony HttpClient)(*MARK:php)|(?:libwww-perl|^LWP)(*MARK:perl)'
-            . '|(?:Scrapy)(*MARK:scrapy)|(?:bot\b|crawler|spider|scraper|fetcher)(*MARK:other)/i', $userAgent, $m) !== 1) {
-            return null;
-        }
-        return isset($m['MARK']) ? (string) $m['MARK'] : 'other';
+        return Seen::family($userAgent);
     }
 }

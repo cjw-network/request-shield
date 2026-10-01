@@ -34,7 +34,7 @@ jobs:
           node-version: '22'
 
       - name: Syntax check (PHP ${{ matrix.php }})
-        run: find src tests bench config examples bootstrap.php -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+        run: find src plugins tests bench config examples bootstrap.php -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
 
       - name: Tests
         env:

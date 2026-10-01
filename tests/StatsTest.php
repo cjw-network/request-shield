@@ -11,6 +11,7 @@ use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Shield;
 use CjwNetwork\RequestShield\Stats;
+use CjwNetwork\RequestShield\StatsPlugin;
 use CjwNetwork\RequestShield\Store\ApcuStore;
 use CjwNetwork\RequestShield\Store\MemoryStore;
 
@@ -211,7 +212,7 @@ return [
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }
-        same(['s:404', 'n:/a%2A3'], Shield::statusKeys(statsReq('/a*3'), 404), 'a "*" in a path would read as a count: escaped');
+        same(['s:404', 'n:/a%2A3'], StatsPlugin::statusKeys(statsReq('/a*3'), 404), 'a "*" in a path would read as a count: escaped');
     },
     'days, weeks, months, years: old days summed into their month, kept for good (or stats-months); the report grouped and filtered' => function (): void {
         $dir = statsDir();
@@ -312,8 +313,8 @@ return [
             $record(statsReq('/sitemap.xml', STATS_ANTHROPIC, STATS_CLAUDEBOT), STATS_T0 + 7);
             same(1, statsDay(Stats::of($s), STATS_T0)['smc:/sitemap.xml|CRAWL-CLAUDEBOT'] ?? 0, 'a verified crawler read the sitemap');
             same((int) STATS_T0 + 7, Stats::of($s)->read('20260930', '20260930')['last']['sitemap:/sitemap.xml@CRAWL-CLAUDEBOT'][0] ?? null, 'and when');
-            same(['s:200', 'sm:/news/sitemap-news.xml.gz|200'], Shield::statusKeys(statsReq('/news/sitemap-news.xml.gz'), 200), 'which sitemaps exist: their answers');
-            same(['s:200'], Shield::statusKeys(statsReq('/my-sitemap.html'), 200), 'no sitemap');
+            same(['s:200', 'sm:/news/sitemap-news.xml.gz|200'], StatsPlugin::statusKeys(statsReq('/news/sitemap-news.xml.gz'), 200), 'which sitemaps exist: their answers');
+            same(['s:200'], StatsPlugin::statusKeys(statsReq('/my-sitemap.html'), 200), 'no sitemap');
             // Refused by the site's policy
             $d = $record(statsReq('/', '20.171.207.2', 'Mozilla/5.0 (compatible; GPTBot/1.2)'), STATS_T0 + 6);
             same(Decision::REJECT, $d->action);
@@ -323,13 +324,13 @@ return [
         }
     },
     'status keys: pages not found and where the links to them are -- the site\'s own path, another site\'s host only' => function (): void {
-        same(['s:200'], Shield::statusKeys(statsReq('/a'), 200));
-        same([true, true, false, true], [Shield::isHtml([]), Shield::isHtml(['Content-Type: text/html; charset=utf-8']), Shield::isHtml(['X-A: b', 'content-type: application/json']),
-            Shield::isHtml(['Content-Type: application/xhtml+xml'])], 'a page: HTML, or no Content-Type (PHP\'s default)');
-        same(['s:404', 'n:/old'], Shield::statusKeys(statsReq('/old'), 404));
-        same(['s:404', 'n:/old', 'nr:/old|/news/x'], Shield::statusKeys(statsReq('/old', '203.0.113.9', 'x', ['HTTP_REFERER' => 'https://www.example.org/news/x?id=7']), 404), 'a broken link on the site');
-        same(['s:410', 'n:/old', 'nr:/old|other.example'], Shield::statusKeys(statsReq('/old', '203.0.113.9', 'x', ['HTTP_REFERER' => 'https://Other.Example/a/b?q=secret']), 410), 'another site: its host, nothing else');
-        same(['s:404', 'n:/a%7Cb%20c'], Shield::statusKeys(statsReq('/a|b%20c'), 404), 'a counter name is one word');
+        same(['s:200'], StatsPlugin::statusKeys(statsReq('/a'), 200));
+        same([true, true, false, true], [StatsPlugin::isHtml([]), StatsPlugin::isHtml(['Content-Type: text/html; charset=utf-8']), StatsPlugin::isHtml(['X-A: b', 'content-type: application/json']),
+            StatsPlugin::isHtml(['Content-Type: application/xhtml+xml'])], 'a page: HTML, or no Content-Type (PHP\'s default)');
+        same(['s:404', 'n:/old'], StatsPlugin::statusKeys(statsReq('/old'), 404));
+        same(['s:404', 'n:/old', 'nr:/old|/news/x'], StatsPlugin::statusKeys(statsReq('/old', '203.0.113.9', 'x', ['HTTP_REFERER' => 'https://www.example.org/news/x?id=7']), 404), 'a broken link on the site');
+        same(['s:410', 'n:/old', 'nr:/old|other.example'], StatsPlugin::statusKeys(statsReq('/old', '203.0.113.9', 'x', ['HTTP_REFERER' => 'https://Other.Example/a/b?q=secret']), 410), 'another site: its host, nothing else');
+        same(['s:404', 'n:/a%7Cb%20c'], StatsPlugin::statusKeys(statsReq('/a|b%20c'), 404), 'a counter name is one word');
         foreach (['python-requests/2.32' => 'python', 'curl/8.5' => 'curl', 'Go-http-client/2.0' => 'go', 'Mozilla/5.0 HeadlessChrome/130' => 'headless', '' => 'empty',
             'MyCrawler/1.0' => 'other', 'Mozilla/5.0 (X11; Linux x86_64) Firefox/136.0' => null] as $ua => $family) {
             same($family, Stats::botFamily((string) $ua), (string) $ua);
@@ -402,10 +403,10 @@ return [
             same(['/wp-login.php', '/news/b', '/news'], array_keys($all['stopped']), 'the report: the pages stopped most, whatever the order of the list');
             truthy(strpos(\CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'en', 'sort' => 'refused', 'links' => \CjwNetwork\RequestShield\Report\StatsPage::links($s)]),
                 'href="/rs/stats?days=30&amp;by=day&amp;lang=en&amp;sort=refused"') !== false, 'another order is carried in the links');
-            same(['/news/', '/news/2026/'], Shield::folders('/news/2026/10/x'));
-            same(['/news/'], Shield::folders('/news/'), 'a folder\'s own page belongs to it');
-            same([], Shield::folders('/about'));
-            same([['/de/'], ['/de/', '/de/news/', '/de/news/2026/'], ['/de/', '/de/news/', '/de/news/2026/']], [Shield::folders('/de/news/2026/10/x', 1), Shield::folders('/de/news/2026/10/x', 3), Shield::folders('/de/news/2026/', 4)], 'stats-depth 1, 3, 4');
+            same(['/news/', '/news/2026/'], StatsPlugin::folders('/news/2026/10/x'));
+            same(['/news/'], StatsPlugin::folders('/news/'), 'a folder\'s own page belongs to it');
+            same([], StatsPlugin::folders('/about'));
+            same([['/de/'], ['/de/', '/de/news/', '/de/news/2026/'], ['/de/', '/de/news/', '/de/news/2026/']], [StatsPlugin::folders('/de/news/2026/10/x', 1), StatsPlugin::folders('/de/news/2026/10/x', 3), StatsPlugin::folders('/de/news/2026/', 4)], 'stats-depth 1, 3, 4');
             // The page: charts, both languages, everything escaped.
             $st->count(['n:/<script>x', 'o:curl', 'c:CRAWL-GOOGLE:seen'], STATS_T0 + 6);
             $page = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'action' => '/stats', 'view' => 'all']);

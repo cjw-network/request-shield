@@ -22,9 +22,13 @@ declare(strict_types=1);
 
 spl_autoload_register(static function (string $class): void {
     if (strncmp($class, 'CjwNetwork\\RequestShield\\', 25) === 0) {
-        $file = __DIR__ . '/src/' . str_replace('\\', '/', substr($class, 25)) . '.php';
-        if (is_file($file)) {
-            require $file;
+        // The core, then the statistics plugin that comes with it (plugins/stats).
+        $name = str_replace('\\', '/', substr($class, 25)) . '.php';
+        foreach ([__DIR__ . '/src/', __DIR__ . '/plugins/stats/src/'] as $dir) {
+            if (is_file($dir . $name)) {
+                require $dir . $name;
+                return;
+            }
         }
     }
 });

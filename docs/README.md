@@ -19,6 +19,7 @@
   [modes: monitor and strict](features/modes.md) ·
   [known crawlers](features/known-crawlers.md) ·
   [statistics](features/statistics.md) ·
+  [plugins](features/plugins.md) ·
   [settings](features/settings.md)
 - **Privacy** — what the shield processes about visitors, feature by feature,
   and the GDPR: [privacy and the GDPR](privacy.md)
@@ -48,7 +49,7 @@
   [0020 cache keys without tracking parameters](proposals/0020-cache-keys-without-tracking.md) (draft) ·
   [0021 rules from the CMS](proposals/0021-rules-from-the-cms.md) (draft) ·
   [0022 the visitors page](proposals/0022-visitors-page.md) (draft) ·
-  [0023 plugins, statistics per website, a view for each customer](proposals/0023-plugins-hosts-customers.md) (draft)
+  [0023 plugins, statistics per website, a view for each customer](proposals/0023-plugins-hosts-customers.md) (phase 1 implemented)
   (0002, a single-file build, is reserved)
 - **Roadmap for 0012–0016** (the reasons in [0012](proposals/0012-dashboard.md#roadmap-for-00120016)):
   counters and crawler statistics first (they answer "did GPTBot crawl the
@@ -61,6 +62,7 @@
   [0002 uncached, not refused](adr/0002-outside-the-definition-is-uncached-not-refused.md) ·
   [0003 append-only file counters](adr/0003-append-only-file-counters.md) ·
   [0004 stateless challenge and pass](adr/0004-stateless-signed-challenge-and-pass.md) ·
-  [0005 settings compiled for OPcache](adr/0005-settings-compiled-for-opcache.md)
+  [0005 settings compiled for OPcache](adr/0005-settings-compiled-for-opcache.md) ·
+  [0006 the core and its plugins](adr/0006-core-and-plugins.md)
 
 New proposals: copy the shape of 0001, next number, status **Draft**.

@@ -124,7 +124,7 @@ final class SetupPage
         $lang = isset(self::T[$lang]) ? $lang : 'en';
         $t = self::T[$lang];
         $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-        $n = static fn (int $v): string => StatsReport::number($v, $lang);
+        $n = static fn (int $v): string => number_format($v, 0, ',', $lang === 'de' ? '.' : ',');
         $f = static fn (string $key, string|int ...$args): string => vsprintf($t[$key], $args);
         $list = static fn (array $v): string => self::join($v, $t['none']);
 

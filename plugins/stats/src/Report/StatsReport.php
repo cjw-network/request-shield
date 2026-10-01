@@ -10,9 +10,9 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield\Report;
 
-use CjwNetwork\RequestShield\Shield;
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Stats;
+use CjwNetwork\RequestShield\StatsPlugin;
 
 /**
  * The counters (Stats) of the last days, summed up for people and for code:
@@ -174,7 +174,7 @@ final class StatsReport
         foreach ($stopped as $path => $x) {
             $path = (string) $path;
             $views[$path] = self::stop($views[$path] ?? $zero, $x);
-            foreach (Shield::folders($path, $s->statsDepth) as $at) {
+            foreach (StatsPlugin::folders($path, $s->statsDepth) as $at) {
                 $folders[$at] = self::stop($folders[$at] ?? $zero, $x);
             }
         }
@@ -391,7 +391,7 @@ final class StatsReport
      */
     private static function names(): array
     {
-        $ready = require dirname(__DIR__, 2) . '/rules/crawlers.php';
+        $ready = require Settings::RULES_DIR . '/crawlers.php';
         /** @var array<string, string> */
         return is_array($ready) && is_array($ready['names'] ?? null) ? $ready['names'] : [];
     }

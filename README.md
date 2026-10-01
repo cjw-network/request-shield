@@ -102,7 +102,9 @@ server and PHP slots, just very briefly.
   checked or refused per kind ([docs](docs/features/known-crawlers.md));
   statistics — requests, rules, status codes, pages not found and who links
   to them, what each crawler did — kept per hour, `bin/request-shield stats`
-  ([docs](docs/features/statistics.md)).
+  ([docs](docs/features/statistics.md)); plugins — the core is the firewall,
+  the statistics are its first plugin, and your own hang on the same two hooks
+  ([docs](docs/features/plugins.md)).
 - **Next:** adapters for
   Exponential, WordPress and Ibexa; exporting the rules to nginx, Apache and
   Varnish.

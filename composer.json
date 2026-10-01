@@ -39,7 +39,7 @@
     },
     "autoload": {
         "psr-4": {
-            "CjwNetwork\\RequestShield\\": "src/"
+            "CjwNetwork\\RequestShield\\": ["src/", "plugins/stats/src/"]
         }
     },
     "bin": [

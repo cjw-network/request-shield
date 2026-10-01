@@ -462,6 +462,16 @@ final class RuleFile
             case 'restrict':
                 $this->restrict($args, $at);
                 return;
+            case 'plugin':
+                // plugin Vendor\Package\MyPlugin: told what was decided (proposal 0023).
+                if (count($args) !== 1 || !preg_match('/^\\\\?[A-Za-z_][A-Za-z0-9_]*(\\\\[A-Za-z_][A-Za-z0-9_]*)*$/', $args[0])) {
+                    throw new RuleFileException("$at: plugin takes one class name, such as Vendor\\Package\\MyPlugin");
+                }
+                $list = (array) $this->get('plugins');
+                $list[] = ltrim($args[0], '\\');
+                $this->put('plugins', $list);
+                $this->origins['plugins'][ltrim($args[0], '\\')] = $this->rid;
+                return;
             case 'allow':
                 $this->allow($args, $at);
                 return;
@@ -566,7 +576,7 @@ final class RuleFile
                 return;
         }
         throw new RuleFileException("$at: unknown rule \"$keyword\"" . self::suggest($keyword,
-            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'api-path', 'limit', 'no-limit', 'crawler', 'crawlers', 'set', 'include']));
+            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'api-path', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'set', 'include']));
     }
 
     /**

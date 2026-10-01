@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Plugins** (proposal 0023, phase 1): the core tells its plugins what it
+  decided (`decided()`) and how a request the site answered ended (`ended()`,
+  with the status and headers); `Seen` gives them the website, the known crawler
+  and whether its address proves it, a bot's family — worked out on demand.
+  Named in a rule file (`plugin <class>`) or the PHP settings (`'plugins'`);
+  read only; an error in a plugin is logged and never reaches the visitor;
+  `check` warns about one it cannot find. No plugin, no cost. A guide with a
+  tested example: [docs/features/plugins.md](docs/features/plugins.md).
 - **The visitors page** ("Visitors & pages", proposal 0022 phase 1): six
   numbers with their change against the period before (page views by people,
   requests by people, crawler visits, bot requests, stopped, not found), one
@@ -154,6 +162,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   never match; it is refused now, like `dashboard-path`.
 
 ### Changed
+- **The statistics are the first plugin** (`plugins/stats/`, `StatsPlugin`):
+  `set stats on` (or `set crawler-log`) brings them, nothing changes for a site.
+  Their classes moved there and keep their names (`Stats`, `Report\StatsReport`,
+  `Report\StatsPage`, `Report\VisitorsPage`); `Shield::folders()`,
+  `isHtml()`, `isSitemap()` and `statusKeys()` are now `StatsPlugin::…`; a bot's
+  family is `Seen::family()` (`Stats::botFamily()` asks it). `Shield::record()`
+  tells the plugins. Measured as before: no difference.
 - The query string is parsed once per request, for every check that reads it.
 
 ## [0.3.0] — 2026-09-30

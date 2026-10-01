@@ -2,7 +2,9 @@
 
 ## What it does
 
-With `set stats on` the shield counts, per hour, while requests pass:
+The statistics are the shield's first [plugin](plugins.md) (`plugins/stats/`,
+`StatsPlugin`): `set stats on` brings them, no `plugin` line needed. With it the
+shield counts, per hour, while requests pass:
 
 - **requests** — let through, checked, told to wait, refused; the rule behind
   each that was not a plain "let through"; the answer's **status code** (the

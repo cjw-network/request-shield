@@ -123,6 +123,10 @@ if ($command === 'stats') {
         fwrite(STDERR, "no statistics: switch them on with \"set stats on\" in the rule file\n");
         exit(1);
     }
+    if (!class_exists(StatsReport::class)) {
+        fwrite(STDERR, "no statistics plugin: it is not installed (plugins/stats)\n");
+        exit(1);
+    }
     if (isset($period['crawler']) && !isset($settings->crawlers[$period['crawler']])) {
         fwrite(STDERR, "no crawler {$period['crawler']} -- see bin/request-shield crawlers " . basename($file) . "\n");
         exit(2);
@@ -266,7 +270,7 @@ function crawlerListsAge(Settings $settings): array
  */
 function sectionsPastLimit(Settings $settings): array
 {
-    if (!$settings->statsEnabled || !in_array('pages', $settings->statsParts, true) || !is_dir($settings->storeDir . '/stats')) {
+    if (!$settings->statsEnabled || !in_array('pages', $settings->statsParts, true) || !is_dir($settings->storeDir . '/stats') || !class_exists(\CjwNetwork\RequestShield\Stats::class)) {
         return [];
     }
     $read = \CjwNetwork\RequestShield\Stats::of($settings)->read(gmdate('Ymd', time() - 6 * 86400), gmdate('Ymd'));
@@ -303,6 +307,17 @@ if ($command === 'check' || $command === 'reload') {
                 . ": blocked paths are open there for everyone -- add \"for <addresses>\", or make sure only admins reach it\n");
             $warnings++;
         }
+    }
+    // Plugins: a class that is not there, or no Plugin, is left out when the shield runs.
+    foreach ($settings->plugins as $class) {
+        if (!class_exists($class) || !is_subclass_of($class, \CjwNetwork\RequestShield\Plugin::class)) {
+            fwrite(STDERR, 'warning: ' . ($settings->origin('plugins', $class) ?? 'plugins') . ": plugin $class is not there, or is no " . \CjwNetwork\RequestShield\Plugin::class . " -- it is left out\n");
+            $warnings++;
+        }
+    }
+    if (($settings->statsEnabled || $settings->crawlerLogDir !== null) && !class_exists(\CjwNetwork\RequestShield\StatsPlugin::class)) {
+        fwrite(STDERR, "warning: set stats (or crawler-log) is on, but the statistics plugin is not installed (plugins/stats) -- nothing is counted\n");
+        $warnings++;
     }
     $shipped = dirname(__DIR__) . '/rules/';
     $files = count(array_filter(array_keys($read['seen']), static fn (string $f): bool => substr($f, -6) === '.rules' && strncmp((string) realpath($f), $shipped, strlen($shipped)) !== 0));

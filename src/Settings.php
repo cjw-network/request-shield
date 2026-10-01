@@ -153,6 +153,8 @@ final class Settings
         public int $statsDepth = 2,
         /** @readonly where the statistics pages live: <path>/dashboard, /stats, /shield */
         public string $dashboardPath = '/rs',
+        /** @var list<class-string> @readonly the plugins the rules name (the statistics come with "set stats on" on their own) */
+        public array $plugins = [],
     ) {
     }
 
@@ -269,7 +271,7 @@ final class Settings
             $monitorRules === null ? null : self::from(['mode' => $mode, 'monitorRules' => null] + $monitorRules),
             ...self::knownCrawlers($c, $verify),
             ...self::stats($c),
-            ...[self::dashboardPath($c)],
+            ...[self::dashboardPath($c), self::plugins($c)],
         );
     }
 
@@ -394,6 +396,28 @@ final class Settings
             }
         }
         return $out;
+    }
+
+    /**
+     * Plugins by their class names (Vendor\Package\MyPlugin): checked for their
+     * form here; whether the class is there and a Plugin, when the shield makes
+     * them (and by "check").
+     *
+     * @param array<mixed> $c
+     * @return list<class-string>
+     */
+    private static function plugins(array $c): array
+    {
+        $out = [];
+        foreach ((array) ($c['plugins'] ?? []) as $class) {
+            if (!is_string($class) || !preg_match('/^\\\\?[A-Za-z_][A-Za-z0-9_]*(\\\\[A-Za-z_][A-Za-z0-9_]*)*$/', $class)) {
+                throw self::wrong('plugins', 'class names such as Vendor\\Package\\MyPlugin');
+            }
+            /** @var class-string $name */
+            $name = ltrim($class, '\\');
+            $out[] = $name;
+        }
+        return array_values(array_unique($out));
     }
 
     /** @param array<mixed> $c */
@@ -694,9 +718,12 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 25;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams
+    private const FORMAT = 26;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
+
+    /** The shipped rules and lists (rules/): for plugins, which may live elsewhere. */
+    public const RULES_DIR = __DIR__ . '/../rules';
 
     /** What the statistics can count (set stats <parts>). */
     public const STATS_PARTS = ['requests', 'crawlers', 'not-found', 'bots', 'pages'];

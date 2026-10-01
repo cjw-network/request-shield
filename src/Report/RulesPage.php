@@ -102,7 +102,8 @@ final class RulesPage
         // ── The rules ───────────────────────────────────────────────────────
         $h .= '<h2>The rules</h2><p class="note">Each with its ID, where it is written and, from the log, how often it decided in the last 24 hours. The text is the comment after the rule in the rule file.</p>';
         // The counters of the last 7 days, when they are kept (set stats on).
-        $counted = $s->statsEnabled ? StatsReport::build($s, null, 7, $now)['crawlers'] : null;
+        // From the statistics plugin, when it is there.
+        $counted = $s->statsEnabled && class_exists(StatsReport::class) ? StatsReport::build($s, null, 7, $now)['crawlers'] : null;
         foreach (self::groups($s, $stats['claims'], $counted) as [$heading, $intro, $rows]) {
             $h .= '<section class="card"><h3>' . $e($heading) . '</h3><p class="intro">' . $e($intro) . '</p>';
             if ($rows !== []) {

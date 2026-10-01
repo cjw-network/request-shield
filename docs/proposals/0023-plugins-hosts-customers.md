@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Phase 1 implemented** (2026-10-01): the plugin interface, the statistics as its first plugin; phases 2–6 accepted, to come |
 | Proposed | 2026-10-01 |
 | Affects | the core (`Shield::protect()`, `Shield::record()`), the statistics (`Stats`, `Report\*`), the dashboard and its login ([0012](0012-dashboard.md)), the visitors page ([0022](0022-visitors-page.md)), rule files (`plugin`, `stats-hosts`, `stats-group`, `stats-access`), packaging |
 
@@ -199,7 +199,25 @@ Once 2–4 exist, the demo shows them with two websites it answers to anyway
 5. **The demo's customer menu**; the plugin guide.
 6. **Two packages** (`request-shield` and `request-shield-stats`).
 
-## Open questions
+## Decisions (2026-10-01)
+
+1. **One repository** with `plugins/stats/`, until the interface has settled.
+2. **Plugins are read only** in the first version.
+3. **A customer sees** the numbers of its websites and the pages stopped; which
+   rules decided stays with the admin.
+4. **Sessions** last 8 hours, configurable.
+5. **Signed links** last 10 minutes by default, at most an hour.
+6. **Groups for the protection settings** (a customer's own rules) later — 0021
+   per host first.
+
+Phase 1 as built: `CjwNetwork\RequestShield\Plugin` with `decided()` and
+`ended()`; `decided()` also gets `$continues` (true: the site answers, `ended()`
+follows) — the page hook of the sketch above comes with phase 4, when the
+plugin's own pages need it. `Seen` as described, lazily. `plugin <class>` and
+`'plugins' => […]`; the statistics registered by `set stats on`. Details:
+[plugins](../features/plugins.md), [ADR 0006](../adr/0006-core-and-plugins.md).
+
+## Open questions (answered above)
 
 1. **One repository with `plugins/stats/`, or two from the start?**
    *Recommendation: one, until the interface has settled.*

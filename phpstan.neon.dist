@@ -3,4 +3,5 @@ parameters:
     phpVersion: 80000
     paths:
         - src
+        - plugins/stats/src
         - bootstrap.php

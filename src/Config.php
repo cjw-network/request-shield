@@ -158,6 +158,9 @@ final class Config
             // Where the statistics pages live: <dashboardPath>/dashboard, /stats, /shield
             // (StatsPage::links(), ::viewFor()). Something in front is fine: /admin/rs.
             'dashboardPath' => '/rs',
+            // Plugins by class name: told what was decided and how a request ended
+            // (proposal 0023). The statistics come with 'stats' => ['enabled' => true].
+            'plugins' => [],
             'stats' => ['enabled' => false, 'parts' => ['requests', 'crawlers', 'not-found', 'bots', 'pages'], 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 60, 'depth' => 2],
             // One log file per known crawler and day (dir/CRAWL-GPTBOT/2026-09-30.log),
             // for the kinds listed ([]: all); kept 'days' days; 'query' false leaves
