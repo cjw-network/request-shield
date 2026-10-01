@@ -28,6 +28,10 @@ what the shield sees anyway** — no script in the page, no cookie:
   counted the way server-log statistics have always counted them: by address
   and browser, per day — but with a hash that changes every day and is never
   written, and a sketch instead of a list;
+- **the visitor's own "no" is respected — always**: a browser that sends
+  Global Privacy Control or Do Not Track is never counted as a visitor, its
+  address is not used for statistics at all, and the page shows how many asked
+  (see "Visitors who say no");
 - **countries** — an option, with a GeoIP file;
 - **networks** — the areas of an intranet, by name or by their first two or
   three octets, only for private addresses or ranges the site names.
@@ -100,9 +104,35 @@ can do the same live, without keeping addresses:
   stable id, hashed the same way — `Stats::visitor($userId)`); changing IPv6
   privacy addresses and mobile networks count as more; one person on two devices
   is two visitors.
-- **An objection is honoured:** a browser that sends `Sec-GPC: 1` (Global
-  Privacy Control) or `DNT: 1` is counted in the page views, but not as a
-  visitor and not in visits (`stats-visitors-respect off` to count it anyway).
+- **A visitor who says no is not counted as a visitor** — see the next section.
+
+### Visitors who say no: Global Privacy Control and Do Not Track
+
+A browser can tell every site, with every request, that its user does not want
+to be tracked: **Global Privacy Control** (`Sec-GPC: 1` — sent by Firefox with
+the setting on, by Brave and the DuckDuckGo browser by default, and by privacy
+extensions) and the older **Do Not Track** (`DNT: 1`). The shield listens:
+
+- **Such a request is never a visitor.** No hash is made, no visit entry, no
+  entry page, no country lookup, no network area — the address is **not used
+  for statistics at all**. The page view is counted like any page view without
+  the option: a path and a number, nothing about the person.
+- **Always.** There is no switch to count such visitors anyway — a site that
+  switches the visitor option on gets this with it.
+- **Shown on the page**: "312 page views from browsers that asked not to be
+  counted" — one aggregate counter, so the site sees how many people asked, and
+  its visitor numbers say what they are: visitors who did not object.
+- **Why it matters:**
+  - Art. 21(5) GDPR lets people object "by automated means using technical
+    specifications" — GPC is such a specification. Honouring it makes the
+    visitor option's legal basis (legitimate interest) markedly stronger: the
+    objection costs the visitor nothing and works on every site.
+  - In California GPC is a legally binding opt-out (CCPA/CPRA); other US
+    states follow. A site with visitors from there needs it anyway.
+  - Few statistics tools do it — and statistics from log files cannot: the
+    usual log format does not even record the signal, and the log keeps the
+    request either way.
+- **Cost:** two header checks per page view (~0.1 µs).
 
 ### Consent, legal basis — and the comparison with AWStats
 
@@ -120,8 +150,8 @@ decides.*
 - **A legal basis and a line in the privacy notice under the GDPR:** hashing the
   address is processing personal data, even if nothing is stored. The usual
   basis is the site's legitimate interest in measuring its reach, Art. 6(1)(f),
-  with immediate anonymisation; visitors may object (Art. 21) — the GPC/DNT rule
-  above. [docs/privacy.md](../privacy.md#what-to-put-in-your-privacy-notice)
+  with immediate anonymisation; visitors may object (Art. 21) — and can do so
+  automatically with GPC or DNT (Art. 21(5)), which the shield always honours. [docs/privacy.md](../privacy.md#what-to-put-in-your-privacy-notice)
   has a ready-made text, in English and German.
 - **Compared with AWStats**, which counts unique visitors from the web server's
   log files and is commonly run without consent, the option processes less and
@@ -135,6 +165,7 @@ decides.*
   | Unique visitors | distinct addresses per month (one office behind one address is one visitor) | address + browser per day, a sketch merges any period |
   | A visit | the same address again after an hour without requests | the same visitor again after 30 minutes (configurable) |
   | Bots | by User-Agent lists | verified crawlers by address, bot families, the shield's decisions |
+  | A visitor's "no" (GPC, DNT) | not honoured — the usual log format does not record it | **always honoured**: not counted as a visitor, the address not used |
   | Pages a cache in front of PHP answered | **counted** (they are in the log) | **not seen** — the shield runs in PHP |
   | Consent (common practice) | none | none |
 

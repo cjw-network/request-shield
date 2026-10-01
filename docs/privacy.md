@@ -18,6 +18,11 @@ feature by feature, for what exists today and for the proposals.
 - **The shield keeps no profiles.** It counts per client address for a few
   seconds to minutes (the budgets), and counts aggregates (statistics). It never
   combines data into a picture of a person.
+- **A visitor's "no" is honoured** (planned with the visitor statistics of
+  [0022](proposals/0022-visitors-page.md)): a browser that sends Global Privacy
+  Control or Do Not Track is never counted as a visitor and its address is not
+  used for statistics at all — the automated objection of Art. 21(5) GDPR,
+  always on.
 - **Security is the purpose of almost everything it does** — keeping attacks,
   floods and scrapers away from the site. Network and information security is
   named as a legitimate interest in recital 49 GDPR; the likely basis is
@@ -115,8 +120,12 @@ feature by feature, for what exists today and for the proposals.
   entry pages) like the other statistics.
 - **Not done:** no cookie, no script, nothing read from the device, no linking
   across days (the salt is gone), no profile, nothing sent anywhere.
-- **Objection:** a browser sending `Sec-GPC: 1` or `DNT: 1` is not counted as a
-  visitor (only as a page view, like everyone without the option).
+- **Objection — automatic, always honoured:** a browser sending `Sec-GPC: 1`
+  (Global Privacy Control) or `DNT: 1` is never counted as a visitor: no hash,
+  no visit, no country, no network area — only an anonymous page view. This is
+  the objection "by automated means using technical specifications" of
+  Art. 21(5) GDPR; there is no switch to turn it off. The page shows how many
+  page views came with the signal.
 - **Basis:** legitimate interest in measuring the site's reach, Art. 6(1)(f)
   GDPR, with immediate anonymisation; to be named in the privacy notice (text
   below). **Consent** under TDDDG §25: not needed in the common reading —
@@ -130,6 +139,7 @@ feature by feature, for what exists today and for the proposals.
   | IP address | in the log in full as long as it is kept; hosts in the monthly data files | never stored; hashed in memory, salt replaced daily |
   | Linking over time | possible while logs or data files exist | within one day only |
   | Unique visitors | distinct addresses per month | address + browser per day; a sketch, no list |
+  | A visitor's "no" (GPC, DNT) | not honoured — the usual log format does not record it | always honoured: not counted, the address not used |
   | Consent (common practice) | none | none |
 
   So if a site runs log statistics today without consent, this option processes
