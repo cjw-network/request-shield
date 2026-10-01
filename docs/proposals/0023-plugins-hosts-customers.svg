@@ -1,0 +1,81 @@
+<svg class="rsd" role="img" viewBox="0 0 900 600" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>Requests for many websites on one server reach the request-shield core, the mini WAF: it checks, decides and answers, and then tells its plugins what happened — "decided" and "ended". The first plugin is the statistics: it counts per website, only for websites it knows, everything else as "other hosts". Websites are grouped by customer: Customer A has a.de, www.a.de and b.de, Customer B has c.de. Who sees what: the admin token sees every website and every view; a customer's token, login or signed link from the customer's own menu sees only that customer's group — its overview and each of its websites — never another customer's, never the server's rules and settings. Your own plugins hang on the same two hooks.</title>
+<style>.rsd{font:13px/1.25 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .c{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}.rsd .dash{stroke-dasharray:5 4}.rsd .core{fill:#eef3fd;stroke:#2f62c9}.rsd .plug{fill:#e6f4ea;stroke:#1e7b43}.rsd .own{fill:#fff;stroke:#1e7b43;stroke-dasharray:5 4}.rsd .grp{fill:#fdf3dc;stroke:#b07400}.rsd .acc{fill:#f3eefd;stroke:#7c4dd6}.rsd .no{fill:#fbe9e5;stroke:#a3361f}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box,.rsd .own{fill:#1d2127;stroke:#3a414b}.rsd .arrow{stroke:#a0a8b3}.rsd .core{fill:#1b2740;stroke:#7aa2ff}.rsd .plug{fill:#17301f;stroke:#4cc38a}.rsd .grp{fill:#3a2f15;stroke:#e0a43c}.rsd .acc{fill:#271f3d;stroke:#a78bfa}.rsd .no{fill:#3d1f19;stroke:#ff7a66}}</style>
+<defs><marker id="a23" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>
+
+<!-- Websites -->
+<text class="t" x="16" y="26" font-weight="700">50 websites, one PHP-FPM pool</text>
+<g class="c t">
+<rect class="box" x="16" y="40" width="130" height="26" rx="6"/><text x="26" y="57">a.de</text>
+<rect class="box" x="16" y="72" width="130" height="26" rx="6"/><text x="26" y="89">www.a.de</text>
+<rect class="box" x="16" y="104" width="130" height="26" rx="6"/><text x="26" y="121">b.de</text>
+<rect class="box" x="16" y="136" width="130" height="26" rx="6"/><text x="26" y="153">c.de</text>
+<rect class="box" x="16" y="168" width="130" height="26" rx="6"/><text x="26" y="185">… 46 more</text>
+<rect class="no" x="16" y="208" width="130" height="26" rx="6"/><text x="26" y="225">evil.example</text>
+</g>
+<text class="m" x="16" y="252" font-size="11">a made-up Host header:</text><text class="m" x="16" y="266" font-size="11">no statistics of its own</text>
+<path class="arrow" d="M146 120 H186" marker-end="url(#a23)"/>
+
+<!-- Core -->
+<rect class="core" x="188" y="40" width="220" height="196" rx="10" stroke-width="1.5"/>
+<text class="t" x="298" y="64" text-anchor="middle" font-weight="700">request-shield core</text>
+<text class="m" x="298" y="82" text-anchor="middle" font-size="12">the mini WAF</text>
+<g class="m" font-size="12"><text x="204" y="106">checks, rules, budgets</text><text x="204" y="124">browser check, crawlers</text><text x="204" y="142">decides and answers</text><text x="204" y="160">the log</text></g>
+<text class="t" x="204" y="190" font-size="12" font-weight="600">then tells its plugins:</text>
+<text class="c t" x="204" y="210">decided · ended</text>
+<path class="arrow" d="M408 110 H448" marker-end="url(#a23)"/>
+<path class="arrow dash" d="M408 200 H448" marker-end="url(#a23)"/>
+
+<!-- Plugins -->
+<rect class="plug" x="450" y="40" width="190" height="128" rx="10" stroke-width="1.5"/>
+<text class="t" x="545" y="62" text-anchor="middle" font-weight="700">Statistics plugin</text>
+<g class="m" font-size="12"><text x="464" y="84">counted per website</text><text x="464" y="102">only websites it knows,</text><text x="464" y="118">the rest: "other hosts"</text></g>
+<text class="c t" x="464" y="142">stats/a.de/ stats/b.de/</text>
+<text class="c t" x="464" y="158">stats/c.de/ …</text>
+<rect class="own" x="450" y="180" width="190" height="56" rx="10"/>
+<text class="t" x="545" y="202" text-anchor="middle" font-weight="600">Your own plugin</text>
+<text class="m" x="545" y="220" text-anchor="middle" font-size="12">metrics, alerts, exports …</text>
+<path class="arrow" d="M640 104 H680" marker-end="url(#a23)"/>
+
+<!-- Groups -->
+<text class="t" x="682" y="26" font-weight="700">Grouped by customer</text>
+<rect class="grp" x="682" y="40" width="202" height="62" rx="10" stroke-width="1.2"/>
+<text class="t" x="696" y="60" font-weight="700">Customer A</text>
+<text class="c t" x="696" y="80">a.de · www.a.de</text><text class="c t" x="696" y="95">b.de</text>
+<rect class="grp" x="682" y="110" width="202" height="46" rx="10" stroke-width="1.2"/>
+<text class="t" x="696" y="130" font-weight="700">Customer B</text>
+<text class="c t" x="696" y="148">c.de</text>
+<text class="m" x="682" y="176" font-size="11.5">each: an overview of all its websites,</text>
+<text class="m" x="682" y="191" font-size="11.5">and each website on its own</text>
+
+<!-- Access -->
+<text class="t" x="16" y="320" font-weight="700">Who sees what</text>
+<rect class="acc" x="16" y="334" width="270" height="118" rx="10" stroke-width="1.2"/>
+<text class="t" x="30" y="356" font-weight="700">Admin</text>
+<text class="c t" x="30" y="376">stats-access * sha256:…</text>
+<g class="m" font-size="12"><text x="30" y="398">every website, every group</text><text x="30" y="416">all views: visitors, protection,</text><text x="30" y="434">rules &amp; setup</text></g>
+
+<rect class="acc" x="300" y="334" width="300" height="118" rx="10" stroke-width="1.2"/>
+<text class="t" x="314" y="356" font-weight="700">Customer A</text>
+<text class="c t" x="314" y="376">stats-access "Customer A" sha256:…</text>
+<g class="m" font-size="12"><text x="314" y="398">only its group: the overview, a.de,</text><text x="314" y="416">www.a.de, b.de — never Customer B,</text><text x="314" y="434">never the server's rules and settings</text></g>
+
+<rect class="box" x="614" y="334" width="270" height="118" rx="10"/>
+<text class="t" x="628" y="356" font-weight="700">How a customer gets in</text>
+<g class="m" font-size="12"><text x="628" y="378">1. log in with the token once → a cookie</text><text x="628" y="398">2. a signed link from the customer's</text><text x="628" y="414">    own menu, valid 10 minutes</text><text x="628" y="434">3. JSON with Authorization: Bearer</text></g>
+
+<!-- The customer menu flow -->
+<text class="t" x="16" y="492" font-weight="700">A customer's menu</text>
+<rect class="box" x="16" y="506" width="200" height="74" rx="10"/>
+<text class="t" x="30" y="528" font-weight="600">Your hosting panel</text>
+<g class="m" font-size="12"><text x="30" y="548">Customer A logged in</text><text x="30" y="566">menu: "Statistics"</text></g>
+<path class="arrow" d="M216 543 H262" marker-end="url(#a23)"/>
+<rect class="box" x="264" y="506" width="300" height="74" rx="10"/>
+<text class="t" x="278" y="528" font-weight="600">a signed link, made on the server</text>
+<text class="c t" x="278" y="548">/rs/stats?g=customer-a&amp;exp=…&amp;sig=…</text>
+<text class="m" x="278" y="568" font-size="12">no token in it · expires · only this group</text>
+<path class="arrow" d="M564 543 H610" marker-end="url(#a23)"/>
+<rect class="plug" x="612" y="506" width="272" height="74" rx="10" stroke-width="1.5"/>
+<text class="t" x="626" y="528" font-weight="700">Customer A's statistics</text>
+<g class="m" font-size="12"><text x="626" y="548">all three websites · a.de · www.a.de · b.de</text><text x="626" y="566">a cookie for the next hours</text></g>
+</svg>

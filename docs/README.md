@@ -47,7 +47,8 @@
   [0019 the SEO and GEO dashboard](proposals/0019-seo-geo-dashboard.md) (draft) ·
   [0020 cache keys without tracking parameters](proposals/0020-cache-keys-without-tracking.md) (draft) ·
   [0021 rules from the CMS](proposals/0021-rules-from-the-cms.md) (draft) ·
-  [0022 the visitors page](proposals/0022-visitors-page.md) (draft)
+  [0022 the visitors page](proposals/0022-visitors-page.md) (draft) ·
+  [0023 plugins, statistics per website, a view for each customer](proposals/0023-plugins-hosts-customers.md) (draft)
   (0002, a single-file build, is reserved)
 - **Roadmap for 0012–0016** (the reasons in [0012](proposals/0012-dashboard.md#roadmap-for-00120016)):
   counters and crawler statistics first (they answer "did GPTBot crawl the
