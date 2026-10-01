@@ -21,14 +21,14 @@ final class Diagram
 {
     /** Short names for the checks, to fit under a circle. */
     private const SHORT = [
-        'Kept out' => 'Denied', 'Banned' => 'Banned', 'Kind of request' => 'Kind', 'Size' => 'Size', 'Disguised address' => 'Disguise', 'Website name' => 'Name',
+        'Kept out' => 'Denied', 'Public lists' => 'Lists', 'Banned' => 'Banned', 'Kind of request' => 'Kind', 'Size' => 'Size', 'Disguised address' => 'Disguise', 'Website name' => 'Name',
         'Addresses only attackers ask for' => 'Blocked', 'Where forms may be sent' => 'Forms',
         'Areas for certain visitors' => 'Areas', 'Known crawlers' => 'Crawlers', 'Known parameters' => 'Params', 'Attack patterns' => 'Attacks', 'May a cache keep the answer?' => 'Cache', 'Browser check' => 'Check',
     ];
 
     /** The same in German, and the diagram's other words. */
     private const SHORT_DE = [
-        'Denied' => 'Sperrliste', 'Banned' => 'Sperre', 'Kind' => 'Art', 'Size' => 'Größe', 'Disguise' => 'Tarnung', 'Name' => 'Name', 'Blocked' => 'Gesperrt', 'Forms' => 'Formulare', 'Areas' => 'Bereiche',
+        'Denied' => 'Sperrliste', 'Lists' => 'Listen', 'Banned' => 'Sperre', 'Kind' => 'Art', 'Size' => 'Größe', 'Disguise' => 'Tarnung', 'Name' => 'Name', 'Blocked' => 'Gesperrt', 'Forms' => 'Formulare', 'Areas' => 'Bereiche',
         'Crawlers' => 'Crawler', 'Params' => 'Parameter', 'Attacks' => 'Angriffe', 'Cache' => 'Cache', 'Check' => 'Check', 'Pace' => 'Tempo',
         'Request' => 'Anfrage', 'Your site' => 'Ihre Website', 'a cache may keep it' => 'ein Cache darf sie behalten', 'not kept in a cache' => 'nicht im Cache',
         'Browser check' => 'Browser-Check', 'Please wait' => 'Bitte warten', 'the site never sees it' => 'die Website sieht sie nie',

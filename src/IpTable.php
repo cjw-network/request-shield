@@ -158,6 +158,126 @@ final class IpTable
         return substr($table['ids'], $offset, ($end === false ? strlen($table['ids']) : $end) - $offset);
     }
 
+    /**
+     * A range's first and last address, in hex (8 characters for IPv4, 32 for
+     * IPv6) -- or null for something that is not an address or a range.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    public static function bounds(string $range): ?array
+    {
+        $slash = strpos($range, '/');
+        $net = @inet_pton($slash === false ? $range : substr($range, 0, $slash));
+        if ($net === false || ($slash !== false && !ctype_digit(substr($range, $slash + 1)))) {
+            return null;
+        }
+        $len = strlen($net);
+        $bits = $slash === false ? $len * 8 : (int) substr($range, $slash + 1);
+        if ($bits > $len * 8) {
+            return null;
+        }
+        $first = $last = '';
+        for ($i = 0; $i < $len; $i++) {
+            $keep = max(0, min(8, $bits - $i * 8));
+            $m = (0xFF << (8 - $keep)) & 0xFF;
+            $b = ord($net[$i]) & $m;
+            $first .= chr($b);
+            $last .= chr($b | (~$m & 0xFF));
+        }
+        return [bin2hex($first), bin2hex($last)];
+    }
+
+    /**
+     * Every range of a table, merged with its neighbours (one ends where the
+     * next begins), as the fewest CIDR blocks -- for a firewall or .htaccess.
+     *
+     * @param array{4: string, 6: string, ids: string, dir?: string}|array{} $table
+     * @return list<string>
+     */
+    public static function cidrs(array $table): array
+    {
+        $out = [];
+        foreach (['4', '6'] as $family) {
+            $rows = $table[$family] ?? '';
+            $w = self::WIDTH[$family];
+            $half = ($w - 8) >> 1;
+            $runs = [];
+            for ($i = 0, $n = intdiv(strlen($rows), $w); $i < $n; $i++) {
+                $first = (string) hex2bin(substr($rows, $i * $w, $half));
+                $last = (string) hex2bin(substr($rows, $i * $w + $half, $half));
+                $k = count($runs) - 1;
+                if ($k >= 0 && self::next($runs[$k][1]) === $first) {
+                    $runs[$k][1] = $last;                       // adjacent: one run
+                } else {
+                    $runs[] = [$first, $last];
+                }
+            }
+            foreach ($runs as [$first, $last]) {
+                foreach (self::blocks($first, $last) as $cidr) {
+                    $out[] = $cidr;
+                }
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * The fewest CIDR blocks that cover first..last exactly (binary addresses).
+     *
+     * @return list<string>
+     */
+    public static function blocks(string $first, string $last): array
+    {
+        $bits = strlen($first) * 8;
+        $out = [];
+        $cur = $first;
+        while (strcmp($cur, $last) <= 0) {
+            // The largest block that starts at $cur (its trailing zero bits) and ends by $last.
+            $size = 0;
+            while ($size < $bits && self::bit($cur, $bits - 1 - $size) === 0) {
+                $size++;
+            }
+            while ($size > 0 && strcmp(self::fill($cur, $size), $last) > 0) {
+                $size--;
+            }
+            $out[] = inet_ntop($cur) . '/' . ($bits - $size);
+            $end = self::fill($cur, $size);
+            if ($end === str_repeat("\xff", strlen($cur))) {
+                break;
+            }
+            $cur = self::next($end);
+        }
+        return $out;
+    }
+
+    /** Bit $i (0 = the highest) of a binary address. */
+    private static function bit(string $bin, int $i): int
+    {
+        return (ord($bin[intdiv($i, 8)]) >> (7 - $i % 8)) & 1;
+    }
+
+    /** The address with its lowest $n bits set: the end of a block of 2^n. */
+    private static function fill(string $bin, int $n): string
+    {
+        for ($i = strlen($bin) - 1; $n > 0 && $i >= 0; $i--, $n -= 8) {
+            $bin[$i] = chr(ord($bin[$i]) | ($n >= 8 ? 0xFF : (1 << $n) - 1));
+        }
+        return $bin;
+    }
+
+    /** The next address (wraps to zero after the last). */
+    private static function next(string $bin): string
+    {
+        for ($i = strlen($bin) - 1; $i >= 0; $i--) {
+            $b = ord($bin[$i]) + 1;
+            $bin[$i] = chr($b & 0xFF);
+            if ($b <= 0xFF) {
+                break;
+            }
+        }
+        return $bin;
+    }
+
     /** @param array{4: string, 6: string, ids: string, dir?: string}|array{} $table */
     public static function isEmpty(array $table): bool
     {

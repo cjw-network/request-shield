@@ -183,6 +183,16 @@ final class Settings
         public int $liveKeep = 3600,
         /** @readonly where a ban is kept: memory (the store), or file (also a file in store-dir: it survives a restart of APCu) */
         public string $banKeep = 'memory',
+        /** @var list<array{name: string, title: string, action: string, weight: int, paths: list<string>, rule: string, terms: string, urls: list<string>, format: string, every: int, wideOk: bool, count: int, fetched: int, state: string}> @readonly the public blocklists named, as the pages show them */
+        public array $feeds = [],
+        /** @var array<string, array{4: string, 6: string, ids: string, dir?: string}> @readonly per action (deny, check, signal): the feeds without "at", as one table */
+        public array $feedTables = [],
+        /** @var list<array{action: string, table: array{4: string, 6: string, ids: string, dir?: string}, paths: list<string>}> @readonly the feeds with "at <paths>", each its own table */
+        public array $feedsAt = [],
+        /** @var array<string, int> @readonly ban-signal: rule => how many signals a request from its list counts as */
+        public array $feedWeights = [],
+        /** @readonly a fetched list older than this is no longer used, in seconds */
+        public int $feedsMaxAge = 259200,
     ) {
     }
 
@@ -208,6 +218,11 @@ final class Settings
         if ($mode === 'monitor' && $monitorRules !== null) {
             // Everything is only logged anyway: the monitored rules count like the others.
             return self::from(['mode' => 'monitor', 'monitorRules' => null] + $monitorRules);
+        }
+        if ($monitorRules !== null && is_array($monitorRules['feeds'] ?? null)) {
+            // The watched rules' settings: only the watched lists (feed … count, monitor feed …);
+            // the others are enforced already, and a big list is read once.
+            $monitorRules['feeds'] = array_values(array_filter($monitorRules['feeds'], static fn ($f): bool => is_array($f) && ($f['watched'] ?? false) === true));
         }
         $strict = $mode === 'strict';
         $limits = self::map($c, 'limits');
@@ -301,8 +316,9 @@ final class Settings
             ...self::stats($c),
             ...[self::dashboardPath($c), self::plugins($c)],
             ...self::sites($c),
-            ...self::lists($c, $budgets),
+            ...self::withFeeds(self::lists($c, $budgets), $feeds = self::feeds($c)),
             ...self::live($c),
+            ...array_slice($feeds, 0, 5),
         );
     }
 
@@ -537,6 +553,89 @@ final class Settings
         }
         $dir = $c['listsDir'] ?? null;
         return [$deny, $entries === [] ? [] : IpTable::build($entries), count($entries), $next, is_string($dir) && $dir !== '' ? $dir : null, $bans, $growth, $max];
+    }
+
+    /**
+     * The lists with the feeds' next end: the settings are built again when a
+     * fetched list grows too old (as when a list entry ends).
+     *
+     * @param array{0: list<array{ips: list<string>, until: ?int, rule: string}>, 1: array{4: string, 6: string, ids: string, dir?: string}|array{}, 2: int, 3: int, 4: ?string, 5: list<array{after: int, signal: string, in: int, for: int, rule: string}>, 6: int, 7: int} $lists
+     * @param array{0: list<mixed>, 1: array<string, mixed>, 2: list<mixed>, 3: array<string, int>, 4: int, 5: int} $feeds
+     * @return array{0: list<array{ips: list<string>, until: ?int, rule: string}>, 1: array{4: string, 6: string, ids: string, dir?: string}|array{}, 2: int, 3: int, 4: ?string, 5: list<array{after: int, signal: string, in: int, for: int, rule: string}>, 6: int, 7: int}
+     */
+    private static function withFeeds(array $lists, array $feeds): array
+    {
+        if ($feeds[5] > 0 && ($lists[3] === 0 || $feeds[5] < $lists[3])) {
+            $lists[3] = $feeds[5];
+        }
+        return $lists;
+    }
+
+    /**
+     * The public blocklists (feed …, proposal 0025): each fetched list read
+     * from <store-dir>/feeds, unless it is older than feeds-max-age (then left
+     * out, and said so); per action one table of the lists without "at", each
+     * list with "at" its own. Returns [feeds, tables, at, weights, max age,
+     * when the next list grows too old].
+     *
+     * @param array<mixed> $c
+     * @return array{0: list<array{name: string, title: string, action: string, weight: int, paths: list<string>, rule: string, terms: string, urls: list<string>, format: string, every: int, wideOk: bool, count: int, fetched: int, state: string}>, 1: array<string, array{4: string, 6: string, ids: string, dir?: string}>, 2: list<array{action: string, table: array{4: string, 6: string, ids: string, dir?: string}, paths: list<string>}>, 3: array<string, int>, 4: int, 5: int}
+     */
+    private static function feeds(array $c): array
+    {
+        $maxAge = $c['feedsMaxAge'] ?? 259200;
+        if (!is_int($maxAge) || $maxAge < 3600) {
+            throw self::wrong('feedsMaxAge', 'seconds, at least an hour');
+        }
+        $dir = is_string($c['storeDir'] ?? null) && $c['storeDir'] !== '' ? $c['storeDir'] . '/feeds' : null;
+        $now = time();
+        $feeds = [];
+        $entries = [];
+        $at = [];
+        $weights = [];
+        $next = 0;
+        foreach ((array) ($c['feeds'] ?? []) as $i => $f) {
+            if (!is_array($f) || !is_string($f['name'] ?? null) || preg_match('/^[a-z0-9][a-z0-9-]{0,40}$/', $f['name']) !== 1
+                || !in_array($f['action'] ?? null, ['deny', 'check', 'signal'], true)) {
+                throw self::wrong("feeds[$i]", "['name' => a name, 'action' => deny|check|signal, …] (feed <name> <action> in a rule file)");
+            }
+            $name = $f['name'];
+            $rule = is_string($f['rule'] ?? null) ? $f['rule'] : "feeds[$i]";
+            $paths = array_values(array_filter((array) ($f['paths'] ?? []), 'is_string'));
+            $meta = $dir === null ? ['checked' => 0, 'count' => 0] : \CjwNetwork\RequestShield\Rules\Feeds::meta($dir, $name);
+            $text = $dir === null ? false : @file_get_contents("$dir/$name.txt");
+            $state = 'in force';
+            if ($text === false) {
+                $state = 'not fetched';
+            } elseif ($now - $meta['checked'] > $maxAge) {
+                $state = 'too old';
+            }
+            $ranges = $state === 'in force' ? array_values(array_filter(explode("\n", (string) $text), static fn (string $l): bool => $l !== '')) : [];
+            if ($state === 'in force') {
+                $until = $meta['checked'] + $maxAge + 1;
+                $next = $next === 0 ? $until : min($next, $until);
+                if ($paths === []) {
+                    $entries[$f['action']][] = [$ranges, $rule];
+                } else {
+                    $at[] = ['action' => (string) $f['action'], 'table' => \CjwNetwork\RequestShield\IpTable::build([[$ranges, $rule]]), 'paths' => $paths];
+                }
+            }
+            if ($f['action'] === 'signal') {
+                $weights[$rule] = max(1, min(99, is_int($f['weight'] ?? null) ? $f['weight'] : 1));
+            }
+            $feeds[] = [
+                'name' => $name, 'title' => is_string($f['title'] ?? null) ? $f['title'] : $name, 'action' => (string) $f['action'], 'weight' => $weights[$rule] ?? 1,
+                'paths' => $paths, 'rule' => $rule, 'terms' => is_string($f['terms'] ?? null) ? $f['terms'] : '',
+                'urls' => array_values(array_filter((array) ($f['urls'] ?? []), 'is_string')), 'format' => is_string($f['format'] ?? null) ? $f['format'] : 'plain',
+                'every' => is_int($f['every'] ?? null) ? $f['every'] : 3600, 'wideOk' => (bool) ($f['wideOk'] ?? false),
+                'count' => count($ranges), 'fetched' => $meta['checked'], 'state' => $state,
+            ];
+        }
+        $tables = [];
+        foreach ($entries as $action => $list) {
+            $tables[(string) $action] = \CjwNetwork\RequestShield\IpTable::build($list);
+        }
+        return [$feeds, $tables, $at, $weights, $maxAge, $next];
     }
 
     /**
@@ -937,7 +1036,7 @@ final class Settings
     public const DENY_SHOWN = 100;
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 31;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep
+    private const FORMAT = 32;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

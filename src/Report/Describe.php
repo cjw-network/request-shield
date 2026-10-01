@@ -145,7 +145,7 @@ final class Describe
                 'app' => 'die Website hat den Browser-Check verlangt (ein Formular)', 'attack' => 'ein Angriffsmuster in der Adresse oder den Headern',
                 'unknown parameter' => 'ein Parameter, den die Website nicht kennt, oder ein Wert nicht seines Typs', 'challenge solved' => 'der Browser-Check wurde gerade bestanden',
                 'denied' => 'eine ausgesperrte Adresse (die Sperrliste)', 'banned' => 'für eine Weile gesperrt: sie ging immer wieder über die Grenzen',
-                'crawler' => 'ein bekannter Crawler, den die Website so nicht will',
+                'crawler' => 'ein bekannter Crawler, den die Website so nicht will', 'feed' => 'auf einer öffentlichen Sperrliste',
             ];
             return $de[$reason] ?? "das Budget „{$reason}“";
         }
@@ -171,6 +171,7 @@ final class Describe
             'denied' => 'an address kept out (the deny list)',
             'banned' => 'banned for a while: it kept going past the limits',
             'crawler' => 'a known crawler the site does not want this way',
+            'feed' => 'on a public blocklist',
         ];
         return $words[$reason] ?? "the budget \"$reason\"";
     }

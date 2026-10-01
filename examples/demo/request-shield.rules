@@ -91,6 +91,12 @@ set         dashboard-path /rs                                     # the statist
 # address (so one can be kept out exactly), for an hour, never on disk (APCu).
 set         live on
 
+# Public blocklists (docs/features/blocklist-feeds.md): off until a rule names one.
+# Fetched by cron (bin/request-shield feeds request-shield.rules update), never
+# per request. Try a list first: "count" only counts and logs what it would do.
+#[DEMO-DROP]        feed spamhaus-drop count                       # hijacked networks; later: deny
+#[DEMO-DSHIELD]     feed dshield-top20 count                       # the networks scanning most; later: check (non-commercial terms)
+
 # Automatic bans -- watched only here (monitor): the log says whom they would
 # have banned, nobody is (a demo that bans this machine would be no demo).
 [DEMO-SCAN]         monitor ban after 5 refusals in 5m for 10m    # a scanner: five refusals for what only attackers ask for

@@ -112,6 +112,17 @@ feature by feature, for what exists today and for the proposals.
   store-dir until its ban ends (at most `ban-max`), so the ban survives a
   restart.
 
+### Public blocklists (feeds, [docs](features/blocklist-feeds.md))
+
+- **Pull only:** the lists are fetched; nothing about the site's visitors is
+  sent anywhere.
+- **What:** third parties' addresses from public lists, kept in
+  `<store-dir>/feeds` (0640) until the next fetch, used at most
+  `feeds-max-age` (3 days) after it.
+- **Basis:** security (Art. 6(1)(f)); a privacy notice can name the lists
+  used. A refusal names the list's rule in the log, so a visitor hit by
+  mistake can be let in.
+
 ### The live view (`set live on`, [docs](features/live-and-lists.md))
 
 - **What:** the last requests the shield stopped or checked (at most 2,000),

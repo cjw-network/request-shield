@@ -19,6 +19,7 @@
   [modes: monitor and strict](features/modes.md) ·
   [IP lists and automatic bans](features/ip-lists.md) ·
   [the live view and the lists in the dashboard](features/live-and-lists.md) ·
+  [public blocklists (feeds)](features/blocklist-feeds.md) ·
   [known crawlers](features/known-crawlers.md) ·
   [statistics](features/statistics.md) ·
   [plugins](features/plugins.md) ·
@@ -53,7 +54,7 @@
   [0022 the visitors page](proposals/0022-visitors-page.md) (draft) ·
   [0023 plugins, statistics per website, a view for each customer](proposals/0023-plugins-hosts-customers.md) (phase 1 implemented) ·
   [0024 rules per website](proposals/0024-rules-per-website.md) (phase 1 implemented) ·
-  [0025 public blocklists](proposals/0025-blocklist-feeds.md) (draft) ·
+  [0025 public blocklists](proposals/0025-blocklist-feeds.md) (phases 1–3 implemented; .htaccess dropped after measuring) ·
   [0026 the live view and the lists in the dashboard](proposals/0026-live-view-and-lists.md) (phases 1–3 implemented)
   (0002, a single-file build, is reserved)
 - **Roadmap for 0012–0016** (the reasons in [0012](proposals/0012-dashboard.md#roadmap-for-00120016)):

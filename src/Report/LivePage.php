@@ -42,7 +42,7 @@ final class LivePage
             'skipped' => '%d KB of the log were skipped (more than one read): the newest rows are shown.', 'keepOut' => 'keep out', 'unlist' => 'lists',
             'w.refused' => 'refused', 'w.banned' => 'banned', 'w.paused' => 'told to wait', 'w.checked' => 'checked', 'w.uncached' => 'not cached', 'w.passed' => 'let through', 'w.watched' => 'watched: would be ',
             's.list' => 'list', 's.ban' => 'ban', 's.feed' => 'feed', 's.own' => 'own rule', 's.builtin' => 'built-in rule', 's.pace' => 'pace', 's.crawler' => 'crawler policy', 's.shield' => 'basic check',
-            'onList' => 'on the deny list', 'error' => 'The live view cannot reach the server — trying again.',
+            'onList' => 'on the deny list', 'onFeed' => 'on the public list %s', 'error' => 'The live view cannot reach the server — trying again.',
             'memory' => 'From the live memory: the last requests stopped, with the full address, kept %s (set live on).', 'skippedRows' => '%d rows skipped (more than one read): the newest are shown.',
             'noMemory' => 'set live on: the live memory needs APCu, which this server does not have — the log is read instead.',
         ],
@@ -57,7 +57,7 @@ final class LivePage
             'skipped' => '%d KB des Logs übersprungen (mehr als ein Lesen): die neuesten Zeilen stehen hier.', 'keepOut' => 'aussperren', 'unlist' => 'Listen',
             'w.refused' => 'abgewiesen', 'w.banned' => 'gesperrt', 'w.paused' => 'zum Warten geschickt', 'w.checked' => 'geprüft', 'w.uncached' => 'nicht gecacht', 'w.passed' => 'durchgelassen', 'w.watched' => 'beobachtet: wäre ',
             's.list' => 'Liste', 's.ban' => 'Sperre', 's.feed' => 'Feed', 's.own' => 'eigene Regel', 's.builtin' => 'eingebaute Regel', 's.pace' => 'Tempo', 's.crawler' => 'Crawler-Regel', 's.shield' => 'Grundprüfung',
-            'onList' => 'auf der Sperrliste', 'error' => 'Die Live-Ansicht erreicht den Server nicht — neuer Versuch.',
+            'onList' => 'auf der Sperrliste', 'onFeed' => 'auf der öffentlichen Liste %s', 'error' => 'Die Live-Ansicht erreicht den Server nicht — neuer Versuch.',
             'memory' => 'Aus dem Live-Speicher: die zuletzt aufgehaltenen Anfragen, mit voller Adresse, gehalten %s (set live on).', 'skippedRows' => '%d Zeilen übersprungen (mehr als ein Lesen): die neuesten stehen hier.',
             'noMemory' => 'set live on: der Live-Speicher braucht APCu, das dieser Server nicht hat — stattdessen wird das Log gelesen.',
         ],
@@ -157,6 +157,13 @@ final class LivePage
         if ($source === 'list' && $r['rule'] !== null) {
             $note = $notes[$r['rule']] ?? ($s->origins['text'][$r['rule']] ?? '');
             $why = $t['onList'] . ($note !== '' ? ': ' . $note : '');
+        } elseif ($source === 'feed' && $r['rule'] !== null && !isset($s->origins['text'][$r['rule']])) {
+            foreach (array_merge($s->feeds, $s->monitor !== null ? $s->monitor->feeds : []) as $f) {
+                if ($f['rule'] === $r['rule']) {
+                    $why = sprintf($t['onFeed'], $f['title']);
+                    break;
+                }
+            }
         } elseif ($r['rule'] !== null && isset($s->origins['text'][$r['rule']]) && $s->origins['text'][$r['rule']] !== '') {
             $why = (string) $s->origins['text'][$r['rule']];
         }
@@ -187,7 +194,7 @@ final class LivePage
         if ($r['reason'] === 'denied') {
             return 'list';
         }
-        if ($rule !== null && strncmp($rule, 'FEED-', 5) === 0) {
+        if ($r['reason'] === 'feed' || ($rule !== null && strncmp($rule, 'FEED-', 5) === 0)) {
             return 'feed';
         }
         if ($r['reason'] === 'crawler') {

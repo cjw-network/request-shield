@@ -62,10 +62,11 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `api-path <paths>` | `challenge.apiPaths` | the site's API: a check there is JSON with a header, not a page |
 | `no-limit <name>` | `budgets` | switch a budget off, the default one too |
 | `challenge <paths> [max-age <duration>]` | `challenge.alwaysPaths`, `challenge.alwaysMaxAge` | always check the browser there; `max-age 5m`: a pass from the last five minutes there ([modes](modes.md)) |
-| `monitor <rule>` | `monitorRules` | before `block`, `restrict`, `allow`, `limit`, `challenge`, `ban`, `query strict`: logged as it would decide, not enforced ([modes](modes.md)) |
+| `monitor <rule>` | `monitorRules` | before `block`, `restrict`, `allow`, `limit`, `challenge`, `ban`, `feed`, `query strict`: logged as it would decide, not enforced ([modes](modes.md)) |
 | `challenge-exempt <paths>` | `challenge.exemptPaths` | never challenge there (APIs, feeds) |
 | `exempt <addresses or ranges> [until <day>[T<hh:mm>]]` | `exempt.ips` | never counted and never checked, still refused for blocked paths and attack patterns ([IP lists](ip-lists.md)) |
 | `deny <addresses or ranges> [until <day>[T<hh:mm>]]` | `deny` | kept out: 403 before every other check ([IP lists](ip-lists.md)) |
+| `feed <name> [<https-url>] deny\|check\|count\|ban-signal <n> [at <paths>] [format <f>] [wide-ok]` | `feeds` | a public blocklist, fetched by `request-shield feeds … update`; above the site blocks ([feeds](blocklist-feeds.md)) |
 | `ban after <n> <signal> in <time> for <time>` | `bans` | a client past `<n>` signals (`limits`, `refusals`, `checks`, a budget's name) is answered only 429 for a while; above the site blocks ([IP lists](ip-lists.md#bans)) |
 | `crawlers <kind> allow\|check\|block` / `crawler <ID> allow\|check\|block` | `crawlerPolicy` | what the site does with verified crawlers, by kind (`search`, `ai-search`, `ai-user`, `ai-training`) or one by one ([known crawlers](known-crawlers.md)) |
 | `crawler <kind> ua /<pattern>/ [dns <suffixes>] [ranges <lists>]` | `crawlers` | a crawler of the site's own, verified by DNS or an address list (`ranges ./ours.json`) |
@@ -194,7 +195,7 @@ site default {                              # any name no block lists
   and the words that drop a base rule for this website (`no-limit`, `unblock`,
   `challenge-exempt`, `replace`). Not inside — they are about the server:
   `trust`, `set store`, `store-dir`, `secret`, `recheck`, `dns-lookups`,
-  `ipv6-prefix`, `site-from`, `lists-dir`, `ban-growth`, `ban-max`, `ban-keep`, `live`, `live-keep`, `ban` (a client
+  `ipv6-prefix`, `site-from`, `lists-dir`, `ban-growth`, `ban-max`, `ban-keep`, `live`, `live-keep`, `feeds-max-age`, `ban`, `feed` (a client
   banned on one website is banned on all); and no `site` inside a `site` or a `match`.
   `deny` may stand inside: it then keeps the address off that website only.
 - **Order:** the base first; after the first `site` block only further `site`
@@ -328,6 +329,7 @@ keeps both the same.
 | `stats-depth` | folder levels a section's views are counted for exactly, 1 to 4 (2: `/news/`, `/news/2026/`; 3 where a language takes the first level: `/de/news/2026/`) |
 | `crawler-log`, `crawler-log-kinds`, `crawler-log-days`, `crawler-log-query` | one log per known crawler and day: its directory, the kinds logged, days kept (30), whether the query is kept ([statistics](statistics.md#one-log-per-crawler-optional)) |
 | `lists-dir` | where the list files `allow.rules` and `deny.rules` live (default `<store-dir>/lists`); they hold only `deny` and `exempt` lines ([IP lists](ip-lists.md#the-list-files)) |
+| `feeds-max-age` | a fetched list older than this is not used (`3d`; at least `1h`) ([feeds](blocklist-feeds.md)) |
 | `ban-keep` | `memory` (default) or `file`: a ban also as a file in store-dir, so it survives a restart of APCu ([live and lists](live-and-lists.md#bans-that-survive-a-restart-set-ban-keep-file)) |
 | `live`, `live-keep` | `on`: the live view from memory, with full addresses (APCu); how long an entry stays (1h; 1m to 1d) ([live and lists](live-and-lists.md)) |
 | `ban-growth`, `ban-max` | each ban within a day this many times as long (2), at most (`1d`) ([IP lists](ip-lists.md#bans)) |

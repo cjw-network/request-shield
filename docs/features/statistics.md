@@ -135,7 +135,7 @@ shield and wants every technical detail in one place:
   page passes them as `'check' => $_GET`, and `'ip'` the address it starts
   with (the viewer's own);
 - **the way of a request**, as one picture: the request, a circle for each of
-  the 15 checks in the order the shield runs them (kept out, banned, kind of request, sizes,
+  the 16 checks in the order the shield runs them (kept out, public blocklists, banned, kind of request, sizes,
   disguised addresses, website names, blocked addresses, where forms may go,
   restricted areas, known crawlers, known parameters, attack patterns, what a
   cache may keep, pace per visitor, browser check) — coloured when on, grey
@@ -144,7 +144,7 @@ shield and wants every technical detail in one place:
   statistics: what each writes and when (what was stopped at once, what goes
   on to the site when the request ends, with the site's status; to disk after
   the answer), and that the statistics use what the crawler check found. Below
-  it the same as a list: before (the visitor's address), the 15 checks with
+  it the same as a list: before (the visitor's address), the 16 checks with
   what each answers and how it is set, after;
 - **every rule as the rule files hold them** — one part per file (the site's
   own open, the shipped ones closed), the rules in their order: the ID first,

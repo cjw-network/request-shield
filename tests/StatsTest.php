@@ -524,8 +524,8 @@ return [
                 && strpos($de, '„requests“: 30 Anfragen pro Minute, der Browser-Check ab 10, dann eine Pause') !== false && strpos($de, '<span class="tag">Bereiche für bestimmte Besucher</span>') !== false && in_array(['Bereiche für bestimmte Besucher', 'Alle anderen bekommen „kein Zugriff“ (403):'], array_map(static fn (array $g): array => [$g[0], $g[1]], RulesPage::groups($s, [], null, 'de')), true), 'in German');
             truthy(strpos($en, 'Technical settings') !== false && strpos($en, "<th>store directory</th><td><code>$dir/store</code>") !== false && strpos($en, 'set (never shown)') !== false, 'the settings');
             truthy(strpos($en . $de, $secret) === false, 'the secret is never shown');
-            truthy(strpos($en, '<svg class="rsd setup"') !== false && substr_count($en, '<a href="#step-') === 15 && strpos($en, 'id="step-15"') !== false
-                && strpos($en, 'id="step-before"') !== false && strpos($en, 'After: log and statistics') !== false, 'the way as a picture: 15 checks, each a link to its line; before and after');
+            truthy(strpos($en, '<svg class="rsd setup"') !== false && substr_count($en, '<a href="#step-') === 16 && strpos($en, 'id="step-16"') !== false
+                && strpos($en, 'id="step-before"') !== false && strpos($en, 'After: log and statistics') !== false, 'the way as a picture: 16 checks, each a link to its line; before and after');
             truthy(strpos($de, 'Log: sofort, nur Gestopptes (Stufe stop).') !== false && strpos($de, 'was zur Website geht, am Ende der Anfrage') !== false && strpos($de, '>Mensch · Crawler · Bot</text>') !== false,
                 'after: when the log and the statistics write; the line from the crawler check to the statistics');
             truthy(preg_match('~<details class="rfile" open><summary><code>site.rules</code> <span class="note">· 3 rules · 6× decided</span></summary><table class="rtable"><tr id="rule-T-AREA"><td class="rid"><code>T-AREA</code></td><td>the intranet only~', $en) === 1,

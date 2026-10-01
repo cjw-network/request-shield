@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Public blocklists as feeds** (proposal 0025): `feed <name> [<https-url>]
+  deny|check|count|ban-signal <n> [at <paths>]` — a catalog of ten lists
+  (`rules/feeds.json`: Spamhaus DROP, DShield, Feodo, FireHOL level 1, ET,
+  blocklist.de, Stop Forum Spam, Tor exits, AWS, Google Cloud; with their
+  terms), fetched by cron (`bin/request-shield feeds <main.rules> update`:
+  HTTPS, validators, at most as often as each list allows, a list that shrank
+  to less than half kept), the site's own network and too-wide ranges taken
+  out, compiled into the same table as the deny list (2–3 µs). `deny`: 403
+  after the deny list; `check`: the browser check; `ban-signal <n>`: a signal
+  counts n times; `count`: watched only. Never exempt addresses, trusted
+  proxies, verified crawlers. `set feeds-max-age` (3 d): an older list is not
+  used. `feeds … export --format=plain|nginx|nftables|ipset [--write=…]`: the
+  deny list and the deny feeds as the fewest CIDR blocks, for the level below
+  PHP. A `.htaccess` export was measured and not built: 2,000 ranges made a
+  static file 8× slower ([docs](docs/features/blocklist-feeds.md)).
 - **The live view and the lists in the dashboard** (proposal 0026):
   `/rs/live` shows what the shield stops right now (the website, the address,
   the request, what happened, why in words, and where from: a list, a ban, a

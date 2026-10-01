@@ -119,6 +119,11 @@ final class Inspector
         $step('Kept out', $s->denyTable === [] ? null : (new \CjwNetwork\RequestShield\Rule\DenyRule($s->denyTable))->check($request, $now),
             $s->denyTable === [] ? $w('no address is kept out') : $w('%s is not on the deny list', $request->clientIp),
             static fn (): string => $w('%s is on the deny list: 403 before everything else', $request->clientIp));
+        $feed = $s->feeds === [] ? null : ($this->shield->feedHit($request, 'deny') !== null ? Decision::reject(403, 'feed')
+            : ($this->shield->feedHit($request, 'check') !== null ? Decision::challenge('feed') : null));
+        $step('Public lists', $feed, $s->feeds === [] ? $w('no public blocklists') : $w('%s is on none of the public blocklists', $request->clientIp),
+            static fn (Decision $d): string => $d->action === Decision::REJECT ? $w('%s is on a public blocklist: 403', $request->clientIp)
+                : $w('%s is on a public blocklist: the browser check', $request->clientIp));
         $banned = $s->bans === [] ? null : (new \CjwNetwork\RequestShield\Rule\BanRule($this->store, $s->exemptIps, $s->ipv6Prefix))->check($request, $now);
         $step('Banned', $banned, $s->bans === [] ? $w('no automatic bans') : $w('%s is not banned', $request->clientIp),
             static fn (Decision $d): string => $w('banned for a while: %s more seconds, nothing but 429', (string) $d->retryAfter));
@@ -339,7 +344,9 @@ final class Inspector
 
     /** The tracer in German: the English text => its translation (%s: the same values). */
     private const DE = [
-        'Kept out' => 'Ausgesperrt', 'Banned' => 'Zeitsperre', 'no address is kept out' => 'keine Adresse ausgesperrt', '%s is not on the deny list' => '%s steht nicht auf der Sperrliste',
+        'Kept out' => 'Ausgesperrt', 'Public lists' => 'Öffentliche Listen', 'no public blocklists' => 'keine öffentlichen Sperrlisten',
+        '%s is on none of the public blocklists' => '%s steht auf keiner der öffentlichen Sperrlisten', '%s is on a public blocklist: 403' => '%s steht auf einer öffentlichen Sperrliste: 403',
+        '%s is on a public blocklist: the browser check' => '%s steht auf einer öffentlichen Sperrliste: der Browser-Check', 'Banned' => 'Zeitsperre', 'no address is kept out' => 'keine Adresse ausgesperrt', '%s is not on the deny list' => '%s steht nicht auf der Sperrliste',
         '%s is on the deny list: 403 before everything else' => '%s steht auf der Sperrliste: 403 vor allem anderen', 'no automatic bans' => 'keine automatischen Sperren',
         '%s is not banned' => '%s ist nicht gesperrt', 'banned for a while: %s more seconds, nothing but 429' => 'für eine Weile gesperrt: noch %s Sekunden, nur 429',
         'Kind of request' => 'Art der Anfrage', 'Size' => 'Größe', 'Disguised address' => 'Getarnte Adresse', 'Website name' => 'Name der Website',

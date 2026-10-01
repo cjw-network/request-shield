@@ -1,0 +1,99 @@
+{
+    "about": "Public lists of addresses for 'feed <name> <action>' (proposal 0025). No list is shipped: each site fetches them itself (bin/request-shield feeds <main.rules> update) under the list's own terms -- read them before using a list. 'every': the shortest time between two fetches; 'wideOk': ranges wider than /16 (IPv4) or /32 (IPv6) are kept (otherwise dropped); 'suggested': the action the list is good for.",
+    "feeds": {
+        "spamhaus-drop": {
+            "title": "Spamhaus DROP (Don't Route Or Peer)",
+            "about": "hijacked netblocks and networks run by criminals; made to drop all traffic from",
+            "urls": ["https://www.spamhaus.org/drop/drop_v4.json", "https://www.spamhaus.org/drop/drop_v6.json"],
+            "format": "jsonl:cidr",
+            "every": 3600,
+            "wideOk": true,
+            "suggested": "deny",
+            "terms": "https://www.spamhaus.org/drop/terms/"
+        },
+        "dshield-top20": {
+            "title": "DShield recommended block list (SANS Internet Storm Center)",
+            "about": "the 20 /24 networks scanning most in the last days",
+            "urls": ["https://feeds.dshield.org/block.txt"],
+            "format": "dshield",
+            "every": 3600,
+            "suggested": "deny or check",
+            "terms": "CC BY-NC-SA 2.5 (non-commercial, says the list's header): https://feeds.dshield.org/block.txt"
+        },
+        "feodo": {
+            "title": "abuse.ch Feodo Tracker botnet C2 blocklist (recommended)",
+            "about": "botnet command and control servers",
+            "urls": ["https://feodotracker.abuse.ch/downloads/ipblocklist_recommended.txt"],
+            "format": "plain",
+            "every": 3600,
+            "suggested": "deny",
+            "terms": "https://feodotracker.abuse.ch/blocklist/"
+        },
+        "firehol-level1": {
+            "title": "FireHOL level 1",
+            "about": "an aggregate of DROP, DShield, Feodo and others, including the bogon ranges (taken out when fetched)",
+            "urls": ["https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level1.netset"],
+            "format": "plain",
+            "every": 3600,
+            "wideOk": true,
+            "suggested": "deny",
+            "terms": "the terms of each list it aggregates: http://iplists.firehol.org/"
+        },
+        "et-compromised": {
+            "title": "Proofpoint Emerging Threats: compromised hosts",
+            "about": "hosts seen attacking; home machines get cleaned up and addresses reassigned",
+            "urls": ["https://rules.emergingthreats.net/blockrules/compromised-ips.txt"],
+            "format": "plain",
+            "every": 3600,
+            "suggested": "check",
+            "terms": "https://rules.emergingthreats.net/"
+        },
+        "blocklist-de": {
+            "title": "blocklist.de: all attackers",
+            "about": "addresses fail2ban users reported in the last 48 hours; shared addresses are among them",
+            "urls": ["https://lists.blocklist.de/lists/all.txt"],
+            "format": "plain",
+            "every": 3600,
+            "suggested": "check or ban-signal",
+            "terms": "https://www.blocklist.de/en/index.html"
+        },
+        "stopforumspam": {
+            "title": "Stop Forum Spam: toxic ranges",
+            "about": "ranges posting form spam heavily",
+            "urls": ["https://www.stopforumspam.com/downloads/toxic_ip_cidr.txt"],
+            "format": "plain",
+            "every": 3600,
+            "suggested": "check at the forms",
+            "terms": "https://www.stopforumspam.com/legal"
+        },
+        "tor-exits": {
+            "title": "Tor exit nodes",
+            "about": "the Tor network's exits -- not bad as such: journalists, people protecting their privacy",
+            "urls": ["https://check.torproject.org/torbulkexitlist"],
+            "format": "plain",
+            "every": 3600,
+            "suggested": "check at sign-in or forms, never deny by default",
+            "terms": "published by the Tor Project: https://check.torproject.org/"
+        },
+        "aws": {
+            "title": "Amazon Web Services address ranges",
+            "about": "data centres: many bots, few people browse from there",
+            "urls": ["https://ip-ranges.amazonaws.com/ip-ranges.json"],
+            "format": "json:ip_prefix,ipv6_prefix",
+            "every": 86400,
+            "wideOk": true,
+            "suggested": "check",
+            "terms": "published by AWS: https://docs.aws.amazon.com/vpc/latest/userguide/aws-ip-ranges.html"
+        },
+        "google-cloud": {
+            "title": "Google Cloud address ranges",
+            "about": "data centres: many bots, few people browse from there (Googlebot is verified apart and never affected)",
+            "urls": ["https://www.gstatic.com/ipranges/cloud.json"],
+            "format": "json:ipv4Prefix,ipv6Prefix",
+            "every": 86400,
+            "wideOk": true,
+            "suggested": "check",
+            "terms": "published by Google: https://cloud.google.com/compute/docs/faq#find_ip_range"
+        }
+    }
+}

@@ -86,6 +86,7 @@ final class RuleFile
         'live' => ['live.enabled', 'bool'],
         'live-keep' => ['live.keep', 'seconds'],
         'ban-keep' => ['banKeep', 'string'],
+        'feeds-max-age' => ['feedsMaxAge', 'seconds'],
         'log-ip' => ['log.ip', 'logip'],
         'log-max-size' => ['log.maxSize', 'bytes'],
     ];
@@ -144,7 +145,7 @@ final class RuleFile
     private bool $sawSite = false;
 
     /** "set" keys that are about the server, not a website: not inside a site block. */
-    private const SERVER_WIDE = ['store', 'store-dir', 'secret', 'recheck', 'dns-lookups', 'ipv6-prefix', 'site-from', 'lists-dir', 'ban-growth', 'ban-max', 'live', 'live-keep', 'ban-keep'];
+    private const SERVER_WIDE = ['store', 'store-dir', 'secret', 'recheck', 'dns-lookups', 'ipv6-prefix', 'site-from', 'lists-dir', 'ban-growth', 'ban-max', 'live', 'live-keep', 'ban-keep', 'feeds-max-age'];
 
     /** Reading a list file (allow.rules, deny.rules in lists-dir): only list lines there. */
     private bool $listing = false;
@@ -223,6 +224,17 @@ final class RuleFile
                 }
             }
             $r->listing = false;
+        }
+        // The fetched feeds: a new fetch builds the settings again.
+        $feedsDir = is_string($r->c['storeDir'] ?? null) ? $r->c['storeDir'] . '/feeds' : null;
+        if ($feedsDir !== null && !empty($r->c['feeds'])) {
+            foreach ((array) $r->c['feeds'] as $f) {
+                $feedFile = is_array($f) && is_string($f['name'] ?? null) ? $feedsDir . '/' . $f['name'] . '.txt' : null;
+                $stat = $feedFile === null ? null : self::stat($feedFile);
+                if ($feedFile !== null && $stat !== null) {
+                    $r->seen[$feedFile] = $stat;
+                }
+            }
         }
         $r->resolveLists();
         $recheck = $r->c['recheck'];
@@ -497,6 +509,9 @@ final class RuleFile
         if ($this->siteOpen !== null && ($keyword === 'trust' || ($keyword === 'set' && in_array(strtolower($parts[0] ?? ''), self::SERVER_WIDE, true)))) {
             throw new RuleFileException("$at: " . ($keyword === 'trust' ? 'trust' : 'set ' . strtolower($parts[0] ?? '')) . ' is about the server, not a website -- put it above the site blocks');
         }
+        if ($this->siteOpen !== null && ($keyword === 'feed' || ($keyword === 'monitor' && strtolower($parts[0] ?? '') === 'feed'))) {
+            throw new RuleFileException("$at: feed is about the server, not a website -- put it above the site blocks (at <paths> narrows it)");
+        }
         if ($this->siteOpen !== null && ($keyword === 'ban' || ($keyword === 'monitor' && strtolower($parts[0] ?? '') === 'ban'))) {
             // A ban keeps an address off the whole server, whichever website it offended.
             throw new RuleFileException("$at: ban is about the server, not a website -- put it above the site blocks (a budget the website counts can still be its signal)");
@@ -511,12 +526,18 @@ final class RuleFile
             $keyword = strtolower((string) array_shift($parts));
             $line = (string) preg_replace('/^\S+\s*/', '', $line);
             // The rules that refuse or check someone; the others refuse nobody.
-            $watchable = in_array($keyword, ['block', 'restrict', 'allow', 'limit', 'challenge', 'ban'], true)
+            $watchable = in_array($keyword, ['block', 'restrict', 'allow', 'limit', 'challenge', 'ban', 'feed'], true)
                 || ($keyword === 'query' && $parts === ['strict']);
             if (!$watchable) {
-                throw new RuleFileException("$at: monitor <rule> -- for block, restrict, allow, limit, challenge, ban and query strict"
+                throw new RuleFileException("$at: monitor <rule> -- for block, restrict, allow, limit, challenge, ban, feed and query strict"
                     . ($keyword === '' ? '' : ", not \"$keyword\" (use set mode monitor to watch everything)"));
             }
+        }
+        // feed … count: counted and logged as "would refuse", never enforced -- a list tried safely.
+        if ($keyword === 'feed' && ($c = array_search('count', $parts, true)) !== false && $c <= 2) {
+            $monitor = true;
+            $parts[$c] = 'deny';
+            $line = (string) preg_replace('/\bcount\b/', 'deny', $line, 1);
         }
         $args = array_map(fn (string $a): string => $this->env($a, $at), $parts);
 
@@ -529,6 +550,9 @@ final class RuleFile
             return;
         }
         $inBlock = $this->blocks !== [] && end($this->blocks)['file'] === $file;
+        if ($inBlock && $keyword === 'feed') {
+            throw new RuleFileException("$at: feed does not go inside a match block -- write it above, with at <paths>");
+        }
         if ($inBlock && in_array($keyword, ['ids', 'version', 'include', 'set'], true)) {
             throw new RuleFileException("$at: $keyword does not go inside a match block -- put it before the block");
         }
@@ -665,6 +689,9 @@ final class RuleFile
                 return;
             case 'ban':
                 $this->ban($args, $at);
+                return;
+            case 'feed':
+                $this->feed($args, $at);
                 return;
             case 'method':
                 $this->list('methods', $args, $at, static function (string $m) use ($at): string {
@@ -949,6 +976,81 @@ final class RuleFile
         }
         return isset($m[5]) ? (int) mktime((int) $m[4], (int) $m[5], 0, (int) $m[2], (int) $m[3], (int) $m[1])
             : (int) mktime(23, 59, 59, (int) $m[2], (int) $m[3], (int) $m[1]);
+    }
+
+    /**
+     * feed <name> [<https-url>] deny|check|ban-signal <n> [at <paths>] [format <f>] [wide-ok]
+     * (count: as deny, watched -- turned into "monitor" before here).
+     *
+     * @param list<string> $args
+     */
+    private function feed(array $args, string $at): void
+    {
+        $usage = 'feed <name> [<https-url>] deny|check|count|ban-signal <n> [at <paths>] [format <format>] [wide-ok]';
+        $name = strtolower((string) array_shift($args));
+        if (preg_match('/^[a-z0-9][a-z0-9-]{0,40}$/', $name) !== 1) {
+            throw new RuleFileException("$at: $usage -- a name of letters, digits and -");
+        }
+        $catalog = Feeds::catalog();
+        $url = null;
+        if (isset($args[0]) && preg_match('#^[a-z]+://#i', $args[0]) === 1) {
+            $url = (string) array_shift($args);
+            if (strncmp($url, 'https://', 8) !== 0 || filter_var($url, FILTER_VALIDATE_URL) === false) {
+                throw new RuleFileException("$at: a feed's address is https:// -- not \"$url\"");
+            }
+            if (isset($catalog[$name])) {
+                throw new RuleFileException("$at: \"$name\" is a feed of the catalog -- a list of your own takes a name of its own");
+            }
+        } elseif (!isset($catalog[$name])) {
+            throw new RuleFileException("$at: no feed \"$name\" in the catalog" . self::suggest($name, array_keys($catalog)) . ' -- a list of your own: feed <name> https://… <action>');
+        }
+        $action = (string) array_shift($args);
+        $weight = 1;
+        if ($action === 'ban-signal') {
+            $n = (string) array_shift($args);
+            if (preg_match('/^[1-9]\d?$/', $n) !== 1) {
+                throw new RuleFileException("$at: ban-signal <n> -- how many signals a request from the list counts as (1 to 99)");
+            }
+            $weight = (int) $n;
+            $action = 'signal';
+        } elseif (!in_array($action, ['deny', 'check'], true)) {
+            throw new RuleFileException("$at: $usage");
+        }
+        $paths = [];
+        $format = $url === null ? $catalog[$name]['format'] : 'plain';
+        $wide = $url === null ? $catalog[$name]['wideOk'] : false;
+        while ($args !== []) {
+            $word = array_shift($args);
+            if ($word === 'at') {
+                $p = [];
+                while ($args !== [] && !in_array($args[0], ['format', 'wide-ok'], true)) {
+                    $p[] = (string) array_shift($args);
+                }
+                if ($p === []) {
+                    throw new RuleFileException("$at: at <paths> -- which paths");
+                }
+                $paths = array_merge($paths, array_map('strval', array_keys($this->compile($p, $at, false))));
+            } elseif ($word === 'format' && $args !== []) {
+                $format = (string) array_shift($args);
+                if (!Feeds::isFormat($format)) {
+                    throw new RuleFileException("$at: format plain, dshield, jsonl:<field> or json:<field>[,<field>] -- not \"$format\"");
+                }
+            } elseif ($word === 'wide-ok') {
+                $wide = true;
+            } else {
+                throw new RuleFileException("$at: $usage");
+            }
+        }
+        $c = $catalog[$name] ?? null;
+        $list = &$this->c['feeds'];
+        if (!is_array($list)) {
+            $list = [];
+        }
+        $list[] = [
+            'name' => $name, 'urls' => $url !== null ? [$url] : ($c['urls'] ?? []), 'format' => $format, 'every' => $c['every'] ?? 3600, 'wideOk' => $wide,
+            'action' => $action, 'weight' => $weight, 'paths' => $paths, 'rule' => $this->rid,
+            'title' => $c['title'] ?? $name, 'terms' => $c['terms'] ?? '', 'watched' => isset($this->origins['monitor'][$this->rid]),
+        ];
     }
 
     /**

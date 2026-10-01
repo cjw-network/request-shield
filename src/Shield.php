@@ -20,6 +20,7 @@ use CjwNetwork\RequestShield\Rule\CacheableRule;
 use CjwNetwork\RequestShield\Rule\ContentRule;
 use CjwNetwork\RequestShield\Rule\CrawlerRule;
 use CjwNetwork\RequestShield\Rule\DenyRule;
+use CjwNetwork\RequestShield\Rule\FeedRule;
 use CjwNetwork\RequestShield\Rule\HostRule;
 use CjwNetwork\RequestShield\Rule\LimitsRule;
 use CjwNetwork\RequestShield\Rule\MethodPathRule;
@@ -96,6 +97,9 @@ final class Shield
         // Kept out (the deny list), then banned for a while: before anything else.
         if ($s->denyTable !== []) {
             $this->rules[] = new DenyRule($s->denyTable);
+        }
+        if (isset($s->feedTables['deny']) || self::hasAt($s, 'deny')) {
+            $this->rules[] = new FeedRule(\Closure::fromCallable([$this, 'feedHit']));
         }
         if ($s->bans !== [] && $s->mode !== 'monitor') {
             if ($s->banKeep === 'file' && $this->store instanceof ApcuStore) {
@@ -385,7 +389,16 @@ final class Shield
             return;
         }
         $bucket = IpAddress::bucket($ip, $s->ipv6Prefix);
-        if ($this->store->hit(($watch ? 'monitor:' : '') . 'ban:' . $b['rule'] . ':' . $bucket, $b['in'], $now) < $b['after']) {
+        // On a public blocklist named "ban-signal <n>": one signal counts n times.
+        $weight = 1;
+        if ($s->feedWeights !== [] && ($feed = $this->feedHit($request, 'signal')) !== null) {
+            $weight = $s->feedWeights[$feed] ?? 1;
+        }
+        $count = 0.0;
+        for ($i = 0; $i < $weight; $i++) {
+            $count = $this->store->hit(($watch ? 'monitor:' : '') . 'ban:' . $b['rule'] . ':' . $bucket, $b['in'], $now);
+        }
+        if ($count < $b['after']) {
             return;
         }
         $id = $s->crawlers === [] ? null : $this->crawlers()->claims((string) $request->header('user-agent'));
@@ -565,6 +578,8 @@ final class Shield
             return null;
         };
         switch ($d->reason) {
+            case 'feed':
+                return $this->feedHit($request, $d->action === Decision::CHALLENGE ? 'check' : 'deny');
             case 'denied':
                 // The entry of the deny list that holds the address.
                 $id = $s->denyTable === [] ? null : IpTable::find($request->clientIp, $s->denyTable);
@@ -662,7 +677,64 @@ final class Shield
                 }
             }
         }
+        // On a public blocklist named "check": the browser check, as on an
+        // always-checked page -- a pass lets the visitor through.
+        if ((isset($this->settings->feedTables['check']) || self::hasAt($this->settings, 'check')) && $this->feedHit($request, 'check') !== null) {
+            $budget = $budget === null ? Decision::challenge('feed') : $budget->stricter(Decision::challenge('feed'));
+        }
         return $budget === null ? $base : $base->stricter($budget);
+    }
+
+    /** @var array<string, ?string> client|action => the rule found, this request */
+    private array $feedHits = [];
+
+    /**
+     * The rule of the public blocklist that holds this client for an action
+     * (deny, check, signal) -- null when none does, or when the client is let
+     * in, a trusted proxy, or a crawler that proved who it is.
+     */
+    public function feedHit(Request $request, string $action): ?string
+    {
+        $key = $request->clientIp . '|' . $action . '|' . $request->path;
+        if (array_key_exists($key, $this->feedHits)) {
+            return $this->feedHits[$key];
+        }
+        $s = $this->settings;
+        $rule = isset($s->feedTables[$action]) ? IpTable::find($request->clientIp, $s->feedTables[$action]) : null;
+        foreach ($rule === null ? $s->feedsAt : [] as $f) {
+            if ($f['action'] !== $action || ($id = IpTable::find($request->clientIp, $f['table'])) === null) {
+                continue;
+            }
+            foreach ($f['paths'] as $p) {
+                if (@preg_match($p, $request->path) === 1) {
+                    $rule = $id;
+                    break 2;
+                }
+            }
+        }
+        if ($rule !== null && (IpAddress::inRanges($request->clientIp, $s->exemptIps) || IpAddress::inRanges($request->clientIp, $s->trustedProxies))) {
+            $rule = null;
+        }
+        if ($rule !== null && $s->crawlers !== []) {
+            $id = $this->crawlers()->claims((string) $request->header('user-agent'));
+            if ($id !== null && $this->crawlers()->verified($request->clientIp, $id)) {
+                $rule = null;                               // a crawler that proved who it is: never by a list
+            }
+        }
+        if (count($this->feedHits) > 64) {
+            $this->feedHits = [];
+        }
+        return $this->feedHits[$key] = $rule;
+    }
+
+    private static function hasAt(Settings $s, string $action): bool
+    {
+        foreach ($s->feedsAt as $f) {
+            if ($f['action'] === $action) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

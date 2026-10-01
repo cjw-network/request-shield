@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Phases 1–3 implemented** (2026-10-01): feeds, the catalog, `feeds update`, the export for a firewall/nginx; **the `.htaccess` export dropped after measuring** (below); phase 4 (adapters with an API key) later |
 | Proposed | 2026-10-01 |
 | Affects | rule files (new rule `feed`), the command line (`feeds update`, `feeds export`, also as `.htaccess` for shared hosting), the IP lists ([0013](0013-ip-lists.md)) |
 
@@ -147,7 +147,7 @@ php bin/request-shield feeds site.rules export --format=plain    # one range per
 - The shield never changes the firewall itself. Loading the file is a
   privileged step that the admin's cron or config management does.
 
-### For shared hosting: `.htaccess`
+### For shared hosting: `.htaccess` — dropped after measuring (see Decisions)
 
 On shared hosting (cPanel, Plesk) there is no firewall to touch, but the site
 may write its own `.htaccess`. Apache (and LiteSpeed, which reads
@@ -277,3 +277,37 @@ What it writes, between markers, and nothing else in the file is touched:
 6. The line limit for `.htaccess`: a fixed 2,000 ranges, or from the
    measurement? *Recommendation: from the measurement in phase 3; 2,000 until
    then.*
+
+## Decisions (2026-10-01)
+
+1. **Off until named;** the demo's rule file shows DROP and DShield commented
+   out, with `count` (watched) first.
+2. **`ban-signal` is a weight** (`ban-signal 3`: one signal counts three
+   times); the ban rules stay as they are.
+3. **The packed table:** the deny list uses it already (0013).
+4. **The export:** the deny list and the deny feeds, yes; running bans, no.
+5. **`.htaccess`: measured, and dropped.** Apache 2.4, a static file,
+   `ab -k -c 8`, three rounds: 0 ranges 23,092–27,587 req/s; 500: 6,325–8,271
+   (3–4× slower); 2,000: 2,892–3,098 (8×); 10,000: 861–871 (28×); 50,000:
+   268–279 (90×). Apache reads `.htaccess` on every request, static files
+   too, so even Spamhaus DROP alone (~1,700 ranges) would cost every image
+   ~8×, while the shield's lookup costs 2–3 µs at any size. Not practical, so
+   not built: no `--format=htaccess`, `--check-url` or `--max-lines`. On shared
+   hosting the shield in PHP is the place for these lists.
+6. **No lists in the repository** (asked again): several lists' terms forbid
+   passing them on or limit it (DShield: non-commercial), and a copy in a
+   release is stale within days. The catalog holds addresses and terms; each
+   site fetches them itself.
+
+As built: `rules/feeds.json` (ten lists: Spamhaus DROP, DShield, Feodo,
+FireHOL level 1, ET compromised, blocklist.de, Stop Forum Spam, Tor exits,
+AWS, Google Cloud), `Rules\Feeds` (formats plain, dshield, jsonl:, json:;
+the own network and too-wide ranges dropped; fetching with validators, the
+shrink guard, at most as often as the catalog says), `Rules\FeedExport`
+(plain, nginx, nftables, ipset), `Rule\FeedRule` and `Shield::feedHit()`
+(never exempt, trusted proxies, verified crawlers), `feeds-max-age` (3 days;
+the settings built again when a list grows too old), the live view's source
+"feed", the rules page's group, a step in the setup view and `trace`,
+`check` warnings. Measured: deny + check lists of ~27,000 entries cost
+3–4 µs per request; fetching all ten takes ~2.4 s.
+

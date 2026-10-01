@@ -194,6 +194,21 @@ final class RulesPage
                 . ($s->listsDir !== null ? $w(' The lists: %s (bin/request-shield deny, allow, unlist, lists).', $s->listsDir) : ''), $rows];
         }
 
+        // Public blocklists (feed …): each with what it does, how many entries, how old.
+        $rows = [];
+        $actions = ['deny' => $w('kept out: 403'), 'check' => $w('the browser check'), 'signal' => $w('counts towards a ban')];
+        foreach (array_merge($s->feeds, $s->monitor !== null ? array_map(static fn (array $f): array => $f + ['watched' => true], $s->monitor->feeds) : []) as $f) {
+            $state = $f['state'] === 'in force' ? $w('%s entries, fetched %s', number_format($f['count'], 0, '', $lang === 'de' ? '.' : ','), date($lang === 'de' ? 'd.m.Y H:i' : 'Y-m-d H:i', $f['fetched']))
+                : ($f['state'] === 'too old' ? $w('too old, not used: fetched %s', $f['fetched'] > 0 ? date($lang === 'de' ? 'd.m.Y H:i' : 'Y-m-d H:i', $f['fetched']) : '-') : $w('not fetched yet: bin/request-shield feeds <main.rules> update'));
+            $rows[] = $row($w('%s (%s): %s', $f['title'], $f['name'], isset($f['watched']) ? $w('only counted and logged (count)') : ($actions[$f['action']] ?? $f['action'])
+                . ($f['action'] === 'signal' ? ' ×' . $f['weight'] : '') . ($f['paths'] !== [] ? ' ' . $w('at %s', implode(', ', array_map(static fn (string $p): string => Describe::pattern($s, $p), $f['paths']))) : ''))
+                . ' — ' . $state . ($f['terms'] !== '' ? ' — ' . $w('terms: %s', $f['terms']) : ''), $f['rule'], $f['rule']);
+        }
+        if ($rows !== []) {
+            $g[] = [$w('Public blocklists'), $w('Lists fetched by bin/request-shield feeds <main.rules> update (cron), compiled with the rules; nothing is looked up per request and nothing is sent anywhere. Never an address let in, a trusted proxy or a verified crawler; a list older than %s is not used.',
+                Describe::span($s->feedsMaxAge, $lang)), $rows];
+        }
+
         // Automatic, temporary bans.
         $rows = [];
         $signals = ['limits' => $w('times past a limit'), 'refusals' => $w('refusals for what only attackers ask for'), 'checks' => $w('check pages not solved')];
@@ -360,7 +375,13 @@ final class RulesPage
         'A kept-out address gets 403 before every other check; one let in is never counted or checked, but still refused for blocked addresses and attack patterns.' => 'Eine ausgesperrte Adresse bekommt 403 vor jeder anderen Prüfung; eine hereingelassene wird nie gezählt oder geprüft, aber bei gesperrten Adressen und Angriffsmustern trotzdem abgewiesen.',
         ' The lists: %s (bin/request-shield deny, allow, unlist, lists).' => ' Die Listen: %s (bin/request-shield deny, allow, unlist, lists).', 'times past a limit' => 'Mal über einer Grenze',
         'refusals for what only attackers ask for' => 'Abweisungen für das, was nur Angreifer aufrufen', 'check pages not solved' => 'nicht gelöste Check-Seiten', '"%s" past its limit' => '„%s“ über seiner Grenze',
-        'after %s %s in %s: banned for %s' => 'nach %s %s in %s: gesperrt für %s', 'Banned for a while' => 'Für eine Weile gesperrt',
+        'after %s %s in %s: banned for %s' => 'nach %s %s in %s: gesperrt für %s',
+        'kept out: 403' => 'ausgesperrt: 403', 'the browser check' => 'der Browser-Check', 'counts towards a ban' => 'zählt für eine Sperre', '%s entries, fetched %s' => '%s Einträge, geholt %s',
+        'too old, not used: fetched %s' => 'zu alt, nicht benutzt: geholt %s', 'not fetched yet: bin/request-shield feeds <main.rules> update' => 'noch nicht geholt: bin/request-shield feeds <main.rules> update',
+        '%s (%s): %s' => '%s (%s): %s', 'only counted and logged (count)' => 'nur gezählt und geloggt (count)', 'at %s' => 'an %s', 'terms: %s' => 'Bedingungen: %s',
+        'Public blocklists' => 'Öffentliche Sperrlisten',
+        'Lists fetched by bin/request-shield feeds <main.rules> update (cron), compiled with the rules; nothing is looked up per request and nothing is sent anywhere. Never an address let in, a trusted proxy or a verified crawler; a list older than %s is not used.'
+            => 'Listen, geholt von bin/request-shield feeds <main.rules> update (cron), mit den Regeln übersetzt; pro Anfrage wird nichts nachgeschlagen und nichts verschickt. Nie eine hereingelassene Adresse, ein vertrauenswürdiger Proxy oder ein bestätigter Crawler; eine Liste älter als %s wird nicht benutzt.', 'Banned for a while' => 'Für eine Weile gesperrt',
         'Nothing but 429 with the time to wait, longer each time within a day (%s×, at most %s); never an address let in, a trusted proxy or a verified crawler.' => 'Nur noch 429 mit der Wartezeit, bei jeder Wiederholung am selben Tag länger (%s×, höchstens %s); nie eine hereingelassene Adresse, ein vertrauenswürdiger Proxy oder ein bestätigter Crawler.',
         ' · revision %s' => ' · Revision %s', ' · in match %s' => ' · im match %s', 'every block above' => 'jede Sperre oben',
         'Open at %s: %s' => 'Offen unter %s: %s', ' — only for %s' => ' — nur für %s', ' — ⚠ for everyone: make sure only admins reach it' => ' — ⚠ für alle: nur Admins dürfen dorthin kommen',

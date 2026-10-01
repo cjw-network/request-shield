@@ -113,7 +113,10 @@ server and PHP slots, just very briefly.
   and automatic, temporary bans ([docs](docs/features/ip-lists.md)); the live
   view and the lists in the dashboard — what is stopped right now, with the
   reason and where it came from, an address kept out with one click and a
-  comment ([docs](docs/features/live-and-lists.md)).
+  comment ([docs](docs/features/live-and-lists.md)); public blocklists
+  (Spamhaus DROP, DShield, blocklist.de, Tor, cloud ranges …) fetched by cron,
+  each with its own action, and exported for a firewall
+  ([docs](docs/features/blocklist-feeds.md)).
 - **Next:** adapters for
   Exponential, WordPress and Ibexa; exporting the rules to nginx, Apache and
   Varnish.
