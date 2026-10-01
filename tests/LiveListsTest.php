@@ -115,11 +115,11 @@ return [
         $dir = liveDir();
         try {
             $s = liveSettings($dir, "set dashboard-path /admin/rs\n");
-            liveLine($s, 'http://example.org/site/admin/rs/live?format=json&cursor=1:2', Decision::allowUncached('query parameter'), 'DEMO-Q');
-            liveLine($s, 'http://example.org/admin/rs/lists', Decision::reject(403, 'restricted'), 'SITE-RS');
+            liveLine($s, 'http://example.org/site/admin/rs/waf/live?format=json&cursor=1:2', Decision::allowUncached('query parameter'), 'DEMO-Q');
+            liveLine($s, 'http://example.org/admin/rs/waf/lists', Decision::reject(403, 'restricted'), 'SITE-RS');
             liveLine($s, 'http://example.org/"><script>alert(1)</script>', Decision::reject(404, 'blocked path'), 'SCAN-1', '203.0.113.9', false, '<img src=x onerror=alert(2)>');
             $j = LivePage::json($s, null);
-            same(['http://example.org/admin/rs/lists', 'http://example.org/\'><script>alert(1)</script>'], array_map(static fn (array $r): string => 'http://' . $r['host'] . $r['request'], $j['rows']),
+            same(['http://example.org/admin/rs/waf/lists', 'http://example.org/\'><script>alert(1)</script>'], array_map(static fn (array $r): string => 'http://' . $r['host'] . $r['request'], $j['rows']),
                 'its own pages that went through are left out (below a prefix too); refused ones stay');
             $html = LivePage::render($s, ['feed' => '/admin/rs/live?format=json', 'lists' => '/admin/rs/lists', 'lang' => 'en']);
             truthy(strpos($html, '<script>alert') === false && strpos($html, '<img src=x') === false, 'nothing from the log unescaped');
@@ -305,7 +305,7 @@ return [
             $shield = new \CjwNetwork\RequestShield\Shield($s, new MemoryStore());
             $actions = [];
             for ($i = 0; $i < 10; $i++) {
-                $actions[] = $shield->decide($req($i % 2 === 0 ? '/rs/live?format=json&cursor=m:1' : '/demo/index.php/rs/stats'), 1000.0 + $i)->action;
+                $actions[] = $shield->decide($req($i % 2 === 0 ? '/rs/waf/live?format=json&cursor=m:1' : '/demo/index.php/rs/stats'), 1000.0 + $i)->action;
             }
             same(array_fill(0, 10, 'allow'), $actions, 'the live view every few seconds, the statistics below a prefix: never counted');
             $page = [];
@@ -314,18 +314,18 @@ return [
             }
             same(['allow', 'allow', 'allow', 'challenge', 'challenge'], array_map(static fn (string $a): string => $a === 'throttle' ? 'challenge' : $a, $page),
                 'the site\'s pages still are -- and the dashboard requests before added nothing');
-            same(['reject', 'restricted'], [($d = $shield->decide($req('/rs/live', '198.51.100.7'), 1030.0))->action, $d->reason], 'from elsewhere: refused first');
+            same(['reject', 'restricted'], [($d = $shield->decide($req('/rs/waf/live', '198.51.100.7'), 1030.0))->action, $d->reason], 'from elsewhere: refused first');
             $other = new \CjwNetwork\RequestShield\Shield($s, new MemoryStore());
             $more = [];
             for ($i = 0; $i < 5; $i++) {
-                $more[] = $other->decide($req('/rs/live-and-more'), 1040.0 + $i)->action;
+                $more[] = $other->decide($req('/rs/waf/live-and-more'), 1040.0 + $i)->action;
             }
             truthy($more[4] !== 'allow', 'not a page of the dashboard (below the restricted path all the same): counted as any: ' . implode(',', $more));
             $open = liveSettings($dir, "exempt none\n[R-PACE] limit requests 3/min\n");
             $openShield = new \CjwNetwork\RequestShield\Shield($open, new MemoryStore());
             $counted = [];
             for ($i = 0; $i < 5; $i++) {
-                $counted[] = $openShield->decide($req('/rs/live'), 1000.0 + $i)->action;
+                $counted[] = $openShield->decide($req('/rs/waf/live'), 1000.0 + $i)->action;
             }
             truthy(in_array('challenge', $counted, true) || in_array('throttle', $counted, true), 'no restrict rule: the dashboard counts, an open one keeps its flood guard: ' . implode(',', $counted));
         } finally {

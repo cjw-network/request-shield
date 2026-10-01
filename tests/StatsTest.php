@@ -78,10 +78,10 @@ return [
         same(['all' => '/admin/rs/stats/overview', 'site' => '/admin/rs/stats/visitors', 'shield' => '/admin/rs/stats/protection', 'rules' => '/admin/rs/waf/rules'], $page::links($admin));
         same(['all', 'site', 'shield', 'rules', null, null], [$page::viewFor($admin, '/admin/rs/stats/overview'), $page::viewFor($admin, '/Admin/RS/stats/Visitors/'), $page::viewFor($admin, '/admin/rs/stats/protection'), $page::viewFor($admin, '/admin/rs/waf/rules'),
             $page::viewFor($admin, '/rs/stats/visitors'), $page::viewFor($admin, '/admin/rs/other')], 'which view a path is: capitals and a trailing slash do not matter');
-        same(['all', 'all', 'shield', null], [$page::viewFor($admin, '/admin/rs/stats'), $page::viewFor($admin, '/admin/rs/dashboard'), $page::viewFor($admin, '/admin/rs/shield'), $page::viewFor($admin, '/admin/rs/sites')],
-            'the plugin\'s start (the overview without stats-hosts); the old addresses still answered');
+        same(['all', null, null, null, null], [$page::viewFor($admin, '/admin/rs/stats'), $page::viewFor($admin, '/admin/rs/dashboard'), $page::viewFor($admin, '/admin/rs/shield'),
+            $page::viewFor($admin, '/admin/rs/sites'), $page::viewFor($admin, '/admin/rs/rules')], 'the plugin\'s start (the overview without stats-hosts); the old addresses are gone');
         $hosts = Settings::from(['stats' => ['enabled' => true, 'hosts' => ['a.de']]]);
-        same(['sites', 'sites', 'sites'], [$page::viewFor($hosts, '/rs/stats'), $page::viewFor($hosts, '/rs/stats/sites'), $page::viewFor($hosts, '/rs/sites')], 'with stats-hosts: all websites first');
+        same(['sites', 'sites'], [$page::viewFor($hosts, '/rs/stats'), $page::viewFor($hosts, '/rs/stats/sites')], 'with stats-hosts: all websites first');
         foreach (['admin/rs', '/a b', '/x/../y', ''] as $bad) {
             try {
                 Settings::from(['dashboardPath' => $bad]);

@@ -110,10 +110,10 @@ $examples = function (string $prefix): void {
             truthy($missing !== [], 'the page not found, counted (under its full path): ' . json_encode($stats['notFound'] ?? null));
             $one = $get('GET', '/rs/stats/visitors?days=30&by=week&site=127.0.0.1');
             truthy($one['status'] === 200 && strpos($one['body'], '<option value="127.0.0.1" selected>') !== false, 'the statistics page, one website (stats-hosts): the switch, this website chosen');
-            $r = $get('GET', '/rs/dashboard');
+            $r = $get('GET', '/rs/stats/overview');
             same(200, $r['status'], 'the dashboard');
             truthy(strpos($r['body'], '/rs/stats/protection?days=7') !== false && strpos($r['body'], 'class="tab on"') !== false, 'tabs: one address per view (the plugin\'s under /rs/stats/)');
-            $sites = $get('GET', '/RS/sites');
+            $sites = $get('GET', '/RS/Stats/Sites');
             truthy($sites['status'] === 200 && strpos($sites['body'], '<table class="sites">') !== false && strpos($sites['body'], '>Customer A</a>') !== false,
                 'all websites at a glance, grouped (and the address in capitals too)');
             $filtered = $get('GET', '/rs/stats/visitors?from=2026-09-01&to=2026-09-30&lang=de&path=%2Fpage%2F');
@@ -424,12 +424,12 @@ $panel = function (string $prefix): void {
         same(200, $r['status'], 'the live view');
         truthy(strpos($r['body'], 'SCAN-HIDDEN') !== false && strpos($r['body'], 'eingebaute Regel') !== false, 'the refusals, with where they came from');
         truthy(strpos($r['body'], 'class="tab on" href="') !== false && strpos($r['body'], '/rs/waf/lists?lang=de') !== false, 'tabs to the lists (the firewall\'s pages under /rs/waf/)');
-        $first = json_decode($get('GET', '/rs/live?format=json')['body'], true);           // the old address: still answered
+        $first = json_decode($get('GET', '/rs/waf/live?format=json')['body'], true);
         $rows = (array) ($first['rows'] ?? []);
         truthy(in_array('ban', array_column($rows, 'source'), true) && in_array(true, array_column($rows, 'watched'), true), 'the watched ban, in the live rows: ' . json_encode(array_column($rows, 'label')));
         same([], array_filter($rows, static fn (array $x): bool => strpos((string) $x['request'], '/rs/') !== false), 'the dashboard\'s own requests are not shown');
         $get('GET', '/.git/config');
-        $next = json_decode($get('GET', '/rs/live?format=json&cursor=' . rawurlencode((string) $first['cursor']))['body'], true);
+        $next = json_decode($get('GET', '/rs/waf/live?format=json&cursor=' . rawurlencode((string) $first['cursor']))['body'], true);
         same(['/.git/config'], array_values(array_unique(array_map(static fn (array $x): string => substr((string) $x['request'], -12), (array) $next['rows']))), 'with the cursor: only what is new');
         $what = array_column((array) $next['rows'], 'what');
         sort($what);
@@ -439,10 +439,10 @@ $panel = function (string $prefix): void {
         truthy(preg_match('/name="token" value="([0-9a-f]{32})"/', $page['body'], $m) === 1, 'the form token');
         $added = $get('POST', '/rs/waf/lists', [], http_build_query(['token' => $m[1], 'do' => 'add', 'kind' => 'deny', 'address' => '203.0.113.0/24', 'for' => '7d', 'note' => 'scanner']));
         truthy($added['status'] === 200 && strpos($added['body'], 'LIST-D1: 203.0.113.0/24 added') !== false && strpos($added['body'], '<td class="mono">LIST-D1</td>') !== false, 'added, and listed');
-        $self = $get('POST', '/rs/lists', [], http_build_query(['token' => $m[1], 'do' => 'add', 'kind' => 'deny', 'address' => '127.0.0.1', 'for' => '1d', 'note' => 'x']));
+        $self = $get('POST', '/rs/waf/lists', [], http_build_query(['token' => $m[1], 'do' => 'add', 'kind' => 'deny', 'address' => '127.0.0.1', 'for' => '1d', 'note' => 'x']));
         truthy(strpos($self['body'], 'you would lock yourself out') !== false, 'never the address of the person clicking');
-        truthy(strpos($get('POST', '/rs/lists', [], 'do=remove&id=LIST-D1')['body'], 'too old or not from this page') !== false, 'without the token: refused');
-        $removed = $get('POST', '/rs/lists', [], http_build_query(['token' => $m[1], 'do' => 'remove', 'id' => 'LIST-D1']));
+        truthy(strpos($get('POST', '/rs/waf/lists', [], 'do=remove&id=LIST-D1')['body'], 'too old or not from this page') !== false, 'without the token: refused');
+        $removed = $get('POST', '/rs/waf/lists', [], http_build_query(['token' => $m[1], 'do' => 'remove', 'id' => 'LIST-D1']));
         truthy(strpos($removed['body'], 'LIST-D1 removed') !== false, 'removed');
     }, $prefix);
 };

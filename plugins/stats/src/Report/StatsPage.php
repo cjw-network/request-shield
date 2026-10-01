@@ -539,14 +539,10 @@ final class StatsPage
             'shield' => $base . '/stats/protection', 'rules' => $base . '/waf/rules'];
     }
 
-    /** The addresses before the plugin had its own (/rs/dashboard, /rs/shield, /rs/sites): still answered. */
-    private const OLD = ['/dashboard' => 'all', '/shield' => 'shield', '/sites' => 'sites', '/rules' => 'rules'];
-
     /**
      * Which view a path asks for (sites, all, site, shield, rules), or null;
      * capitals do not matter. <dashboard-path>/stats is the plugin's start:
-     * all websites with stats-hosts, else the overview. The old addresses
-     * (/rs/dashboard, /rs/shield, /rs/sites) are still answered.
+     * all websites with stats-hosts, else the overview.
      */
     public static function viewFor(Settings $s, string $path): ?string
     {
@@ -559,11 +555,6 @@ final class StatsPage
         $base = strtolower($s->dashboardPath);
         if ($p === $base . '/stats') {
             return $s->statsHosts !== [] ? 'sites' : 'all';
-        }
-        foreach (self::OLD as $old => $view) {
-            if ($p === $base . $old && ($view !== 'sites' || $s->statsHosts !== [])) {
-                return $view;
-            }
         }
         return null;
     }

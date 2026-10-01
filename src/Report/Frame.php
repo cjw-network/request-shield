@@ -36,12 +36,8 @@ final class Frame
             'shield' => $base . '/stats/protection', 'rules' => $base . '/waf/rules', 'live' => $base . '/waf/live', 'lists' => $base . '/waf/lists'];
     }
 
-    /** Every address of the dashboard below dashboard-path: the pages, the plugin's start, the addresses before /stats/. */
-    private const PAGES = ['/stats', '/stats/sites', '/stats/overview', '/stats/visitors', '/stats/protection', '/waf', '/waf/rules', '/waf/live', '/waf/lists',
-        '/rules', '/live', '/lists', '/dashboard', '/shield', '/sites'];
-
-    /** The core's addresses before /waf/: still answered. */
-    private const OLD = ['/live' => 'live', '/lists' => 'lists', '/rules' => 'rules'];
+    /** Every address of the dashboard below dashboard-path: the pages and the two starts (/stats, /waf). */
+    private const PAGES = ['/stats', '/stats/sites', '/stats/overview', '/stats/visitors', '/stats/protection', '/waf', '/waf/rules', '/waf/live', '/waf/lists'];
 
     /**
      * Whether a path is one of the dashboard's pages -- also below a prefix
@@ -73,11 +69,6 @@ final class Frame
         $base = strtolower($s->dashboardPath);
         if ($p === $base . '/waf') {
             return 'live';                                  // the firewall's start: what it stops right now
-        }
-        foreach (self::OLD as $old => $key) {
-            if ($p === $base . $old) {
-                return $key;
-            }
         }
         return null;
     }

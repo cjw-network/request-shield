@@ -81,9 +81,7 @@ wants it behind its admin area). The statistics plugin's pages live under
 the plugin's start: all websites with `stats-hosts`, else the overview. The
 core's — the firewall's — pages live under `/rs/waf/`: **`/rs/waf/rules`** (rules
 & setup, below), `/rs/waf/live`, `/rs/waf/lists` ([live and lists](live-and-lists.md));
-`/rs/waf` opens the live view. Every plugin gets its own prefix this way. The
-addresses from before (`/rs/dashboard`, `/rs/shield`, `/rs/sites`, `/rs/rules`,
-`/rs/live`, `/rs/lists`) are still answered.
+`/rs/waf` opens the live view. Every plugin gets its own prefix this way.
 The path names the view; the filters stay GET parameters
 (`?days=30&by=week&lang=de&path=/news/&crawler=CRAWL-GOOGLE`, `format=json`).
 `StatsPage::links($settings)` returns the four addresses, `StatsPage::viewFor(

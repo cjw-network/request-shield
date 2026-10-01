@@ -251,7 +251,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   firewall's — pages under `<dashboard-path>/waf/`: `/rs/waf/live`,
   `/rs/waf/lists`, `/rs/waf/rules` (`/rs/waf`: the live view). The old addresses
   (`/rs/dashboard`, `/rs/shield`, `/rs/sites`, `/rs/live`, `/rs/lists`,
-  `/rs/rules`) are still answered.
+  `/rs/rules`) are gone: a site that routes them itself (`StatsPage::viewFor()`,
+  `Frame::pageFor()`) needs nothing; links and bookmarks to them need the new ones.
 - Finding the website for the statistics keeps the last settings' names
   instead of a `WeakMap` (0.10 µs; a crash seen once in CI on PHP 8.0 with APCu).
 - **The statistics are the first plugin** (`plugins/stats/`, `StatsPlugin`):
