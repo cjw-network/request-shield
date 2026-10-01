@@ -138,7 +138,8 @@ final class Shield
      */
     public static function protectFile(string $file, ?callable $known = null, ?string $cacheDir = null, array $sources = []): Decision
     {
-        return self::protect(Settings::load($file, $cacheDir, $sources), $known);
+        // With site blocks (rules per website): the settings of this request's website.
+        return self::protect(Settings::loadFor($file, $_SERVER, $cacheDir, $sources), $known);
     }
 
     /**

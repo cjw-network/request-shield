@@ -59,6 +59,7 @@ final class RuleFile
         'search-engines' => ['challenge.searchEngines', 'bool'],
         'dns-lookups' => ['challenge.dnsLookups', 'int'],
         'recheck' => ['recheck', 'seconds'],
+        'site-from' => ['siteFrom', 'sitefrom'],
         'language' => ['challenge.language', 'language'],
         'home' => ['challenge.home', 'string'],
         'widget-path' => ['challenge.widgetPath', 'string'],
@@ -124,6 +125,21 @@ final class RuleFile
     /** Whether a rule marked "monitor" was seen. */
     private bool $monitored = false;
 
+    /** The website whose site block is read as rules (null: the base -- every site block skipped). */
+    private ?string $want = null;
+
+    /** @var array{id: string, file: string, at: string, skip: bool, depth: int, blocks: int}|null the open site block */
+    private ?array $siteOpen = null;
+
+    /** @var array<string, array{0: string, 1: string}> website name => [its block's ID (the block's first name), where] */
+    private array $siteNames = [];
+
+    /** Whether a site block was seen: rules for every website go above the first one. */
+    private bool $sawSite = false;
+
+    /** "set" keys that are about the server, not a website: not inside a site block. */
+    private const SERVER_WIDE = ['store', 'store-dir', 'secret', 'recheck', 'dns-lookups', 'ipv6-prefix', 'site-from'];
+
     /** The shipped rule files: rules/<name>.rules ("@scanners", "@wordpress"). */
     public static function shipped(string $name): ?string
     {
@@ -146,16 +162,19 @@ final class RuleFile
      * one), each with its includes.
      *
      * @param list<string> $files paths or globs; a glob may match nothing
+     * @param ?string $site the website whose "site" block is read too (its block's first name);
+     *   null: the base -- the rules for every website, each site block skipped
      * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int}
-     *   config: the settings array, with 'origins' (setting => pattern or budget => "file:line")
+     *   config: the settings array, with 'origins' (setting => pattern or budget => "file:line"),
+     *   'sites' (website name => its block's first name) and 'site'
      * @throws RuleFileException naming file and line
      */
-    public static function read(array $files): array
+    public static function read(array $files, ?string $site = null): array
     {
-        $r = self::reading($files, false);
+        $r = self::reading($files, false, $site);
         if ($r['monitored']) {
             // Rules marked "monitor": read once more with them, for the log.
-            $r['config']['monitorRules'] = self::reading($files, true)['config'];
+            $r['config']['monitorRules'] = self::reading($files, true, $site)['config'];
         }
         unset($r['monitored']);
         return $r;
@@ -165,10 +184,11 @@ final class RuleFile
      * @param list<string> $files
      * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, monitored: bool}
      */
-    private static function reading(array $files, bool $monitoring): array
+    private static function reading(array $files, bool $monitoring, ?string $site = null): array
     {
         $r = new self();
         $r->monitoring = $monitoring;
+        $r->want = $site;
         // Origins are named relative to the main file's directory (the last one).
         $main = $files === [] ? false : realpath(dirname($files[count($files) - 1]));
         $r->base = $main === false ? '' : $main . '/';
@@ -183,7 +203,12 @@ final class RuleFile
         foreach ($r->warnings as $i => $w) {
             $r->origins['warnings']['w' . $i] = $w;      // not numeric: PHP would make it an int key
         }
+        if ($site !== null && !in_array($site, array_column($r->siteNames, 0), true)) {
+            throw new RuleFileException("request-shield: no site block named $site");
+        }
         $r->c['origins'] = $r->origins;
+        $r->c['sites'] = array_map(static fn (array $n): string => $n[0], $r->siteNames);
+        $r->c['site'] = $site;
         return ['config' => $r->c, 'seen' => $r->seen, 'env' => $r->env, 'recheck' => is_int($recheck) ? $recheck : 10, 'monitored' => $r->monitored];
     }
 
@@ -314,6 +339,9 @@ final class RuleFile
         if ($open !== false && $open['file'] === $file) {
             throw new RuleFileException("{$open['at']}: match without its } -- the block opened here is not closed");
         }
+        if ($this->siteOpen !== null && $this->siteOpen['file'] === $file) {
+            throw new RuleFileException("{$this->siteOpen['at']}: site without its } -- the block opened here is not closed");
+        }
         if (isset($this->versions[$file])) {
             // Named by the file's namespace, else by the file.
             $this->origins['versions'][$this->ns[$file][0] ?? $name] = $this->versions[$file];
@@ -348,6 +376,41 @@ final class RuleFile
         }
         $parts = preg_split('/\s+/', $line) ?: [];
         $keyword = strtolower((string) array_shift($parts));
+        // Another website's block: skipped to its }, the blocks inside counted
+        // (a site inside a site is an error when that website's block is read).
+        if ($this->siteOpen !== null && $this->siteOpen['skip']) {
+            if (end($parts) === '{') {
+                $this->siteOpen['depth']++;
+            } elseif ($keyword === '}') {
+                if ($this->siteOpen['depth'] > 0) {
+                    $this->siteOpen['depth']--;
+                } elseif ($file === $this->siteOpen['file']) {
+                    $this->siteOpen = null;
+                }
+            }
+            return;
+        }
+        // site <names> { ... }: the rules of some websites, added to the base.
+        if ($keyword === 'site') {
+            if ($id !== null) {
+                throw new RuleFileException("$at: [$id] site -- IDs go on the rules inside a block, not on the block");
+            }
+            $this->openSite(array_map(fn (string $a): string => $this->env($a, $at), $parts), $at, $file);
+            return;
+        }
+        if ($keyword === '}' && $this->siteOpen !== null && $file === $this->siteOpen['file'] && count($this->blocks) === $this->siteOpen['blocks']) {
+            if ($parts !== []) {
+                throw new RuleFileException("$at: } stands on a line of its own");
+            }
+            $this->siteOpen = null;
+            return;
+        }
+        if ($this->siteOpen !== null && ($keyword === 'trust' || ($keyword === 'set' && in_array(strtolower($parts[0] ?? ''), self::SERVER_WIDE, true)))) {
+            throw new RuleFileException("$at: " . ($keyword === 'trust' ? 'trust' : 'set ' . strtolower($parts[0] ?? '')) . ' is about the server, not a website -- put it above the site blocks');
+        }
+        if ($this->sawSite && $this->siteOpen === null && !in_array($keyword, ['include', 'ids', 'version', '}'], true)) {
+            throw new RuleFileException("$at: a rule for every website after a site block -- the rules for every website go above the first site block");
+        }
         // monitor <rule>: logged as it would decide, never enforced.
         $monitor = false;
         if ($keyword === 'monitor') {
@@ -576,7 +639,7 @@ final class RuleFile
                 return;
         }
         throw new RuleFileException("$at: unknown rule \"$keyword\"" . self::suggest($keyword,
-            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'api-path', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'set', 'include']));
+            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'api-path', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'set', 'include']));
     }
 
     /**
@@ -727,6 +790,44 @@ final class RuleFile
             }
         }
         return $found;
+    }
+
+    /**
+     * site <names> {: names are exact (a.de) or *.domain (one label more), or
+     * "default" (a name no block lists). Its block is read as rules only when
+     * that website is wanted; otherwise skipped to its }.
+     *
+     * @param list<string> $args
+     */
+    private function openSite(array $args, string $at, string $file): void
+    {
+        $usage = 'site <names> {  (the rules, then } on a line of its own)';
+        if (array_pop($args) !== '{' || $args === []) {
+            throw new RuleFileException("$at: $usage");
+        }
+        if ($this->siteOpen !== null) {
+            throw new RuleFileException("$at: a site block holds no site blocks -- the one at {$this->siteOpen['at']} is still open");
+        }
+        if ($this->blocks !== []) {
+            throw new RuleFileException("$at: site goes outside match blocks (a match block may go inside a site block)");
+        }
+        $names = [];
+        foreach ($args as $a) {
+            $n = rtrim(strtolower($a), '.');
+            if ($n !== 'default' && preg_match('/^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/', $n) !== 1) {
+                throw new RuleFileException("$at: \"$a\" is not a website's name -- a.de, shop.a.de, *.a.de (one label more) or default");
+            }
+            $names[] = $n;
+        }
+        $siteId = $names[0];
+        foreach ($names as $n) {
+            if (isset($this->siteNames[$n]) && $this->siteNames[$n][1] !== $at) {
+                throw new RuleFileException("$at: $n is in two site blocks -- already at {$this->siteNames[$n][1]}");
+            }
+            $this->siteNames[$n] = [$siteId, $at];
+        }
+        $this->sawSite = true;
+        $this->siteOpen = ['id' => $siteId, 'file' => $file, 'at' => $at, 'skip' => $this->want !== $siteId, 'depth' => 0, 'blocks' => count($this->blocks)];
     }
 
     /**
@@ -1408,6 +1509,12 @@ final class RuleFile
             case 'verify':
                 if (!in_array($value, ['both', 'ranges', 'dns'], true)) {
                     throw new RuleFileException("$at: crawler-verify is both, ranges (the published address lists only: no DNS, for a DMZ) or dns, not \"$value\"");
+                }
+                $v = $value;
+                break;
+            case 'sitefrom':
+                if (!in_array($value, ['server-name', 'host'], true)) {
+                    throw new RuleFileException("$at: site-from is server-name (the name the web server answers as -- the safe default) or host (the Host header), not \"$value\"");
                 }
                 $v = $value;
                 break;

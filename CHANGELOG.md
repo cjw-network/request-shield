@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Rules per website** (proposal 0024, phase 1): `site <names> { … }` blocks
+  in one rule file — the rules outside them for every website, a block adds
+  (and sets) its own: `match` blocks, `include`, `no-limit` of a base budget …
+  Names exact, `*.domain` (one label) or `default`. Which name decides: `set
+  site-from server-name` (the default — the web server's, not the visitor's)
+  or `host`. Compiled per website with the base, all checked together; a
+  request loads its website's settings without a second check. `check` lists
+  the sites, `trace` takes the website from the address.
 - **Plugins** (proposal 0023, phase 1): the core tells its plugins what it
   decided (`decided()`) and how a request the site answered ended (`ended()`,
   with the status and headers); `Seen` gives them the website, the known crawler

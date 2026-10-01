@@ -98,6 +98,11 @@ $files[] = $file;
 try {
     $read = RuleFile::read($files);
     $settings = Settings::from($read['config']);
+    // Rules per website: every site block read and checked (base + block).
+    $siteSettings = [];
+    foreach (array_unique(array_values($settings->sites)) as $siteId) {
+        $siteSettings[$siteId] = Settings::from(RuleFile::read($files, $siteId)['config']);
+    }
 } catch (InvalidArgumentException $e) {
     fwrite(STDERR, $e->getMessage() . "\n");
     exit(1);
@@ -106,6 +111,13 @@ try {
 if ($command === 'trace') {
     $parts = preg_split('/\s+/', trim((string) $what), 2) ?: [];
     [$method, $url] = count($parts) === 2 ? $parts : ['GET', $parts[0] ?? '/'];
+    // The website from the address: its site block's rules.
+    $urlHost = (string) parse_url($url, PHP_URL_HOST);
+    $siteId = $settings->siteFor(['SERVER_NAME' => $urlHost, 'HTTP_HOST' => $urlHost]);
+    if ($siteId !== null) {
+        $settings = $siteSettings[$siteId];
+        echo "site: $siteId\n";
+    }
     // Only looks at the counters (APCu is the CLI's own; files are the site's).
     $t = (new Inspector($settings))->trace(Inspector::request($method, $url, $ip, $ua !== null ? ['User-Agent' => $ua] : []));
     $mark = ['pass' => '✓', 'note' => '!', 'stop' => '✕', 'skip' => '–'];
@@ -315,6 +327,10 @@ if ($command === 'check' || $command === 'reload') {
             $warnings++;
         }
     }
+    if ($settings->sites !== [] && $settings->siteFrom === 'host' && $settings->hosts === []) {
+        fwrite(STDERR, "warning: site blocks picked by the Host header (set site-from host), and no host rule -- a visitor names the website; list the names (host …), or use set site-from server-name\n");
+        $warnings++;
+    }
     if (($settings->statsEnabled || $settings->crawlerLogDir !== null) && !class_exists(\CjwNetwork\RequestShield\StatsPlugin::class)) {
         fwrite(STDERR, "warning: set stats (or crawler-log) is on, but the statistics plugin is not installed (plugins/stats) -- nothing is counted\n");
         $warnings++;
@@ -327,6 +343,15 @@ if ($command === 'check' || $command === 'reload') {
     }
     echo "ok: $files file(s) + built-in rules, " . count($settings->blockedPaths) . ' blocked patterns, ' . count($settings->budgets) . ' budget(s)'
         . ($attacks > 0 ? ", $attacks attack patterns" : '') . ($sets !== '' ? "; $sets" : '') . "\n";
+    if ($settings->sites !== []) {
+        // site shop.a.de (a.de) · *.b.de · default -- and which name picks one.
+        $byBlock = [];
+        foreach ($settings->sites as $name => $siteId) {
+            $byBlock[$siteId][] = $name;
+        }
+        echo 'sites: ' . implode(' · ', array_map(static fn (string $siteId, array $names): string => $siteId . (count($names) > 1 ? ' (' . implode(', ', array_slice($names, 1)) . ')' : ''),
+            array_keys($byBlock), $byBlock)) . "; picked by $settings->siteFrom\n";
+    }
     foreach (array_merge(crawlerListsAge($settings), sectionsPastLimit($settings)) as $note) {
         echo "note: $note";          // a note, not a warning: the exit code stays
     }

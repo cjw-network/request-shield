@@ -46,8 +46,8 @@
 <text class="t" x="684" y="144" font-weight="600">looked up, in this order</text>
 <g class="m" font-size="12"><text x="684" y="164">1. the exact name</text><text x="684" y="182">2. *.b.de (one label off)</text><text x="684" y="200">3. default — else the base</text></g>
 <path class="arrow" d="M672 170 H652" marker-end="url(#a24)"/>
-<text class="m" x="672" y="240" font-size="11.5">≈ 0.3 µs: two array lookups,</text>
-<text class="m" x="672" y="255" font-size="11.5">no expression</text>
+<text class="m" x="672" y="240" font-size="11.5">≈ 1 µs: two array lookups,</text>
+<text class="m" x="672" y="255" font-size="11.5">≈ 5 µs per request in all</text>
 
 <!-- Where the name comes from -->
 <text class="t" x="448" y="304" font-weight="700">Which name decides — not blindly the Host header</text>

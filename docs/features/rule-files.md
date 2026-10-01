@@ -149,6 +149,71 @@ match regex ^/api/ {
   own; a block not closed by the end of its file is an error naming the line
   of its `match`.
 
+## site blocks: rules per website
+
+One rule file for a server with many websites ([proposal 0024](../proposals/0024-rules-per-website.md)):
+rules outside any block are the **base**, for every website; a `site` block
+**adds** rules for some websites and may set their own values.
+
+```text
+[BASE-PACE] limit requests 300/min          # the base: every website (counted across all)
+[BASE-OLD]  block **/old/**
+
+site shop.a.de a.de {                       # the shop
+  match /admin/** {
+    [SHOP-ADM] restrict to 192.0.2.0/24     # the office only
+  }
+  query strict
+  no-limit requests                         # not the base's pace …
+  [SHOP-PACE] limit shop 120/min            # … its own
+}
+
+site *.b.de {                               # every subdomain of b.de: news.b.de, not b.de, not x.news.b.de
+  include b.rules
+}
+
+site default {                              # any name no block lists
+  set mode strict
+}
+```
+
+- **Which block:** the website's name in lower case, without port and trailing
+  dot — the exact name, then `*.` and the name without its first label, then
+  `default`; without a `default` block, the base alone.
+- **Which name decides:** `set site-from server-name` (the default) takes
+  `SERVER_NAME` — with nginx the name of the `server` block that answers, from
+  its configuration, not from the visitor (Apache: `UseCanonicalName On`). So a
+  visitor cannot pick another website's rules with a `Host` header. `set
+  site-from host` takes the `Host` header (from a trusted proxy:
+  `X-Forwarded-Host`) — for setups that route by it; `check` warns when there is
+  then no `host` rule listing the names.
+- **Inside a block:** every rule, `match` blocks, `include` (read only for that
+  website), `set` of a website's values (`mode`, `pass-ttl`, `log`, `stats …`),
+  and the words that drop a base rule for this website (`no-limit`, `unblock`,
+  `challenge-exempt`, `replace`). Not inside — they are about the server:
+  `trust`, `set store`, `store-dir`, `secret`, `recheck`, `dns-lookups`,
+  `ipv6-prefix`, `site-from`; and no `site` inside a `site` or a `match`.
+- **Order:** the base first; after the first `site` block only further `site`
+  blocks, `include`, `ids` and `version` — an `include sites/*.rules` with a
+  `site` block in each file is the same thing as one file.
+- **Errors** name their line: a name in two blocks (both lines), a block not
+  closed, a name that is no website's (`a.de`, `shop.a.de`, `*.a.de`,
+  `default`).
+- **Compiled per website:** the base and each website become settings of their
+  own (one PHP file each, kept by OPcache), all checked together when a file
+  changed — a mistake in any block is an error at once, not at that website's
+  first visitor. A request reads the compiled base, looks its website up (two
+  `isset()`, ~1 µs) and builds only that website's settings, without a second
+  check of the files: measured **about 5 µs more** per request than without
+  site blocks (13–20 µs against 9–13 µs for loading the settings), nothing more
+  for a website without a block of its own.
+- **Budgets:** for now a website's own `limit` counts like any budget; counting
+  a website's budgets on that website only, and logs per website, are the next
+  step (0024 phase 2).
+- `bin/request-shield check` reads every block and lists them (`sites:
+  shop.a.de (a.de) · *.b.de · default; picked by server-name`); `trace` takes the
+  website from the address it tests.
+
 ## IDs, namespaces and descriptions
 
 ```text
@@ -251,6 +316,7 @@ keeps both the same.
 | `stats` | `off` (default), `on`, or the parts: `requests`, `crawlers`, `not-found`, `bots` ([statistics](statistics.md)) |
 | `dashboard-path` | where the statistics pages live: `/rs` (default) gives `/rs/dashboard`, `/rs/stats`, `/rs/shield`; something in front is fine (`/admin/rs`) ([statistics](statistics.md#the-statistics-page)) |
 | `stats-hours`, `stats-days`, `stats-months`, `stats-flush` | days the hours are kept (7), days the day totals are kept (400, then summed into months), months kept (0: for good), seconds between writes to disk with APCu (60) |
+| `site-from` | which name picks a site block: `server-name` (the default, the web server's) or `host` (the Host header) — [site blocks](#site-blocks-rules-per-website) |
 | `plugin` (a rule, not `set`) | `plugin Vendor\Package\MyPlugin`: a [plugin](plugins.md), told what was decided and how a request ended; the statistics need none (`set stats on`) |
 | `stats-depth` | folder levels a section's views are counted for exactly, 1 to 4 (2: `/news/`, `/news/2026/`; 3 where a language takes the first level: `/de/news/2026/`) |
 | `crawler-log`, `crawler-log-kinds`, `crawler-log-days`, `crawler-log-query` | one log per known crawler and day: its directory, the kinds logged, days kept (30), whether the query is kept ([statistics](statistics.md#one-log-per-crawler-optional)) |

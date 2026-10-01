@@ -155,6 +155,12 @@ final class Settings
         public string $dashboardPath = '/rs',
         /** @var list<class-string> @readonly the plugins the rules name (the statistics come with "set stats on" on their own) */
         public array $plugins = [],
+        /** @var array<string, string> @readonly website name (a.de, *.b.de, default) => its site block (the block's first name); [] without site blocks */
+        public array $sites = [],
+        /** @readonly the site block these settings are (null: the base, for every website) */
+        public ?string $site = null,
+        /** @readonly which name picks the site: server-name (the web server's, the default) or host (the Host header) */
+        public string $siteFrom = 'server-name',
     ) {
     }
 
@@ -272,6 +278,7 @@ final class Settings
             ...self::knownCrawlers($c, $verify),
             ...self::stats($c),
             ...[self::dashboardPath($c), self::plugins($c)],
+            ...self::sites($c),
         );
     }
 
@@ -418,6 +425,80 @@ final class Settings
             $out[] = $name;
         }
         return array_values(array_unique($out));
+    }
+
+    /**
+     * The site blocks (from a rule file): website name => block, this block,
+     * and which name picks one.
+     *
+     * @param array<mixed> $c
+     * @return array{0: array<string, string>, 1: ?string, 2: string}
+     */
+    private static function sites(array $c): array
+    {
+        $map = [];
+        foreach ((array) ($c['sites'] ?? []) as $name => $id) {
+            if (!is_string($id)) {
+                throw self::wrong('sites', 'website name => site block');
+            }
+            $map[(string) $name] = $id;
+        }
+        $site = $c['site'] ?? null;
+        $from = $c['siteFrom'] ?? 'server-name';
+        if (!in_array($from, ['server-name', 'host'], true)) {
+            throw self::wrong('siteFrom', 'server-name or host');
+        }
+        return [$map, is_string($site) ? $site : null, $from];
+    }
+
+    /**
+     * The site block a request belongs to, or null (the base): its name --
+     * the web server's (SERVER_NAME) or, with site-from host, the Host header
+     * (from a trusted proxy: X-Forwarded-Host) -- in lower case, without its
+     * port and a trailing dot; looked up as itself, as *.<the rest>, then
+     * "default". Two isset(), no expression.
+     *
+     * @param array<mixed> $server $_SERVER
+     */
+    public function siteFor(array $server): ?string
+    {
+        return $this->sites === [] ? null : self::pick($this->sites, $this->siteFrom, $this->trustedProxies, $server);
+    }
+
+    /**
+     * siteFor() on the plain values -- for loadFor(), which picks the website
+     * before it makes any settings.
+     *
+     * @param array<string, string> $sites
+     * @param list<string> $trusted
+     * @param array<mixed> $server
+     */
+    private static function pick(array $sites, string $from, array $trusted, array $server): ?string
+    {
+        $name = $server['SERVER_NAME'] ?? '';
+        if ($from === 'host') {
+            $name = $server['HTTP_HOST'] ?? $name;
+            $forwarded = $server['HTTP_X_FORWARDED_HOST'] ?? null;
+            $peer = $server['REMOTE_ADDR'] ?? '';
+            if (is_string($forwarded) && is_string($peer) && $peer !== '' && $trusted !== [] && IpAddress::inRanges($peer, $trusted)) {
+                $name = trim(explode(',', $forwarded)[0]);
+            }
+        }
+        $name = is_string($name) ? strtolower($name) : '';
+        // Without its port and a trailing dot -- string functions, no expression.
+        $colon = strrpos($name, ':');
+        if ($colon !== false && ctype_digit(substr($name, $colon + 1))) {
+            $name = substr($name, 0, $colon);
+        }
+        $name = rtrim($name, '.');
+        if ($name !== '' && isset($sites[$name])) {
+            return $sites[$name];
+        }
+        $dot = strpos($name, '.');
+        if ($dot !== false && isset($sites['*' . substr($name, $dot)])) {
+            return $sites['*' . substr($name, $dot)];
+        }
+        return $sites['default'] ?? null;
     }
 
     /** @param array<mixed> $c */
@@ -718,7 +799,7 @@ final class Settings
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 26;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins
+    private const FORMAT = 27;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 
@@ -743,14 +824,22 @@ final class Settings
      *     when it changes (bin/request-shield reload touches it).
      * "set recheck 0" checks every source on every call.
      *
+     * With site blocks (rules per website, 0024) the base is checked and, for
+     * a website's block, $site loads its settings: the same sources, so no
+     * check of its own -- one more include from OPcache.
+     *
      * @param list<string> $sources
+     * @param ?string $site a site block (siteFor() names it); null: the base
      * @throws \InvalidArgumentException for a setting of the wrong type (Rules\RuleFileException: with file and line)
      * @throws \RuntimeException when the file cannot be read
      */
-    public static function load(string $file, ?string $cacheDir = null, array $sources = []): self
+    public static function load(string $file, ?string $cacheDir = null, array $sources = [], ?string $site = null): self
     {
         $cacheDir ??= rtrim(sys_get_temp_dir(), '/') . '/request-shield';
         $key = hash(PHP_VERSION_ID >= 80100 ? 'xxh128' : 'md5', $file . "\0" . implode("\0", $sources));
+        if ($site !== null) {
+            return self::loadSite($file, $cacheDir, $sources, $site, $key);
+        }
         $compiled = $cacheDir . '/settings-' . $key . '.php';
         // No is_file() first: a stat costs more than everything else here, and
         // an include of a missing file just returns false.
@@ -759,10 +848,89 @@ final class Settings
         if (is_array($e) && ($e['format'] ?? 0) === self::FORMAT && ($e['file'] ?? '') === $file) {
             /** @var array{seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, settings: array<string, mixed>} $e */
             if (($e['env'] === [] || self::sameEnv($e['env'])) && self::fresh($e['seen'], $e['recheck'], $key)) {
+                self::$checked[$key] = $e['seen'];
                 return self::import($e['settings']);
             }
         }
+        return self::build($file, $cacheDir, $sources, $key);
+    }
 
+    /**
+     * The settings for this request: load(), and with site blocks the
+     * website's (siteFor()) -- picked from the compiled base before any
+     * settings are made, so a website's request builds only its own.
+     *
+     * @param array<mixed> $server $_SERVER
+     * @param list<string> $sources
+     */
+    public static function loadFor(string $file, array $server, ?string $cacheDir = null, array $sources = []): self
+    {
+        $cacheDir ??= rtrim(sys_get_temp_dir(), '/') . '/request-shield';
+        $key = hash(PHP_VERSION_ID >= 80100 ? 'xxh128' : 'md5', $file . "\0" . implode("\0", $sources));
+        $e = @include $cacheDir . '/settings-' . $key . '.php';
+        if (is_array($e) && ($e['format'] ?? 0) === self::FORMAT && ($e['file'] ?? '') === $file) {
+            /** @var array{seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, settings: array{sites: array<string, string>, siteFrom: string, trustedProxies: list<string>}} $e */
+            if (($e['env'] === [] || self::sameEnv($e['env'])) && self::fresh($e['seen'], $e['recheck'], $key)) {
+                self::$checked[$key] = $e['seen'];
+                $raw = $e['settings'];
+                $site = $raw['sites'] === [] ? null : self::pick($raw['sites'], $raw['siteFrom'], $raw['trustedProxies'], $server);
+                return $site === null ? self::import($raw) : self::loadSite($file, $cacheDir, $sources, $site, $key);
+            }
+        }
+        $base = self::build($file, $cacheDir, $sources, $key);
+        $site = $base->siteFor($server);
+        return $site === null ? $base : self::loadSite($file, $cacheDir, $sources, $site, $key);
+    }
+
+    /** @var array<string, array<string, array{0: int, 1: int}>> base key => the sources its last check found unchanged, this request */
+    private static array $checked = [];
+
+    /**
+     * A website's settings (its site block on the base): checked with the
+     * base -- the base just found the same sources unchanged, so the site's
+     * compiled file is taken as it is (one include from OPcache, no stat).
+     *
+     * @param list<string> $sources
+     */
+    private static function loadSite(string $file, string $cacheDir, array $sources, string $site, string $key): self
+    {
+        if (!isset(self::$checked[$key])) {
+            self::load($file, $cacheDir, $sources);         // the base, checked: its sources are the site's
+        }
+        $compiled = $cacheDir . '/settings-' . $key . '-' . hash('crc32b', $site) . '.php';
+        $e = @include $compiled;
+        if (self::isSite($e, $file, $site, $key)) {
+            /** @var array{settings: array<string, mixed>} $e */
+            return self::import($e['settings']);
+        }
+        // Missing, or from other sources: every website built again with the base.
+        $base = self::build($file, $cacheDir, $sources, $key);
+        $e = @include $compiled;
+        if (self::isSite($e, $file, $site, $key)) {
+            /** @var array{settings: array<string, mixed>} $e */
+            return self::import($e['settings']);
+        }
+        return $base;                       // a site block that is gone: the base
+    }
+
+    /** Whether an included file is the compiled settings of this site, from the sources the base just found unchanged. */
+    private static function isSite(mixed $e, string $file, string $site, string $key): bool
+    {
+        return is_array($e) && ($e['format'] ?? 0) === self::FORMAT && ($e['file'] ?? '') === $file && ($e['site'] ?? null) === $site
+            && ($e['seen'] ?? null) === (self::$checked[$key] ?? false);
+    }
+
+    /**
+     * Reads and checks the settings, writes them compiled -- and, for a rule
+     * file with site blocks, each website's settings beside them (all checked
+     * now: a mistake in any block is an error here, not at that website's
+     * first visitor). Every source any of them read is in "seen".
+     *
+     * @param list<string> $sources
+     */
+    private static function build(string $file, string $cacheDir, array $sources, string $key): self
+    {
+        $sites = [];
         if (substr($file, -6) === '.rules') {
             $files = $sources;
             $files[] = $file;
@@ -772,6 +940,15 @@ final class Settings
             $recheck = $read['recheck'];
             $config = $read['config'];
             $env = $read['env'];
+            foreach ((array) ($config['sites'] ?? []) as $id) {
+                if (!is_string($id) || isset($sites[$id])) {
+                    continue;
+                }
+                $one = Rules\RuleFile::read($files, $id);
+                $seen += $one['seen'];
+                $env += $one['env'];
+                $sites[$id] = self::from($one['config']);
+            }
         } else {
             clearstatcache();
             $stat = Rules\RuleFile::stat($file);
@@ -796,11 +973,16 @@ final class Settings
             }
         }
         $settings = self::from($config);
-        self::write($compiled, "<?php\n// Compiled by cjw-network/request-shield from $file; rebuilt when it changes.\nreturn "
+        foreach ($sites as $id => $one) {
+            self::write($cacheDir . '/settings-' . $key . '-' . hash('crc32b', $id) . '.php', "<?php\n// Compiled by cjw-network/request-shield from $file, site $id; rebuilt when it changes.\nreturn "
+                . var_export(['format' => self::FORMAT, 'file' => $file, 'site' => $id, 'seen' => $seen, 'settings' => $one->export()], true) . ";\n");
+        }
+        self::write($cacheDir . '/settings-' . $key . '.php', "<?php\n// Compiled by cjw-network/request-shield from $file; rebuilt when it changes.\nreturn "
             . var_export(['format' => self::FORMAT, 'file' => $file, 'seen' => $seen, 'env' => $env, 'recheck' => $recheck, 'settings' => $settings->export()], true) . ";\n");
         if ($recheck > 0 && function_exists('apcu_enabled') && apcu_enabled()) {
             apcu_store('rshield:fresh:' . $key, true, $recheck);
         }
+        self::$checked[$key] = $seen;
         return $settings;
     }
 

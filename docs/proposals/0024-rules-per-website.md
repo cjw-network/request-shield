@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Phase 1 implemented** (2026-10-01): site blocks, compiled per website, `site-from`; phases 2–4 accepted, to come |
 | Proposed | 2026-10-01 |
 | Affects | rule files (a `site` block; [0003](0003-human-readable-rule-files.md), match blocks [0008](0008-match-blocks.md)), compiled settings ([ADR 0005](../adr/0005-settings-compiled-for-opcache.md)), budgets, the rules pages and the rule tester, statistics per website ([0023](0023-plugins-hosts-customers.md)), rules from a CMS ([0021](0021-rules-from-the-cms.md)) |
 
@@ -29,7 +29,7 @@ lenient website's rules.
 
 ## In one picture
 
-![One rule file for the server: the base for every website (scanners, known crawlers, a pace for the whole server); site blocks for shop.a.de and a.de (an admin area for the office, strict parameters, rules from the CMS), *.b.de (its own include), api.c.de (no browser check, its own limit), and default for unknown names (strict). Read once, compiled per website; a request is looked up by its website — the exact name, then *.domain, then default — in about 0.3 µs, and only that website's settings are loaded. Which name decides: the server block's name (nginx), not blindly the Host header. Inside a website nothing changes.](0024-rules-per-website.svg)
+![One rule file for the server: the base for every website (scanners, known crawlers, a pace for the whole server); site blocks for shop.a.de and a.de (an admin area for the office, strict parameters, rules from the CMS), *.b.de (its own include), api.c.de (no browser check, its own limit), and default for unknown names (strict). Read once, compiled per website; a request is looked up by its website — the exact name, then *.domain, then default — in about 1 µs, and only that website's settings are loaded (about 5 µs per request in all). Which name decides: the server block's name (nginx), not blindly the Host header. Inside a website nothing changes.](0024-rules-per-website.svg)
 
 ## The syntax
 
@@ -90,9 +90,13 @@ site default {                                          # a name no block lists
 3. Its compiled settings are loaded.
 
 The lookup is a small PHP array compiled with the settings (names → file): two
-`isset()`, no regular expression — **about 0.3 µs**. Each website's settings are
-a PHP file of their own that OPcache keeps; a request loads exactly one, as
-today. 50 websites are 50 files on disk, not 50 in every request.
+`isset()`, no regular expression — about 1 µs with the call. Each website's
+settings are a PHP file of their own that OPcache keeps; a request builds
+exactly one, as today. 50 websites are 50 files on disk, not 50 in every request.
+*Measured in phase 1:* about **5 µs more** per request on a website with a block
+of its own (the second compiled file and its settings: 13–20 µs against 9–13 µs);
+smaller per-website files (the crawler lists kept once) could take most of it
+back later.
 
 ## Which name decides
 
@@ -147,7 +151,7 @@ set site-from host            # the Host header (behind a trusted proxy: X-Forwa
 - Reading: the files once, as today; one compiled file per website plus the
   name map. 50 websites with a few rules each: about a second of work after an
   edit, once.
-- Per request: the name lookup (~0.3 µs) instead of nothing; the settings load
+- Per request: the name lookup (~1 µs) and a second compiled file — measured about 5 µs in all; the settings load
   as today (one OPcache file). A website's own budgets: counted as any budget.
 
 ## Compatibility
@@ -166,7 +170,24 @@ names the `site` line).
 4. With 0023 phase 2: site names as statistics hosts; with 0021: `include-app`
    per website.
 
-## Open questions
+## Decisions (2026-10-01)
+
+1. **`site-from server-name` is the default;** `host` for setups that route by it.
+2. **Wildcards: one label** (`*.b.de` = `news.b.de`).
+3. **A base budget may be dropped per website** (`no-limit` inside a block).
+4. **One file or a directory** — `include sites/*.rules` with a `site` block in
+   each file.
+5. **No `default` block: the base alone;** a `host` rule refuses unknown names.
+
+Phase 1 as built: the reader skips other websites' blocks and reads its own in
+place; the base must come first (after the first `site` block only `site`,
+`include`, `ids`, `version`); `Settings::load()` compiles the base and every
+website together (every file any of them reads is in the base's check), and a
+website's settings are loaded with the base's check — one more include from
+OPcache. `bin/request-shield check` reads every block and lists them; `trace`
+takes the website from its address. Details: [rule files](../features/rule-files.md#site-blocks-rules-per-website).
+
+## Open questions (answered above)
 
 1. **`site-from server-name` as the default?** *Recommendation: yes — safe
    whatever the visitor sends; `host` for setups that route by it.*
