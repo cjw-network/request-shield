@@ -1,0 +1,81 @@
+<svg class="rsd" role="img" viewBox="0 0 900 615" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>Protected areas. A request for a path a "protect" rule covers: an address the rule lets in (the office's range) goes through without a password; a valid area cookie goes through; anything else gets the shield's own small form instead of the page. The form takes a password (written in the rule file only as a hash) or a code. A code is issued by the application, the command line or the dashboard: it is valid for a time, for a number of uses, and has a note; the store keeps only its hash. A right password or code sets a signed cookie for that area for some hours and sends the visitor on to the page; a code in a link is taken out of the address before anything is logged. Wrong attempts count against a budget of their own: past it, a pause and the browser check, and, with bans, a ban. Other parts of the website are not touched: restrict still keeps areas for certain addresses only.</title>
+<style>.rsd{font:13px/1.25 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .c{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}.rsd .base{fill:#eef3fd;stroke:#2f62c9}.rsd .site{fill:#fdf3dc;stroke:#b07400}.rsd .ok{fill:#e6f4ea;stroke:#1e7b43}.rsd .no{fill:#fbe9e5;stroke:#a3361f}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .arrow{stroke:#a0a8b3}.rsd .base{fill:#1b2740;stroke:#7aa2ff}.rsd .site{fill:#3a2f15;stroke:#e0a43c}.rsd .ok{fill:#17301f;stroke:#4cc38a}.rsd .no{fill:#3d1f19;stroke:#ff7a66}}</style>
+<defs><marker id="a27" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>
+
+<!-- The rules -->
+<text class="t" x="16" y="26" font-weight="700">The rule file</text>
+<rect class="base" x="16" y="38" width="500" height="112" rx="10" stroke-width="1.5"/>
+<g class="c t">
+<text x="30" y="60">[A-INTERN]  protect /intern/** with password … or 192.0.2.0/24</text>
+<text x="30" y="80">[A-PREVIEW] protect /preview/** with password $2y$12$… for 8h</text>
+<text x="30" y="100">[A-FILES]   protect /download/** with code for 1h</text>
+<text x="30" y="120">[A-ADMIN]   restrict /admin/** to 192.0.2.0/24   # exists</text>
+</g>
+<text class="m" x="30" y="140" font-size="11.5">only hashes in the file: whoever reads the rules cannot get in</text>
+
+<!-- The way of a request -->
+<text class="t" x="16" y="182" font-weight="700">A request for /download/report.pdf</text>
+<rect class="box" x="16" y="194" width="220" height="44" rx="8"/>
+<text class="t" x="28" y="214">protected path?</text><text class="m" x="28" y="230" font-size="11.5">no: as always (one path match)</text>
+<path class="arrow" d="M236 216 H262" marker-end="url(#a27)"/>
+<rect class="ok" x="264" y="194" width="252" height="44" rx="8" stroke-width="1.3"/>
+<text class="t" x="276" y="214">an address the rule lets in?</text><text class="m" x="276" y="230" font-size="11.5">yes: through, no password (the office)</text>
+
+<path class="arrow" d="M126 238 V262" marker-end="url(#a27)"/>
+<rect class="ok" x="16" y="264" width="220" height="44" rx="8" stroke-width="1.3"/>
+<text class="t" x="28" y="284">area cookie valid?</text><text class="m" x="28" y="300" font-size="11.5">HMAC, area, until: yes → through</text>
+<path class="arrow" d="M126 308 V332" marker-end="url(#a27)"/>
+<rect class="site" x="16" y="334" width="500" height="96" rx="8" stroke-width="1.3"/>
+<text class="t" x="28" y="356" font-weight="700">The shield's own small form (instead of the page)</text>
+<text class="t" x="28" y="378">"This area is protected" — password or code — send</text>
+<text class="m" x="28" y="398" font-size="11.5">or a link with ?code=…: checked, then taken out of the address before it is logged</text>
+<text class="m" x="28" y="416" font-size="11.5">HTTPS only, POST from the same site, nothing of the site's page shown</text>
+
+<path class="arrow" d="M150 430 V460" marker-end="url(#a27)"/>
+<rect class="ok" x="16" y="462" width="240" height="64" rx="8" stroke-width="1.3"/>
+<text class="t" x="28" y="484" font-weight="700">right</text>
+<text class="m" x="28" y="502" font-size="11.5">a code's use counted (or ended)</text>
+<text class="m" x="28" y="518" font-size="11.5">cookie for the area, on to the page</text>
+<path class="arrow" d="M380 430 V460" marker-end="url(#a27)"/>
+<rect class="no" x="276" y="462" width="240" height="64" rx="8" stroke-width="1.3"/>
+<text class="t" x="288" y="484" font-weight="700">wrong</text>
+<text class="m" x="288" y="502" font-size="11.5">counted: 10 a minute, then a pause</text>
+<text class="m" x="288" y="518" font-size="11.5">the browser check; with bans: a ban</text>
+
+<!-- Codes -->
+<text class="t" x="552" y="26" font-weight="700">Codes: from the application</text>
+<rect class="box" x="552" y="38" width="332" height="150" rx="10"/>
+<g class="c t">
+<text x="566" y="62">$code = Access::issue($settings,</text>
+<text x="566" y="80">  'download', for: 3600, uses: 1,</text>
+<text x="566" y="98">  note: 'order 4711');</text>
+<text x="566" y="122">request-shield code site.rules download</text>
+<text x="566" y="140">  --for=1d --uses=5 --note="press"</text>
+</g>
+<text class="m" x="566" y="166" font-size="11.5">or the dashboard's lists page: a tab "Codes"</text>
+<text class="m" x="566" y="182" font-size="11.5">(issue, see the active ones, revoke)</text>
+
+<path class="arrow" d="M718 188 V214" marker-end="url(#a27)"/>
+<rect class="base" x="552" y="216" width="332" height="96" rx="10" stroke-width="1.5"/>
+<text class="t" x="566" y="238" font-weight="700">The store keeps</text>
+<text class="t" x="566" y="258">the code's hash · the area · until when</text>
+<text class="t" x="566" y="276">uses left · the note ("why, not who")</text>
+<text class="m" x="566" y="298" font-size="11.5">never the code itself; ends by itself; kept in a file</text>
+<path class="arrow" d="M552 300 C520 330 520 360 518 368" marker-end="url(#a27)"/>
+
+<rect class="box" x="552" y="334" width="332" height="96" rx="10"/>
+<text class="t" x="566" y="356" font-weight="700">Passwords</text>
+<text class="m" x="566" y="376" font-size="11.5">chosen by people: password_hash() (bcrypt/argon2)</text>
+<text class="m" x="566" y="394" font-size="11.5">bin/request-shield password → the line to paste</text>
+<text class="m" x="566" y="412" font-size="11.5">changed: every cookie of the area ends</text>
+
+<rect class="box" x="552" y="462" width="332" height="64" rx="10"/>
+<text class="t" x="566" y="484" font-weight="700">Parts of a website by address</text>
+<text class="m" x="566" y="502" font-size="11.5">exists: restrict &lt;paths&gt; to &lt;ranges&gt; (403)</text>
+<text class="m" x="566" y="518" font-size="11.5">new: … or a password, … at times (Mon–Fri 8–18)</text>
+
+<text class="m" x="16" y="560" font-size="12">Like .htaccess Basic Auth, but: hashes only, codes that end or are used up, issued by the application,</text>
+<text class="m" x="16" y="578" font-size="12">a form instead of the browser's dialog, brute force counted and banned, every refusal in the live view.</text>
+<text class="m" x="16" y="604" font-size="12">Not a replacement for the application's own users and roles: for areas without a login of their own.</text>
+</svg>
