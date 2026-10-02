@@ -8,8 +8,7 @@ A proposal for an Exponential site, ready to adapt:
   siteaccess `/admin`**;
 - `exponential-admin-host.rules`: **the main file when the admin has a host of
   its own** (`admin.example.org`);
-- `config.php`: the integration (one `Shield::protectFile()`, and the search
-  budget).
+- `config.php`: the integration (one `Shield::protectFile()`).
 
 ## The click demo
 
@@ -25,8 +24,11 @@ repository's root:
 php -S 127.0.0.1:8095 examples/exponential/router.php
 ```
 
-Open http://127.0.0.1:8095/. Under a web server without rewrite rules:
-`…/examples/exponential/index.php/`. Counters and the log go to
+Open http://127.0.0.1:8095/. Under a web server: `…/examples/exponential/`
+with rewrite rules that send every path to its `index.php` (nginx: the
+location block in [the other demo's README](../demo/README.md#in-a-subdirectory-of-a-web-server),
+with this directory), or `…/examples/exponential/index.php/` without them.
+Every link is relative to the demo's own address, so it works wherever it lies. Counters and the log go to
 `/tmp/request-shield-exponential-demo/` (`EXP_DEMO_VAR` puts them elsewhere).
 `tests/ExponentialDemoTest.php` fetches every row and checks it answers what it says.
 

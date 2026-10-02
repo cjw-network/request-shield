@@ -33,6 +33,8 @@ final class BudgetRule implements Rule
         private int $ipv6Prefix = 64,
         private bool $earnBack = false,
         private ?string $counter = null,
+        /** @var list<string> the area: only requests there count; [] everywhere */
+        private array $paths = [],
     ) {
     }
 
@@ -41,6 +43,19 @@ final class BudgetRule implements Rule
     {
         if ($this->limit <= 0 || ($this->exempt !== [] && IpAddress::inRanges($request->clientIp, $this->exempt))) {
             return null;
+        }
+        if ($this->paths !== []) {
+            // An area's budget (limit inside a match block): requests elsewhere do not count.
+            $in = false;
+            foreach ($this->paths as $p) {
+                if (preg_match($p, $request->matchPath()) === 1) {
+                    $in = true;
+                    break;
+                }
+            }
+            if (!$in) {
+                return null;
+            }
         }
         $key = ($this->counter ?? $this->name) . ':' . IpAddress::bucket($request->clientIp, $this->ipv6Prefix);
         $count = $this->store->hit($key, $this->window, $now);

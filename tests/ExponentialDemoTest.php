@@ -31,7 +31,8 @@ function withExponentialDemo(callable $body, string $prefix = ''): void
                 $opts['header'] = "Content-Type: application/x-www-form-urlencoded\r\n";
                 $opts['content'] = 'demo=1';
             }
-            $target = strncmp($uri, $prefix, strlen($prefix)) === 0 ? $uri : $prefix . $uri;   // the page's own links carry the prefix
+            // The page's links are relative to its <base href> (the demo's own address).
+            $target = $uri[0] === '/' ? $prefix . $uri : $prefix . '/' . ($uri === './' ? '' : $uri);
             $body = @file_get_contents("http://127.0.0.1:$port" . str_replace([' ', "'", '<', '>'], ['%20', '%27', '%3C', '%3E'], $target),
                 false, stream_context_create(['http' => $opts]));
             $status = 0;
@@ -89,7 +90,11 @@ return [
             $search = $get('GET', '/content/search?SearchText=yoga&SearchDate=2');
             truthy(strpos($search['body'], '<option value="2" selected>the last week</option>') !== false && strpos($search['body'], 'This search was counted') !== false, 'the search: its time filter, counted');
             same(405, $get('POST', '/kontakt')['status'], 'a POST to the contact page itself: no form lives there');
-            truthy(strpos($get('GET', '/kontakt')['body'], 'action="/content/action"') !== false, 'the contact form posts to /content/action, as Exponential\'s');
+            truthy(strpos($get('GET', '/kontakt')['body'], 'action="content/action"') !== false, 'the contact form posts to content/action, as Exponential\'s (relative to the demo)');
+            truthy(strpos($get('GET', '/')['body'], '<a href="content/view/full/2">') !== false, 'the links are relative');
+            $article = $get('GET', '/news/x?utm_source=nl')['body'];
+            truthy(strpos($article, '<summary>Request headers</summary><pre>GET /news/x?utm_source=nl') !== false
+                && strpos($article, 'X-Request-Shield: allow-uncached query parameter; rule=EXP-CACHE-Q') !== false, 'every page shows the request\'s headers and the answer\'s');
         });
     },
 ];

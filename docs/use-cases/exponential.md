@@ -17,7 +17,7 @@ The sections below give the reason for each.
 | [`exponential.rules`](../../examples/exponential/exponential.rules) | the frontend: system URLs, internal files, forms, search, pace. Included by one of the two below, not loaded on its own |
 | [`exponential-admin-uri.rules`](../../examples/exponential/exponential-admin-uri.rules) | **the main file when the admin is the siteaccess `/admin`** (URI matching: `www.example.org/admin/…`) |
 | [`exponential-admin-host.rules`](../../examples/exponential/exponential-admin-host.rules) | **the main file when the admin has a host of its own** (`admin.example.org`) |
-| [`config.php`](../../examples/exponential/config.php) | the integration: `Shield::protectFile()`, and the search budget |
+| [`config.php`](../../examples/exponential/config.php) | the integration: one `Shield::protectFile()` |
 
 **To click through:** `php -S 127.0.0.1:8095 examples/exponential/router.php`
 starts a pretend Exponential site behind these rules (the `/admin` variant,
@@ -89,7 +89,7 @@ forms sent from other sites. The shield does not replace them. Checking the
 | Rule | What | Why |
 |---|---|---|
 | `EXP-SEARCH-Q` | the fields of `content/search` and `content/advancedsearch` with their types: `SearchText` text, `SubTreeArray` number, **`SearchDate` −1 or 1–5** (all, a day, a week, a month, three months, a year), `SearchTimestamp` number, `SearchPageLimit` number … | The search is the page bots probe most. With the types, `SearchDate=9` or `SubTreeArray=x` is refused (404, once `query strict` is on), and only `SearchText` goes to the attack patterns. The time filter can only take values the search knows. |
-| `EXP-SEARCHES` | 10 searches a minute per visitor, then the browser check; solved, the counter starts again | A search is the most expensive page: no cache, a full-text query against the database. A person rarely searches ten times a minute; a bot that does pays with a check. The rule file cannot yet bind a budget to an address ([0008](../proposals/0008-match-blocks.md), second step), so `config.php` counts it: one `consume('searches')`, only for a search with a text. |
+| `EXP-SEARCHES` | 10 searches a minute per visitor (searching, paging through results), then the browser check; solved, the counter starts again | A search is the most expensive page: no cache, a full-text query against the database. A person rarely searches ten times a minute; a bot that does pays with a check. Written inside the search's `match` block, the budget counts only requests to the search ([an area's budget](../features/budgets.md#a-budget-for-one-area)); reading pages does not use it up. |
 | `EXP-CACHE-Q` | a cache keeps addresses without a query only | Search results and links with tracking tags (`?utm_source=…`) are answered but marked uncacheable. View parameters are part of the path, so lists stay cacheable. |
 | `EXP-SEARCH-CHECK` (commented out) | every searcher checked once an hour | For an attack from thousands of addresses, which no per-visitor budget catches. Take the `#` away while it lasts. |
 
@@ -147,9 +147,6 @@ A hit in Exponential's HTTP cache takes 0.4–1 ms; there the rules add about 3�
 
 - **Only what reaches PHP:** images, CSS, JavaScript and `var/storage` are
   served by the web server, and the shield never sees them.
-- **Budgets per address** (a search budget written in the rule file) are not
-  yet possible, so `config.php` counts the searches
-  ([0008](../proposals/0008-match-blocks.md), second step).
 - **Wrong passwords** are not counted: the shield sees the login form being
   sent, not whether the password was right. The check before the login makes
   guessing expensive. Locking an account is Exponential's job.

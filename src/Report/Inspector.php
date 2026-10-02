@@ -181,6 +181,11 @@ final class Inspector
             if ($b->onDemand) {
                 continue;
             }
+            if (!$b->covers($request->matchPath())) {
+                $step("Pace: \"$b->name\"", null, $w('not counted at this address (only in its area: %s)', implode(', ', array_map($pattern, $b->paths))),
+                    static fn (): string => '', $w('Pace: "%s"', $b->name));
+                continue;
+            }
             $exempt = IpAddress::inRanges($request->clientIp, $s->exemptIps);
             $count = $exempt ? 0 : (int) round($this->store->hit($b->counter() . ':' . IpAddress::bucket($request->clientIp, $s->ipv6Prefix), $b->window, $now));
             $pace = $exempt ? $w('%s is never counted', $request->clientIp) : $w('%s of %s per %s', (string) $count, (string) $b->limit, Describe::duration($b->window, $l))
@@ -367,7 +372,7 @@ final class Inspector
         'checked like any visitor (crawler %s check)' => 'geprüft wie jeder Besucher (crawler %s check)', 'refused' => 'abgewiesen',
         'refused (403): the site does not want this crawler' => 'abgewiesen (403): die Website will diesen Crawler nicht', 'refused: %s (query strict)' => 'abgewiesen: %s (query strict)',
         'no attack patterns configured' => 'keine Angriffsmuster eingestellt', 'yes: a known address with known parameters' => 'ja: eine bekannte Adresse mit bekannten Parametern',
-        'answered, but not kept: %s' => 'beantwortet, aber nicht behalten: %s', '%s is never counted' => '%s wird nie gezählt', '%s of %s per %s' => '%s von %s pro %s',
+        'answered, but not kept: %s' => 'beantwortet, aber nicht behalten: %s', '%s is never counted' => '%s wird nie gezählt', 'not counted at this address (only in its area: %s)' => 'an dieser Adresse nicht gezählt (nur in seinem Bereich: %s)', '%s of %s per %s' => '%s von %s pro %s',
         ', browser check from %s' => ', Browser-Check ab %s', ' — too many: wait' => ' — zu viele: warten', ' — too many: the check, then the counter starts again' => ' — zu viele: der Check, dann beginnt der Zähler neu',
         ' — past the check' => ' — über der Check-Schwelle', 'not asked for at this address' => 'an dieser Adresse nicht verlangt', ' (and never at %s)' => ' (und nie unter %s)',
         'every visitor is checked here, once per pass (valid for %s)' => 'hier wird jeder Besucher geprüft, einmal pro Pass (gültig %s)', '; here only a pass from the last %s' => '; hier nur ein Pass aus den letzten %s',

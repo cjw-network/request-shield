@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **A budget for one area** (proposal 0008, second step): `limit` inside a
+  `match` block, or `limit … at <paths>`, counts only the requests to that
+  area (a search: 10 a minute, while reading pages never uses it up); also
+  on demand, in site blocks, watched with `monitor`. An area's budget needs a
+  name of its own, so the site-wide pace is never replaced by accident. The
+  trace says "not counted at this address" elsewhere
+  ([docs](docs/features/budgets.md#a-budget-for-one-area)).
 - **Rules for an Exponential site** (`examples/exponential/`): the frontend
   (`/content/view/…` and admin modules refused, internal files, downloads of
   uploaded archives, view parameters as numbers, a POST only where Exponential
   takes forms, the browser check before login and contact forms, the search's
-  fields typed with its time filter and a search budget, pace and a watched
+  fields typed with its time filter and its own budget (a `limit` inside its
+  `match` block), pace and a watched
   ban), and a main file for each kind of admin: the siteaccess `/admin`, or a
   host of its own. In monitor mode as shipped; checked against a crawl of a
   real installation; every rule explained in

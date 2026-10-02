@@ -75,6 +75,32 @@ Proposal: [0001](../proposals/0001-earn-back-a-spent-budget.md).
 'storeDir' => '/home/you/request-shield/var',
 ```
 
+## A budget for one area
+
+A budget counts every request by default (or, `on-demand`, what the site counts
+itself). Written inside a `match` block, or with `at <paths>`, it counts only
+the requests to that area:
+
+```text
+match /search/** {
+  [SITE-SEARCH] limit searches 10/min on-exceeded challenge   # the search: 10 a minute, then the check
+}
+[SITE-API]      limit api 120/min at /api/** /v2/**            # the same, written on one line
+```
+
+- Requests elsewhere never touch the counter; a client paging through search
+  results is counted, one reading the news is not.
+- `on-demand` works too: `consume('carts')` from the site counts only for a
+  request inside the area.
+- In a `site` block: that website, that area. `monitor limit …` inside a block
+  is watched as any other.
+- **One name, one budget:** an area's budget needs a name of its own. Calling
+  it `requests` (the default pace) or reusing a name that counts everywhere is
+  an error naming the line, so the site-wide pace is never replaced by
+  accident.
+- PHP settings: `'budgets' => ['searches' => ['limit' => 10, 'window' => 60, 'paths' => ['#^/search(?:/.*)?$#i']]]`.
+- Cost: one pattern match per request for each area's budget (about 0.1 µs).
+
 ## Cost
 
 About 1 µs (APCu, memory); the file store about 30 µs (it touches the disk).

@@ -14,13 +14,8 @@ use CjwNetwork\RequestShield\Shield;
 
 Shield::protectFile(__DIR__ . '/settings/request-shield/exponential-admin-uri.rules');
 
-// A search is counted against its own budget (EXP-SEARCHES: 10 a minute per
-// visitor, then the browser check). Only a search with a text: the empty
-// search form is a page like any other.
-if (isset($_GET['SearchText']) && $_GET['SearchText'] !== ''
-    && preg_match('#/content/(advanced)?search(/|$)#i', (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH))) {
-    Shield::active()?->consume('searches', answer: true);
-}
+// That is all: the rules count the searches themselves (EXP-SEARCHES, a
+// budget inside the search's match block).
 
 // Then whatever else config.php does, e.g. the HTTP cache's early exit:
 // require __DIR__ . '/kernel/private/classes/httpcache/ezphttpcacheearlyexit.php';

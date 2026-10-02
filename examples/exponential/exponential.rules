@@ -88,14 +88,14 @@ include     @attacks                                           # attack patterns
 # the time filter included (SearchDate: -1 all, 1 day, 2 week, 3 month,
 # 4 three months, 5 year). Only SearchText is free text and goes to the attack
 # patterns; a value not of its type is refused once "query strict" is on.
+# A search is the most expensive page there is: no cache, a full-text query.
+# Ten a minute per visitor (searching, paging through results), then the
+# check -- solved, the counter starts again. Counted here only: a budget
+# inside a match block counts the requests to its area.
 match regex (?i)/content/(advanced)?search(/|$) {
+  [EXP-SEARCHES] limit searches 10/min on-exceeded challenge                      # searches: 10 a minute per visitor, then the browser check
   [EXP-SEARCH-Q] query SearchText text   PhraseSearchText text   SearchButton any   SubTreeArray int   SearchContentClassID int   SearchContentClassAttributeID int   SearchSectionID int   SearchDate /-1|[1-5]/   SearchTimestamp int   SearchPageLimit int   BrowsePageLimit int   Mode word   # the search form's fields, the time filter included
 }
-
-# A search is the most expensive page there is: no cache, a full-text query.
-# Ten a minute per visitor, then the check -- solved, the counter starts again.
-# config.php counts it (one line, see config.php in this directory).
-[EXP-SEARCHES]  limit searches 10/min on-demand on-exceeded challenge             # searches: 10 a minute per visitor, then the browser check
 
 # Search results are never kept by a cache: only addresses without a query
 # are (view parameters are part of the path).

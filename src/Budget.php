@@ -13,6 +13,7 @@ namespace CjwNetwork\RequestShield;
 /** One budget: requests (or events) per client and window. */
 final class Budget
 {
+    /** @param list<string> $paths */
     private function __construct(
         /** @readonly */
         public string $name,
@@ -28,7 +29,25 @@ final class Budget
         public bool $earnBack = false,
         /** @readonly the site block it is written in (rules per website): counted on that website only; null: across all */
         public ?string $site = null,
+        /**
+         * The area (limit inside a match block, or "at <paths>"): only requests there count; [] everywhere.
+         *
+         * @readonly
+         * @var list<string>
+         */
+        public array $paths = [],
     ) {
+    }
+
+    /** Whether a request to this path counts: everywhere, or inside the budget's area. */
+    public function covers(string $matchPath): bool
+    {
+        foreach ($this->paths as $p) {
+            if (preg_match($p, $matchPath) === 1) {
+                return true;
+            }
+        }
+        return $this->paths === [];
     }
 
     /** The counter's name: the budget's -- for one written in a site block, "<site>@<name>", so equal names in two blocks never share a counter. */
@@ -60,7 +79,28 @@ final class Budget
             Settings::bool($b, 'onDemand', "budgets.$name.onDemand"),
             self::onExceeded($b, $name),
             is_string($b['site'] ?? null) ? $b['site'] : null,
+            self::paths($b, $name),
         );
+    }
+
+    /**
+     * @param array<mixed> $b
+     * @return list<string>
+     */
+    private static function paths(array $b, string $name): array
+    {
+        $paths = $b['paths'] ?? [];
+        if (!is_array($paths)) {
+            throw Settings::wrong("budgets.$name.paths", 'a list of regular expressions');
+        }
+        $out = [];
+        foreach ($paths as $p) {
+            if (!is_string($p) || @preg_match($p, '') === false) {
+                throw Settings::wrong("budgets.$name.paths", 'a list of regular expressions (#^/search#)');
+            }
+            $out[] = $p;
+        }
+        return $out;
     }
 
     /** @param array<mixed> $b */

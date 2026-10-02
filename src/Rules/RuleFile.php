@@ -1310,8 +1310,12 @@ final class RuleFile
                 }
                 return array_merge($args, ['at'], $path);
             case 'limit':
+                if (in_array('at', $args, true)) {
+                    throw new RuleFileException("$at: inside match: limit <name> <n>/<unit> ... -- the block is where");
+                }
+                return array_merge($args, ['at'], $path);   // counted in the area only
             case 'cache-query':
-                throw new RuleFileException("$at: $keyword per area is not there yet (proposal 0008, a second step) -- put it outside the block");
+                throw new RuleFileException("$at: cache-query per area is not there yet (proposal 0008) -- put it outside the block");
         }
         throw new RuleFileException("$at: $keyword does not go inside a match block -- it is not about paths; put it outside");
     }
@@ -1784,7 +1788,19 @@ final class RuleFile
     /** @param list<string> $args  <name> <n>/<sec|min|hour|day> [challenge-at <n>] [on-demand] */
     private function limit(array $args, string $at): void
     {
-        $usage = 'limit <name> <n>/<sec|min|hour|day> [challenge-at <n>] [on-demand] [on-exceeded challenge|throttle]';
+        $usage = 'limit <name> <n>/<sec|min|hour|day> [challenge-at <n>] [on-demand] [on-exceeded challenge|throttle] [at <paths>]';
+        // at <paths>: an area's budget -- only requests there count (also what a match block writes).
+        $paths = [];
+        $atPos = array_search('at', $args, true);
+        if ($atPos !== false) {
+            if ($atPos === count($args) - 1) {
+                throw new RuleFileException("$at: $usage");
+            }
+            foreach ($this->compile(array_slice($args, (int) $atPos + 1), $at, false) as $pattern => $origin) {
+                $paths[] = $pattern . 'i';
+            }
+            $args = array_slice($args, 0, (int) $atPos);
+        }
         $name = array_shift($args);
         $rate = array_shift($args);
         if ($name === null || $rate === null || !preg_match('/^[A-Za-z0-9_-]+$/', $name)) {
@@ -1811,6 +1827,23 @@ final class RuleFile
         if ($this->siteOpen !== null) {
             // Written in a site block: counted on that website only (base budgets count across all).
             $budget['site'] = $this->siteOpen['id'];
+        }
+        // One name, one budget: an area's must not quietly replace one that counts
+        // everywhere (the default "requests" pace) -- nor the other way round.
+        $before = $this->get("budgets.$name");
+        $hadArea = is_array($before) && ($before['paths'] ?? []) !== [];
+        $limit = is_array($before) ? ($before['limit'] ?? 0) : 0;
+        $defaults = Config::defaults()['budgets'] ?? [];
+        $exists = (is_int($limit) && $limit > 0) || (is_array($defaults) && isset($defaults[$name]));
+        if ($paths !== [] && $exists) {
+            throw new RuleFileException("$at: a budget \"$name\" counts already" . (isset($this->origins['budgets'][$name]) ? ' (' . $this->origins['budgets'][$name] . ')' : ' (the default pace)')
+                . " -- an area's budget needs a name of its own (limit $name-area …)");
+        }
+        if ($paths === [] && $hadArea) {
+            throw new RuleFileException("$at: \"$name\" is an area's budget (" . ($this->origins['budgets'][$name] ?? '?') . ') -- give this one another name');
+        }
+        if ($paths !== []) {
+            $budget['paths'] = $paths;
         }
         $this->put("budgets.$name", $budget);
         $this->origins['budgets'][$name] = $this->rid;

@@ -58,7 +58,7 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `query <name> <type> … [at <paths>]` / `query strict` | `queryParams`, `queryStrict` | the query parameters the site takes and their types (`int`, `number`, `word`, `id`, `list`, `text`, `any`, `/regex/`); only `text` and the unknown ones go to the attack patterns; `strict`: anything else 404 ([known parameters](known-parameters.md)) |
 | `cache-path <paths>` | `cacheable.paths` | what a cache may keep; `any`: every path (default) |
 | `cache-query <names>` | `cacheable.query` | parameters a cached URL may have; `any` (default), `none` |
-| `limit <name> <n>/<unit> [challenge-at <n>] [on-demand] [on-exceeded challenge]` | `budgets` | units `s`, `sec`, `min`, `hour`, `day`, also `20/10s`; `on-exceeded challenge`: past the limit the check that frees the counter instead of a pause ([budgets](budgets.md#past-the-limit-a-pause-or-earn-it-back)) |
+| `limit <name> <n>/<unit> [challenge-at <n>] [on-demand] [on-exceeded challenge] [at <paths>]` | `budgets` | units `s`, `sec`, `min`, `hour`, `day`, also `20/10s`; `on-exceeded challenge`: past the limit the check that frees the counter instead of a pause ([budgets](budgets.md#past-the-limit-a-pause-or-earn-it-back)); `at <paths>` (or inside a `match` block): only requests there count ([an area's budget](budgets.md#a-budget-for-one-area)) |
 | `api-path <paths>` | `challenge.apiPaths` | the site's API: a check there is JSON with a header, not a page |
 | `no-limit <name>` | `budgets` | switch a budget off, the default one too |
 | `challenge <paths> [max-age <duration>]` | `challenge.alwaysPaths`, `challenge.alwaysMaxAge` | always check the browser there; `max-age 5m`: a pass from the last five minutes there ([modes](modes.md)) |
@@ -142,15 +142,16 @@ match regex ^/api/ {
 - Inside a block, a rule that takes paths **leaves them out** — they are the
   block's: `restrict to …`, `allow <METHODS>`, `challenge`, `challenge-exempt`,
   `cache-path`, `block` (the whole area), `unblock [<ID>] [for <addresses>]`
-  (an exception there), and `replace [ID] <one of these>`.
+  (an exception there), `query <name> <type> …`, `limit <name> <rate> …`
+  (a budget that counts this area only, [budgets](budgets.md#a-budget-for-one-area)),
+  and `replace [ID] <one of these>`.
 - A block is exactly the rules written out with the path — the same settings,
   the same cost per request; the rules page shows each rule's area.
 - An inner block adds its path to the outer one; `**` only at the end of the
   innermost; a block by `regex` holds no blocks.
 - Rules without paths (`host`, `trust`, `method`, `exempt`, `block query …`)
-  and `set`, `include`, `ids`, `version` do not go inside; `limit` and
-  `cache-query` per area are planned
-  ([proposal 0008](../proposals/0008-match-blocks.md), second step).
+  and `set`, `include`, `ids`, `version` do not go inside; `cache-query` per
+  area is planned ([proposal 0008](../proposals/0008-match-blocks.md)).
 - IDs go on the rules inside, not on the block. `}` stands on a line of its
   own; a block not closed by the end of its file is an error naming the line
   of its `match`.

@@ -16,17 +16,19 @@
 
 declare(strict_types=1);
 
-// Where the demo lives: at the root (router.php) or in a subdirectory
-// (.../index.php/content/view/full/2). $front is what every link starts with,
-// $path the address as the Exponential site would have it.
+// Where the demo lives: at the root (router.php), or in a subdirectory of a
+// web server -- with rewrite rules (.../exponential/content/view/full/2) or
+// without them (.../exponential/index.php/content/view/full/2). $front is the
+// demo's own address, $path the address as the Exponential site would have it.
+// Every link is relative to $front (<base href>), so it works wherever it lies.
 $uri = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
 $script = (string) ($_SERVER['SCRIPT_NAME'] ?? '');
 $front = '';
-if (substr($script, -10) === '/index.php' && strncmp($uri, $script, strlen($script)) === 0) {
-    $front = $script;
+if (substr($script, -10) === '/index.php') {
+    $front = strncmp($uri, $script, strlen($script)) === 0 ? $script : substr($script, 0, -10);
 }
 $path = '/' . ltrim((string) substr($uri, strlen($front)), '/');
-$url = static fn (string $local): string => $front . $local;
+$url = static fn (string $local): string => $local === '/' ? './' : ltrim($local, '/');
 
 // Demo only: the rules are written for a site at the root (/content/view/…,
 // /admin/…, /settings/…). In a subdirectory the shield is handed the address
@@ -41,13 +43,6 @@ require __DIR__ . '/../../bootstrap.php';       // with Composer: vendor/autoloa
 
 use CjwNetwork\RequestShield\Shield;
 
-// A search with a text is counted against its own budget (EXP-SEARCHES: 10 a
-// minute, then the browser check -- solved, the counter starts again).
-$counted = false;
-if (isset($_GET['SearchText']) && $_GET['SearchText'] !== '' && preg_match('#/content/(advanced)?search(/|$)#i', $path)) {
-    Shield::active()?->consume('searches', answer: true);
-    $counted = true;
-}
 // ─────────────────────────────────────────────────────────────────────────────
 // Everything below runs only for requests the shield let through.
 
@@ -59,22 +54,44 @@ $verdict = $decision === null ? 'not checked' : $decision->action . ($rule !== n
 
 if ($path === '/reset') {                       // forget the pass, to see the check again
     setcookie('rs_pass', '', ['expires' => 1, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
-    header('Location: ' . $url('/'), true, 303);
+    header('Location: ' . $front . '/', true, 303);
     exit;
 }
 
+/** The request as it arrived (after the shield: what it removed is gone) and the answer's headers so far. */
+$headers = static function () use ($e, $method): string {
+    $in = '';
+    foreach ($_SERVER as $k => $v) {
+        if (strncmp((string) $k, 'HTTP_', 5) === 0 && is_string($v)) {
+            $name = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr((string) $k, 5)))));
+            $in .= $e($name) . ': ' . $e($name === 'Cookie' ? (string) preg_replace('/=([^;]{12})[^;]*/', '=$1…', $v) : $v) . "\n";
+        }
+    }
+    foreach (['CONTENT_TYPE' => 'Content-Type', 'CONTENT_LENGTH' => 'Content-Length'] as $k => $name) {
+        if (isset($_SERVER[$k]) && $_SERVER[$k] !== '') {
+            $in .= $name . ': ' . $e((string) $_SERVER[$k]) . "\n";
+        }
+    }
+    $out = 'HTTP ' . (int) http_response_code() . "\n";
+    foreach (headers_list() as $h) {
+        $out .= $e($h) . "\n";
+    }
+    return '<div class="hdrs"><details open><summary>Request headers</summary><pre>' . $e($method . ' ' . (string) ($_SERVER['REQUEST_URI'] ?? '')) . "\n" . $in . '</pre></details>'
+        . '<details open><summary>Response headers</summary><pre>' . $out . '</pre></details></div>';
+};
+
 /** One page of the pretend site. */
-$page = static function (string $title, string $body) use ($e, $url, $path, $method, $verdict, $front): void {
+$page = static function (string $title, string $body) use ($e, $url, $path, $method, $verdict, $front, $headers): void {
     header('Content-Type: text/html; charset=utf-8');
     $admin = strncmp($path, '/admin', 6) === 0;
     echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">',
-        '<title>', $e($title), ' · Exponential demo</title><style>', CSS, '</style></head><body', $admin ? ' class="admin"' : '', '>',
+        '<base href="', $e($front . '/'), '"><title>', $e($title), ' · Exponential demo</title><style>', CSS, '</style></head><body', $admin ? ' class="admin"' : '', '>',
         '<header><a class="brand" href="', $e($url('/')), '">', $admin ? 'Exponential admin (pretend)' : 'Exponential demo site (pretend)', '</a>',
         '<nav><a href="', $e($url('/')), '">Tests</a><a href="', $e($url('/news/2026/fit-and-healthy')), '">An article</a>',
         '<a href="', $e($url('/content/search?SearchText=yoga&SearchDate=3')), '">Search</a><a href="', $e($url('/kontakt')), '">Contact</a>',
         '<a href="', $e($url('/user/login')), '">Login</a><a href="', $e($url('/admin/dashboard')), '">Admin</a><a href="', $e($url('/reset')), '">Forget my pass</a></nav></header>',
         '<main><p class="shown">', $e($method . ' ' . $front . $path), ' — <b>the shield let it through:</b> ', $e($verdict), '</p>',
-        '<h1>', $e($title), '</h1>', $body, '</main></body></html>';
+        '<h1>', $e($title), '</h1>', $body, $headers(), '</main></body></html>';
 };
 
 const CSS = ':root{--bg:#f6f7f9;--card:#fff;--ink:#1d2127;--muted:#5b6470;--line:#d9dde3;--accent:#2f62c9;--ok:#1e7b43;--no:#a3361f;--warn:#8a5a00}'
@@ -92,6 +109,10 @@ const CSS = ':root{--bg:#f6f7f9;--card:#fff;--ink:#1d2127;--muted:#5b6470;--line
     . '.ans{display:block;font:12px ui-monospace,monospace;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}'
     . 'form.box{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;max-width:520px}'
     . 'label{display:block;margin:8px 0 3px}input,select,textarea{font:inherit;width:100%;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}'
+    . '.hdrs{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:24px}'
+    . 'details{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 12px}summary{cursor:pointer;font-weight:600}'
+    . 'pre{font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 0}'
+    . '.ans details{margin-top:4px;padding:4px 8px}.ans summary{font-weight:400}'
     . '.note{color:var(--muted);font-size:14px}@media (max-width:720px){td.why,th.why{display:none}}';
 
 // "Show the answer": fetches the address in the background, shows the status and the decision.
@@ -99,13 +120,22 @@ const JS = <<<'JS'
 document.querySelectorAll('button[data-u]').forEach(function (b) {
   b.addEventListener('click', async function () {
     var out = b.nextElementSibling, m = b.dataset.m, n = m === 'SEARCH11' ? 11 : 1, r = null;
+    var post = m === 'POST', url = new URL(b.dataset.u, document.baseURI);
     out.textContent = '…';
     for (var i = 0; i < n; i++) {
-      r = await fetch(b.dataset.u, m === 'POST'
+      r = await fetch(url, post
         ? {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: 'demo=1', credentials: 'same-origin'}
         : {credentials: 'same-origin'});
     }
+    // What was sent (the browser adds its own: User-Agent, Accept, cookies) and every header of the answer.
+    var sent = (post ? 'POST ' : 'GET ') + url.pathname + url.search + '\n' + (post ? 'Content-Type: application/x-www-form-urlencoded\n\ndemo=1' : '(the browser\'s own headers and cookies)');
+    var got = 'HTTP ' + r.status + '\n';
+    r.headers.forEach(function (v, k) { got += k + ': ' + v + '\n'; });
     out.textContent = r.status + ' · ' + (r.headers.get('X-Request-Shield') || '(no decision header)');
+    [['Request', sent], ['Response headers', got]].forEach(function (p) {
+      var d = document.createElement('details'), s = document.createElement('summary'), pre = document.createElement('pre');
+      s.textContent = p[0]; pre.textContent = p[1]; d.append(s, pre); out.append(d);
+    });
   });
 });
 JS;
@@ -141,7 +171,7 @@ if ($path === '/' && $method === 'GET') {
             ['GET', '/news/(offset)/99999999', '404', 'EXP-VIEWPARAMS', 'counting through a list'],
         ],
         'Search, with its time filter' => [
-            ['GET', '/content/search?SearchText=yoga&SearchDate=3', '200', '', 'the last month; answered, never cached; counted (10 a minute)'],
+            ['GET', '/content/search?SearchText=yoga&SearchDate=3', '200', '', 'the last month; answered, never cached; counted (EXP-SEARCHES: 10 a minute)'],
             ['GET', '/content/advancedsearch?SearchText=yoga&SubTreeArray[]=2&SearchDate=-1', '200', '', 'the advanced search, all dates'],
             ['GET', '/content/search?SearchText=yoga&SearchDate=9', '404', 'EXP-STRICT', 'a time filter the search does not know'],
             ['GET', "/content/search?SearchText=x' union select 1--", '403', 'ATK-SQL-UNION', 'an attack in the search text'],
@@ -198,7 +228,7 @@ if (preg_match('#^/content/(advanced)?search$#i', $path)) {
     }
     $page('Search', '<form class="box" method="get" action="' . $e($url('/content/search')) . '"><label>Search for</label><input name="SearchText" value="' . $e($text) . '">'
         . '<label>Published</label><select name="SearchDate">' . $options . '</select><p><button>Search</button></p></form>'
-        . ($text !== '' ? '<p>3 pretend results for <b>' . $e($text) . '</b>. ' . ($counted ? 'This search was counted (EXP-SEARCHES: 10 a minute, then the check).' : '') . '</p>' : '')
+        . ($text !== '' ? '<p>3 pretend results for <b>' . $e($text) . '</b>. ' . 'This search was counted (EXP-SEARCHES: 10 a minute, then the check).' . '</p>' : '')
         . '<p class="note">The time filter is <code>SearchDate</code>: -1 to 5, nothing else (EXP-SEARCH-Q). Try <a href="' . $e($url('/content/search?SearchText=yoga&SearchDate=9')) . '">SearchDate=9</a>.</p>');
     exit;
 }

@@ -1147,7 +1147,7 @@ final class Shield
     private function budgetRule(Budget $b): BudgetRule
     {
         return new BudgetRule($this->store, $b->name, $b->limit, $b->window, $b->challengeAt,
-            $this->settings->exemptIps, $this->settings->ipv6Prefix, $b->earnBack, $b->counter());
+            $this->settings->exemptIps, $this->settings->ipv6Prefix, $b->earnBack, $b->counter(), $b->paths);
     }
 
     private function gate(): Gate

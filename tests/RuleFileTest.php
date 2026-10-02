@@ -655,7 +655,8 @@ return [
         rulesFail(['site.rules' => "match /a/** {\n  allow POST /b\n}\n"], 'site.rules:2', 'inside match: allow <METHODS>');
         rulesFail(['site.rules' => "match /a/** {\n  unblock [SCAN-HIDDEN] at /b\n}\n"], 'site.rules:2', 'the block is where');
         rulesFail(['site.rules' => "match /a/** {\n  host a.example\n}\n"], 'site.rules:2', 'host does not go inside a match block');
-        rulesFail(['site.rules' => "match /a/** {\n  limit x 5/min\n}\n"], 'site.rules:2', 'limit per area is not there yet');
+        rulesFail(['site.rules' => "match /a/** {\n  cache-query page\n}\n"], 'site.rules:2', 'cache-query per area is not there yet');
+        rulesFail(['site.rules' => "match /a/** {\n  limit x 5/min at /b\n}\n"], 'site.rules:2', 'the block is where');
         rulesFail(['site.rules' => "match /a/** {\n  set debug-header on\n}\n"], 'site.rules:2', 'set does not go inside a match block');
         rulesFail(['site.rules' => "match /a/** {\n  challenge\n"], 'site.rules:1', 'match without its }');
         rulesFail(['site.rules' => "challenge /x\n}\n"], 'site.rules:2', '} without a match block');
@@ -696,5 +697,52 @@ return [
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }
+    },
+    'limit inside a match block (or limit … at <paths>): only requests in the area count -- everywhere else the budget is not touched' => function (): void {
+        $dir = ruleDir(['site.rules' => "exempt none\nno-limit requests\nmatch /search/** {\n  [S-SEARCH] limit searches 3/min   # searches\n}\n[S-API] limit api 2/min challenge-at 1 at /api/** /v2/**\n"]);
+        try {
+            $s = Settings::load("$dir/site.rules", "$dir/cache");
+            same(['#^/search(?:/.*)?$#i'], $s->budgets['searches']->paths, 'the block\'s path, case-insensitive as the other path rules');
+            same('S-SEARCH', $s->origin('budgets', 'searches'), 'the rule\'s ID');
+            same('/search/**', $s->origin('area', 'S-SEARCH'), 'and its area as written, for the rules page');
+            $shield = new Shield($s, new MemoryStore());
+            $at = static fn (string $path) => $shield->decide(Request::fromServer(['REQUEST_URI' => $path, 'REMOTE_ADDR' => '198.51.100.7', 'HTTP_HOST' => 'www.example.org']), 1000.0);
+            for ($i = 0; $i < 10; $i++) {
+                $at('/news/x');                                   // elsewhere: never counted
+            }
+            for ($i = 1; $i <= 3; $i++) {
+                same('allow', $at('/search/q' . $i)->action, "search $i of 3");
+            }
+            same(['throttle', 'searches'], [$at('/SEARCH/x')->action, $at('/search')->reason], 'the fourth and fifth: past the limit (any case, the area\'s root too)');
+            same('allow', $at('/news/y')->action, 'elsewhere still open');
+            same('allow', $at('/api/a')->action, 'at: the first call');
+            same(['challenge', 'api'], [$at('/v2/b')->action, $at('/v2/b')->reason], 'at <paths>: one budget for both areas -- the second call past challenge-at');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'an area\'s budget: in a site block, on demand, watched; one name, one budget' => function (): void {
+        $dir = ruleDir(['site.rules' => "exempt none\nsite shop.example {\n  match /cart/** {\n    limit carts 2/min on-demand\n  }\n}\n",
+            'watch.rules' => "exempt none\nmatch /search/** {\n  monitor limit searches 1/min\n}\n"]);
+        try {
+            $s = Settings::loadFor("$dir/site.rules", ['SERVER_NAME' => 'shop.example'], "$dir/cache");
+            same(['shop.example', ['#^/cart(?:/.*)?$#i']], [$s->budgets['carts']->site, $s->budgets['carts']->paths], 'in a site block and a match block: that website, that area');
+            $shield = new Shield($s, new MemoryStore());
+            $req = static fn (string $path) => Request::fromServer(['REQUEST_URI' => $path, 'REMOTE_ADDR' => '198.51.100.7', 'HTTP_HOST' => 'shop.example']);
+            for ($i = 0; $i < 5; $i++) {
+                same('allow', $shield->consume('carts', $req('/news'), 1000.0)->action, 'consume() outside the area: not counted');
+            }
+            $shield->consume('carts', $req('/cart/a'), 1000.0);
+            $shield->consume('carts', $req('/cart/b'), 1000.0);
+            same('throttle', $shield->consume('carts', $req('/cart/c'), 1000.0)->action, 'inside: the third is one too many');
+            $w = Settings::load("$dir/watch.rules", "$dir/cache");
+            truthy(!isset($w->budgets['searches']) && isset($w->monitor) && $w->monitor->budgets['searches']->paths !== [], 'monitor limit inside a block: watched, with its area');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+        rulesFail(['site.rules' => "match /x/** {\n  limit requests 5/min\n}\n"], 'site.rules:2', 'a budget "requests" counts already');
+        rulesFail(['site.rules' => "limit s 9/min\nmatch /x/** {\n  limit s 5/min\n}\n"], 'site.rules:3', 'needs a name of its own');
+        rulesFail(['site.rules' => "limit s 5/min at /a/**\nlimit s 9/min\n"], 'site.rules:2', 'is an area\'s budget');
+        rulesFail(['site.rules' => "limit s 5/min at\n"], 'site.rules:1', 'limit <name>');
     },
 ];
