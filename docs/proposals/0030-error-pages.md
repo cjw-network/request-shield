@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Accepted** 2026-10-02 (decisions below: the recommendations); to be built in the phases below |
 | Proposed | 2026-10-02 |
 | Affects | the shield's own answers (`Responder`: 400, 403, 404, 405, 414, 429, 431), the texts (`set text.…`), rule files (new setting `error-page`), the log (a reference), the demos |
 
@@ -161,7 +161,16 @@ site shop.example {
    placeholders, `check` and the rules page.
 3. The reference on the page, in the JSON and in the log.
 
-## Open questions
+## Decisions (2026-10-02)
+
+1. The built-in page shows a `:-(` drawn in SVG; the site's logo replaces it.
+2. A reference on the page, in the JSON and in the log (phase 3), random.
+3. No automatic reload after a pause (429): the page says how long.
+4. Placeholders `{status}`; only the listed names are replaced.
+5. `error-page` takes files only, not addresses.
+6. A refusal is never handed to the site to answer.
+
+## Open questions (as proposed)
 
 1. **The `:-(`**, or a neutral sign (an exclamation mark, a closed door)?
    *Recommendation: the `:-(`, drawn in SVG: friendly, and the same on every
