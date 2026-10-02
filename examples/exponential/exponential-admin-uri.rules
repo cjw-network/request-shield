@@ -13,9 +13,18 @@ include     exponential.rules                                  # the frontend: s
 
 match /admin/** {
   [EXP-ADMIN-SYS]   unblock [EXP-SYSVIEW] [EXP-MODULES]       # the admin uses system URLs (/admin/content/view/full/2) and its modules
+  expect GET /admin/content/view/full/2 with pass    answered
+  expect GET /admin/setup/info with pass              answered
   [EXP-ADMIN-POST]  allow POST                                # editors save everywhere in the admin
+  expect POST /admin/class/edit/1 with pass          answered
+  expect POST /admin/content/edit/87/1/ger-DE with pass  answered
   [EXP-ADMIN-CHECK] challenge                                 # every editor: the browser check once per pass
+  expect GET /admin/dashboard                         check
+  expect POST /admin/class/edit/1                     check
+  expect GET /admin/user/login                        check by EXP-LOGIN   # the login: the frontend's rule
   [EXP-ADMIN-Q]     query * text                              # the admin's parameters: all known, free text scanned for attacks
+  expect GET /admin/content/edit/87?anything=goes with pass   answered
+  expect GET /admin/content/edit/87?x=%3Cscript%3E with pass   403 by ATK-XSS-TAG   # still scanned
   #[EXP-ADMIN-NET]  restrict to 192.0.2.0/24                  # the office only (or a VPN): take the "#" away
 }
 # The admin login (/admin/user/login) is checked by EXP-LOGIN: a fresh check, from the last 15 minutes.

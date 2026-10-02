@@ -2,7 +2,13 @@
 # "include @wordpress" (or "block @wordpress") in the site's rules.
 
 ids WP required
-version 2026.09.1
+version 2026.10.1
 
 [WP-FOLDERS@1]  block regex ^/(wp-admin|wp-includes|wp-content)(/|$)     # WordPress folders: /wp-admin, /wp-includes, /wp-content
+expect GET /wp-admin/                        404
+expect GET /wp-content/plugins/x/readme.txt  404
+expect GET /blog/wp-content-guide            answered   # a near miss: not at the root
 [WP-SCRIPTS@1]  block regex ^/(wp-login|xmlrpc|wp-config)\.php$          # WordPress scripts: wp-login.php, xmlrpc.php, wp-config.php
+expect GET /wp-login.php                     404
+expect GET /wp-config.php                    404
+expect GET /xmlrpc                           answered   # a near miss: no .php

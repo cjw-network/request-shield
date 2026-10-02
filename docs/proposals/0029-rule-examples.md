@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Accepted** 2026-10-02 (decisions below: the recommendations); to be built in the phases below |
+| Status | **Accepted** 2026-10-02 (decisions below: the recommendations); **phase 1 implemented** 2026-10-02 ([examples](../features/rule-examples.md)): `expect`, `request-shield test`, the built-in and Exponential examples, the instruction for language models |
 | Proposed | 2026-10-02 |
 | Affects | rule files (new line `expect`), the command line (`request-shield test`, later `request-shield crawl`), the rules page (`<dashboard-path>/waf/rules`), the demos (their test tables), the built-in rule files, a short instruction for language models (`docs/llm/`) |
 
@@ -82,12 +82,14 @@ expect <METHOD> <address> <outcome> [by <ID>] [from <address>] [with pass] [time
 |---|---|
 | `<METHOD>` | `GET`, `POST`, `HEAD` … |
 | `<address>` | a path with its query (`/content/search?SearchText=yoga`), or a full URL when the host matters (`https://admin.example.org/…`, for `host` rules and `site` blocks). Written as a visitor's browser would send it; `%20` and the like as usual |
-| `<outcome>` | `passes` (answered, a cache may keep it), `uncached` (answered, not kept), `check` (the browser check), or a status refused with: `403`, `404`, `405`, `429` |
+| `<outcome>` | `passes` (answered, a cache may keep it), `uncached` (answered, not kept), `answered` (either: for near misses, whatever the site's cache rules; added when built), `check` (the browser check), or a status refused with: `403`, `404`, `405`, `429` |
 | `by <ID>` | the rule that must decide. **Without it, the rule the line follows** (the last rule with an ID before it in the same file); for `passes`, nothing is checked |
 | `from <address>` | the visitor's address (default `198.51.100.7`, a documentation range): for `restrict`, `exempt`, `deny`, the lists |
 | `with pass` | the visitor holds a valid pass (the check solved before) |
 | `times <n>` | the request sent `n` times in a row: budgets, bans. The outcome is that of the last one |
 
+- After the address, the outcome and the options may come in any order
+  (`expect GET /login with pass answered`; settled when built).
 - An `expect` line belongs to the file it is written in, may stand inside
   `match` and `site` blocks (it then gets the block's website for its host
   when no host is written), and has no ID of its own.

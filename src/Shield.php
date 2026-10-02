@@ -337,8 +337,10 @@ final class Shield
     /**
      * The signals a decision gives for the bans: past a limit (a pause, a spent
      * check), a refusal for what only attackers ask for, a check page shown.
+     * protect() gives them after settling a request that did not pass;
+     * request-shield test does the same, so an example can reach a ban.
      */
-    private function signals(Decision $d, Request $request, float $now): void
+    public function signals(Decision $d, Request $request, float $now): void
     {
         if ($d->action === Decision::THROTTLE && $d->reason !== 'banned') {
             $this->signal('limits', $request, $now);
@@ -608,6 +610,10 @@ final class Shield
             case 'method':
                 // Refused: not in the methods; passed uncached: a POST is never cached.
                 return $d->action === Decision::REJECT ? $name('methods', '*', 'methods') : 'built-in';
+            case 'banned':
+                // A ban's mark keeps no rule (the log names it when it is set); with one ban rule, that one.
+                $bans = array_values(array_unique(array_column($s->bans, 'rule')));
+                return count($bans) === 1 ? $bans[0] : null;
             case 'host':
                 return $name('hosts', '*', 'hosts');
             case 'app':

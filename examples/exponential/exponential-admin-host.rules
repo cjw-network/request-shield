@@ -13,11 +13,20 @@ version 2026-10-02.1
 include     exponential.rules                                  # the frontend: system URLs, forms, search, pace
 
 # The login (/user/login) is checked by EXP-LOGIN: a fresh check, from the last 15 minutes.
+# On the visitors' host, /admin is no admin: a system URL like any other.
+expect GET https://www.example.org/admin/content/view/full/2   404 by EXP-SYSVIEW
+
 site admin.example.org {
   [EXP-AH-SYS]    unblock [EXP-SYSVIEW] [EXP-MODULES]         # the admin uses system URLs (/content/view/full/2) and its modules
+  expect GET /content/view/full/2 with pass          answered
+  expect GET /class/grouplist with pass               answered
   [EXP-AH-POST]   allow POST /**                              # editors save everywhere in the admin
+  expect POST /class/edit/1 with pass               answered
   [EXP-AH-CHECK]  challenge /**                               # every editor: the browser check once per pass
+  expect GET /dashboard                               check
+  expect GET /user/login                              check by EXP-LOGIN
   [EXP-AH-Q]      query * text                                # the admin's parameters: all known, free text scanned for attacks
+  expect GET /dashboard?anything=goes with pass       answered
   #[EXP-AH-NET]   restrict /** to 192.0.2.0/24                # the office only (or a VPN): take the "#" away
   set             pass-ttl 8h                                 # editors: one check a working day (visitors keep 2 hours)
 }

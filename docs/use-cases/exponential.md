@@ -49,6 +49,11 @@ switched on), with every case of this page as a numbered test
 
 `bin/request-shield check settings/request-shield/exponential-admin-uri.rules`
 reads everything and names any mistake by file and line.
+`bin/request-shield test settings/request-shield/exponential-admin-uri.rules`
+decides the **examples next to every rule** (`expect` lines, 72 of them,
+[examples](../features/rule-examples.md)): run it after every change to the
+rules, before the deploy. Add your own site's addresses as examples, above
+all near misses (a page alias that must not be refused).
 `bin/request-shield trace … "GET https://www.example.org/content/view/full/2"`
 shows how one request would be decided, and by which rule.
 

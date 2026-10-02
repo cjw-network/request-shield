@@ -9,6 +9,14 @@ names the revision it reviewed (`unblock [SCAN-BACKUP@1] at /downloads/**`) is
 warned by `bin/request-shield check` and the active rules page when the
 revision here is newer — the rule itself applies at once.
 
+## 2026.10.1
+
+No rule changed what it matches (no revision raised). `scanners.rules` and
+`wordpress.rules` carry examples next to their rules (`expect` lines,
+[proposal 0029](../docs/proposals/0029-rule-examples.md)): what each rule
+refuses, and near misses it must let through. `bin/request-shield test`
+decides them, together with a site's own examples.
+
 ## 2026.09.1
 
 First version as rule files, with the patterns the library had since 0.1.0.

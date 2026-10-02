@@ -4,12 +4,30 @@
 # at some paths with "unblock [SCAN-HIDDEN] at /admin/files/** for <addresses>".
 #
 # The comment after each rule is its description on the active rules page.
+# The expect lines below a rule are its examples: request-shield test decides
+# them (what the rule refuses, and near misses it must let through).
 
 ids SCAN required
-version 2026.09.1
+version 2026.10.1
 
 [SCAN-HIDDEN@1] block regex /\.(git|svn|hg|bzr|env|htpasswd|ds_store|idea|vscode)(/|$)                 # hidden files and folders: .env, .git, .htpasswd, editor settings
+expect GET /.env                      404
+expect GET /.git/config               404
+expect GET /environment              answered   # a near miss: a page about the environment
+expect GET /.well-known/security.txt  answered   # not a hidden file this rule means
 [SCAN-BACKUP@1] block regex \.(bak|old|orig|save|swp|sql|sql\.gz|tar|tar\.gz|tgz|zip|7z|rar|log)$      # backups, dumps and archives: .bak, .old, .sql, .zip, .tar.gz, .log …
+expect GET /backup.zip                404
+expect GET /db/dump.sql.gz           404
+expect GET /zip-codes                answered   # a near miss: no file extension
 [SCAN-TEST@1]   block regex /(phpinfo|php_info|info|test)\.php$                                        # test and info scripts: phpinfo.php, info.php, test.php
+expect GET /phpinfo.php               404
+expect GET /test.php                  404
+expect GET /testimonials             answered   # a near miss
 [SCAN-DBTOOL@1] block regex /(vendor/phpunit|phpmyadmin|pma|adminer)(/|\.php|$)                        # database and test tools: phpMyAdmin, Adminer, PHPUnit
+expect GET /phpmyadmin/              404
+expect GET /adminer.php               404
+expect GET /pma-conference           answered   # a near miss: pma, then more
 [SCAN-CGI@1]    block regex /(cgi-bin|\.well-known/(?!acme-challenge|security\.txt|change-password))    # cgi-bin, and .well-known except certificates, security.txt and password change
+expect GET /cgi-bin/status           404
+expect GET /.well-known/acme-challenge/token  answered   # certificates keep working
+expect GET /.well-known/change-password       answered

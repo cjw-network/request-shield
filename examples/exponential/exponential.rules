@@ -37,27 +37,49 @@ include     @attacks                                           # attack patterns
 # (1, 2, 3 … every node, also those no menu links to), and every number is a
 # page a cache keeps twice. The admin needs them: taken back in its file.
 [EXP-SYSVIEW]   block regex (?i)/content/view(/|$)                                  # /content/view/…: pages by node number (only the admin needs them)
+expect GET /content/view/full/2                    404
+expect GET /Content/View/Full/2                    404   # in any case
+expect GET /ger/content/view/full/89               404   # behind a URI siteaccess
+expect GET /index.php/content/view/full/89         404
+expect GET /layout/set/print/content/view/full/89  404
+expect GET /news/2026/fit-and-healthy              answered   # a page by its alias
 [EXP-SYSVIEW-OK] unblock [EXP-SYSVIEW] at **/content/view/sitemap/* **/content/view/tagcloud/*   # the sitemap and tag cloud the page header links to
+expect GET /content/view/sitemap/2                 answered
+expect GET /content/view/tagcloud/2                answered
 
 # Modules only the admin uses. In the frontend they answer with a login form or
 # "access denied" -- better not at all: 404, and a scanner's signal.
 # Anchored at the root, with the URI siteaccesses that may come first -- write
 # your own instead of ger|eng (a page alias "/shop/package" stays untouched).
 [EXP-MODULES]   block regex (?i)^(/(ger|eng))?/(setup|class|section|role|state|workflow|trigger|visual|package|infocollector|url|ezinfo|collaboration|pdf)(/|$)   # admin modules: setup, class, role, workflow … (404 in the frontend)
+expect GET /class/grouplist                       404
+expect GET /eng/setup/info                         404
+expect GET /shop/package                           answered   # a near miss: an alias that names a module
+expect GET /news/setup-guide                       answered
 
 # Exponential's own files. The web server's rules keep them away already; a
 # request for them reaches index.php only from someone who tries -- counted as
 # a refusal (the bans below).
 [EXP-INTERNAL]  block regex ^/(settings|kernel|lib|bin|autoload|cronjobs|update|tests|doc|var/[^/]+/(cache|log))(/|$)   # settings/, kernel/, var/<site>/cache, var/<site>/log …
+expect GET /settings/site.ini                     404
+expect GET /var/site/cache/expiry.php              404
+expect GET /var/site/storage/images/a.jpg          answered   # uploaded files stay open
 [EXP-INI]       block *.ini *.ini.append *.ini.append.php *.tpl                    # configuration and template sources, anywhere
+expect GET /extension/shop/settings/shop.ini.append.php  404
 
 # The built-in SCAN-BACKUP refuses .zip, .tar.gz, .sql … -- on an Exponential
 # site those are files editors upload, sent by content/download.
 [EXP-DOWNLOAD]  unblock [SCAN-BACKUP@1] at **/content/download/** /var/*/storage/**   # downloads of uploaded files (.zip, .tar.gz …)
+expect GET /content/download/12/34/file/report.zip  answered
+expect GET /backup.zip                             404 by SCAN-BACKUP   # anywhere else: still refused
 
 # View parameters (/(offset)/20, /(year)/2026) are numbers. Anything else is
 # an attack or a cache filler; a page number past a million is an enumeration.
 [EXP-VIEWPARAMS] block regex (?i)/\((offset|limit|year|month|day)\)/(?![0-9]{1,6}(/|$))   # (offset), (year), (month), (day): numbers only, up to 6 digits
+expect GET /news/(offset)/20                     answered
+expect GET /blog/(year)/2026/(month)/9             answered
+expect GET /news/(offset)/1%27or1                  404
+expect GET /news/(offset)/99999999                 404   # counting through a list
 
 # --------------------------------------------------------------------------
 # 2. Forms
@@ -65,11 +87,16 @@ include     @attacks                                           # attack patterns
 # A POST only where Exponential takes one. Anything else: 405 -- a bot that
 # posts to every address it finds gets nowhere. Add your extensions' modules.
 [EXP-POST]      allow POST **/user/login **/user/register **/user/forgotpassword **/user/password/** **/user/edit/** **/user/preferences/** **/content/action **/content/edit/** **/content/collectedinfo/** **/content/tipafriend/** **/content/search **/content/advancedsearch **/comment/** **/shop/** **/ezjscore/** **/notification/** **/newsletter/** /api/**   # forms: login, register, collect information, comments, basket, AJAX, REST (the admin: in its own file)
+expect POST /news/2026/fit-and-healthy            405   # no form lives at a page's alias
+expect POST /ezjscore/call/ezstarrating::rate      answered
 
 # The login and everything around it: every visitor is checked first (an
 # invisible task the browser solves in about a second). A pass from the last
 # 15 minutes is enough, so the form sends without a second check.
 [EXP-LOGIN]     challenge **/user/login **/user/register **/user/forgotpassword **/user/password/** max-age 15m   # login, registration, password: the browser check first
+expect GET /user/login                            check
+expect POST /user/login                           check
+expect GET /user/login with pass                  answered   # checked once: the form
 
 # Forms that send something: information collection (contact forms post to
 # /content/action), "tip a friend", comments. A POST without a pass gets the
@@ -77,9 +104,13 @@ include     @attacks                                           # attack patterns
 # (The check can also sit inside the form, solved while typing: the widget,
 # docs/features/browser-check-in-the-form.md -- one line in the template.)
 [EXP-FORMS]     challenge **/content/action **/content/tipafriend/** **/comment/add/** **/newsletter/subscribe/** max-age 30m   # contact forms, tip a friend, comments, newsletter: checked once per half hour
+expect POST /content/action                       check
+expect POST /bold_ger/content/action              check
+expect POST /content/action with pass             answered
 
 # AJAX and REST answer a check as JSON with a header, not as a page.
 [EXP-API]       api-path **/ezjscore/** /api/**                                    # ezjscore calls and the REST API
+expect GET /ezjscore/call/ezjsc::time                answered   # an AJAX call: answered; a check here comes as JSON with a header
 
 # --------------------------------------------------------------------------
 # 3. Search
@@ -94,12 +125,20 @@ include     @attacks                                           # attack patterns
 # inside a match block counts the requests to its area.
 match regex (?i)/content/(advanced)?search(/|$) {
   [EXP-SEARCHES] limit searches 10/min on-exceeded challenge                      # searches: 10 a minute per visitor, then the browser check
+  expect GET /content/search?SearchText=yoga  times 10   uncached
+  expect GET /content/search?SearchText=yoga  times 11   check
+  expect GET /news  times 20                         answered   # reading pages does not use it up
   [EXP-SEARCH-Q] query SearchText text   PhraseSearchText text   SearchButton any   SubTreeArray int   SearchContentClassID int   SearchContentClassAttributeID int   SearchSectionID int   SearchDate /-1|[1-5]/   SearchTimestamp int   SearchPageLimit int   BrowsePageLimit int   Mode word   # the search form's fields, the time filter included
+  expect GET /content/search?SearchText=yoga&SearchDate=3   uncached
+  expect GET /content/advancedsearch?SearchText=a&SubTreeArray[]=2&SearchContentClassID=-1&SearchDate=-1  uncached
+  expect GET /content/search?SearchText=yoga&SearchDate=9   404 by EXP-STRICT   # a time filter the search does not know
 }
 
 # Search results are never kept by a cache: only addresses without a query
 # are (view parameters are part of the path).
 [EXP-CACHE-Q]   cache-query none                                                   # a cache keeps addresses without a query only
+expect GET /news?utm_source=newsletter             uncached
+expect GET /news/(offset)/20                       passes
 
 # Under attack (thousands of searches from many addresses): every searcher
 # checked once an hour. Take the "#" away while it lasts.
@@ -112,13 +151,19 @@ match regex (?i)/content/(advanced)?search(/|$) {
 # web server). 120 pages a minute is no person: the check; past 300 the check
 # again, and the counter starts anew when it is solved.
 [EXP-PACE]      limit requests 300/min challenge-at 120 on-exceeded challenge     # per visitor: the check past 120 pages a minute
+expect GET /news  times 120                        answered
+expect GET /news  times 121                        check
 # Ten refusals in ten minutes (system URLs, admin modules, internal files,
 # made-up view parameters …) is a scanner: an hour off the site. Watched first.
 [EXP-BAN]       monitor ban after 10 refusals in 10m for 1h                       # a scanner: 10 refusals in 10 minutes, an hour off (watched first)
+expect GET /settings/site.ini  times 10            404 by EXP-INTERNAL
+expect GET /settings/site.ini  times 11            429
 
 # Unknown query parameters: logged first (monitor), refused (404) once the log
 # is clean. The admin knows all of its own (its file: query * text).
 [EXP-STRICT]    monitor query strict                                               # any other parameter: 404 (watched first)
+expect GET /news?debug=1                         404
+expect GET /news?utm_source=newsletter             uncached   # marketing tags are known (@tracking)
 
 # --------------------------------------------------------------------------
 # 5. The shield itself

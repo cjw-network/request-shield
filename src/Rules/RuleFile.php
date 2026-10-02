@@ -153,6 +153,20 @@ final class RuleFile
     /** Reading a list file (allow.rules, deny.rules in lists-dir): only list lines there. */
     private bool $listing = false;
 
+    /**
+     * The examples next to the rules (expect lines, proposal 0029): read and
+     * checked with the rules, kept apart from the settings a request loads.
+     *
+     * @var list<array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, text: ?string, at: string, site: ?string}>
+     */
+    private array $examples = [];
+
+    /** @var array<string, string> per file, the last rule with an ID: what an expect line without "by" is about */
+    private array $lastRule = [];
+
+    /** The address an example comes from when it names none: a documentation range, never a real visitor. */
+    public const EXAMPLE_FROM = '198.51.100.7';
+
     /** The shipped rule files: rules/<name>.rules ("@scanners", "@wordpress"). */
     public static function shipped(string $name): ?string
     {
@@ -177,9 +191,10 @@ final class RuleFile
      * @param list<string> $files paths or globs; a glob may match nothing
      * @param ?string $site the website whose "site" block is read too (its block's first name);
      *   null: the base -- the rules for every website, each site block skipped
-     * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int}
+     * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, examples: list<array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, text: ?string, at: string, site: ?string}>}
      *   config: the settings array, with 'origins' (setting => pattern or budget => "file:line"),
-     *   'sites' (website name => its block's first name) and 'site'
+     *   'sites' (website name => its block's first name) and 'site';
+     *   examples: the expect lines (never part of config: a request does not load them)
      * @throws RuleFileException naming file and line
      */
     public static function read(array $files, ?string $site = null): array
@@ -194,8 +209,25 @@ final class RuleFile
     }
 
     /**
+     * The settings as they would be with every rule switched on: rules marked
+     * "monitor" enforced, "set mode monitor" as enforce -- what the examples
+     * are tested against (request-shield test), unless asked for as written.
+     *
      * @param list<string> $files
-     * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, monitored: bool}
+     * @return array<string, mixed>
+     */
+    public static function switchedOn(array $files, ?string $site = null): array
+    {
+        $c = self::reading($files, true, $site)['config'];
+        if (($c['mode'] ?? null) === 'monitor') {
+            $c['mode'] = 'enforce';
+        }
+        return $c;
+    }
+
+    /**
+     * @param list<string> $files
+     * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, monitored: bool, examples: list<array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, text: ?string, at: string, site: ?string}>}
      */
     private static function reading(array $files, bool $monitoring, ?string $site = null): array
     {
@@ -251,7 +283,12 @@ final class RuleFile
         $r->c['origins'] = $r->origins;
         $r->c['sites'] = array_map(static fn (array $n): string => $n[0], $r->siteNames);
         $r->c['site'] = $site;
-        return ['config' => $r->c, 'seen' => $r->seen, 'env' => $r->env, 'recheck' => is_int($recheck) ? $recheck : 10, 'monitored' => $r->monitored];
+        foreach ($r->examples as $x) {
+            if ($x['by'] !== null && !isset($r->ids[$x['by']])) {
+                throw new RuleFileException("{$x['at']}: expect … by {$x['by']} -- no rule has that ID");
+            }
+        }
+        return ['config' => $r->c, 'seen' => $r->seen, 'env' => $r->env, 'recheck' => is_int($recheck) ? $recheck : 10, 'monitored' => $r->monitored, 'examples' => $r->examples];
     }
 
     /**
@@ -494,6 +531,14 @@ final class RuleFile
             }
             return;
         }
+        // expect <METHOD> <address> <outcome> …: an example of what the rules decide.
+        if ($keyword === 'expect') {
+            if ($id !== null) {
+                throw new RuleFileException("$at: [$id] expect -- an example has no ID; it belongs to the rule above it (or: by <ID>)");
+            }
+            $this->expect(array_map(fn (string $a): string => $this->env($a, $at), $parts), $at, $file, $text);
+            return;
+        }
         // site <names> { ... }: the rules of some websites, added to the base.
         if ($keyword === 'site') {
             if ($id !== null) {
@@ -522,7 +567,7 @@ final class RuleFile
             // A ban keeps an address off the whole server, whichever website it offended.
             throw new RuleFileException("$at: ban is about the server, not a website -- put it above the site blocks (a budget the website counts can still be its signal)");
         }
-        if ($this->sawSite && $this->siteOpen === null && !$this->listing && !in_array($keyword, ['include', 'ids', 'version', '}'], true)) {
+        if ($this->sawSite && $this->siteOpen === null && !$this->listing && !in_array($keyword, ['include', 'ids', 'version', '}', 'expect'], true)) {
             throw new RuleFileException("$at: a rule for every website after a site block -- the rules for every website go above the first site block");
         }
         // monitor <rule>: logged as it would decide, never enforced.
@@ -611,6 +656,9 @@ final class RuleFile
             throw new RuleFileException("$at: every rule in this file needs an ID ([$ns-...] before it: ids $ns required)");
         }
         $this->rid = $id ?? $at;
+        if ($id !== null) {
+            $this->lastRule[$file] = $id;
+        }
         if ($text !== null && $text !== '' && $keyword !== 'set' && $keyword !== 'include') {
             $this->origins['text'][$this->rid] = $text;
         }
@@ -1318,6 +1366,57 @@ final class RuleFile
                 throw new RuleFileException("$at: cache-query per area is not there yet (proposal 0008) -- put it outside the block");
         }
         throw new RuleFileException("$at: $keyword does not go inside a match block -- it is not about paths; put it outside");
+    }
+
+    /**
+     * expect <METHOD> <address> <outcome> [by <ID>] [from <address>] [with pass] [times <n>]:
+     * an example of what the rules decide (proposal 0029). Checked here like any
+     * rule; decided by request-shield test, never by a request.
+     *
+     * @param list<string> $args
+     */
+    private function expect(array $args, string $at, string $file, ?string $text): void
+    {
+        $usage = 'expect <METHOD> <address> passes|uncached|answered|check|<4xx> [by <ID>] [from <address>] [with pass] [times <n>]';
+        if (count($args) < 3) {
+            throw new RuleFileException("$at: $usage");
+        }
+        [$method, $url] = [(string) array_shift($args), (string) array_shift($args)];
+        if (!preg_match('/^[A-Z]{3,10}$/', $method)) {
+            throw new RuleFileException("$at: expect: \"$method\" is no method -- GET, POST, HEAD … ($usage)");
+        }
+        if (!preg_match('#^(/|https?://[^/\s]+(/|$))\S*$#i', $url)) {
+            throw new RuleFileException("$at: expect: \"$url\" -- a path (/news?page=2) or a full address (https://admin.example.org/…)");
+        }
+        $x = ['method' => $method, 'url' => $url, 'outcome' => '', 'by' => null, 'rule' => $this->lastRule[$file] ?? null,
+            'from' => self::EXAMPLE_FROM, 'pass' => false, 'times' => 1, 'text' => $text === '' ? null : $text, 'at' => $at,
+            'site' => $this->siteOpen !== null ? $this->siteOpen['id'] : null];
+        // The outcome and the options, in any order after the address.
+        while ($args !== []) {
+            $a = strtolower((string) array_shift($args));
+            if ($a === 'by' && isset($args[0])) {
+                $x['by'] = self::ref(trim((string) array_shift($args), '[]'), $at)[0];
+            } elseif ($a === 'from' && isset($args[0])) {
+                $from = (string) array_shift($args);
+                if (filter_var($from, FILTER_VALIDATE_IP) === false) {
+                    throw new RuleFileException("$at: expect … from \"$from\" -- one address (a documentation range: 192.0.2.10, 2001:db8::1)");
+                }
+                $x['from'] = $from;
+            } elseif ($a === 'with' && strtolower($args[0] ?? '') === 'pass') {
+                array_shift($args);
+                $x['pass'] = true;
+            } elseif ($a === 'times' && isset($args[0]) && ctype_digit($args[0]) && (int) $args[0] >= 1 && (int) $args[0] <= 10000) {
+                $x['times'] = (int) array_shift($args);
+            } elseif ($x['outcome'] === '' && (in_array($a, ['passes', 'uncached', 'answered', 'check'], true) || preg_match('/^4\d\d$/', $a))) {
+                $x['outcome'] = $a;
+            } else {
+                throw new RuleFileException("$at: expect: \"$a\" -- $usage");
+            }
+        }
+        if ($x['outcome'] === '') {
+            throw new RuleFileException("$at: expect: what should happen? passes, uncached, answered (either), check or a status the shield refuses with (403, 404, 405, 429 …)");
+        }
+        $this->examples[] = $x;
     }
 
     /**

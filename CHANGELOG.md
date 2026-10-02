@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Examples next to the rules** (proposal 0029, phase 1): `expect <METHOD>
+  <address> passes|uncached|answered|check|<4xx> [by <ID>] [from <address>]
+  [with pass] [times <n>]` below a rule, and `bin/request-shield test` decides
+  them, each on a fresh store, with the rules switched on (`--as-written` as
+  they are), lists the site's rules without an example, exits 1 when one fails
+  and writes JUnit for CI (`--junit`). Never part of the settings a request
+  loads. The built-in `scanners`, `wordpress` and `tracking` rules and the
+  Exponential rules carry examples (72 and 69); an instruction for language
+  models to propose them: `docs/llm/write-rule-examples.md`
+  ([docs](docs/features/rule-examples.md)).
 - **A budget for one area** (proposal 0008, second step): `limit` inside a
   `match` block, or `limit … at <paths>`, counts only the requests to that
   area (a search: 10 a minute, while reading pages never uses it up); also
@@ -277,6 +287,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   demo has them at `/rs/…`, restricted to this machine.
 
 ### Fixed
+- A ban (`ban after …`) was named by no rule in `explain()`, the trace and
+  the log of a banned request's later answers; with one ban rule, it is now
+  named by it.
 - A POST refused with 405 was named by the last `allow POST` line read, e.g.
   an admin area's own (`match /admin/** { allow POST }`) for a POST to a
   frontend page. It is now named by the first line that allows the method.

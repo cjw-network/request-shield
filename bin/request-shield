@@ -10,6 +10,7 @@
  *   php bin/request-shield show   site.rules [--source=<glob>]...
  *   php bin/request-shield reload site.rules [--source=<glob>]...
  *   php bin/request-shield trace  site.rules "GET https://www.example.org/wp-login.php" [--ip=<address>] [--ua=<User-Agent>]
+ *   php bin/request-shield test   site.rules [--source=<glob>]... [--only=<ID>] [--as-written] [--junit=<file>]
  *   php bin/request-shield crawlers site.rules [update] [--force]
  *   php bin/request-shield token site.rules "<group>"|'*'
  *   php bin/request-shield feeds site.rules [list|update|export] [--force] [--format=plain|nginx|nftables|ipset] [--write=<file>]
@@ -23,6 +24,10 @@
  *         where servers without APCu do not look by themselves (extensions).
  * trace:  what happens to a request, check by check, in plain words (nothing
  *         is counted); the visitor's address with --ip (default 198.51.100.7).
+ * test:   decides every example next to the rules (expect lines), each on a
+ *         fresh store, with the rules switched on (monitor as enforce; as they
+ *         are with --as-written); lists the site's rules without an example.
+ *         Exit 0: all pass, 1: one fails, 2: a mistake in the files.
  * crawlers: the known crawlers, what the site does with each, and how old
  *         their address lists are. "update" fetches the operators' current
  *         lists into store-dir (cron, a deploy -- or where there is internet,
@@ -69,6 +74,7 @@ $listFor = null;
 $listUntil = null;
 $listReason = '';
 $feedOpts = ['format' => 'plain', 'write' => null];
+$testOpts = ['only' => null, 'asWritten' => false, 'junit' => null];
 foreach ($args as $a) {
     if ($a === '--force') {
         $force = true;
@@ -106,19 +112,26 @@ foreach ($args as $a) {
         $feedOpts['format'] = substr($a, 9);
     } elseif (strncmp($a, '--write=', 8) === 0) {
         $feedOpts['write'] = substr($a, 8);
+    } elseif (strncmp($a, '--only=', 7) === 0) {
+        $testOpts['only'] = trim(substr($a, 7), '[]');
+    } elseif ($a === '--as-written') {
+        $testOpts['asWritten'] = true;
+    } elseif (strncmp($a, '--junit=', 8) === 0) {
+        $testOpts['junit'] = substr($a, 8);
 
     } else {
         $rest[] = $a;
     }
 }
 [$command, $file, $what] = $rest + [null, null, null];
-if (!in_array($command, ['check', 'show', 'reload', 'trace', 'crawlers', 'feeds', 'stats', 'token', 'deny', 'allow', 'unlist', 'lists'], true) || $file === null
+if (!in_array($command, ['check', 'show', 'reload', 'trace', 'test', 'crawlers', 'feeds', 'stats', 'token', 'deny', 'allow', 'unlist', 'lists'], true) || $file === null
     || ($command === 'token' && $what === null)
     || ($command === 'feeds' && $what !== null && !in_array($what, ['list', 'update', 'export'], true))
     || (in_array($command, ['trace', 'deny', 'allow', 'unlist'], true) && $what === null)
     || ($command === 'crawlers' && $what !== null && $what !== 'update')) {
     fwrite(STDERR, "usage: request-shield check|show|reload <main.rules> [--source=<glob>]...\n"
         . "       request-shield trace <main.rules> \"GET https://www.example.org/path\" [--ip=<address>] [--ua=<User-Agent>] [--source=<glob>]...\n"
+        . "       request-shield test <main.rules> [--source=<glob>]... [--only=<ID>] [--as-written] [--junit=<file>]\n"
         . "       request-shield crawlers <main.rules> [update] [--force]\n"
         . "       request-shield token <main.rules> \"<group>\"|'*'\n"
         . "       request-shield feeds <main.rules> [list|update|export] [--force] [--format=plain|nginx|nftables|ipset] [--write=<file>]\n"
@@ -135,6 +148,63 @@ if (substr($file, -6) !== '.rules') {
 
 $files = $sources;
 $files[] = $file;
+
+if ($command === 'test') {
+    // The examples next to the rules (expect lines, proposal 0029), decided.
+    try {
+        $run = \CjwNetwork\RequestShield\Rules\Examples::run($files, $testOpts['asWritten'], $testOpts['only']);
+    } catch (InvalidArgumentException $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        exit(2);
+    }
+    $counts = ['pass' => 0, 'fail' => 0, 'skip' => 0];
+    $last = null;
+    foreach ($run['results'] as $r) {
+        $counts[$r['status']]++;
+        $x = $r['example'];
+        $label = $r['about'] ?? '';
+        $what = ($x['times'] > 1 ? $x['times'] . ' × ' : '') . $x['method'] . ' ' . $x['url'] . ($x['from'] !== RuleFile::EXAMPLE_FROM ? ' from ' . $x['from'] : '') . ($x['pass'] ? ' with pass' : '');
+        $mark = ['pass' => '✓', 'fail' => '✕', 'skip' => '–'][$r['status']];
+        $said = $r['status'] === 'pass' ? $x['outcome'] . ($r['gotRule'] !== null && $x['outcome'] !== 'passes' ? ' by ' . $r['gotRule'] : '') : $r['why'];
+        echo str_pad($label === $last ? '' : $label, 18) . "$mark " . str_pad($what, 52) . " $said\n";
+        if ($r['status'] !== 'pass' && $x['text'] !== null) {
+            echo str_repeat(' ', 22) . $x['text'] . '   (' . $x['at'] . ")\n";
+        } elseif ($r['status'] !== 'pass') {
+            echo str_repeat(' ', 22) . '(' . $x['at'] . ")\n";
+        }
+        $last = $label;
+    }
+    $n = count($run['results']);
+    echo "\n$n example" . ($n === 1 ? '' : 's') . ': ' . $counts['pass'] . ' pass' . ($counts['fail'] > 0 ? ', ' . $counts['fail'] . ' fail' . ($counts['fail'] === 1 ? 's' : '') : '')
+        . ($counts['skip'] > 0 ? ', ' . $counts['skip'] . ' skipped' : '') . '.'
+        . ($run['without'] !== [] && $testOpts['only'] === null ? ' ' . count($run['without']) . ' rule' . (count($run['without']) === 1 ? '' : 's') . ' without an example: ' . implode(', ', $run['without']) : '') . "\n";
+    if ($testOpts['junit'] !== null) {
+        $xml = new DOMDocument('1.0', 'UTF-8');
+        $xml->formatOutput = true;
+        $suite = $xml->appendChild($xml->createElement('testsuite'));
+        $suite->setAttribute('name', basename($file));
+        $suite->setAttribute('tests', (string) $n);
+        $suite->setAttribute('failures', (string) $counts['fail']);
+        $suite->setAttribute('skipped', (string) $counts['skip']);
+        foreach ($run['results'] as $r) {
+            $x = $r['example'];
+            $case = $suite->appendChild($xml->createElement('testcase'));
+            $case->setAttribute('classname', $r['about'] ?? basename($file));
+            $case->setAttribute('name', $x['method'] . ' ' . $x['url'] . ' ' . $x['outcome'] . ' (' . $x['at'] . ')');
+            if ($r['status'] === 'fail') {
+                $case->appendChild($xml->createElement('failure'))->setAttribute('message', $r['why']);
+            } elseif ($r['status'] === 'skip') {
+                $case->appendChild($xml->createElement('skipped'))->setAttribute('message', $r['why']);
+            }
+        }
+        if (@file_put_contents($testOpts['junit'], (string) $xml->saveXML()) === false) {
+            fwrite(STDERR, "request-shield: cannot write {$testOpts['junit']}\n");
+            exit(2);
+        }
+    }
+    exit($counts['fail'] > 0 ? 1 : 0);
+}
+
 try {
     $read = RuleFile::read($files);
     $settings = Settings::from($read['config']);

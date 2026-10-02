@@ -9,9 +9,11 @@ ids TRACK required
 version 2026.10.1
 
 [TRACK-UTM@1]       query utm_* any                                        # campaign tags: utm_source, utm_medium, utm_campaign, …
+expect GET /?utm_source=newsletter&utm_medium=mail   answered   # known: kept working with query strict
 [TRACK-GOOGLE@1]    query gclid any  gbraid any  wbraid any  dclid any  _ga any  _gl any   # Google Ads and Analytics
 [TRACK-MICROSOFT@1] query msclkid any                                      # Microsoft Advertising
 [TRACK-META@1]      query fbclid any  igshid any                           # Facebook, Instagram
+expect GET /news?fbclid=IwAR0abc                   answered
 [TRACK-SOCIAL@1]    query ttclid any  twclid any  li_fat_id any            # TikTok, X, LinkedIn
 [TRACK-MAIL@1]      query mc_cid any  mc_eid any  _hsenc any  _hsmi any  mkt_tok any   # Mailchimp, HubSpot, Marketo
 [TRACK-OTHER@1]     query yclid any  s_kwcid any                           # Yandex, Adobe

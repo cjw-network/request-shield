@@ -73,6 +73,7 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `ban after <n> <signal> in <time> for <time>` | `bans` | a client past `<n>` signals (`limits`, `refusals`, `checks`, a budget's name) is answered only 429 for a while; above the site blocks ([IP lists](ip-lists.md#bans)) |
 | `crawlers <kind> allow\|check\|block` / `crawler <ID> allow\|check\|block` | `crawlerPolicy` | what the site does with verified crawlers, by kind (`search`, `ai-search`, `ai-user`, `ai-training`) or one by one ([known crawlers](known-crawlers.md)) |
 | `crawler <kind> ua /<pattern>/ [dns <suffixes>] [ranges <lists>]` | `crawlers` | a crawler of the site's own, verified by DNS or an address list (`ranges ./ours.json`) |
+| `expect <METHOD> <address> <outcome> [by <ID>] [from <address>] [with pass] [times <n>]` | — | an example of what the rules decide, below the rule it is about; decided by `request-shield test`, never by a request ([examples](rule-examples.md)) |
 | `set <key> <value>` | any other setting | see below |
 | `include <path or glob>` | — | further rule files, relative to this one |
 
@@ -396,6 +397,7 @@ old settings quietly kept: `bin/request-shield check` first.
 php bin/request-shield check  site.rules [--source=<glob>]...   # errors with file:line; warns about world-writable files
 php bin/request-shield show   site.rules [--source=<glob>]...   # the rules in effect, each with its origin
 php bin/request-shield reload site.rules [--source=<glob>]...   # check, then mark changed for every server
+php bin/request-shield test   site.rules [--only=<ID>] [--as-written] [--junit=<file>]   # decide the examples (expect lines)
 php bin/request-shield deny   site.rules 203.0.113.7 --for=7d --reason="scraper"   # the list files (IP lists)
 php bin/request-shield allow  site.rules 192.0.2.50 --for=30d
 php bin/request-shield unlist site.rules 203.0.113.7
