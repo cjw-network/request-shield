@@ -16,6 +16,7 @@ use CjwNetwork\RequestShield\Challenge\Secret;
 use CjwNetwork\RequestShield\Rule\BanRule;
 use CjwNetwork\RequestShield\Rule\BlockedPathRule;
 use CjwNetwork\RequestShield\Rule\BudgetRule;
+use CjwNetwork\RequestShield\Rule\PostOriginRule;
 use CjwNetwork\RequestShield\Rule\CacheableRule;
 use CjwNetwork\RequestShield\Rule\ContentRule;
 use CjwNetwork\RequestShield\Rule\CrawlerRule;
@@ -116,6 +117,11 @@ final class Shield
         $this->rules[] = new BlockedPathRule($s->blockedPaths, $s->blockExceptions, $s->blockedIndex);
         if ($s->methodPaths !== []) {
             $this->rules[] = new MethodPathRule($s->methodPaths);
+        }
+        // Forms only from the website itself (post-origin same).
+        if ($s->postOrigin !== null) {
+            $this->rules[] = new PostOriginRule(self::ownNames($s), $s->postOrigin['missing'], $s->postOrigin['except'],
+                $s->challenge->apiPaths, $s->exemptIps);
         }
         if ($s->restricted !== []) {
             $this->rules[] = new RestrictedPathRule($s->restricted);
@@ -332,6 +338,26 @@ final class Shield
                 }
             }
         });
+    }
+
+    /**
+     * The website's own names, for post-origin: the host rule's, and in a site
+     * block that block's names ("default" is none); [] when there are none --
+     * then the name the request was sent to.
+     *
+     * @return list<string>
+     */
+    public static function ownNames(Settings $s): array
+    {
+        $names = $s->hosts;
+        if ($s->site !== null) {
+            foreach ($s->sites as $name => $block) {
+                if ($block === $s->site && $name !== 'default') {
+                    $names[] = $name;
+                }
+            }
+        }
+        return array_values(array_unique(array_map('strtolower', $names)));
     }
 
     /**
@@ -614,6 +640,9 @@ final class Shield
                 // A ban's mark keeps no rule (the log names it when it is set); with one ban rule, that one.
                 $bans = array_values(array_unique(array_column($s->bans, 'rule')));
                 return count($bans) === 1 ? $bans[0] : null;
+            case 'cross-site':
+            case 'origin missing':
+                return $name('postOrigin', '*', 'postOrigin');
             case 'host':
                 return $name('hosts', '*', 'hosts');
             case 'app':
@@ -669,7 +698,8 @@ final class Shield
             if ($wants->action === Decision::REJECT || $rule instanceof BanRule) {
                 return $this->base = $wants;            // a banned client: one lookup, and the answer
             }
-            if ($rule instanceof BudgetRule) {
+            if ($rule instanceof BudgetRule || ($rule instanceof PostOriginRule && $wants->action === Decision::CHALLENGE)) {
+                // A check -- a budget's, or a form without Origin and Referer -- goes through the gate.
                 $budget = $budget === null ? $wants : $budget->stricter($wants);
             } else {
                 $base = $base->stricter($wants);

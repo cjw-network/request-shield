@@ -157,7 +157,7 @@ final class RuleFile
      * The examples next to the rules (expect lines, proposal 0029): read and
      * checked with the rules, kept apart from the settings a request loads.
      *
-     * @var list<array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, text: ?string, at: string, site: ?string}>
+     * @var list<array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, headers: array<string, string>, text: ?string, at: string, site: ?string}>
      */
     private array $examples = [];
 
@@ -191,7 +191,7 @@ final class RuleFile
      * @param list<string> $files paths or globs; a glob may match nothing
      * @param ?string $site the website whose "site" block is read too (its block's first name);
      *   null: the base -- the rules for every website, each site block skipped
-     * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, examples: list<array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, text: ?string, at: string, site: ?string}>}
+     * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, examples: list<array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, headers: array<string, string>, text: ?string, at: string, site: ?string}>}
      *   config: the settings array, with 'origins' (setting => pattern or budget => "file:line"),
      *   'sites' (website name => its block's first name) and 'site';
      *   examples: the expect lines (never part of config: a request does not load them)
@@ -227,7 +227,7 @@ final class RuleFile
 
     /**
      * @param list<string> $files
-     * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, monitored: bool, examples: list<array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, text: ?string, at: string, site: ?string}>}
+     * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, monitored: bool, examples: list<array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, headers: array<string, string>, text: ?string, at: string, site: ?string}>}
      */
     private static function reading(array $files, bool $monitoring, ?string $site = null): array
     {
@@ -577,10 +577,10 @@ final class RuleFile
             $keyword = strtolower((string) array_shift($parts));
             $line = (string) preg_replace('/^\S+\s*/', '', $line);
             // The rules that refuse or check someone; the others refuse nobody.
-            $watchable = in_array($keyword, ['block', 'restrict', 'allow', 'limit', 'challenge', 'ban', 'feed'], true)
+            $watchable = in_array($keyword, ['block', 'restrict', 'allow', 'limit', 'challenge', 'ban', 'feed', 'post-origin'], true)
                 || ($keyword === 'query' && $parts === ['strict']);
             if (!$watchable) {
-                throw new RuleFileException("$at: monitor <rule> -- for block, restrict, allow, limit, challenge, ban, feed and query strict"
+                throw new RuleFileException("$at: monitor <rule> -- for block, restrict, allow, limit, challenge, ban, feed, post-origin and query strict"
                     . ($keyword === '' ? '' : ", not \"$keyword\" (use set mode monitor to watch everything)"));
             }
         }
@@ -807,6 +807,9 @@ final class RuleFile
             case 'api-path':
                 $this->patterns('challenge.apiPaths', $args, $at, false);
                 return;
+            case 'post-origin':
+                $this->postOrigin($args, $at);
+                return;
             case 'limit':
                 $this->limit($args, $at);
                 return;
@@ -856,7 +859,7 @@ final class RuleFile
                 return;
         }
         throw new RuleFileException("$at: unknown rule \"$keyword\"" . self::suggest($keyword,
-            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'stats-skip', 'stats-group', 'stats-access', 'api-path', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include']));
+            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'stats-skip', 'stats-group', 'stats-access', 'api-path', 'post-origin', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include']));
     }
 
     /**
@@ -1357,6 +1360,8 @@ final class RuleFile
                     throw new RuleFileException("$at: inside match: query <name> <type> ... -- the block is where");
                 }
                 return array_merge($args, ['at'], $path);
+            case 'post-origin':
+                throw new RuleFileException("$at: post-origin is for the whole website -- put it outside the block (except <paths> leaves areas out)");
             case 'limit':
                 if (in_array('at', $args, true)) {
                     throw new RuleFileException("$at: inside match: limit <name> <n>/<unit> ... -- the block is where");
@@ -1377,7 +1382,7 @@ final class RuleFile
      */
     private function expect(array $args, string $at, string $file, ?string $text): void
     {
-        $usage = 'expect <METHOD> <address> passes|uncached|answered|check|<4xx> [by <ID>] [from <address>] [with pass] [times <n>]';
+        $usage = 'expect <METHOD> <address> passes|uncached|answered|check|<4xx> [by <ID>] [from <address>] [with pass] [times <n>] [header <Name>:<value>]...';
         if (count($args) < 3) {
             throw new RuleFileException("$at: $usage");
         }
@@ -1389,7 +1394,7 @@ final class RuleFile
             throw new RuleFileException("$at: expect: \"$url\" -- a path (/news?page=2) or a full address (https://admin.example.org/…)");
         }
         $x = ['method' => $method, 'url' => $url, 'outcome' => '', 'by' => null, 'rule' => $this->lastRule[$file] ?? null,
-            'from' => self::EXAMPLE_FROM, 'pass' => false, 'times' => 1, 'text' => $text === '' ? null : $text, 'at' => $at,
+            'from' => self::EXAMPLE_FROM, 'pass' => false, 'times' => 1, 'headers' => [], 'text' => $text === '' ? null : $text, 'at' => $at,
             'site' => $this->siteOpen !== null ? $this->siteOpen['id'] : null];
         // The outcome and the options, in any order after the address.
         while ($args !== []) {
@@ -1402,6 +1407,9 @@ final class RuleFile
                     throw new RuleFileException("$at: expect … from \"$from\" -- one address (a documentation range: 192.0.2.10, 2001:db8::1)");
                 }
                 $x['from'] = $from;
+            } elseif ($a === 'header' && isset($args[0]) && preg_match('/^([A-Za-z][A-Za-z0-9-]{0,63}):(\S*)$/', $args[0], $hm) === 1) {
+                array_shift($args);
+                $x['headers'][strtolower($hm[1])] = $hm[2];     // header Origin:https://shop.example -- a value without spaces
             } elseif ($a === 'with' && strtolower($args[0] ?? '') === 'pass') {
                 array_shift($args);
                 $x['pass'] = true;
@@ -1416,7 +1424,57 @@ final class RuleFile
         if ($x['outcome'] === '') {
             throw new RuleFileException("$at: expect: what should happen? passes, uncached, answered (either), check or a status the shield refuses with (403, 404, 405, 429 …)");
         }
+        if ($x['by'] !== null && ($x['outcome'] === 'passes' || $x['outcome'] === 'answered')) {
+            throw new RuleFileException("$at: expect … {$x['outcome']} by {$x['by']} -- a request that passes is decided by no rule; leave by out");
+        }
         $this->examples[] = $x;
+    }
+
+    /**
+     * post-origin same [missing check|allow|refuse] [except <paths>]: forms only from the
+     * website's own pages (proposal 0028); post-origin except <paths> adds paths it never
+     * applies to (a payment provider's callback, single sign-on, webhooks).
+     *
+     * @param list<string> $args
+     */
+    private function postOrigin(array $args, string $at): void
+    {
+        $usage = 'post-origin same [missing check|allow|refuse] [except <paths>]  or  post-origin except <paths>';
+        $p = $this->get('postOrigin');
+        $p = is_array($p) ? $p : ['same' => false, 'missing' => 'check', 'except' => []];
+        $first = array_shift($args);
+        if ($first === 'same') {
+            $p['same'] = true;                  // only this switches it on; "except" lines alone do not
+            $this->origins['postOrigin']['*'] = $this->rid;
+            if (($args[0] ?? null) === 'missing') {
+                array_shift($args);
+                $m = (string) array_shift($args);
+                if (!in_array($m, ['check', 'allow', 'refuse'], true)) {
+                    throw new RuleFileException("$at: post-origin same missing check|allow|refuse -- what to do when a form names neither Origin nor Referer (\"$m\")");
+                }
+                $p['missing'] = $m;
+            }
+            if ($args !== [] && $args[0] !== 'except') {
+                throw new RuleFileException("$at: \"{$args[0]}\" -- $usage");
+            }
+        } elseif ($first !== 'except') {
+            throw new RuleFileException("$at: $usage");
+        } else {
+            array_unshift($args, 'except');
+        }
+        if (($args[0] ?? null) === 'except') {
+            array_shift($args);
+            if ($args === []) {
+                throw new RuleFileException("$at: post-origin … except <paths> -- which paths?");
+            }
+            $except = is_array($p['except'] ?? null) ? array_values($p['except']) : [];
+            foreach ($this->compile($args, $at, false) as $pattern => $origin) {
+                $except[] = $pattern . 'i';
+                $this->origins['postOriginExcept'][$pattern . 'i'] = $this->rid;
+            }
+            $p['except'] = $except;
+        }
+        $this->put('postOrigin', $p);
     }
 
     /**

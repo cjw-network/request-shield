@@ -24,7 +24,7 @@ use CjwNetwork\RequestShield\Store\MemoryStore;
  * rules switched on (monitor as enforce) unless asked for as written; nothing
  * is written to the site's store, log or statistics.
  *
- * @phpstan-type Example array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, text: ?string, at: string, site: ?string}
+ * @phpstan-type Example array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, headers: array<string, string>, text: ?string, at: string, site: ?string}
  * @phpstan-type Result array{example: Example, about: ?string, status: string, got: string, gotRule: ?string, why: string}
  */
 final class Examples
@@ -142,6 +142,9 @@ final class Examples
             'HTTP_USER_AGENT' => self::USER_AGENT, 'HTTP_ACCEPT' => 'text/html,application/xhtml+xml,*/*;q=0.8', 'HTTP_ACCEPT_LANGUAGE' => 'en'];
         if ($https) {
             $server['HTTPS'] = 'on';
+        }
+        foreach ($x['headers'] as $name => $value) {
+            $server['HTTP_' . strtoupper(str_replace('-', '_', $name))] = $value;
         }
         if ($x['method'] !== 'GET' && $x['method'] !== 'HEAD') {
             $server['CONTENT_TYPE'] = 'application/x-www-form-urlencoded';

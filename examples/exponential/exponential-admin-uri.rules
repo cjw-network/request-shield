@@ -20,7 +20,7 @@ match /admin/** {
   expect POST /admin/content/edit/87/1/ger-DE with pass  answered
   [EXP-ADMIN-CHECK] challenge                                 # every editor: the browser check once per pass
   expect GET /admin/dashboard                         check
-  expect POST /admin/class/edit/1                     check
+  expect POST /admin/class/edit/1 header Origin:https://www.example.org   check
   expect GET /admin/user/login                        check by EXP-LOGIN   # the login: the frontend's rule
   [EXP-ADMIN-Q]     query * text                              # the admin's parameters: all known, free text scanned for attacks
   expect GET /admin/content/edit/87?anything=goes with pass   answered

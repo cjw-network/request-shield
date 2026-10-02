@@ -84,10 +84,7 @@ does not have. On a development machine, add your address:
 | `EXP-LOGIN` | `user/login`, `user/register`, `user/forgotpassword`, `user/password`: the browser check first, a pass from the last 15 minutes | Password guessing and fake registrations come from scripts. The check is an invisible task the browser solves in about a second; a script has to solve it again and again, from every address. A person notices a short "one moment" once. The admin's login (`/admin/user/login`, or `/user/login` on the admin's host) is matched by the same rule. |
 | `EXP-FORMS` | `content/action` (information collection, the contact forms), `content/tipafriend`, `comment/add`, `newsletter/subscribe`: the check, once per half hour | These send mail or store content: the spam target. A POST without a pass gets the check page, and the form is **sent again by itself**, so nothing typed is lost. Instead of the page, the check can sit inside the form and be solved while the visitor types ([the widget](../features/browser-check-in-the-form.md), one line in the form's template). |
 | `EXP-API` | `ezjscore/`, `/api/`: a check is JSON with a header, not a page | AJAX calls cannot show a page; they get the task in a header. |
-
-Exponential's own form tokens (`ezformtoken`) protect signed-in users against
-forms sent from other sites. The shield does not replace them. Checking the
-`Origin` for every form is [proposal 0028](../proposals/0028-forms.md).
+| `EXP-ORIGIN`, `EXP-ORIGIN-X` | a form (POST, PUT, PATCH, DELETE) only from the website's own pages (`Origin`, else `Referer`): another website 403, neither header the browser check; not for payment providers' callbacks (`paypal/notify_url`) | A foreign page must not send a form in a visitor's name (cross-site request forgery). Exponential's own form tokens (`ezformtoken`) protect signed-in users; this covers every form, the anonymous ones too ([forms from the website](../features/forms-from-the-website.md)). Not a bot defence: a script sets the headers as it likes. |
 
 ## 3. Search
 

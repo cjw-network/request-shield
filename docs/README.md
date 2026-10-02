@@ -11,6 +11,7 @@
   [browser challenge](features/browser-challenge.md) ·
   [access rules](features/access-rules.md) ·
   [rule files](features/rule-files.md) ·
+  [forms only from the website itself (`post-origin`)](features/forms-from-the-website.md) ·
   [examples next to the rules (`expect`, `request-shield test`)](features/rule-examples.md) ·
   [log and rule IDs](features/log-and-rule-ids.md) ·
   [active rules page](features/active-rules-page.md) ·
@@ -59,7 +60,7 @@
   [0025 public blocklists](proposals/0025-blocklist-feeds.md) (phases 1–3 implemented; .htaccess dropped after measuring) ·
   [0026 the live view and the lists in the dashboard](proposals/0026-live-view-and-lists.md) (phases 1–3 implemented) ·
   [0027 protected areas: passwords, one-time codes](proposals/0027-protected-areas.md) (draft) ·
-  [0028 forms: counted, and sent only from the website itself](proposals/0028-forms.md) (draft) ·
+  [0028 forms: counted, and sent only from the website itself](proposals/0028-forms.md) (phase 1 implemented; phase 3 with 0008) ·
   [0029 examples next to the rules: expect, a test command, a generated overview](proposals/0029-rule-examples.md) (phase 1 implemented) ·
   [0030 error pages: a quiet page of the shield's own, or the site's](proposals/0030-error-pages.md) (accepted)
   (0002, a single-file build, is reserved)

@@ -86,7 +86,7 @@ expect GET /news/(offset)/99999999                 404   # counting through a li
 # --------------------------------------------------------------------------
 # A POST only where Exponential takes one. Anything else: 405 -- a bot that
 # posts to every address it finds gets nowhere. Add your extensions' modules.
-[EXP-POST]      allow POST **/user/login **/user/register **/user/forgotpassword **/user/password/** **/user/edit/** **/user/preferences/** **/content/action **/content/edit/** **/content/collectedinfo/** **/content/tipafriend/** **/content/search **/content/advancedsearch **/comment/** **/shop/** **/ezjscore/** **/notification/** **/newsletter/** /api/**   # forms: login, register, collect information, comments, basket, AJAX, REST (the admin: in its own file)
+[EXP-POST]      allow POST **/paypal/notify_url/** **/user/login **/user/register **/user/forgotpassword **/user/password/** **/user/edit/** **/user/preferences/** **/content/action **/content/edit/** **/content/collectedinfo/** **/content/tipafriend/** **/content/search **/content/advancedsearch **/comment/** **/shop/** **/ezjscore/** **/notification/** **/newsletter/** /api/**   # forms: login, register, collect information, comments, basket, AJAX, REST (the admin: in its own file)
 expect POST /news/2026/fit-and-healthy            405   # no form lives at a page's alias
 expect POST /ezjscore/call/ezstarrating::rate      answered
 
@@ -95,7 +95,7 @@ expect POST /ezjscore/call/ezstarrating::rate      answered
 # 15 minutes is enough, so the form sends without a second check.
 [EXP-LOGIN]     challenge **/user/login **/user/register **/user/forgotpassword **/user/password/** max-age 15m   # login, registration, password: the browser check first
 expect GET /user/login                            check
-expect POST /user/login                           check
+expect POST /user/login header Origin:https://www.example.org   check
 expect GET /user/login with pass                  answered   # checked once: the form
 
 # Forms that send something: information collection (contact forms post to
@@ -104,11 +104,24 @@ expect GET /user/login with pass                  answered   # checked once: the
 # (The check can also sit inside the form, solved while typing: the widget,
 # docs/features/browser-check-in-the-form.md -- one line in the template.)
 [EXP-FORMS]     challenge **/content/action **/content/tipafriend/** **/comment/add/** **/newsletter/subscribe/** max-age 30m   # contact forms, tip a friend, comments, newsletter: checked once per half hour
-expect POST /content/action                       check
-expect POST /bold_ger/content/action              check
+expect POST /content/action header Origin:https://www.example.org   check
+expect POST /bold_ger/content/action header Origin:https://www.example.org   check
 expect POST /content/action with pass             answered
 
-# AJAX and REST answer a check as JSON with a header, not as a page.
+# Forms only from the website's own pages: a foreign page cannot send one in a
+# visitor's name (cross-site request forgery) -- Exponential's form tokens
+# protect signed-in users, this covers every form. Origin, else Referer;
+# neither (privacy settings): the browser check. Payment callbacks post from
+# the provider: left out. The API and ezjscore (api-path) authenticate otherwise.
+[EXP-ORIGIN]    post-origin same                                                  # forms only from this website's pages
+expect POST /content/action header Origin:https://www.example.org      check by EXP-FORMS   # its own page: on to the form check
+expect POST /content/action header Origin:https://evil.example         403        # sent from another website
+expect POST /user/login header Referer:https://evil.example/login      403        # no Origin: the Referer says it
+expect POST /news/2026/fit-and-healthy header Origin:https://evil.example   405 by EXP-POST   # no form there: 405 first
+[EXP-ORIGIN-X]  post-origin except **/paypal/notify_url/** **/xrowpaypal/notify/**   # payment providers' callbacks post from elsewhere
+expect POST /paypal/notify_url/123 header Origin:https://ipn.paypal.example   answered
+
+
 [EXP-API]       api-path **/ezjscore/** /api/**                                    # ezjscore calls and the REST API
 expect GET /ezjscore/call/ezjsc::time                answered   # an AJAX call: answered; a check here comes as JSON with a header
 

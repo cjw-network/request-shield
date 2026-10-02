@@ -138,6 +138,7 @@ final class Describe
             $de = [
                 'blocked path' => 'eine Adresse, die nur Angreifer aufrufen', 'restricted' => 'ein Bereich nur für bestimmte Adressen',
                 'method' => 'diese Art von Anfrage ist nicht erlaubt', 'method not allowed here' => 'ein Formular, gesendet wohin keines gehört',
+                'cross-site' => 'ein Formular, von einer anderen Website aus gesendet', 'origin missing' => 'ein Formular, das nicht sagt, woher es kommt (weder Origin noch Referer)',
                 'host' => 'ein unbekannter Name der Website', 'uri length' => 'die Adresse ist zu lang', 'query parameters' => 'zu viele Parameter',
                 'header size' => 'zu viele Header-Daten', 'path encoding' => 'eine getarnte Adresse', 'path traversal' => 'ein Versuch, den Ordner der Website zu verlassen',
                 'query parameter' => 'ein Parameter, den ein Cache nicht behalten darf', 'path not cacheable' => 'eine Adresse, die ein Cache nicht behalten darf',
@@ -155,6 +156,8 @@ final class Describe
             'restricted' => 'an area only for certain addresses',
             'method' => 'this kind of request is not accepted',
             'method not allowed here' => 'a form sent where there is none',
+            'cross-site' => 'a form sent from another website',
+            'origin missing' => 'a form that does not say where it comes from (neither Origin nor Referer)',
             'host' => 'an unknown website name',
             'uri length' => 'the address is too long',
             'query parameters' => 'too many parameters',

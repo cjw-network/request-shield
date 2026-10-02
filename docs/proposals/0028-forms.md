@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Phase 1 implemented** 2026-10-02 ([forms from the website](../features/forms-from-the-website.md)): `post-origin`; phase 3 (`limit` inside `match` blocks) came with [0008](0008-match-blocks.md) step 2; phase 2 (the form counters, `backend`) to come. Decisions below: the recommendations |
 | Proposed | 2026-10-01 |
 | Affects | the statistics plugin (a card "Forms"), rule files (new rules `post-origin`, `backend`; `limit` inside `match` blocks, [0008](0008-match-blocks.md) step 2), the live view, the rules page |
 
@@ -132,7 +132,22 @@ What a site owner wants to know, and today only finds in the web server's log:
 2. The form counters and the card "Forms"; `backend <paths>`, counted apart.
 3. `limit` inside `match` blocks (0008 step 2): the backend's own pace.
 
-## Open questions
+## Decisions (2026-10-02)
+
+1. `missing check` is the default: a browser solves the check once, a script
+   without the headers has to every time.
+2. POST, PUT, PATCH and DELETE outside `api-path` count as forms.
+3. The backend is counted per area, not per address (phase 2).
+4. `post-origin` is never on by default; it is named in the rule file, and the
+   docs show it with `monitor` first.
+5. "A wave of POSTs without a page before" as a ban signal: later, once the
+   statistics show how often it happens.
+
+Built in phase 1 beyond the text: `post-origin except <paths>` on a line of its
+own adds exceptions (and switches nothing on); `expect … header <Name>:<value>`
+for examples that need `Origin` or `Referer` ([0029](0029-rule-examples.md)).
+
+## Open questions (as proposed)
 
 1. **`missing`:** `check` by default (proposed), or `allow`? *Recommendation:
    `check`: a browser solves it once; a script without the headers has to.*

@@ -59,6 +59,7 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `cache-path <paths>` | `cacheable.paths` | what a cache may keep; `any`: every path (default) |
 | `cache-query <names>` | `cacheable.query` | parameters a cached URL may have; `any` (default), `none` |
 | `limit <name> <n>/<unit> [challenge-at <n>] [on-demand] [on-exceeded challenge] [at <paths>]` | `budgets` | units `s`, `sec`, `min`, `hour`, `day`, also `20/10s`; `on-exceeded challenge`: past the limit the check that frees the counter instead of a pause ([budgets](budgets.md#past-the-limit-a-pause-or-earn-it-back)); `at <paths>` (or inside a `match` block): only requests there count ([an area's budget](budgets.md#a-budget-for-one-area)) |
+| `post-origin same [missing check\|allow\|refuse] [except <paths>]` / `post-origin except <paths>` | `postOrigin` | forms (POST, PUT, PATCH, DELETE) only from the website's own pages: `Origin`, else `Referer`; another website 403, neither the browser check ([forms from the website](forms-from-the-website.md)) |
 | `api-path <paths>` | `challenge.apiPaths` | the site's API: a check there is JSON with a header, not a page |
 | `no-limit <name>` | `budgets` | switch a budget off, the default one too |
 | `challenge <paths> [max-age <duration>]` | `challenge.alwaysPaths`, `challenge.alwaysMaxAge` | always check the browser there; `max-age 5m`: a pass from the last five minutes there ([modes](modes.md)) |

@@ -36,7 +36,7 @@ that breaks one is seen before the deploy, not by a visitor. Proposal
 ## The line
 
 ```text
-expect <METHOD> <address> <outcome> [by <ID>] [from <address>] [with pass] [times <n>]
+expect <METHOD> <address> <outcome> [by <ID>] [from <address>] [with pass] [times <n>] [header <Name>:<value>]...
 ```
 
 After the address, the outcome and the options may come in any order.
@@ -50,8 +50,9 @@ After the address, the outcome and the options may come in any order.
 | `answered` | either of the two: the site answers it. For near misses that must not be refused, whatever the site's cache rules say |
 | `check` | the browser check |
 | `403`, `404`, `405`, `429` … | refused with that status |
-| `by <ID>` | the rule that must decide. **Without it, the rule the line follows** (the last rule with an ID above it in the same file); for `passes`, `uncached` and `answered`, nothing is checked unless `by` is written |
+| `by <ID>` | the rule that must decide. **Without it, the rule the line follows** (the last rule with an ID above it in the same file); for `uncached`, nothing is checked unless `by` is written; `passes` and `answered` take no `by` (no rule decides a request that passes) |
 | `from <address>` | the visitor's address; default `198.51.100.7`, a documentation range. For `restrict`, `exempt`, `deny`, the lists |
+| `header <Name>:<value>` | a header the request carries (`header Origin:https://www.example.org`); the value without spaces; several allowed |
 | `with pass` | the visitor solved the check before (holds a valid pass) |
 | `times <n>` | the request sent `n` times in a row: budgets, bans. The outcome is that of the last one |
 

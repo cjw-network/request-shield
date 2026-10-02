@@ -28,7 +28,8 @@ function withExponentialDemo(callable $body, string $prefix = ''): void
         $body(static function (string $method, string $uri) use ($port, $prefix): array {
             $opts = ['method' => $method, 'ignore_errors' => true, 'timeout' => 10, 'follow_location' => 0];
             if ($method === 'POST') {
-                $opts['header'] = "Content-Type: application/x-www-form-urlencoded\r\n";
+                // As a browser sends a form: from the page's own origin (post-origin same).
+                $opts['header'] = "Content-Type: application/x-www-form-urlencoded\r\nOrigin: http://127.0.0.1:$port\r\n";
                 $opts['content'] = 'demo=1';
             }
             // The page's links are relative to its <base href> (the demo's own address).

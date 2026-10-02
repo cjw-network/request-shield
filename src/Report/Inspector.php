@@ -145,6 +145,19 @@ final class Inspector
         $step('Where forms may be sent', $s->methodPaths === [] ? null : (new MethodPathRule($s->methodPaths))->check($request, $now),
             isset($s->methodPaths[$request->method]) ? $w('%s is allowed at this address', $request->method) : ($s->methodPaths === [] ? $w('no restriction') : $w('no restriction for %s', $request->method)),
             static fn (): string => $w('a %s is only accepted at: %s', $request->method, implode(', ', array_map($pattern, $s->methodPaths[$request->method] ?? []))));
+        // Forms only from the website itself (post-origin same).
+        $origin = null;
+        $originPass = $w('not checked (no post-origin rule)');
+        if ($s->postOrigin !== null) {
+            $origin = (new \CjwNetwork\RequestShield\Rule\PostOriginRule(Shield::ownNames($s), $s->postOrigin['missing'], $s->postOrigin['except'], $s->challenge->apiPaths, $s->exemptIps))->check($request, $now);
+            $from = \CjwNetwork\RequestShield\Rule\PostOriginRule::sentFrom($request);
+            $originPass = !in_array($request->method, ['POST', 'PUT', 'PATCH', 'DELETE'], true) ? $w('not a form (%s)', $request->method)
+                : ($from === null ? $w('it says nowhere where it comes from -- let through here (missing allow, an exception, or an address let in)') : $w('sent from %s: this website, or not checked here', $from));
+        }
+        $step('Where forms come from', $origin, $originPass, static function (Decision $d) use ($w, $request): string {
+            $from = \CjwNetwork\RequestShield\Rule\PostOriginRule::sentFrom($request);
+            return $d->reason === 'cross-site' ? $w('sent from %s -- another website (Origin, else Referer)', (string) $from) : $w('neither Origin nor Referer: %s', $d->action === Decision::CHALLENGE ? $w('the browser check') : $w('refused'));
+        });
         $restricted = $s->restricted === [] ? null : (new RestrictedPathRule($s->restricted))->check($request, $now);
         $step('Areas for certain visitors', $restricted, $this->restrictedPass($request),
             fn (): string => $w('only for %s — %s is not one of them', $this->restrictedFor($request), $request->clientIp));
@@ -355,7 +368,12 @@ final class Inspector
         '%s is on the deny list: 403 before everything else' => '%s steht auf der Sperrliste: 403 vor allem anderen', 'no automatic bans' => 'keine automatischen Sperren',
         '%s is not banned' => '%s ist nicht gesperrt', 'banned for a while: %s more seconds, nothing but 429' => 'für eine Weile gesperrt: noch %s Sekunden, nur 429',
         'Kind of request' => 'Art der Anfrage', 'Size' => 'Größe', 'Disguised address' => 'Getarnte Adresse', 'Website name' => 'Name der Website',
-        'Addresses only attackers ask for' => 'Adressen, die nur Angreifer aufrufen', 'Where forms may be sent' => 'Wohin Formulare dürfen', 'Areas for certain visitors' => 'Bereiche für bestimmte Besucher',
+        'Addresses only attackers ask for' => 'Adressen, die nur Angreifer aufrufen', 'Where forms may be sent' => 'Wohin Formulare dürfen', 'Where forms come from' => 'Woher Formulare kommen',
+        'not checked (no post-origin rule)' => 'nicht geprüft (keine post-origin-Regel)', 'not a form (%s)' => 'kein Formular (%s)',
+        'it says nowhere where it comes from -- let through here (missing allow, an exception, or an address let in)' => 'es sagt nirgends, woher es kommt -- hier durchgelassen (missing allow, eine Ausnahme oder eine freigegebene Adresse)',
+        'sent from %s: this website, or not checked here' => 'gesendet von %s: diese Website, oder hier nicht geprüft',
+        'sent from %s -- another website (Origin, else Referer)' => 'gesendet von %s -- einer anderen Website (Origin, sonst Referer)',
+        'neither Origin nor Referer: %s' => 'weder Origin noch Referer: %s', 'the browser check' => 'der Browser-Check', 'Areas for certain visitors' => 'Bereiche für bestimmte Besucher',
         'Known crawlers' => 'Bekannte Crawler', 'Known parameters' => 'Bekannte Parameter', 'Attack patterns' => 'Angriffsmuster', 'May a cache keep the answer?' => 'Darf ein Cache die Antwort behalten?',
         'Pace' => 'Tempo', 'Pace: "%s"' => 'Tempo: „%s“', 'Browser check' => 'Browser-Check',
         'not checked: already refused above' => 'nicht geprüft: schon oben abgewiesen',

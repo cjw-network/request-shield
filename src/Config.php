@@ -168,6 +168,9 @@ final class Config
             // for the kinds listed ([]: all); kept 'days' days; 'query' false leaves
             // the query string out. null: none.
             'crawlerLog' => ['dir' => null, 'kinds' => [], 'days' => 30, 'query' => true],
+            // Forms only from the website itself (post-origin same, proposal 0028):
+            // ['missing' => 'check'|'allow'|'refuse', 'except' => [path patterns]]; null: off.
+            'postOrigin' => null,
         ];
     }
 

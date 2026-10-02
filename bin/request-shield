@@ -163,9 +163,9 @@ if ($command === 'test') {
         $counts[$r['status']]++;
         $x = $r['example'];
         $label = $r['about'] ?? '';
-        $what = ($x['times'] > 1 ? $x['times'] . ' × ' : '') . $x['method'] . ' ' . $x['url'] . ($x['from'] !== RuleFile::EXAMPLE_FROM ? ' from ' . $x['from'] : '') . ($x['pass'] ? ' with pass' : '');
+        $what = ($x['times'] > 1 ? $x['times'] . ' × ' : '') . $x['method'] . ' ' . $x['url'] . ($x['from'] !== RuleFile::EXAMPLE_FROM ? ' from ' . $x['from'] : '') . ($x['pass'] ? ' with pass' : '') . ($x['headers'] !== [] ? ' ' . implode(' ', array_map(static fn (string $k, string $v): string => "$k:$v", array_keys($x['headers']), $x['headers'])) : '');
         $mark = ['pass' => '✓', 'fail' => '✕', 'skip' => '–'][$r['status']];
-        $said = $r['status'] === 'pass' ? $x['outcome'] . ($r['gotRule'] !== null && $x['outcome'] !== 'passes' ? ' by ' . $r['gotRule'] : '') : $r['why'];
+        $said = $r['status'] === 'pass' ? $x['outcome'] . ($r['gotRule'] !== null && !in_array($x['outcome'], ['passes', 'uncached', 'answered'], true) ? ' by ' . $r['gotRule'] : '') : $r['why'];
         echo str_pad($label === $last ? '' : $label, 18) . "$mark " . str_pad($what, 52) . " $said\n";
         if ($r['status'] !== 'pass' && $x['text'] !== null) {
             echo str_repeat(' ', 22) . $x['text'] . '   (' . $x['at'] . ")\n";

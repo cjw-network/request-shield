@@ -286,6 +286,10 @@ final class RulesPage
         $g[] = [$w('Areas for certain visitors'), $rows === [] ? $w('No area is restricted.') : $w('Everyone else gets "no access" (403):'), $rows];
 
         $rows = [];
+        if ($s->postOrigin !== null) {
+            $rows[] = $row($w('Forms only from this website (Origin, else Referer); neither: %s', $w($s->postOrigin['missing'] === 'check' ? 'the browser check' : ($s->postOrigin['missing'] === 'allow' ? 'let through' : 'refused')))
+                . ($s->postOrigin['except'] !== [] ? $w('; not at: %s', implode(', ', array_map($pattern, $s->postOrigin['except']))) : ''), $o('postOrigin', '*'), $o('postOrigin', '*') ?? 'postOrigin');
+        }
         foreach ($s->methodPaths as $m => $patterns) {
             $rows[] = $row($w('%s only at: %s', (string) $m, implode(', ', array_map($pattern, $patterns))), $o('methodPaths', $m), $o('methodPaths', $m) ?? "methodPaths.$m");
         }
@@ -392,7 +396,9 @@ final class RulesPage
         'Any other parameter, or a value not of its type, gets "not found" (404):' => 'Jeder andere Parameter oder ein Wert nicht seines Typs bekommt „nicht gefunden“ (404):',
         'Values of these types are not scanned by the attack patterns; any other parameter is answered, but not cached:' => 'Werte dieser Typen prüfen die Angriffsmuster nicht; jeder andere Parameter wird beantwortet, aber nicht gecacht:',
         'Areas for certain visitors' => 'Bereiche für bestimmte Besucher', 'No area is restricted.' => 'Kein Bereich ist beschränkt.', 'Everyone else gets "no access" (403):' => 'Alle anderen bekommen „kein Zugriff“ (403):',
-        '%s only at: %s' => '%s nur unter: %s', 'Where forms may be sent' => 'Wohin Formulare dürfen', 'Accepted kinds of request: %s' => 'Erlaubte Arten von Anfragen: %s',
+        '%s only at: %s' => '%s nur unter: %s',
+        'Forms only from this website (Origin, else Referer); neither: %s' => 'Formulare nur von dieser Website (Origin, sonst Referer); ohne beides: %s',
+        '; not at: %s' => '; nicht unter: %s', 'let through' => 'durchgelassen', 'refused' => 'abgewiesen', 'Where forms may be sent' => 'Wohin Formulare dürfen', 'Accepted kinds of request: %s' => 'Erlaubte Arten von Anfragen: %s',
         '; forms may be sent anywhere.' => '; Formulare dürfen überallhin.', '; anywhere else "not allowed here" (405):' => '; überall sonst „hier nicht erlaubt“ (405):',
         'Website names and sizes' => 'Namen und Größen', 'Any website name is accepted. ' => 'Jeder Name der Website wird angenommen. ',
         'The site answers as %s; any other name gets "not found". ' => 'Die Website antwortet als %s; jeder andere Name bekommt „nicht gefunden“. ',

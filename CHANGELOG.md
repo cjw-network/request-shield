@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Forms only from the website itself** (proposal 0028, phase 1):
+  `post-origin same [missing check|allow|refuse] [except <paths>]`. A POST,
+  PUT, PATCH or DELETE must come from one of the website's own names (the
+  `host` rule's, the `site` block's, else the name it was sent to): `Origin`,
+  else `Referer`. Another website: 403 ("a form sent from another website");
+  neither header: the browser check by default (a pass gets through, the form
+  is sent again). Never for `except` paths (payment callbacks, single
+  sign-on), `api-path` and addresses let in; `monitor post-origin` to try it.
+  In the trace ("Where forms come from"), the rules page, the log and the live
+  view ([docs](docs/features/forms-from-the-website.md)). The Exponential rules
+  use it (`EXP-ORIGIN`). Examples take `header <Name>:<value>`
+  (`expect POST /contact header Origin:https://evil.example 403`).
 - **Examples next to the rules** (proposal 0029, phase 1): `expect <METHOD>
   <address> passes|uncached|answered|check|<4xx> [by <ID>] [from <address>]
   [with pass] [times <n>]` below a rule, and `bin/request-shield test` decides

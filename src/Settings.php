@@ -205,6 +205,8 @@ final class Settings
         public array $statsAccess = [],
         /** @readonly how long a login to the statistics lasts, in seconds (set stats-session; 8 hours) */
         public int $statsSession = 28800,
+        /** @var array{missing: string, except: list<string>}|null @readonly post-origin same: forms only from the website's own pages; null: off */
+        public ?array $postOrigin = null,
     ) {
     }
 
@@ -333,6 +335,7 @@ final class Settings
             ...array_slice($feeds, 0, 5),
             ...[self::statsHosts($c), self::patternList(is_array($c['stats'] ?? null) ? ($c['stats']['skip'] ?? []) : [], 'stats.skip'), self::statsGroups($c), self::statsPath($c)],
             ...self::statsAccess($c),
+            ...[self::postOrigin($c)],
         );
     }
 
@@ -602,6 +605,31 @@ final class Settings
     public static function groupId(string $name): string
     {
         return trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($name)), '-');
+    }
+
+    /**
+     * post-origin same: what to do without Origin and Referer, and the paths it never applies to.
+     *
+     * @param array<mixed> $c
+     * @return array{missing: string, except: list<string>}|null
+     */
+    private static function postOrigin(array $c): ?array
+    {
+        $p = $c['postOrigin'] ?? null;
+        if ($p === null) {
+            return null;
+        }
+        if (!is_array($p)) {
+            throw self::wrong('postOrigin', "null or ['missing' => 'check', 'except' => [path patterns]]");
+        }
+        if (($p['same'] ?? true) !== true) {
+            return null;                        // a rule file's "post-origin except" without "post-origin same": off
+        }
+        $missing = self::string($p, 'missing', 'postOrigin.missing', 'check');
+        if (!in_array($missing, ['check', 'allow', 'refuse'], true)) {
+            throw self::wrong('postOrigin.missing', 'check (the browser check, the default), allow or refuse');
+        }
+        return ['missing' => $missing, 'except' => self::patternList($p['except'] ?? [], 'postOrigin.except')];
     }
 
     /**
@@ -1215,7 +1243,7 @@ final class Settings
     public const DENY_SHOWN = 100;
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 38;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths
+    private const FORMAT = 39;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 
