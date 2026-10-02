@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Accepted** 2026-10-02 (decisions below: the recommendations); to be built in the phases below |
 | Proposed | 2026-10-02 |
 | Affects | rule files (new line `expect`), the command line (`request-shield test`, later `request-shield crawl`), the rules page (`<dashboard-path>/waf/rules`), the demos (their test tables), the built-in rule files, a short instruction for language models (`docs/llm/`) |
 
@@ -205,7 +205,18 @@ installations; a site that must can keep its examples in a file of their own
    generate their test tables from them.
 3. `request-shield crawl`.
 
-## Open questions
+## Decisions (2026-10-02)
+
+1. `expect` is a line of its own, checked by the reader like any rule.
+2. Rules in `monitor` are tested as they would decide when switched on;
+   `--as-written` tests them as they are.
+3. Without `by`, the rule the line follows must decide.
+4. Rules without an example are listed by `test` only, not by `check`.
+5. `crawl` goes into the library's command line: read-only, polite by default.
+6. The demos' tables, including each group's explanation, are generated from
+   the rule file.
+
+## Open questions (as proposed)
 
 1. **A line of its own (`expect …`) or a comment (`# expect …`)?**
    *Recommendation: a line of its own. The reader checks it like any rule (a
