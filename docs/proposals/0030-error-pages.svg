@@ -1,0 +1,57 @@
+<svg class="rsd" role="img" viewBox="0 0 900 540" width="100%" xmlns="http://www.w3.org/2000/svg">
+<title>Error pages. On the left, the built-in page: a card in the middle of the page, a ring with a quiet ":-(" drawn in SVG, or the site's logo; the title "Not found", one sentence that says what to do and never why, a reference that is also in the log, and a link to the home page; light and dark, inline, nothing loaded. On the right, the site's own page: set error-page 404 errors/404.html, per status, per website, per language, read when the rules are compiled, its placeholders filled in. Below, the statuses it covers: 400, 403, 404, 405, 414, 429 with how long to wait, 431; for an API the same as JSON.</title>
+<style>.rsd{font:13px/1.25 system-ui,sans-serif}.rsd .t{fill:#1d2127}.rsd .m{fill:#5b6470}.rsd .c{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;white-space:pre}.rsd .box{fill:#fff;stroke:#c9ced6}.rsd .pg{fill:#f6f7f9;stroke:#c9ced6}.rsd .ring{fill:none;stroke:#2f62c9;stroke-width:3}.rsd .face{fill:none;stroke:#2f62c9;stroke-width:2.4;stroke-linecap:round}.rsd .dot{fill:#2f62c9}.rsd .lnk{fill:#2f62c9}.rsd .arrow{stroke:#5b6470;stroke-width:1.6;fill:none}.rsd .base{fill:#eef3fd;stroke:#2f62c9}.rsd .site{fill:#fdf3dc;stroke:#b07400}.rsd .chip{fill:#fbe9e5;stroke:#a3361f}@media (prefers-color-scheme:dark){.rsd .t{fill:#e7e9ec}.rsd .m{fill:#a0a8b3}.rsd .box{fill:#1d2127;stroke:#3a414b}.rsd .pg{fill:#14171b;stroke:#3a414b}.rsd .ring,.rsd .face{stroke:#7aa2ff}.rsd .dot,.rsd .lnk{fill:#7aa2ff}.rsd .arrow{stroke:#a0a8b3}.rsd .base{fill:#1b2740;stroke:#7aa2ff}.rsd .site{fill:#3a2f15;stroke:#e0a43c}.rsd .chip{fill:#3d1f19;stroke:#ff7a66}}</style>
+<defs><marker id="a30" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>
+
+<!-- The built-in page -->
+<text class="t" x="16" y="26" font-weight="700">The built-in page (refused: 404)</text>
+<rect class="pg" x="16" y="38" width="420" height="300" rx="10"/>
+<rect class="box" x="96" y="62" width="260" height="252" rx="12"/>
+<circle class="ring" cx="226" cy="118" r="34"/>
+<circle class="dot" cx="214" cy="110" r="3.2"/>
+<circle class="dot" cx="238" cy="110" r="3.2"/>
+<path class="face" d="M211 133 Q226 121 241 133"/>
+<text class="t" x="226" y="182" text-anchor="middle" font-size="17" font-weight="700">Not found</text>
+<text class="m" x="226" y="206" text-anchor="middle" font-size="12.5">This address does not exist here.</text>
+<text class="m" x="226" y="240" text-anchor="middle" font-size="11.5">Reference 7KQ2-M4XD · 14:31</text>
+<text class="lnk" x="226" y="276" text-anchor="middle" font-size="12.5" text-decoration="underline">To the home page</text>
+<text class="m" x="226" y="300" text-anchor="middle" font-size="11">or the site's logo (set challenge-logo)</text>
+<text class="m" x="16" y="358" font-size="11.5">inline CSS and SVG, no script, nothing loaded (a banned visitor's</text>
+<text class="m" x="16" y="374" font-size="11.5">request for a stylesheet would be refused too); light and dark;</text>
+<text class="m" x="16" y="390" font-size="11.5">says what to do, never why: no rule, no pattern, no ban</text>
+
+<!-- The site's own page -->
+<path class="arrow" d="M444 188 H474" marker-end="url(#a30)"/>
+<text class="t" x="480" y="26" font-weight="700">Or the site's own page</text>
+<rect class="base" x="480" y="38" width="404" height="104" rx="10" stroke-width="1.5"/>
+<g class="c t">
+<text x="494" y="62">set error-page 404 errors/404.html</text>
+<text x="494" y="82">set error-page 4xx errors/refused.html</text>
+<text x="494" y="102">set error-page 429 errors/pause.{lang}.html</text>
+<text x="494" y="122">site shop.example { set error-page 404 … }</text>
+</g>
+<rect class="box" x="480" y="156" width="404" height="182" rx="10"/>
+<text class="t" x="494" y="178" font-weight="700">errors/404.html</text>
+<g class="c m">
+<text x="494" y="200">&lt;h1&gt;{title}&lt;/h1&gt; &lt;p&gt;{text}&lt;/p&gt;</text>
+<text x="494" y="218">&lt;a href="{home}"&gt;…&lt;/a&gt; {reference} {wait}</text>
+</g>
+<text class="m" x="494" y="246" font-size="11.5">read when the rules are compiled: nothing is read</text>
+<text class="m" x="494" y="262" font-size="11.5">from disk when a request is refused; at most 64 KB</text>
+<text class="m" x="494" y="286" font-size="11.5">placeholders filled in, each escaped; other braces</text>
+<text class="m" x="494" y="302" font-size="11.5">(CSS) stay as they are; per website, per language</text>
+<text class="m" x="494" y="326" font-size="11.5">its CSS inline, or from a path the web server serves</text>
+
+<!-- Statuses -->
+<text class="t" x="16" y="428" font-weight="700">The statuses the shield answers itself (the status and the headers unchanged)</text>
+<g font-size="12">
+<rect class="chip" x="16" y="442" width="104" height="44" rx="8"/><text class="t" x="28" y="462" font-weight="700">400</text><text class="m" x="28" y="478">bad request</text>
+<rect class="chip" x="128" y="442" width="104" height="44" rx="8"/><text class="t" x="140" y="462" font-weight="700">403</text><text class="m" x="140" y="478">no access</text>
+<rect class="chip" x="240" y="442" width="104" height="44" rx="8"/><text class="t" x="252" y="462" font-weight="700">404</text><text class="m" x="252" y="478">not found</text>
+<rect class="chip" x="352" y="442" width="104" height="44" rx="8"/><text class="t" x="364" y="462" font-weight="700">405</text><text class="m" x="364" y="478">not here</text>
+<rect class="chip" x="464" y="442" width="104" height="44" rx="8"/><text class="t" x="476" y="462" font-weight="700">414</text><text class="m" x="476" y="478">too long</text>
+<rect class="chip" x="576" y="442" width="104" height="44" rx="8"/><text class="t" x="588" y="462" font-weight="700">429</text><text class="m" x="588" y="478">wait n s</text>
+<rect class="chip" x="688" y="442" width="104" height="44" rx="8"/><text class="t" x="700" y="462" font-weight="700">431</text><text class="m" x="700" y="478">too large</text>
+</g>
+<text class="m" x="16" y="516" font-size="12">An API (api-path, or a request asking for JSON) gets {"status": 404, "error": "not found", "reference": "…"}; HEAD the headers only.</text>
+</svg>
