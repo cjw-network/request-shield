@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Phase 1 implemented** 2026-10-02 ([forms from the website](../features/forms-from-the-website.md)): `post-origin`; phase 3 (`limit` inside `match` blocks) came with [0008](0008-match-blocks.md) step 2; phase 2 (the form counters, `backend`) to come. Decisions below: the recommendations |
+| Status | **Phase 1 implemented** 2026-10-02 ([forms from the website](../features/forms-from-the-website.md)): `post-origin`; phase 3 (`limit` inside `match` blocks) came with [0008](0008-match-blocks.md) step 2; **phase 2 implemented** 2026-10-02 ([forms in the statistics](../features/statistics.md#forms-sent-from-where-how-they-ended)): the form counters, the card "Forms", `backend <paths>`. Decisions below: the recommendations |
 | Proposed | 2026-10-01 |
 | Affects | the statistics plugin (a card "Forms"), rule files (new rules `post-origin`, `backend`; `limit` inside `match` blocks, [0008](0008-match-blocks.md) step 2), the live view, the rules page |
 

@@ -106,6 +106,27 @@ final class StatsPlugin implements Plugin
         if ($paging && isset(self::BLOCKED[$decision->action])) {
             $keys[] = 'pb:' . self::BLOCKED[$decision->action] . '|' . self::word($request->path);
         }
+        // A form sent (proposal 0028): which, from which page, how it ended. Never what was typed.
+        $this->formOut = null;
+        $forms = in_array('forms', $parts, true);
+        if ($forms && isset(self::FORM_METHODS[$request->method]) && !self::isApi($s, $request)) {
+            $area = self::backendOf($s, $request->matchPath());
+            if ($area !== null) {
+                // The editors' area: one entry per area, not per address.
+                $keys[] = 'fb:' . self::word($area);
+                $out = 'fbo:' . self::word($area) . '|';
+            } else {
+                $form = self::word($request->path);
+                $keys[] = 'f:' . $form;
+                $keys[] = 'ff:' . $form . '|' . self::sentFrom($s, $request);
+                $out = 'fo:' . $form . '|';
+            }
+            if (isset(self::BLOCKED[$decision->action])) {
+                $keys[] = $out . ($decision->reason === 'cross-site' ? 'cross-site' : self::BLOCKED[$decision->action]);
+            } else {
+                $this->formOut = $out;                  // saved or an error: the site's answer, when it has ended
+            }
+        }
         if (!$s->statsEnabled) {
             return;
         }
@@ -122,7 +143,7 @@ final class StatsPlugin implements Plugin
         if ($requests && $who === 'people') {
             $stats->minute($now);           // "now" on the visitors page: one APCu counter a minute
         }
-        if (!$continues || (!$requests && !in_array('not-found', $parts, true) && !$crawling && !$paging)) {
+        if (!$continues || (!$requests && !in_array('not-found', $parts, true) && !$crawling && !$paging && $this->formOut === null)) {
             if ($requests) {
                 $keys[] = 's:' . $decision->status;          // the shield answered itself
             }
@@ -165,6 +186,74 @@ final class StatsPlugin implements Plugin
 
     private string $who = 'people';
 
+    /** @var ?string the key a form's outcome is counted under ("fo:/kontakt|", "fbo:/admin/**|"), when the site answers it */
+    private ?string $formOut = null;
+
+    /** The methods that send a form. */
+    private const FORM_METHODS = ['POST' => true, 'PUT' => true, 'PATCH' => true, 'DELETE' => true];
+
+    /** Whether a request goes to the site's API (api-path): counted as now, not as a form. */
+    private static function isApi(Settings $s, Request $request): bool
+    {
+        foreach ($s->challenge->apiPaths as $p) {
+            if (@preg_match($p, $request->matchPath()) === 1) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The editors' area a path is in (backend <paths>), as written: "/admin/**"; null outside. */
+    private static function backendOf(Settings $s, string $path): ?string
+    {
+        foreach ($s->backend as $p) {
+            if (@preg_match($p, $path) === 1) {
+                return $s->origin('written', $p) ?? $p;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Where a form was sent from, as a word: the path of the website's own page
+     * (the Referer's, without its query), "@<host>" for another website (its
+     * host only), "=" for this website without the page (an Origin, no Referer),
+     * "-" when the browser does not say.
+     */
+    private static function sentFrom(Settings $s, Request $request): string
+    {
+        $ref = trim((string) $request->header('referer'));
+        $origin = trim((string) $request->header('origin'));
+        $source = $ref !== '' ? $ref : ($origin !== '' && $origin !== 'null' ? $origin : '');
+        if ($source === '') {
+            return '-';
+        }
+        $host = parse_url($source, PHP_URL_HOST);
+        $host = is_string($host) ? rtrim(strtolower($host), '.') : '';
+        $own = Shield::ownNames($s);
+        $mine = $host !== '' && ($own === [] ? $host === $request->host : self::named($host, $own));
+        if (!$mine) {
+            return '@' . ($host === '' ? '?' : self::word($host));
+        }
+        if ($ref === '') {
+            return '=';                                 // this website (its Origin), the page not said
+        }
+        $path = parse_url($ref, PHP_URL_PATH);
+        return is_string($path) && $path !== '' ? self::word($path) : '/';
+    }
+
+    /** @param list<string> $names */
+    private static function named(string $host, array $names): bool
+    {
+        foreach ($names as $name) {
+            if ($name === $host || (strncmp($name, '*.', 2) === 0 && strlen($host) > strlen($name) - 1 && substr($host, 1 - strlen($name)) === substr($name, 1)
+                && strpos(substr($host, 0, 1 - strlen($name)), '.') === false)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private bool $waiting = false;
 
     public function ended(Request $request, int $status, array $headers, Seen $seen, float $now): void
@@ -184,6 +273,10 @@ final class StatsPlugin implements Plugin
                 if (strncmp($k, 'sm:', 3) === 0 ? $crawling : (strncmp($k, 's:', 2) === 0 ? $requests : $missing)) {
                     $keys[] = $k;
                 }
+            }
+            // A form: saved (2xx, 3xx: the usual redirect after saving) or an error (4xx, 5xx).
+            if ($this->formOut !== null) {
+                $keys[] = $this->formOut . ($status < 400 ? 'saved' : 'error');
             }
             // A page view: GET, 200, HTML -- counted by who came.
             if (in_array('pages', $parts, true) && $status === 200 && $request->method === 'GET' && self::isHtml($headers)) {

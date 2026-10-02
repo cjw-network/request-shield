@@ -25,6 +25,7 @@ site admin.example.org {
   [EXP-AH-CHECK]  challenge /**                               # every editor: the browser check once per pass
   expect GET /dashboard                               check
   expect GET /user/login                              check by EXP-LOGIN
+  [EXP-AH-AREA]   backend /**                                 # the editors' area: its forms counted apart in the statistics
   [EXP-AH-Q]      query * text                                # the admin's parameters: all known, free text scanned for attacks
   expect GET /dashboard?anything=goes with pass       answered
   #[EXP-AH-NET]   restrict /** to 192.0.2.0/24                # the office only (or a VPN): take the "#" away

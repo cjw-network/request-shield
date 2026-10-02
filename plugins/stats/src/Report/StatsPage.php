@@ -445,7 +445,12 @@ final class StatsPage
                 $soon = $m === null ? $soon : (int) $soon + $m;
             }
             $h = $body . ($soon !== null ? '<p class="vnowl"><span class="dot crawlers"></span> ' . $e(sprintf($t['nowPeople'], $n($soon))) . '</p>' : '')
-                . VisitorsPage::render($r, $cur, $prev, ['lang' => $lang, 'by' => $by, 'action' => $action, 'keep' => $keep, 'link' => $link, 'clear' => $query($keep + $sorted), 'path' => $filter])
+                . VisitorsPage::render($r, $cur, $prev, ['lang' => $lang, 'by' => $by, 'action' => $action, 'keep' => $keep, 'link' => $link, 'clear' => $query($keep + $sorted), 'path' => $filter,
+                    // A form's stops, in the live view (the admin's only): its address, its website when several are read together.
+                    'live' => isset($links['live']) ? static function (string $p) use ($links): string {
+                        $slash = strpos($p, '/');
+                        return $links['live'] . '?' . http_build_query($slash > 0 ? ['host' => substr($p, 0, (int) $slash), 'q' => substr($p, (int) $slash)] : ['q' => $p]);
+                    } : null])
                 . $short . $sitemapsBlock;                   // full width: sentences and addresses need room
         } else {
             $h = $body . '<div class="tiles">' . implode('', $tiles) . '</div>' . $hint . $grid($chartWho, $chartWhat) . $short . $grid($answers, $rulesBlock) . $topBlock . $crawlersBlock

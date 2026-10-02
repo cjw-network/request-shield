@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Forms in the statistics** (proposal 0028, phase 2; the part `forms`): each
+  form (POST, PUT, PATCH, DELETE outside `api-path`) with how many were sent,
+  where from (the website's own page, "this website", another website by its
+  host only, or none), and how they ended (saved, an error, stopped: refused,
+  checked, told to wait, from another website). The card "Forms" on the
+  visitors page (stopped links to the live view), `bin/request-shield stats`,
+  the JSON. `backend <paths>` marks the editors' area: its forms count as one
+  entry per area. Never what was typed
+  ([docs](docs/features/statistics.md#forms-sent-from-where-how-they-ended)).
 - **Forms only from the website itself** (proposal 0028, phase 1):
   `post-origin same [missing check|allow|refuse] [except <paths>]`. A POST,
   PUT, PATCH or DELETE must come from one of the website's own names (the

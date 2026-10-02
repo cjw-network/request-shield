@@ -191,7 +191,7 @@ $ php bin/request-shield stats site.rules --from=2026-01-01 --to=2026-12-31 --by
 
 ```text
 set stats on                          # off (default) | on | the parts:
-set stats requests crawlers           #   requests, crawlers, not-found, bots, pages
+set stats requests crawlers           #   requests, crawlers, not-found, bots, pages, forms
 set stats-hours 7                     # days the hours are kept (default 7)
 set stats-days 400                    # days the day totals are kept (default 400), then summed into months
 set stats-months 0                    # months kept (default 0: for good)
@@ -370,6 +370,49 @@ So page views are a part of the requests by people, and bots are apart from
 both. **The dashboard's own requests are not counted** when they pass (its
 pages, the live view's feed every few seconds): looking at the numbers does
 not change them. Refused or checked there, they are.
+
+## Forms: sent, from where, how they ended
+
+The card **Forms** on the visitors page ([proposal 0028](../proposals/0028-forms.md),
+phase 2; the part `forms`, on with `set stats on`):
+
+```text
+/kontakt          142 sent
+  from /kontakt 120 · /produkt/x 22 — 128 saved · 3 errors · 11 stopped (9 from another website)
+/newsletter        57 sent
+  from no page given 31 · another website spam.example 25 — 1 saved · 0 errors · 56 stopped
+Editors (backend)
+/admin/**       1,240 sent — 1,236 saved · 4 errors · 0 stopped
+```
+
+- **A form** is a POST, PUT, PATCH or DELETE outside the API (`api-path`),
+  counted per address (without its query), the most sent kept as for pages.
+- **Where from:** the path of the page on the website it was sent from (the
+  `Referer`, without its query); **another website only by its host**; "this
+  website" when only `Origin` says so; "no page given" when the browser says
+  nothing. A wave of submissions with no page before, or from one foreign host,
+  is spam.
+- **How it ended:** saved (the site answered 2xx or 3xx: the usual redirect
+  after saving), an error (4xx, 5xx), or stopped by the shield: refused,
+  checked, told to wait, and how many of those came from another website
+  ([`post-origin`](forms-from-the-website.md)). With the live view, "stopped"
+  links to it, filtered to that form.
+- **The editors' area apart:** `backend <paths>` (also as `backend` inside a
+  `match` block, or `backend /**` in the admin's `site` block) marks it. Its
+  forms count as one entry per area, as written (`/admin/**`), not per edit
+  address: saving, autosave and the editor's AJAX calls do not drown the
+  visitors' forms.
+
+```text
+[SITE-BACKEND] backend /admin/**                 # the editors' area: counted apart
+```
+
+- **Never** what was typed: no field, no value, no file name.
+- `bin/request-shield stats` lists them, and the JSON has `forms` and `backend`.
+- Cost, measured (PHP 8.4, APCu): **nothing for GET and HEAD**; **about 18 µs
+  more for a form request** (three counters, each kept within its limit), on
+  top of the ~11 µs every counted request costs. A form request renders a page
+  of the site anyway.
 
 ## Paths that are not counted: `stats-skip`
 

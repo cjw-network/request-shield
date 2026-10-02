@@ -163,7 +163,7 @@ final class Config
             // Plugins by class name: told what was decided and how a request ended
             // (proposal 0023). The statistics come with 'stats' => ['enabled' => true].
             'plugins' => [],
-            'stats' => ['enabled' => false, 'parts' => ['requests', 'crawlers', 'not-found', 'bots', 'pages'], 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 60, 'depth' => 2, 'hosts' => []],
+            'stats' => ['enabled' => false, 'parts' => ['requests', 'crawlers', 'not-found', 'bots', 'pages', 'forms'], 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 60, 'depth' => 2, 'hosts' => []],
             // One log file per known crawler and day (dir/CRAWL-GPTBOT/2026-09-30.log),
             // for the kinds listed ([]: all); kept 'days' days; 'query' false leaves
             // the query string out. null: none.
@@ -171,6 +171,9 @@ final class Config
             // Forms only from the website itself (post-origin same, proposal 0028):
             // ['missing' => 'check'|'allow'|'refuse', 'except' => [path patterns]]; null: off.
             'postOrigin' => null,
+            // The editors' area (backend /admin/**, proposal 0028): its forms counted apart,
+            // per area -- path patterns.
+            'backend' => [],
         ];
     }
 

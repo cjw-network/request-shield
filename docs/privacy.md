@@ -149,6 +149,11 @@ feature by feature, for what exists today and for the proposals.
   address (operators' servers); requests that only claim a crawler's name are
   masked like the log; `crawler-log-days`, `crawler-log-query off`.
 
+**Forms** (part `forms`): per form address and hour, how many were sent,
+saved, gave an error or were stopped; where from as the path of the
+website's own page, or only the host of another website. Never a field, a
+value or a file name; nothing per visitor.
+
 ### Unique visitors and visits (planned: proposal [0022](proposals/0022-visitors-page.md), `set stats visitors on`)
 
 - **Processed:** for each page view by a person, a hash (HMAC-SHA256) of the

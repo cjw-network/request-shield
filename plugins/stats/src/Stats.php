@@ -161,7 +161,7 @@ final class Stats
             $type = $colon === false ? '' : substr($k, 0, $colon);
             $at = match ($type) {
                 'pg', 'pd', 'pb' => strpos($k, '|'),               // pg:people|/x
-                'n', 'nr', 'sm', 'smc' => $colon,                  // n:/x, nr:/x|ref
+                'n', 'nr', 'sm', 'smc', 'f', 'fo', 'ff' => $colon,  // n:/x, nr:/x|ref, f:/kontakt
                 'p' => strpos($k, ':', (int) $colon + 1),           // p:<crawler>:/x
                 default => false,
             };
@@ -397,6 +397,19 @@ final class Stats
         }
         if (strncmp($key, 'sm:', 3) === 0) {
             return ['sm', self::SITEMAPS, 'sm:(other)|0'];
+        }
+        // Forms (proposal 0028): the most sent kept, as pages; each form's pages before it, a few.
+        if (strncmp($key, 'f:', 2) === 0) {
+            return ['f', self::TOP, 'f:(other)'];
+        }
+        if (strncmp($key, 'fo:', 3) === 0) {
+            $bar = (int) strrpos($key, '|');
+            return ['fo', self::TOP * 6, 'fo:(other)' . substr($key, $bar)];
+        }
+        if (strncmp($key, 'ff:', 3) === 0) {
+            $bar = (int) strrpos($key, '|');
+            $g = substr($key, 0, $bar);
+            return [$g, self::REFERRERS, $g . '|(other)'];
         }
         if (strncmp($key, 'smc:', 4) === 0) {
             return ['smc', self::SITEMAPS * 5, 'smc:(other)|(other)'];

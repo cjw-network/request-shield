@@ -85,6 +85,11 @@ final class StatsReport
         $folders = [];
         /** @var array<string, array{refused: int, checked: int, throttled: int}> $stopped */
         $stopped = [];
+        /** @var array<string, array{sent: int, saved: int, error: int, refused: int, checked: int, throttled: int, cross-site: int, from: array<string, int>}> $forms */
+        $forms = [];
+        /** @var array<string, array{sent: int, saved: int, error: int, refused: int, checked: int, throttled: int, cross-site: int, from: array<string, int>}> $backend */
+        $backend = [];
+        $form0 = ['sent' => 0, 'saved' => 0, 'error' => 0, 'refused' => 0, 'checked' => 0, 'throttled' => 0, 'cross-site' => 0, 'from' => []];
         foreach ($read['days'] as $day => $counts) {
             $daily[(string) $day] = self::buckets($counts);
         }
@@ -136,6 +141,40 @@ final class StatsReport
                             $stopped[$path] ??= ['refused' => 0, 'checked' => 0, 'throttled' => 0];
                             $stopped[$path][$how] += $n;
                         }
+                        break;
+                    case 'f':
+                    case 'fb':
+                        // A form sent (fb: in the editors' area, by area).
+                        $at = $type === 'fb' ? rawurldecode($rest) : $rest;
+                        if ($type === 'fb') {
+                            $backend[$at] ??= $form0;
+                            $backend[$at]['sent'] += $n;
+                        } else {
+                            $forms[$at] ??= $form0;
+                            $forms[$at]['sent'] += $n;
+                        }
+                        break;
+                    case 'fo':
+                    case 'fbo':
+                        $bar = (int) strrpos($rest, '|');
+                        $at = substr($rest, 0, $bar);
+                        $how = substr($rest, $bar + 1);
+                        if (isset($form0[$how]) && $how !== 'sent' && $how !== 'from') {
+                            if ($type === 'fbo') {
+                                $at = rawurldecode($at);
+                                $backend[$at] ??= $form0;
+                                $backend[$at][$how] += $n;
+                            } else {
+                                $forms[$at] ??= $form0;
+                                $forms[$at][$how] += $n;
+                            }
+                        }
+                        break;
+                    case 'ff':
+                        $bar = (int) strrpos($rest, '|');
+                        $at = substr($rest, 0, $bar);
+                        $forms[$at] ??= $form0;
+                        $forms[$at]['from'][substr($rest, $bar + 1)] = ($forms[$at]['from'][substr($rest, $bar + 1)] ?? 0) + $n;
                         break;
                     case 'sm':
                         [$path, $code] = explode('|', $rest, 2) + ['', ''];
@@ -230,6 +269,10 @@ final class StatsReport
             $maps[(string) $path] = ['statuses' => array_combine(array_map('strval', array_keys($answers)), array_values($answers)), 'crawlers' => $readers];
         }
         ksort($maps);
+        // Forms: the most sent first; each with where it was sent from, the most first.
+        unset($forms['(other)']);
+        $forms = self::byForm(array_filter($forms, static fn (array $f): bool => $f['sent'] > 0));
+        $backend = self::byForm($backend);
         $notFound = [];
         foreach (array_slice($missing, 0, 20, true) as $path => $n) {
             $sources = $referrers[(string) $path] ?? [];
@@ -251,8 +294,27 @@ final class StatsReport
                 'pages' => array_slice($top, 0, 10, true), 'last' => $read['last'][$id] ?? null];
         }
         return ['from' => $from, 'to' => $to, 'days' => $days, 'by' => $by, 'periods' => $periods, 'totals' => $totals, 'monitor' => $monitor, 'daily' => $daily, 'hourly' => $hourly,
-            'rules' => $rules, 'crawlers' => $out, 'bots' => $bots, 'statuses' => $statuses, 'notFound' => $notFound, 'sitemaps' => $maps, 'pages' => $views, 'folders' => $folders, 'subtree' => $subtree, 'sort' => $sort, 'stopped' => $stoppedTop,
+            'rules' => $rules, 'crawlers' => $out, 'bots' => $bots, 'statuses' => $statuses, 'notFound' => $notFound, 'sitemaps' => $maps, 'pages' => $views, 'folders' => $folders, 'subtree' => $subtree, 'sort' => $sort, 'stopped' => $stoppedTop, 'forms' => $forms, 'backend' => $backend,
             'sentences' => array_merge(self::sentences($out, $days, $o['lang'] ?? 'en'), self::maps($maps, $days, $o['lang'] ?? 'en'), self::missing($notFound, $days, $o['lang'] ?? 'en'))];
+    }
+
+    /**
+     * Forms, the most sent first (the most stopped when equal), the first 20;
+     * each with how many were stopped, and its sources, the most first.
+     *
+     * @param array<string, array{sent: int, saved: int, error: int, refused: int, checked: int, throttled: int, cross-site: int, from: array<string, int>}> $list
+     * @return array<string, array{sent: int, saved: int, error: int, refused: int, checked: int, throttled: int, cross-site: int, from: array<string, int>, stopped: int}>
+     */
+    private static function byForm(array $list): array
+    {
+        $out = [];
+        foreach ($list as $k => $f) {
+            $from = $f['from'];
+            arsort($from);
+            $out[$k] = ['from' => array_slice($from, 0, Stats::REFERRERS + 1, true), 'stopped' => $f['refused'] + $f['checked'] + $f['throttled'] + $f['cross-site']] + $f;
+        }
+        uasort($out, static fn (array $a, array $b): int => [$b['sent'], $b['stopped']] <=> [$a['sent'], $a['stopped']]);
+        return array_slice($out, 0, 20, true);
     }
 
     /**

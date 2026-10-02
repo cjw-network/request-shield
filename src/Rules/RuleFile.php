@@ -810,6 +810,17 @@ final class RuleFile
             case 'post-origin':
                 $this->postOrigin($args, $at);
                 return;
+            case 'backend':
+                // The editors' area: its forms counted apart, per area (proposal 0028).
+                foreach (array_keys($this->compile($args, $at, false)) as $pattern) {
+                    $list = (array) $this->get('backend');
+                    if (!in_array($pattern . 'i', $list, true)) {
+                        $list[] = $pattern . 'i';
+                        $this->put('backend', $list);
+                    }
+                    $this->origins['backend'][$pattern . 'i'] = $this->rid;
+                }
+                return;
             case 'limit':
                 $this->limit($args, $at);
                 return;
@@ -859,7 +870,7 @@ final class RuleFile
                 return;
         }
         throw new RuleFileException("$at: unknown rule \"$keyword\"" . self::suggest($keyword,
-            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'stats-skip', 'stats-group', 'stats-access', 'api-path', 'post-origin', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include']));
+            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'stats-skip', 'stats-group', 'stats-access', 'api-path', 'post-origin', 'backend', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include']));
     }
 
     /**
@@ -1336,6 +1347,7 @@ final class RuleFile
                 return array_merge($args, $path);
             case 'challenge':
             case 'challenge-exempt':
+            case 'backend':
             case 'stats-skip':
             case 'cache-path':
             case 'api-path':

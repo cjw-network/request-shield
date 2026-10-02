@@ -26,7 +26,9 @@ final class VisitorsPage
         'en' => [
             'views' => 'Page views', 'people' => 'Requests by people', 'crawlers' => 'Crawler visits', 'bots' => 'Bot requests', 'stopped' => 'Stopped', 'notFound' => 'Not found',
             'before' => 'before', 'new' => 'new', 'same' => '±0 %', 'dashed' => 'dashed: the period before', 'pages' => 'Pages', 'tPages' => 'Pages', 'tSections' => 'Sections',
-            'tStopped' => 'Stopped', 'tMissing' => 'Not found', 'crawlersAi' => 'Crawlers & AI', 'tSearch' => 'Search', 'tAi' => 'AI assistants', 'tTraining' => 'AI training',
+            'tStopped' => 'Stopped', 'tMissing' => 'Not found', 'forms' => 'Forms', 'tForms' => 'Visitors\' forms', 'tBackend' => 'Editors (backend)',
+            'from' => 'from', 'fromNone' => 'no page given', 'fromOther' => 'another website', 'fromSite' => 'this website (page not said)', 'fSaved' => 'saved', 'fErrors' => 'errors', 'fStopped' => 'stopped',
+            'fCross' => 'from another website', 'fSent' => 'sent', 'fLive' => 'stopped: in the live view', 'crawlersAi' => 'Crawlers & AI', 'tSearch' => 'Search', 'tAi' => 'AI assistants', 'tTraining' => 'AI training',
             'none' => 'Nothing in this period.', 'lastVisit' => 'last', 'linked' => 'linked from', 'people2' => 'people', 'crawlers2' => 'crawlers', 'bots2' => 'bots',
             'refused' => 'refused', 'checked' => 'checked', 'throttled' => 'told to wait', 'verified' => 'verified visits', 'pathStarts' => 'path starts with', 'filter' => 'Filter',
             'clear' => 'all pages', 'subtree' => 'Subtree', 'viewsOf' => 'views',
@@ -34,7 +36,9 @@ final class VisitorsPage
         'de' => [
             'views' => 'Seitenaufrufe', 'people' => 'Anfragen von Menschen', 'crawlers' => 'Crawler-Besuche', 'bots' => 'Bot-Anfragen', 'stopped' => 'Gestoppt', 'notFound' => 'Nicht gefunden',
             'before' => 'vorher', 'new' => 'neu', 'same' => '±0 %', 'dashed' => 'gestrichelt: der Zeitraum davor', 'pages' => 'Seiten', 'tPages' => 'Seiten', 'tSections' => 'Bereiche',
-            'tStopped' => 'Gestoppt', 'tMissing' => 'Nicht gefunden', 'crawlersAi' => 'Crawler & KI', 'tSearch' => 'Suche', 'tAi' => 'KI-Assistenten', 'tTraining' => 'KI-Training',
+            'tStopped' => 'Gestoppt', 'tMissing' => 'Nicht gefunden', 'forms' => 'Formulare', 'tForms' => 'Formulare der Besucher', 'tBackend' => 'Redaktion (Backend)',
+            'from' => 'von', 'fromNone' => 'ohne Angabe', 'fromOther' => 'andere Website', 'fromSite' => 'diese Website (Seite ohne Angabe)', 'fSaved' => 'gespeichert', 'fErrors' => 'Fehler', 'fStopped' => 'gestoppt',
+            'fCross' => 'von einer anderen Website', 'fSent' => 'gesendet', 'fLive' => 'gestoppt: in der Live-Ansicht', 'crawlersAi' => 'Crawler & KI', 'tSearch' => 'Suche', 'tAi' => 'KI-Assistenten', 'tTraining' => 'KI-Training',
             'none' => 'Nichts in diesem Zeitraum.', 'lastVisit' => 'zuletzt', 'linked' => 'verlinkt von', 'people2' => 'Menschen', 'crawlers2' => 'Crawler', 'bots2' => 'Bots',
             'refused' => 'abgewiesen', 'checked' => 'geprüft', 'throttled' => 'gebremst', 'verified' => 'bestätigte Besuche', 'pathStarts' => 'Pfad beginnt mit', 'filter' => 'Filtern',
             'clear' => 'alle Seiten', 'subtree' => 'Unterbaum', 'viewsOf' => 'Aufrufe',
@@ -48,10 +52,11 @@ final class VisitorsPage
      * @param array{pages: array<array-key, array{people: int, crawlers: int, bots: int, total: int}>, folders: array<array-key, array{people: int, crawlers: int, bots: int, total: int}>,
      *   stopped: array<array-key, array{refused: int, checked: int, throttled: int, blocked: int}>, notFound: array<array-key, array{count: int, referrers: array<array-key, int>}>,
      *   crawlers: array<array-key, array{kind: string, name: string, verified: int, last: array{0: int, 1: string}|null}>,
-     *   subtree: array{path: string, people: int, crawlers: int, bots: int, total: int}|null} $r StatsReport::build()
+     *   subtree: array{path: string, people: int, crawlers: int, bots: int, total: int}|null,
+     *   forms?: array<string, array{sent: int, saved: int, error: int, refused: int, checked: int, throttled: int, cross-site: int, from: array<string, int>, stopped: int}>, backend?: array<string, array{sent: int, saved: int, error: int, refused: int, checked: int, throttled: int, cross-site: int, from: array<string, int>, stopped: int}>} $r StatsReport::build()
      * @param array<string, array<string, int>> $cur label => buckets of the period, every label (zeros too), in order
      * @param list<array<string, int>> $prev the period before, by position
-     * @param array{lang?: string, by?: string, action?: string, keep?: array<string, string|int>, link?: callable(string): string, clear?: string, path?: ?string} $o
+     * @param array{lang?: string, by?: string, action?: string, keep?: array<string, string|int>, link?: callable(string): string, clear?: string, path?: ?string, live?: (callable(string): string)|null} $o
      *   by: hour, day, week, month, year (the chart's labels); action, keep: the path filter's form; link: a section's subtree; clear: the address without the filter
      */
     public static function render(array $r, array $cur, array $prev, array $o = []): string
@@ -129,6 +134,14 @@ final class VisitorsPage
         }
         $cards = self::card('vp-p', $t['pages'], $form, [$t['tPages'] => $pages, $t['tSections'] => $sections, $t['tStopped'] => $stopped, $t['tMissing'] => $missing], $t, $lang);
 
+        // Forms (proposal 0028): each with where it was sent from and how it ended; the editors' area apart.
+        $forms = $r['forms'] ?? [];
+        $backend = $r['backend'] ?? [];
+        if ($forms !== [] || $backend !== []) {
+            $live = $o['live'] ?? null;
+            $cards .= self::card('vp-f', $t['forms'], '', [$t['tForms'] => self::formRows($forms, true, $t, $lang, $live), $t['tBackend'] => self::formRows($backend, false, $t, $lang, $live)], $t, $lang);
+        }
+
         // Crawlers & AI: who reads the site for search engines and AI assistants (verified by address).
         $kinds = ['search' => [], 'ai' => [], 'training' => []];
         foreach ($r['crawlers'] as $id => $c) {
@@ -147,6 +160,33 @@ final class VisitorsPage
 
         // One under the other, each the full width: the pages' addresses (with their website) need room.
         return $h . $cards;
+    }
+
+    /**
+     * The rows of the card "Forms": each form, how many were sent, where from and how they ended.
+     *
+     * @param array<string, array{sent: int, saved: int, error: int, refused: int, checked: int, throttled: int, cross-site: int, from: array<string, int>, stopped: int}> $list
+     * @param array<string, string> $t
+     * @param (callable(string): string)|null $live a form's stops in the live view
+     * @return list<array{0: string, 1: int, 2: string, 3: ?string, 4: string}>
+     */
+    private static function formRows(array $list, bool $from, array $t, string $lang, ?callable $live): array
+    {
+        $n = static fn (int $v): string => StatsReport::number($v, $lang);
+        $out = [];
+        foreach ($list as $p => $f) {
+            $where = [];
+            foreach ($from ? $f['from'] : [] as $src => $c) {
+                $src = (string) $src;
+                $where[] = ($src === '-' ? $t['fromNone'] : ($src === '=' ? $t['fromSite'] : ($src[0] === '@' ? $t['fromOther'] . ' ' . substr($src, 1) : $src))) . ' ' . $n($c);
+            }
+            $how = $n($f['saved']) . ' ' . $t['fSaved'] . ' · ' . $n($f['error']) . ' ' . $t['fErrors'] . ' · ' . $n($f['stopped']) . ' ' . $t['fStopped']
+                . ($f['cross-site'] > 0 ? ' (' . $n($f['cross-site']) . ' ' . $t['fCross'] . ')' : '');
+            $out[] = [(string) $p, $f['sent'], $n($f['sent']) . ' ' . $t['fSent'] . ($f['stopped'] > 0 && $live !== null ? ' · ' . $t['fLive'] : ''),
+                $f['stopped'] > 0 && $live !== null ? $live((string) $p) : null,
+                ($where !== [] ? $t['from'] . ' ' . implode(' · ', $where) . ' — ' : '') . $how];
+        }
+        return $out;
     }
 
     /**

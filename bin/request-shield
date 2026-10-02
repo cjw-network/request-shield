@@ -459,6 +459,22 @@ if ($command === 'stats') {
             echo '  ' . str_pad((string) $path, 24) . $cols($v) . "\n";
         }
     }
+    // Forms (proposal 0028): sent, from where, how they ended; the editors' area apart.
+    foreach (['forms' => 'forms', 'backend' => "forms in the editors' area"] as $key => $title) {
+        if (($r[$key] ?? []) === []) {
+            continue;
+        }
+        echo "\n$title:\n";
+        foreach ($r[$key] as $path => $f) {
+            $from = [];
+            foreach ($f['from'] as $src => $c) {
+                $src = (string) $src;
+                $from[] = ($src === '-' ? 'no page given' : ($src === '=' ? 'this website' : ($src[0] === '@' ? 'another website ' . substr($src, 1) : $src))) . " $c";
+            }
+            printf("  %-40s %6d sent   %d saved · %d errors · %d stopped%s%s\n", $path, $f['sent'], $f['saved'], $f['error'], $f['stopped'],
+                $f['cross-site'] > 0 ? ' (' . $f['cross-site'] . ' from another website)' : '', $from !== [] ? '   from ' . implode(' · ', $from) : '');
+        }
+    }
     if ($r['notFound'] !== []) {
         echo "\nNot found:\n";
         foreach ($r['notFound'] as $path => $x) {

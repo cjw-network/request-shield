@@ -228,7 +228,7 @@ final class Examples
         $at = is_array($origins['at'] ?? null) ? $origins['at'] : [];
         $deciding = [];
         foreach ($origins as $section => $map) {
-            if (in_array($section, ['at', 'rev', 'text', 'monitor', 'area', 'warnings', 'stats.access', 'statsAccess', 'stats.groups', 'statsGroups', 'plugins', 'feeds'], true) || !is_array($map)) {
+            if (in_array($section, ['at', 'rev', 'text', 'monitor', 'area', 'warnings', 'stats.access', 'statsAccess', 'stats.groups', 'statsGroups', 'plugins', 'feeds', 'backend'], true) || !is_array($map)) {
                 continue;
             }
             array_walk_recursive($map, static function ($v) use (&$deciding): void {

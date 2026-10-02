@@ -144,7 +144,7 @@ final class Settings
         /** @readonly whether the crawler logs keep the query string */
         public bool $crawlerLogQuery = true,
         /** @var list<string> @readonly what is counted: requests, crawlers, not-found, bots, pages */
-        public array $statsParts = ['requests', 'crawlers', 'not-found', 'bots', 'pages'],
+        public array $statsParts = ['requests', 'crawlers', 'not-found', 'bots', 'pages', 'forms'],
         /** @readonly with APCu, seconds between writes of the counts to disk (0: only hourly) */
         public int $statsFlush = 60,
         /** @readonly months the month totals are kept (0: for good) */
@@ -207,6 +207,8 @@ final class Settings
         public int $statsSession = 28800,
         /** @var array{missing: string, except: list<string>}|null @readonly post-origin same: forms only from the website's own pages; null: off */
         public ?array $postOrigin = null,
+        /** @var list<string> @readonly the editors' area (backend <paths>): its forms counted apart, per area; as patterns */
+        public array $backend = [],
     ) {
     }
 
@@ -335,7 +337,7 @@ final class Settings
             ...array_slice($feeds, 0, 5),
             ...[self::statsHosts($c), self::patternList(is_array($c['stats'] ?? null) ? ($c['stats']['skip'] ?? []) : [], 'stats.skip'), self::statsGroups($c), self::statsPath($c)],
             ...self::statsAccess($c),
-            ...[self::postOrigin($c)],
+            ...[self::postOrigin($c), self::patternList($c['backend'] ?? [], 'backend')],
         );
     }
 
@@ -1243,7 +1245,7 @@ final class Settings
     public const DENY_SHOWN = 100;
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 39;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin
+    private const FORMAT = 40;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 
@@ -1251,7 +1253,7 @@ final class Settings
     public const RULES_DIR = __DIR__ . '/../rules';
 
     /** What the statistics can count (set stats <parts>). */
-    public const STATS_PARTS = ['requests', 'crawlers', 'not-found', 'bots', 'pages'];
+    public const STATS_PARTS = ['requests', 'crawlers', 'not-found', 'bots', 'pages', 'forms'];
 
     /**
      * The settings of a file, checked only when it changed. A ".rules" file
