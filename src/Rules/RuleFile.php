@@ -945,7 +945,7 @@ final class RuleFile
                     $all = (array) $this->get('methodPaths');
                     unset($all[$method]);
                     $this->put('methodPaths', $all);
-                    unset($this->origins['methodPaths'][$method]);
+                    unset($this->origins['methodPaths'][$method], $this->origins['methodPathsFirst'][$method]);
                 }
             }
         }
@@ -1761,6 +1761,9 @@ final class RuleFile
             }
             $this->put("methodPaths.$m", $list);
             $this->origins['methodPaths'][$m] = $this->rid;
+            // A refused method is named by the first line that allows it somewhere
+            // (the site's list), not by whichever came last (an area's own line).
+            $this->origins['methodPathsFirst'][$m] ??= $this->rid;
             $all = (array) $this->get('methods');
             if (!in_array($m, $all, true)) {
                 $all[] = $m;

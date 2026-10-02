@@ -1,0 +1,22 @@
+# The click demo's rules (index.php): the real proposal for an admin as the
+# siteaccess /admin, unchanged, only switched on -- so every link shows what a
+# live site would answer. A real site loads exponential-admin-uri.rules (or
+# -host) itself and switches it on there.
+
+ids EXPDEMO
+version 2026-10-02.1
+
+include     exponential-admin-uri.rules                        # everything: the frontend and the admin as /admin
+
+set         mode enforce                                       # the proposal ships in monitor mode; the demo decides
+replace     [EXP-STRICT] query strict                         # unknown parameters refused (404), not only logged
+[EXPDEMO-EXEMPT] exempt none                                   # count this machine too (a site exempts its monitoring)
+set         pass-ttl 10m                                       # a passed check lasts 10 minutes here: /reset forgets it sooner
+set         crawler-verify ranges                              # no DNS lookups from a demo
+
+set         store-dir ${EXP_DEMO_VAR:-/tmp/request-shield-exponential-demo}
+set         log ${EXP_DEMO_VAR:-/tmp/request-shield-exponential-demo}/shield.log
+set         log-level flag
+set         recheck 0
+set         debug-header on                                    # X-Request-Shield: <decision>; rule=<ID> on every answer
+set         home ${EXP_DEMO_HOME:-/}                           # the shield's own pages link back to the demo

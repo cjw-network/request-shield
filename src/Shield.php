@@ -602,7 +602,9 @@ final class Shield
                 }
                 return null;
             case 'method not allowed here':
-                return $name('methodPaths', $request->method, "methodPaths.$request->method");
+                return $s->origin('methodPathsFirst', $request->method) !== null
+                    ? $name('methodPathsFirst', $request->method, "methodPaths.$request->method")
+                    : $name('methodPaths', $request->method, "methodPaths.$request->method");
             case 'method':
                 // Refused: not in the methods; passed uncached: a POST is never cached.
                 return $d->action === Decision::REJECT ? $name('methods', '*', 'methods') : 'built-in';

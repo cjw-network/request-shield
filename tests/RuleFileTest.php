@@ -684,4 +684,17 @@ return [
             truthy(strpos($e->getMessage(), 'budgets.x.onExceeded') !== false, $e->getMessage());
         }
     },
+    'a POST refused (405) is named by the first allow POST line -- not by an area\'s own, written later' => function (): void {
+        $dir = ruleDir(['site.rules' => "[SITE-POST] allow POST /contact /search\nmatch /admin/** {\n  [SITE-ADMIN-POST] allow POST\n}\n"]);
+        try {
+            $s = Settings::load("$dir/site.rules", "$dir/cache");
+            $shield = new Shield($s, new MemoryStore());
+            $r = Request::fromServer(['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/news/x', 'REMOTE_ADDR' => '198.51.100.7', 'HTTP_HOST' => 'www.example.org']);
+            $d = $shield->decide($r, 1000.0);
+            same([405, 'SITE-POST'], [$d->status, $shield->explain($d, $r)], 'the site\'s list names it');
+            same('allow', $shield->decide(Request::fromServer(['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/admin/x', 'REMOTE_ADDR' => '198.51.100.7', 'HTTP_HOST' => 'www.example.org']), 1000.0)->action === 'reject' ? 'reject' : 'allow', 'the area\'s POST still allowed');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
 ];

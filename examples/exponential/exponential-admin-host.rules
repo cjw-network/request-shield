@@ -1,0 +1,23 @@
+# request-shield for an Exponential site whose admin has a host of its own
+# (admin.example.org, host matching). The main file: load this one.
+#
+#   CjwNetwork\RequestShield\Shield::protectFile('/path/to/exponential-admin-host.rules');
+#
+# The frontend's rules come from exponential.rules; the admin's host gets its
+# own block (picked by the web server's server name, so a visitor cannot pick
+# it with a Host header). Reasons: docs/use-cases/exponential.md.
+
+ids EXP
+version 2026-10-02.1
+
+include     exponential.rules                                  # the frontend: system URLs, forms, search, pace
+
+# The login (/user/login) is checked by EXP-LOGIN: a fresh check, from the last 15 minutes.
+site admin.example.org {
+  [EXP-AH-SYS]    unblock [EXP-SYSVIEW] [EXP-MODULES]         # the admin uses system URLs (/content/view/full/2) and its modules
+  [EXP-AH-POST]   allow POST /**                              # editors save everywhere in the admin
+  [EXP-AH-CHECK]  challenge /**                               # every editor: the browser check once per pass
+  [EXP-AH-Q]      query * text                                # the admin's parameters: all known, free text scanned for attacks
+  #[EXP-AH-NET]   restrict /** to 192.0.2.0/24                # the office only (or a VPN): take the "#" away
+  set             pass-ttl 8h                                 # editors: one check a working day (visitors keep 2 hours)
+}

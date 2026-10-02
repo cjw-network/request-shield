@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Rules for an Exponential site** (`examples/exponential/`): the frontend
+  (`/content/view/…` and admin modules refused, internal files, downloads of
+  uploaded archives, view parameters as numbers, a POST only where Exponential
+  takes forms, the browser check before login and contact forms, the search's
+  fields typed with its time filter and a search budget, pace and a watched
+  ban), and a main file for each kind of admin: the siteaccess `/admin`, or a
+  host of its own. In monitor mode as shipped; checked against a crawl of a
+  real installation; every rule explained in
+  [docs/use-cases/exponential.md](docs/use-cases/exponential.md). A click demo
+  (`php -S 127.0.0.1:8095 examples/exponential/router.php`): a pretend
+  Exponential site with every case as a numbered test.
 - **The demo's customer menu** (proposal 0023, phase 5): `/customer-menu`, a
   pretend hosting panel whose "Statistics" item is a signed link to Customer A's
   statistics only; two public demo tokens in its rules; a "Sign out" link on a
@@ -258,6 +269,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   demo has them at `/rs/…`, restricted to this machine.
 
 ### Fixed
+- A POST refused with 405 was named by the last `allow POST` line read, e.g.
+  an admin area's own (`match /admin/** { allow POST }`) for a POST to a
+  frontend page. It is now named by the first line that allows the method.
 - Looking at the statistics changed them: the dashboard's own requests (its
   pages, the live view's feed every 3 s) were counted as requests by people.
   They are left out when they pass; refused or checked they still count. The

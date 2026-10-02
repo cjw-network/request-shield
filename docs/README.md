@@ -30,7 +30,8 @@
   [shared hosting DoS guard](use-cases/shared-hosting-dos-guard.md) ·
   [page cache pollution](use-cases/page-cache-pollution.md) ·
   [scrapers and bots](use-cases/scraping-and-bots.md) ·
-  [behind a load balancer](use-cases/behind-a-load-balancer.md)
+  [behind a load balancer](use-cases/behind-a-load-balancer.md) ·
+  [an Exponential site](use-cases/exponential.md)
 - **Proposals** — planned features, open for discussion (status in each):
   [0001 earn back a spent budget](proposals/0001-earn-back-a-spent-budget.md) (implemented) ·
   [0003 human-readable rule files](proposals/0003-human-readable-rule-files.md) (implemented) ·

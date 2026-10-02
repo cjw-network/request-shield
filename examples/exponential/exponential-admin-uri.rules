@@ -1,0 +1,27 @@
+# request-shield for an Exponential site whose admin is the siteaccess /admin
+# (URI matching: www.example.org/admin/…). The main file: load this one.
+#
+#   CjwNetwork\RequestShield\Shield::protectFile('/path/to/exponential-admin-uri.rules');
+#
+# The frontend's rules come from exponential.rules; here only what the admin
+# needs on top. Reasons: docs/use-cases/exponential.md.
+
+ids EXP
+version 2026-10-02.1
+
+include     exponential.rules                                  # the frontend: system URLs, forms, search, pace
+
+match /admin/** {
+  [EXP-ADMIN-SYS]   unblock [EXP-SYSVIEW] [EXP-MODULES]       # the admin uses system URLs (/admin/content/view/full/2) and its modules
+  [EXP-ADMIN-POST]  allow POST                                # editors save everywhere in the admin
+  [EXP-ADMIN-CHECK] challenge                                 # every editor: the browser check once per pass
+  [EXP-ADMIN-Q]     query * text                              # the admin's parameters: all known, free text scanned for attacks
+  #[EXP-ADMIN-NET]  restrict to 192.0.2.0/24                  # the office only (or a VPN): take the "#" away
+}
+# The admin login (/admin/user/login) is checked by EXP-LOGIN: a fresh check, from the last 15 minutes.
+
+# One host for visitors and editors: the pass lasts as long for both
+# (exponential.rules: 2 hours). Editors who lose their pass while editing are
+# checked when they next save, and the form is sent again by itself. A working
+# day without a check needs "set pass-ttl 8h" here -- for visitors too.
+#set        pass-ttl 8h                                        # editors: one check a working day (visitors too)
