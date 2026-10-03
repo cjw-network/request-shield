@@ -23,8 +23,26 @@ changes.
 \CjwNetwork\RequestShield\Shield::protect($configArray);                       // checked every time
 ```
 
-The compiled file goes to `sys_get_temp_dir()/request-shield/` unless
-`protectFile()` is given another directory.
+The compiled file goes to `.request-shield/` next to the settings file unless
+`protectFile()` is given another directory; the store's default is
+`.request-shield/store` there too. Both belong outside the document root, as
+the settings file does. The system's temp dir is not used: on a shared host
+it is shared between customers, and the store holds the secret.
+
+## What this installation can do: the tiers
+
+PHP ≥ 8.0 is the only requirement ([ADR 0013](../adr/0013-hosting-tiers.md));
+a writable directory and APCu are tiers the shield detects. `request-shield
+check site.rules` and `version site.rules` print the tier and what is not
+active in it:
+
+| Tier | Environment | What runs |
+|---|---|---|
+| **S0** | no writable directory, no APCu | the stateless rules (hard rejects, blocked paths, access rules, host, forms from the website, parameters, attack patterns, the cacheable definition); the settings are compiled on every request; budgets, bans and the pass cookie's secret have nowhere to live, lists, feeds and statistics neither |
+| **S1** | a writable `store-dir`, no APCu — the shared-hosting norm | everything, in files (~25 µs a request) |
+| **S2** | APCu | counters in shared memory (~9 µs a request) |
+
+A feature that lacks its tier switches off and `check` says so; nothing fails.
 
 ## When the rules cannot be compiled
 

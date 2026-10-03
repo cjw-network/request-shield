@@ -242,6 +242,13 @@ final class RuleFile
         foreach ($files as $file) {
             $r->source($file, null, null);
         }
+        // No "set store-dir": next to the main rule file, in .request-shield/ --
+        // a directory the owner knows, outside the document root as the rules
+        // are; never the system's temp dir, shared with other customers on a
+        // shared host (the secret lives in the store).
+        if ($main !== false && (!isset($r->c['storeDir']) || $r->c['storeDir'] === Config::defaults()['storeDir'])) {
+            $r->c['storeDir'] = $main . '/.request-shield/store';
+        }
         // The list files (allow.rules, deny.rules in lists-dir): list lines only,
         // for every website; the directory recorded, so a new file is noticed.
         $listsDir = $r->c['listsDir'] ?? null;

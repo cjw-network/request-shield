@@ -170,6 +170,8 @@ final class Shield
      */
     public static function protectFile(string $file, ?callable $known = null, ?string $cacheDir = null, array $sources = []): Decision
     {
+        // Where "already noted" is kept before any settings exist: with the compiled ones.
+        self::$failedDir ??= $cacheDir ?? Settings::cacheDirFor($file);
         try {
             // With site blocks (rules per website): the settings of this request's website.
             $settings = Settings::loadFor($file, $_SERVER, $cacheDir, $sources);

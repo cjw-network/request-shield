@@ -27,9 +27,9 @@ function withLibrary(array $files, ?string $env, callable $body): void
         file_put_contents("$lib/$name", str_replace('__LIB__', $lib, $contents));
     }
     $port = freePort();
-    // env -u: whatever this test run has in REQUEST_SHIELD_CONFIG must not reach the server
-    // (env replaces itself with PHP, so the process proc_terminate() ends is the server's).
-    $proc = proc_open(sprintf('env -u REQUEST_SHIELD_CONFIG %s %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
+    // env -u: whatever this test run has in REQUEST_SHIELD_CONFIG must not reach the server.
+    // exec: the shell becomes env, env becomes PHP -- proc_terminate() then ends the server, not a shell around it.
+    $proc = proc_open(sprintf('exec env -u REQUEST_SHIELD_CONFIG %s %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
         $env !== null ? 'REQUEST_SHIELD_CONFIG=' . escapeshellarg(str_replace('__LIB__', $lib, $env)) : '',
         escapeshellarg(PHP_BINARY), escapeshellarg("$lib/bootstrap.php"), $port, escapeshellarg("$lib/docroot")), [], $pipes);
     for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {

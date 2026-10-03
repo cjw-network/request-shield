@@ -1283,7 +1283,7 @@ final class Settings
      */
     public static function load(string $file, ?string $cacheDir = null, array $sources = [], ?string $site = null, bool $failSafe = false): self
     {
-        $cacheDir ??= rtrim(sys_get_temp_dir(), '/') . '/request-shield';
+        $cacheDir ??= self::cacheDirFor($file);
         $key = hash(PHP_VERSION_ID >= 80100 ? 'xxh128' : 'md5', $file . "\0" . implode("\0", $sources));
         if ($site !== null) {
             return self::loadSite($file, $cacheDir, $sources, $site, $key, $failSafe);
@@ -1313,6 +1313,17 @@ final class Settings
             return self::off($cacheDir, $file);
         }
         return self::tryBuild($file, $cacheDir, $sources, $key, null, $failSafe);
+    }
+
+    /**
+     * Where the compiled settings go unless protectFile() names a directory:
+     * .request-shield/ next to the settings file -- the owner's directory,
+     * outside the document root as the file is; never the system's temp dir,
+     * shared with other customers on a shared host. No realpath(): a stat.
+     */
+    public static function cacheDirFor(string $file): string
+    {
+        return dirname($file) . '/.request-shield';
     }
 
     /**
@@ -1427,7 +1438,7 @@ final class Settings
      */
     public static function loadFor(string $file, array $server, ?string $cacheDir = null, array $sources = []): self
     {
-        $cacheDir ??= rtrim(sys_get_temp_dir(), '/') . '/request-shield';
+        $cacheDir ??= self::cacheDirFor($file);
         $key = hash(PHP_VERSION_ID >= 80100 ? 'xxh128' : 'md5', $file . "\0" . implode("\0", $sources));
         $compiled = $cacheDir . '/settings-' . $key . '.php';
         $e = self::compiled($compiled, $file);
@@ -1606,6 +1617,9 @@ final class Settings
             $config = require $file;
             if (!is_array($config)) {
                 throw new \RuntimeException("request-shield: $file must return an array");
+            }
+            if (!is_string($config['storeDir'] ?? null)) {
+                $config['storeDir'] = dirname($file) . '/.request-shield/store';     // as a rule file's default: next to it
             }
             $seen = [$file => $stat];
             $recheck = 0;

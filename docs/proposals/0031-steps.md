@@ -63,11 +63,11 @@ the model you trust most there, not fast mode.
 - [x] **A.1** `Shield::VERSION` + `request-shield version` (version, build, PHP, store, rule-set versions; the tier comes with A3.1) — `tests/CliTest.php`. `a73a8e0`
 - [x] **A.2** Fail-safe wrapper: try/catch(\Throwable) around the body of `protect()`/`protectFile()`, `requirePass()`, `consume()`, `widget()`, the `ob_start` callback → `allowUncached('shield error')`, `Shield::failed()` throttled — `tests/RobustnessTest.php` cases 1, 7, 9 — red without the wrapper. `da2aae9`
 - [x] **A.3** Compile fallback: catch in `Settings::load()/loadFor()` → last good compiled settings + `.failed` marker; none → `mode off` + log; `TypeError` in `import()` → `unlink` + rebuild — RobustnessTest cases 5, 6, 8, 10. Fail safe only on the request path (`loadFor()`, `load(…, failSafe: true)`); `load()` for tools keeps throwing. `7e5ce2d`
-- [x] **A.4** Bootstrap search order (`REQUEST_SHIELD_CONFIG` → `request-shield.rules` next to the file → `config/request-shield.rules` → `config/request-shield.php`) in `bootstrap.php`; README install section corrected; E2E test without `REQUEST_SHIELD_CONFIG` (`tests/BootstrapTest.php`, on a copy of the library). *(hash: next commit)*
-- [x] **A.5** E2E tests set `REQUEST_SHIELD_CONFIG` themselves (PluginTest/AccessTest fail today with a local `config/request-shield.php`). *(hash: next commit)*
+- [x] **A.4** Bootstrap search order (`REQUEST_SHIELD_CONFIG` → `request-shield.rules` next to the file → `config/request-shield.rules` → `config/request-shield.php`) in `bootstrap.php`; README install section corrected; E2E test without `REQUEST_SHIELD_CONFIG` (`tests/BootstrapTest.php`, on a copy of the library). `1191200`
+- [x] **A.5** E2E tests set `REQUEST_SHIELD_CONFIG` themselves (PluginTest/AccessTest fail today with a local `config/request-shield.php`). `0094dff`
 
 ### Phase A3 — Hosting tiers
-- [ ] **A3.1** Cache path → `store-dir/cache/`; not writable → compile in memory (S0) instead of a fatal; `check` names the tier and what is inactive — `HostingTiersTest` S0.
+- [x] **A3.1** Cache path → `.request-shield/` **next to the settings file** (not `store-dir/cache`: the store dir is only known after compiling), the store's default → `.request-shield/store` there (never the shared temp dir — the secret lives in the store); not writable → compiled on every request (S0), no fatal; `Tier::of()`, `check` and `version` name the tier and what is inactive — `HostingTiersTest` S0 + S1 + defaults. *(hash: next commit)*
 - [ ] **A3.2** `Live` with a file-ring fallback (`store-dir/live`, `O_APPEND`, N entries); settings freshness, crawler DNS cache and `Stats` behind a capability check with a file fallback — `grep apcu_` only in `Store/` and one `Capability` class.
 - [ ] **A3.3** `curl` fallback for feed/crawler updates, a clear message without network — unit test with `allow_url_fopen=0`.
 - [ ] **A3.4** `HostingTiersTest` S1/S2 (same requests, same decisions) + CI leg "minimal hosting" in `tests.yml`; README numbers per tier.
@@ -137,12 +137,13 @@ the model you trust most there, not fast mode.
 
 ## Status
 
-- **Last step done:** A.5 (phase A complete)
-- **Next step:** A3.1
+- **Last step done:** A3.1
+- **Next step:** A3.2
 - **Open owner questions:** see the proposal's last section.
 - **Deviations from the plan:** none.
 - **Review:** `pr-review-toolkit` is not installed on the machine that wrote phase 0 and A.1–A.2; the fallback (code-review skill, sonnet, low) was used — for phase 0 (documents only) once over the whole phase, for the code steps once per step.
 - **Static analysis on this machine:** PHPStan runs; `composer taint` (Psalm 6) crashes with `Class "Composer\InstalledVersions" not found` because the local Composer is 1.10 (its autoloader lacks the class). CI runs it (`static-analysis.yml`); on a machine with Composer ≥ 2 run `composer install` and `composer taint` before pushing code steps.
 - **Finding from A.1:** the bench command in `AGENTS.md` needs `-d opcache.file_update_protection=0`, otherwise the "setup" lines show milliseconds for freshly compiled settings (fixed in AGENTS.md).
+- **Finding from A3.1:** an end-to-end test that starts the server through `env …` must `exec env …` — otherwise `proc_terminate()` ends the shell and the server lives on (BootstrapTest left ten servers running and doubled the bench numbers). Pattern for every E2E test: the command starts with `exec`. The default directories moved out of the temp dir, so `.request-shield/` is in `.gitignore` (the demo tests make one next to the demo rules).
 - **Finding from A.3:** under PHP's built-in server APCu is *on* (its SAPI `cli-server` is not "cli" to APCu), so with rule files the shield re-reads the sources only every `recheck` seconds (10) — end-to-end tests that rewrite a rule file must set `set recheck 0` (RobustnessTest does). Worth a line in `docs/features/rule-files.md` when F.1 touches it.
 - **Finding from A.2:** the "once a minute" throttle of error-log lines was per process only (`static` is reset per request under PHP-FPM and the built-in server) — it now also uses APCu or a marker file in the temp dir, so a broken deploy logs one line a minute, not one per visitor. A3.1 should move the marker next to the compiled settings (`store-dir/cache`).

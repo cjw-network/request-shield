@@ -22,6 +22,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   compiled settings file cut short is deleted and compiled anew.
   `Settings::load()` for tools still throws; `check` is where a mistake is an
   error ([docs](docs/features/settings.md#when-the-rules-cannot-be-compiled)).
+- **The tier an installation runs at** (0031 step A3.1, ADR 0013): `check`
+  and `version site.rules` print S0 (no writable directory, no APCu: the
+  stateless rules only, settings compiled on every request), S1 (files) or
+  S2 (APCu), and what is not active in it ([docs](docs/features/settings.md#what-this-installation-can-do-the-tiers)).
+
+### Changed
+- **The defaults leave the system's temp dir**: the compiled settings go to
+  `.request-shield/` next to the settings file, the store (counters, the
+  secret, lists, feeds, statistics) to `.request-shield/store` there, unless
+  `set store-dir` or `protectFile()`'s directory say otherwise. A shared host
+  shares `/tmp` between customers; the owner's directory is theirs.
+  `protect($array)` without a file keeps the temp dir.
+
+### Added (continued)
 - **`bootstrap.php` finds the rules on its own** (0031 step A.4): `REQUEST_SHIELD_CONFIG`
   if set (and then nothing else), else `request-shield.rules` next to it, else
   `config/request-shield.rules`, else `config/request-shield.php`. Before, a

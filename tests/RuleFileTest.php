@@ -640,6 +640,7 @@ return [
         foreach (['at', 'area'] as $k) {         // where a rule is written, and its area: of course not the same
             unset($a['origins'][$k], $b['origins'][$k]);
         }
+        unset($a['storeDir'], $a['listsDir'], $b['storeDir'], $b['listsDir']);     // the store's default is next to each file: two directories here
         same($b, $a);
         $s = rulesFrom($blocks);
         same('/admin/**', $s->origin('area', 'SITE-ADM'), 'each rule knows its area');

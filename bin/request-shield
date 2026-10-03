@@ -159,6 +159,11 @@ if ($command === 'version' || $command === '--version') {
         $kind = ['ApcuStore' => 'apcu', 'FileStore' => 'file', 'MemoryStore' => 'memory'][substr(strrchr(get_class($store), '\\') ?: '', 1)] ?? get_class($store);
         echo "rules: $file, mode $s->mode" . ($s->sites !== [] ? ', ' . count(array_unique(array_values($s->sites))) . ' site block(s)' : '') . "\n";
         echo "store: $kind (set store $s->store)" . ($kind === 'file' ? ", $s->storeDir" : '') . "\n";
+        $tier = \CjwNetwork\RequestShield\Tier::of($s, Settings::cacheDirFor($file));
+        echo "tier: {$tier['tier']} -- " . implode('; ', $tier['why']) . "\n";
+        foreach (array_merge($tier['chosen'], $tier['off']) as $off) {
+            echo "  not active: $off\n";
+        }
         $own = [];
         foreach ($s->origins['versions'] ?? [] as $name => $version) {
             $own[] = "$name $version";
@@ -675,6 +680,16 @@ if ($command === 'check' || $command === 'reload') {
     }
     echo "ok: $files file(s) + built-in rules, " . count($settings->blockedPaths) . ' blocked patterns, ' . count($settings->budgets) . ' budget(s)'
         . ($attacks > 0 ? ", $attacks attack patterns" : '') . ($sets !== '' ? "; $sets" : '') . "\n";
+    // What this installation can do (ADR 0013): the tier, and what is not active in it.
+    $tier = \CjwNetwork\RequestShield\Tier::of($settings, Settings::cacheDirFor($file));
+    echo "tier: {$tier['tier']} -- " . implode('; ', $tier['why']) . "\n";
+    foreach ($tier['chosen'] as $note) {
+        echo "note: $note\n";                      // the settings chose it: no warning
+    }
+    foreach ($tier['off'] as $off) {
+        fwrite(STDERR, "warning: $off\n");         // the environment leaves it inactive
+        $warnings++;
+    }
     if ($settings->sites !== []) {
         // site shop.a.de (a.de) · *.b.de · default -- and which name picks one.
         $byBlock = [];

@@ -312,7 +312,7 @@ keeps both the same.
 |---|---|
 | `secret` | at least 32 characters; better `${SHIELD_SECRET}` than in the file |
 | `store` | `auto`, `apcu`, `file`, `memory` |
-| `store-dir` | where file counters and a generated secret live |
+| `store-dir` | where file counters, a generated secret, the lists, the feeds and the statistics live; default `.request-shield/store` next to the main rule file (never the system's temp dir, which a shared host shares between customers) |
 | `pass-ttl`, `solution-ttl` | `3600`, `30m`, `1h`, `1d` |
 | `difficulty-min`, `difficulty-max` | numbers |
 | `cookie`, `solution-cookie` | cookie names |

@@ -45,6 +45,7 @@ return [
             $rb = RuleFile::read(["$b/site.rules"]);
             $strip = static function (array $c): array {
                 unset($c['origins']['text'], $c['origins']['at']);      // descriptions, and line numbers (the examples move the lines below them)
+                unset($c['storeDir'], $c['listsDir']);                  // the store's default is next to each file: two directories here
                 return $c;
             };
             same($strip($ra['config']), $strip($rb['config']), 'the same settings with and without examples');

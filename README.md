@@ -150,7 +150,10 @@ php_value auto_prepend_file /home/you/request-shield/bootstrap.php
 ```
 
 `php bin/request-shield check request-shield.rules` tells you the rules are
-in order. The settings file can also be named by a constant or an environment
+in order, and what this hosting can do (the tier: APCu, files, or stateless).
+The shield keeps its compiled settings, counters and secret in
+`.request-shield/` next to the rules — which is why both belong outside the
+document root. The settings file can also be named by a constant or an environment
 variable, `REQUEST_SHIELD_CONFIG` (a `.rules` or a `.php` file; then nothing
 else is looked for). Without any settings file the shield does nothing.
 

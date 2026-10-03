@@ -4,3 +4,6 @@
 /var/
 /psalm-taint.sarif
 /examples/demo/var/
+
+# What the shield keeps next to a rule file (compiled settings, counters, the secret)
+.request-shield/
