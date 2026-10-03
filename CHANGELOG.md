@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   S2 (APCu), and what is not active in it ([docs](docs/features/settings.md#what-this-installation-can-do-the-tiers)).
 
 ### Changed
+- **The live view works without APCu** (0031 step A3.2): with the file store
+  `set live on` keeps its rows in `<store-dir>/live.log` (full addresses, the
+  log's line format, rotated past 500 KB, `live-keep` honoured) instead of
+  needing APCu; `set store memory` is the only case that reads the log
+  instead. Every use of APCu now goes through `Capability::apcu()`.
 - **The defaults leave the system's temp dir**: the compiled settings go to
   `.request-shield/` next to the settings file, the store (counters, the
   secret, lists, feeds, statistics) to `.request-shield/store` there, unless

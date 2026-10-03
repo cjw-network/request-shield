@@ -512,7 +512,7 @@ final class Shield
      */
     private static function restoreBans(Settings $s, Store $store): void
     {
-        if (!function_exists('apcu_add') || !apcu_add('rshield-bans-restored:' . hash('crc32b', $s->storeDir), 1)) {
+        if (!Capability::apcu() || !apcu_add('rshield-bans-restored:' . hash('crc32b', $s->storeDir), 1)) {
             return;
         }
         $now = microtime(true);

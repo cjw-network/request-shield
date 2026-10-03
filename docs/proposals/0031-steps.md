@@ -67,8 +67,8 @@ the model you trust most there, not fast mode.
 - [x] **A.5** E2E tests set `REQUEST_SHIELD_CONFIG` themselves (PluginTest/AccessTest fail today with a local `config/request-shield.php`). `0094dff`
 
 ### Phase A3 — Hosting tiers
-- [x] **A3.1** Cache path → `.request-shield/` **next to the settings file** (not `store-dir/cache`: the store dir is only known after compiling), the store's default → `.request-shield/store` there (never the shared temp dir — the secret lives in the store); not writable → compiled on every request (S0), no fatal; `Tier::of()`, `check` and `version` name the tier and what is inactive — `HostingTiersTest` S0 + S1 + defaults. *(hash: next commit)*
-- [ ] **A3.2** `Live` with a file-ring fallback (`store-dir/live`, `O_APPEND`, N entries); settings freshness, crawler DNS cache and `Stats` behind a capability check with a file fallback — `grep apcu_` only in `Store/` and one `Capability` class.
+- [x] **A3.1** Cache path → `.request-shield/` **next to the settings file** (not `store-dir/cache`: the store dir is only known after compiling), the store's default → `.request-shield/store` there (never the shared temp dir — the secret lives in the store); not writable → compiled on every request (S0), no fatal; `Tier::of()`, `check` and `version` name the tier and what is inactive — `HostingTiersTest` S0 + S1 + defaults. `aa778b4`
+- [x] **A3.2** `Live` with a file fallback (`store-dir/live.log`, the log's line format, `O_APPEND`, rotated past 500 KB, read by `LogTail`); every APCu check through `Capability::apcu()`. Settings freshness, the crawler DNS cache and `Stats` already had file fallbacks (stat per request, `store-dir/se/`, hour files) — kept, now behind the one check. *(hash: next commit)*
 - [ ] **A3.3** `curl` fallback for feed/crawler updates, a clear message without network — unit test with `allow_url_fopen=0`.
 - [ ] **A3.4** `HostingTiersTest` S1/S2 (same requests, same decisions) + CI leg "minimal hosting" in `tests.yml`; README numbers per tier.
 
@@ -137,8 +137,8 @@ the model you trust most there, not fast mode.
 
 ## Status
 
-- **Last step done:** A3.1
-- **Next step:** A3.2
+- **Last step done:** A3.2
+- **Next step:** A3.3
 - **Open owner questions:** see the proposal's last section.
 - **Deviations from the plan:** none.
 - **Review:** `pr-review-toolkit` is not installed on the machine that wrote phase 0 and A.1–A.2; the fallback (code-review skill, sonnet, low) was used — for phase 0 (documents only) once over the whole phase, for the code steps once per step.

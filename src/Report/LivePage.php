@@ -44,7 +44,7 @@ final class LivePage
             's.list' => 'list', 's.ban' => 'ban', 's.feed' => 'feed', 's.own' => 'own rule', 's.builtin' => 'built-in rule', 's.pace' => 'pace', 's.crawler' => 'crawler policy', 's.shield' => 'basic check',
             'whereRule' => 'where this rule is written', 'onList' => 'on the deny list', 'onFeed' => 'on the public list %s', 'error' => 'The live view cannot reach the server — trying again.',
             'memory' => 'From the live memory: the last requests stopped, with the full address, kept %s (set live on).', 'skippedRows' => '%d rows skipped (more than one read): the newest are shown.',
-            'noMemory' => 'set live on: the live memory needs APCu, which this server does not have — the log is read instead.',
+            'noMemory' => 'set live on: with set store memory nothing outlasts a request — the log is read instead.',
         ],
         'de' => [
             'title' => 'Live', 'intro' => 'Was der Schutz gerade aufhält — das Neueste oben, alle %d Sekunden.',
@@ -59,7 +59,7 @@ final class LivePage
             's.list' => 'Liste', 's.ban' => 'Sperre', 's.feed' => 'Feed', 's.own' => 'eigene Regel', 's.builtin' => 'eingebaute Regel', 's.pace' => 'Tempo', 's.crawler' => 'Crawler-Regel', 's.shield' => 'Grundprüfung',
             'whereRule' => 'wo diese Regel steht', 'onList' => 'auf der Sperrliste', 'onFeed' => 'auf der öffentlichen Liste %s', 'error' => 'Die Live-Ansicht erreicht den Server nicht — neuer Versuch.',
             'memory' => 'Aus dem Live-Speicher: die zuletzt aufgehaltenen Anfragen, mit voller Adresse, gehalten %s (set live on).', 'skippedRows' => '%d Zeilen übersprungen (mehr als ein Lesen): die neuesten stehen hier.',
-            'noMemory' => 'set live on: der Live-Speicher braucht APCu, das dieser Server nicht hat — stattdessen wird das Log gelesen.',
+            'noMemory' => 'set live on: mit set store memory überdauert nichts eine Anfrage — stattdessen wird das Log gelesen.',
         ],
     ];
 
@@ -77,7 +77,7 @@ final class LivePage
         if (!$memory && $s->logFile === null) {
             return ['cursor' => '', 'rows' => [], 'skipped' => 0, 'log' => false];
         }
-        // The memory (set live on, APCu): full addresses, the last hour; else the log's new lines.
+        // The memory (set live on: APCu, or live.log in store-dir): full addresses, the last hour; else the log's new lines.
         $tail = $memory ? \CjwNetwork\RequestShield\Live::read($s, $cursor, self::MAX_ROWS)
             : LogTail::read((string) $s->logFile, $cursor);
         // Not the dashboard's own requests that went through (its pages, this
@@ -116,10 +116,10 @@ final class LivePage
         return ['cursor' => $tail['cursor'], 'rows' => $rows, 'skipped' => $memory ? $tail['skipped'] : (int) round($tail['skipped'] / 1024), 'log' => true, 'memory' => $memory];
     }
 
-    /** Whether the rows come from the live memory (set live on, with APCu) rather than the log. */
+    /** Whether the rows come from the live memory (set live on: the APCu ring, or live.log in store-dir) rather than the log. */
     public static function fromMemory(Settings $s): bool
     {
-        return $s->liveEnabled && \CjwNetwork\RequestShield\Live::usable();
+        return \CjwNetwork\RequestShield\Live::keeps($s);
     }
 
     /**

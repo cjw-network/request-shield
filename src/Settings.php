@@ -1635,7 +1635,7 @@ final class Settings
         }
         self::write($cacheDir . '/settings-' . $key . '.php', "<?php\n// Compiled by cjw-network/request-shield from $file; rebuilt when it changes.\nreturn "
             . var_export(['format' => self::FORMAT, 'file' => $file, 'seen' => $seen, 'env' => $env, 'recheck' => $recheck, 'settings' => $settings->export()], true) . ";\n");
-        if ($recheck > 0 && function_exists('apcu_enabled') && apcu_enabled()) {
+        if ($recheck > 0 && Capability::apcu()) {
             apcu_store('rshield:fresh:' . $key, true, $recheck);
         }
         self::$checked[$key] = $seen;
@@ -1674,7 +1674,7 @@ final class Settings
      */
     private static function fresh(array $seen, int $recheck, string $key): bool
     {
-        $apcu = $recheck > 0 && function_exists('apcu_enabled') && apcu_enabled();
+        $apcu = $recheck > 0 && Capability::apcu();
         if ($apcu && apcu_fetch('rshield:fresh:' . $key) === true) {
             return true;
         }

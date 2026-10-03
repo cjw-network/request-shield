@@ -35,9 +35,9 @@ the statistics, under `dashboard-path`: `/rs/waf/live` and `/rs/waf/lists`.
 
 ## Where the rows come from
 
-| | `set live on` (with APCu) | without it |
+| | `set live on` | without it |
 |---|---|---|
-| source | **the live memory**: a ring of the last 2,000 requests stopped, in APCu | the log's new lines (`set log`) |
+| source | **the live memory**: with APCu a ring of the last 2,000 requests stopped, in memory; with the file store the same lines in `<store-dir>/live.log` (rotated past 500 KB), kept `live-keep` | the log's new lines (`set log`) |
 | the address | **full**, so exactly that address can be kept out | as the log keeps it (masked to /24, /48 by default) |
 | kept | `live-keep` (default 1 hour, at most 1 day); gone with a restart; **never on disk** | as long as the log |
 | contains | refused, banned, told to wait, checked, and what watched rules would have done | what `log-level` keeps |
@@ -62,7 +62,7 @@ only, for a short time.
 
 ```text
 set dashboard-path /rs        # /rs/waf/live, /rs/waf/lists, /rs/waf/rules (and the statistics plugin's /rs/stats/…)
-set live on                   # the live view from memory, with full addresses (needs APCu)
+set live on                   # the live view with full addresses: APCu, or live.log in store-dir
 set live-keep 1h              # how long an entry stays (1m to 1d)
 set ban-keep file             # a ban also as a file: it survives a restart of APCu
 [SITE-RS] restrict **/rs/** to 192.0.2.0/24   # who may open the pages: the site decides
@@ -126,7 +126,7 @@ The same as on the command line ([IP lists](ip-lists.md#the-command-line)), plus
 | | |
 |---|---|
 | a request that passes | nothing new |
-| a request stopped, `set live on` | ~5 µs (APCu: a counter, one entry) |
+| a request stopped, `set live on` | ~5 µs (APCu: a counter, one entry); one appended line without APCu |
 | a ban with `ban-keep file` | one small file written, when the ban starts |
 | every request with bans and `ban-keep file` | one `apcu_add()` (~0.2 µs) |
 | the live page, every 3 s | 300 new rows from memory in ~0.6 ms; from the log, at most 64 KB read |
@@ -135,7 +135,10 @@ The same as on the command line ([IP lists](ip-lists.md#the-command-line)), plus
 ## Privacy
 
 - **The live memory holds full addresses** of requests the shield stopped or
-  checked, for `live-keep` (an hour by default), in memory only. The purpose is
+  checked, for `live-keep` (an hour by default): in APCu, or, with the file
+  store, in `<store-dir>/live.log` (outside the document root, rotated past
+  500 KB -- older lines are read no more, and the rotated file is replaced by
+  the next rotation). The purpose is
   defence (Art. 6(1)(f)): seeing an attack and keeping its address out. Without
   `set live on` the page shows what the log holds (masked by default).
 - **`ban-keep file`** keeps a banned address in a file in store-dir until its

@@ -22,7 +22,7 @@ final class ApcuStore implements Store
 
     public static function usable(): bool
     {
-        return function_exists('apcu_enabled') && apcu_enabled();
+        return \CjwNetwork\RequestShield\Capability::apcu();
     }
 
     public function hit(string $key, int $window, float $now): float

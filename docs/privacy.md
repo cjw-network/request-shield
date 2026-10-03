@@ -127,8 +127,11 @@ feature by feature, for what exists today and for the proposals.
 
 - **What:** the last requests the shield stopped or checked (at most 2,000),
   each with the **full address**, the request, the user agent and the rule.
-- **Where and how long:** in memory (APCu) only, never on disk, each entry for
-  `live-keep` (an hour by default, at most a day); gone with a restart.
+- **Where and how long:** with APCu in memory, gone with a restart; with the
+  file store in `<store-dir>/live.log` (outside the document root, readable by
+  the web server's user only, rotated past 500 KB so at most about two files
+  of 2,000 lines exist). Each entry is shown for `live-keep` (an hour by
+  default, at most a day); with `set store memory` nothing is kept.
 - **Basis:** security (Art. 6(1)(f)): seeing an attack and keeping exactly its
   address out. Requests that pass are not kept. Without `set live on` the live
   view shows the log's lines, masked as the log keeps them.

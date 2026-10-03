@@ -36,7 +36,7 @@ final class Failure
         self::$noted[$cause] = $now;
         $dir ??= rtrim(sys_get_temp_dir(), '/') . '/request-shield';
         if ($dir !== false) {
-            if (function_exists('apcu_enabled') && apcu_enabled()) {
+            if (Capability::apcu()) {
                 if (!apcu_add('rshield:failed:' . hash('crc32b', $dir) . ':' . $cause, $now, 60)) {
                     return;
                 }

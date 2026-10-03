@@ -259,6 +259,42 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF6.2 the live memory without APCu (set store file): live.log in store-dir, the full address, the cursor, live-keep, rotation' => function (): void {
+        $dir = liveDir();
+        try {
+            $s = liveSettings($dir, "set store file\nset live on\nset live-keep 10m\nset log-level off\n");
+            same('file', \CjwNetwork\RequestShield\Live::where($s), 'the file store keeps the live view in a file');
+            truthy(LivePage::fromMemory($s), 'the page reads the live view, not the log');
+            $shield = new \CjwNetwork\RequestShield\Shield($s, new MemoryStore());
+            $note = static function (string $uri, string $ip, float $now = 0.0) use ($s, $shield): void {
+                $r = Request::fromServer(['REQUEST_URI' => $uri, 'REQUEST_METHOD' => 'GET', 'HTTP_HOST' => 'shop.example.de', 'REMOTE_ADDR' => $ip, 'HTTP_USER_AGENT' => 'Mozilla/5.0 Firefox/136.0']);
+                $now = $now > 0 ? $now : microtime(true);
+                $d = $shield->decide($r, $now);
+                Log::note($s, $r, $d, $shield->explain($d, $r), $now);
+            };
+            $note('/.env', '203.0.113.77');
+            $note('/', '203.0.113.78');                          // passes: not kept
+            $note('/.git/HEAD', '203.0.113.79', time() - 3600.0); // an hour old: past live-keep, not shown
+            truthy(is_file("$dir/store/live.log"), 'the file in store-dir');
+            same(false, is_file("$dir/shield.log"), 'the log itself was not written (log-level off)');
+            $j = LivePage::json($s, null, ['lang' => 'en']);
+            same([true, ['203.0.113.77'], '203.0.113.77'], [$j['memory'] ?? null, array_column($j['rows'], 'client'), $j['rows'][0]['keep']], 'the full address -- and "keep out" for exactly it; the old entry left out');
+            same('shop.example.de', $j['rows'][0]['host']);
+            $note('/.git/config', '2001:db8::5');
+            $next = LivePage::json($s, $j['cursor']);
+            same(['2001:db8::5'], array_column($next['rows'], 'client'), 'with the cursor: only what is new');
+            same([], LivePage::json($s, $next['cursor'])['rows'], 'nothing new');
+            // Rotation: past FILE_MAX the file moves to .1 and a new one starts; a reader goes on from its start.
+            file_put_contents("$dir/store/live.log", str_repeat(str_repeat('x', 99) . "\n", intdiv(\CjwNetwork\RequestShield\Live::FILE_MAX, 100) + 10), FILE_APPEND);
+            $note('/.htpasswd', '198.51.100.1');
+            truthy(is_file("$dir/store/live.log.1") && filesize("$dir/store/live.log") < 1000, 'rotated: the new file holds the newest line only');
+            same(['198.51.100.1'], array_column(LivePage::json($s, $next['cursor'])['rows'], 'client'), 'read on after the rotation');
+            $html = LivePage::render($s, ['feed' => '/rs/live?format=json', 'lang' => 'en']);
+            truthy(strpos($html, 'From the live memory') !== false && strpos($html, '10 minutes') !== false, 'the page says where its rows come from');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'set ban-keep file: a ban survives a restart of APCu, and is lifted from both' => function (): void {
         if (!\CjwNetwork\RequestShield\Live::usable()) {
             skip('no APCu in this PHP (apc.enable_cli=1)');
