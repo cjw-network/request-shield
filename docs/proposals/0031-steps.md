@@ -110,7 +110,7 @@ the model you trust most there, not fast mode.
 - [x] **E.7** `docs/llm/install.md`, `write-rules.md`, `check.md`; the install prompt followed literally in a container (log in `docs/llm/install-dryrun.md`). `6a1c0a8`
 
 ### Phase F — Feature contract
-- [x] **F.1** RSF ids in every `docs/features/*.md` H1 and the `docs/README.md` table; test names with ids (a pure renaming commit). `HASH-F1`
+- [x] **F.1** RSF ids in every `docs/features/*.md` H1 and the `docs/README.md` table; test names with ids (a pure renaming commit). `dad11a3`
 - [ ] **F.2** `tests/FeatureContractTest.php` (docs ↔ demo ↔ tests ↔ Vocabulary, `.demo-exempt`) — first with an exception list that F.6 empties.
 - [ ] **F.3** Parser: `# demo:`/`# try:` markers, `ua "…"`, quoted headers; `Examples` returns status + headers.
 - [ ] **F.4** `Report/DemoSite` + `ExamplesPage`, server-side `/__answer`; `examples/demo/index.php` → 3 lines + `pages.php`; `examples/exponential` on the same base; `DemoTest` iterates groups.
