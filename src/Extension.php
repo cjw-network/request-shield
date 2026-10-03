@@ -55,12 +55,18 @@ interface Extension
     public static function plugins(array $compiled): array;
 
     /**
-     * The pages under dashboard-path it serves: path => what the page is
-     * (0031 B.5 defines the entries; until then []).
+     * The pages it has, given its compiled slot (0031 B.5): full path =>
+     * entry, as Routes carries them -- key (what the page is), tab ([English,
+     * German] label; null: no tab, a start alias), role (admin or reader) and
+     * order (the tabs' order); the compiler sets ext to the id. The paths
+     * come from the slot (compile() keeps the base's dashboard-path there if
+     * the pages live below it), so `set dashboard-path` moves them. [] for an
+     * extension without pages. Two routes on one path refuse to compile.
      *
-     * @return array<string, array<string, mixed>>
+     * @param array<string, mixed> $compiled what compile() returned
+     * @return array<string, array{key: string, tab: ?array{0: string, 1: string}, role: string, order: int}>
      */
-    public static function routes(): array;
+    public static function routes(array $compiled): array;
 
     /**
      * Its command-line commands: name => how to run it (0031 D.1 defines the

@@ -173,8 +173,6 @@ final class Settings
         public int $feedsMaxAge = 259200,
         /** @var array<string, array{name: string, sites: list<string>, rule: string}> @readonly stats-group: id (customer-a) => its name, its websites */
         public array $statsGroups = [],
-        /** @readonly where the statistics plugin's pages live (set stats-path; default <dashboard-path>/stats) */
-        public string $statsPath = '/rs/stats',
         /** @var list<array{who: string, hash: string, until: ?int, rule: string}> @readonly stats-access: who ('*' or a group's ID) by a token's SHA-256, in force */
         public array $statsAccess = [],
         /** @readonly how long a login to the statistics lasts, in seconds (set stats-session; 8 hours) */
@@ -187,7 +185,7 @@ final class Settings
         public array $ext = [],
         /** @var array<string, list<class-string>> @readonly which plugins provide which capability (hook name => classes), recorded at compile time so a request costs one array access to know (0031 B.2–B.10) */
         public array $hooks = [],
-        /** @var array<string, array<string, mixed>> @readonly the pages under dashboard-path the extensions declare (path => what it is), served by the shield (0031 B.5–B.6) */
+        /** @var array<string, array{key: string, ext: ?string, tab: ?array{0: string, 1: string}, role: string, order: int}> @readonly the dashboard's pages, full path => entry (Routes; the core's, the extensions', in the tabs' order), compiled by compiledExt() -- served by the shield from 0031 B.6 */
         public array $routes = [],
     ) {
     }
@@ -314,7 +312,7 @@ final class Settings
             ...self::withFeeds(self::lists($c, $budgets), $feeds = self::feeds($c), self::accessNext($c)),
             ...self::live($c),
             ...array_slice($feeds, 0, 5),
-            ...[self::statsGroups($c), self::statsPath($c)],
+            ...[self::statsGroups($c)],
             ...self::statsAccess($c),
             ...[self::postOrigin($c), self::patternList($c['backend'] ?? [], 'backend')],
             ...[self::ext($c), self::hooks($c), self::routes($c)],
@@ -329,12 +327,16 @@ final class Settings
      * setting's: on the request path the last good compiled settings stay.
      * The plugins an extension runs per request (Extension::plugins(), 0031
      * B.4) join the list the rules named, once each, so a request reads one
-     * list and never the slots.
+     * list and never the slots. The pages (Extension::routes(), 0031 B.5)
+     * join the core's in one table, Routes::compile(): the settings array's
+     * own routes, the core's below dashboard-path, every offered extension's
+     * from its compiled slot.
      */
     private static function compiledExt(self $s): self
     {
         $checked = $s->ext;
         $plugins = $s->plugins;
+        $routes = [];
         foreach ($s->ext as $id => $raw) {
             $class = \CjwNetwork\RequestShield\Rules\Vocabulary::extension($id);
             if ($class !== null) {
@@ -344,15 +346,20 @@ final class Settings
                         $plugins[] = $plugin;
                     }
                 }
+                $routes[$id] = $class::routes($checked[$id]);
             }
         }
-        if ($checked === $s->ext && $plugins === $s->plugins) {
-            return $s;
-        }
-        $e = $s->export();
+        // The same settings with the slots, the plugins and the pages filled in:
+        // the value objects (budgets, challenge, monitor) are immutable and shared,
+        // so no export()/import() round trip. Positional, in declaration order
+        // (as import()): unpacking string keys into named arguments needs PHP 8.1.
+        /** @var array<string, mixed> $e */
+        $e = get_object_vars($s);
         $e['ext'] = $checked;
         $e['plugins'] = $plugins;
-        return self::import($e);
+        $e['routes'] = Routes::compile($s->routes, $s->dashboardPath, $routes);
+        /** @phpstan-ignore argument.type */
+        return new self(...array_values($e));
     }
 
     /**
@@ -509,11 +516,12 @@ final class Settings
     }
 
     /**
-     * The pages under dashboard-path the extensions declare: path => what it
-     * is (the registry comes with 0031 B.5; the shield serves them from B.6).
+     * Pages given in the settings array (for tests and a site's own): path
+     * => entry as Routes has them (key, tab, role, order; ext optional).
+     * compiledExt() adds the core's and the extensions' pages to them.
      *
      * @param array<mixed> $c
-     * @return array<string, array<string, mixed>>
+     * @return array<string, array{key: string, ext: ?string, tab: ?array{0: string, 1: string}, role: string, order: int}>
      */
     private static function routes(array $c): array
     {
@@ -522,8 +530,7 @@ final class Settings
             if (!is_string($path) || $path === '' || $path[0] !== '/' || !is_array($route)) {
                 throw self::wrong('routes', 'a map of paths (starting with "/") to what each page is');
             }
-            /** @var array<string, mixed> $route */
-            $out[$path] = $route;
+            $out[$path] = Routes::entry($route, 'routes', $path);
         }
         return $out;
     }
@@ -927,25 +934,6 @@ final class Settings
         return [$out, $session];
     }
 
-    /**
-     * Where the statistics plugin's pages live: set stats-path, else
-     * <dashboard-path>/stats. The plugin owns it; the core's pages stay at
-     * <dashboard-path>/waf/.
-     *
-     * @param array<mixed> $c
-     */
-    private static function statsPath(array $c): string
-    {
-        $p = is_array($c['stats'] ?? null) ? ($c['stats']['path'] ?? null) : null;
-        if ($p === null) {
-            return self::dashboardPath($c) . '/stats';
-        }
-        if (!is_string($p) || !preg_match('#^(/[A-Za-z0-9._~-]+)+$#', $p) || preg_match('#/\.+(/|$)#', $p)) {
-            throw self::wrong('stats.path', 'a path such as /rs/stats or /admin/statistics');
-        }
-        return $p;
-    }
-
     /** @param array<mixed> $c */
     private static function dashboardPath(array $c): string
     {
@@ -1247,7 +1235,7 @@ final class Settings
     public const DENY_SHOWN = 100;
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 42;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats
+    private const FORMAT = 43;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats; 43: routes compiled, stats path in ext.stats
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

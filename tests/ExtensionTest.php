@@ -69,7 +69,7 @@ return [
             $raw = extConfig($text)['ext']['rs-test'] ?? null;
             same(['failAt' => 'rules', 'marksMax' => 5, 'marks' => ['a', 'b', 'c'], 'by' => 'site.rules:5'], $raw, 'the parser\'s values: typed, the word fed its values so far and the rule id');
             $s = Settings::from(extConfig($text));
-            same(['failAt' => 'rules', 'marks' => ['a', 'b', 'c'], 'hosts' => ['a.example']], $s->ext['rs-test'] ?? null, 'compile(): checked, shaped, the base settings in hand');
+            same(['failAt' => 'rules', 'marks' => ['a', 'b', 'c'], 'hosts' => ['a.example'], 'dashboardPath' => '/rs'], $s->ext['rs-test'] ?? null, 'compile(): checked, shaped, the base settings in hand');
             $round = Settings::import(eval('return ' . var_export($s->export(), true) . ';'));
             same(serialize($s), serialize($round), 'export/import keep it');
             same(null, Settings::from(extConfig("host a.example\n"))->ext['rs-test'] ?? null, 'nothing written: no slot');
@@ -111,7 +111,7 @@ return [
                 public static function vocabulary(Vocabulary $v): void { }
                 public static function compile(array $raw, Settings $base): array { return $raw; }
                 public static function plugins(array $compiled): array { return []; }
-                public static function routes(): array { return []; }
+                public static function routes(array $compiled): array { return []; }
                 public static function commands(): array { return []; }
                 public static function check(Settings $s): array { return []; }
             };
@@ -130,7 +130,7 @@ return [
                 public static function vocabulary(Vocabulary $v): void { $v->word('block', static fn (array $a, array $v): array => $v); }
                 public static function compile(array $raw, Settings $base): array { return $raw; }
                 public static function plugins(array $compiled): array { return []; }
-                public static function routes(): array { return []; }
+                public static function routes(array $compiled): array { return []; }
                 public static function commands(): array { return []; }
                 public static function check(Settings $s): array { return []; }
             };
@@ -147,7 +147,7 @@ return [
                 public static function vocabulary(Vocabulary $v): void { $v->set('debug-header', 'bool'); }
                 public static function compile(array $raw, Settings $base): array { return $raw; }
                 public static function plugins(array $compiled): array { return []; }
-                public static function routes(): array { return []; }
+                public static function routes(array $compiled): array { return []; }
                 public static function commands(): array { return []; }
                 public static function check(Settings $s): array { return []; }
             };

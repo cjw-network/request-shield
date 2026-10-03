@@ -218,10 +218,12 @@ nested inside:
 ]],
 ```
 
-What is not given keeps its default. `stats-group`, `stats-access`,
-`stats-session` and `stats-path` are the core's for now (`'stats' => ['groups'
-=> …, 'access' => …, 'session' => …, 'path' => …]`), until 0031 steps B.5 and
-B.7 move them.
+What is not given keeps its default; `'path'` (where the pages live, `set
+stats-path`) defaults to `<dashboardPath>/stats` when it is not given. The
+extension declares its pages below it (`StatsExtension::routes()`), so the
+dashboard's tabs and links follow the setting. `stats-group`, `stats-access`
+and `stats-session` are the core's for now (`'stats' => ['groups' => …,
+'access' => …, 'session' => …]`), until 0031 step B.7 moves them.
 
 ## Where the numbers live — and that they survive a restart
 
@@ -372,7 +374,7 @@ foreach ($gate['headers'] as $h) { header($h, false); }
 http_response_code($gate['status']);
 if ($gate['who'] === null) { echo $gate['body']; exit; }       // the form, a redirect, 429
 echo StatsPage::render($settings, ['view' => StatsPage::viewFor($settings, $path), 'who' => $gate['who'],
-    'links' => Access::links($gate['who'], StatsPage::links($settings)), 'site' => $_GET['site'] ?? null] + …);
+    'links' => Access::links($settings, $gate['who'], StatsPage::links($settings)), 'site' => $_GET['site'] ?? null] + …);
 ```
 
 For the JSON: `'site' => Access::site($settings, $gate['who'], $_GET['site'] ?? null)` in

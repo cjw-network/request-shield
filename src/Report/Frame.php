@@ -10,89 +10,53 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield\Report;
 
+use CjwNetwork\RequestShield\Routes;
+use CjwNetwork\RequestShield\Settings;
+
 /**
  * The frame of the dashboard's own pages (live, lists): the same colours and
  * tabs as the statistics, inline CSS, no external file, never indexed.
  */
 final class Frame
 {
-    /** The tabs, in their order: links key => [English, German]. */
-    public const TABS = [
-        'sites' => ['All websites', 'Alle Websites'], 'all' => ['Dashboard', 'Dashboard'], 'site' => ['Visitors & pages', 'Besucher & Seiten'], 'shield' => ['Protection', 'Schutz'],
-        'rules' => ['Rules & setup', 'Regeln & Einrichtung'], 'live' => ['Live', 'Live'], 'lists' => ['Lists', 'Listen'],
-    ];
-
     /**
-     * The addresses of the dashboard's pages under dashboard-path: the
-     * statistics' four (with the stats plugin) and the core's live and lists.
+     * The addresses of the dashboard's pages (every route with a tab, in
+     * the tabs' order): the statistics plugin's below stats-path, the
+     * core's below <dashboard-path>/waf -- from the compiled routes.
      *
-     * @return array{sites?: string, all: string, site: string, shield: string, rules: string, live: string, lists: string} sites: with stats-hosts
+     * @return array<string, string> key => address (sites with stats-hosts, all, site, shield, rules, live, lists …)
      */
-    public static function links(\CjwNetwork\RequestShield\Settings $s, string $prefix = ''): array
+    public static function links(Settings $s, string $prefix = ''): array
     {
-        $base = $prefix . $s->dashboardPath;
-        $stats = $prefix . $s->statsPath;
-        // The statistics plugin's pages under its own path (set stats-path), the core's -- the firewall's -- under /waf/.
-        // The statistics' own slot, read for display only (until 0031 B.8, when the plugin declares its pages).
-        $hosts = is_array($s->ext['stats']['hosts'] ?? null) ? $s->ext['stats']['hosts'] : [];
-        return ($hosts !== [] ? ['sites' => $stats . '/sites'] : []) + ['all' => $stats . '/overview', 'site' => $stats . '/visitors',
-            'shield' => $stats . '/protection', 'rules' => $base . '/waf/rules', 'live' => $base . '/waf/live', 'lists' => $base . '/waf/lists'];
+        return Routes::links($s, $prefix);
     }
-
-    /** The core's addresses below dashboard-path, and the statistics plugin's below stats-path. */
-    private const PAGES = ['/waf', '/waf/rules', '/waf/live', '/waf/lists'];
-
-    private const STATS = ['', '/sites', '/overview', '/visitors', '/protection'];
 
     /**
      * Whether a path is one of the dashboard's pages -- also below a prefix
-     * (/demo/index.php/rs/live): for what the dashboard's own requests may
+     * (/demo/index.php/rs/waf/live): for what the dashboard's own requests may
      * skip (the pace), never for who may open them.
      */
-    public static function isPage(\CjwNetwork\RequestShield\Settings $s, string $path): bool
+    public static function isPage(Settings $s, string $path): bool
     {
-        $p = strtolower(rtrim($path, '/'));
-        $full = [];
-        foreach (self::PAGES as $page) {
-            $full[] = strtolower($s->dashboardPath) . $page;
-        }
-        foreach (self::STATS as $page) {
-            $full[] = strtolower($s->statsPath) . $page;
-        }
-        foreach ($full as $f) {
-            if ($p === $f || substr($p, -strlen($f)) === $f) {
-                return true;
-            }
-        }
-        return false;
+        return Routes::match($s, $path) !== null;
     }
 
-    /** Which page a path asks for (a key of links()), or null; capitals do not matter. */
-    public static function pageFor(\CjwNetwork\RequestShield\Settings $s, string $path): ?string
+    /** Which page a path asks for (a key of links(); <dashboard-path>/waf is the firewall's start, live), or null; capitals do not matter. */
+    public static function pageFor(Settings $s, string $path): ?string
     {
-        $p = strtolower(rtrim($path, '/'));
-        foreach (self::links($s) as $key => $link) {
-            if ($p === strtolower($link)) {
-                return $key;
-            }
-        }
-        $base = strtolower($s->dashboardPath);
-        if ($p === $base . '/waf') {
-            return 'live';                                  // the firewall's start: what it stops right now
-        }
-        return null;
+        return Routes::page($s, $path);
     }
 
     /**
-     * The tabs as links; $current is marked.
+     * The tabs as links, labelled from the routes; $current is marked.
      *
      * @param array<string, string> $links key => address
      */
-    public static function tabs(array $links, string $current, string $lang): string
+    public static function tabs(Settings $s, array $links, string $current, string $lang): string
     {
         $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $h = '';
-        foreach (self::TABS as $key => [$en, $de]) {
+        foreach (Routes::tabs($s) as $key => [$en, $de]) {
             if (isset($links[$key]) && $links[$key] !== '') {
                 $h .= '<a class="tab' . ($key === $current ? ' on' : '') . '" href="' . $e($links[$key] . '?lang=' . $lang) . '">' . $e($lang === 'de' ? $de : $en) . '</a>';
             }

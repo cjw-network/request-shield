@@ -32,7 +32,7 @@ final class StatsPlugin implements Plugin
     /** @var list<string> the keys of a request that goes on to the site, counted when it ends */
     private array $pending = [];
 
-    /** @var array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, hosts: list<string>, skip: list<string>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}} the statistics' settings (ext.stats) */
+    /** @var array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, path: string, hosts: list<string>, skip: list<string>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}} the statistics' settings (ext.stats) */
     private array $o;
 
     public function __construct(private Settings $settings)
@@ -47,9 +47,11 @@ final class StatsPlugin implements Plugin
         // stats-skip: a path that is no page of the site (a map proxy's tiles) -- not counted when it
         // passes; refused or checked, it still is (an attack there stays visible).
         // The dashboard's own pages (the statistics, the live view's feed every few
-        // seconds): looking at the numbers must not change them.
-        if ($decision->passes() && $would === null && (($o['skip'] !== [] && self::skipped($o['skip'], $request->matchPath()))
-            || (stripos($request->path, $s->dashboardPath) !== false || stripos($request->path, $s->statsPath) !== false) && \CjwNetwork\RequestShield\Report\Frame::isPage($s, $request->matchPath()))) {
+        // seconds): looking at the numbers must not change them. Two stripos first:
+        // only a path under dashboard-path or stats-path asks the registry.
+        $path = $request->matchPath();
+        if ($decision->passes() && $would === null && (($o['skip'] !== [] && self::skipped($o['skip'], $path))
+            || ((stripos($path, $s->dashboardPath) !== false || stripos($path, $o['path']) !== false) && Routes::match($s, $path) !== null))) {
             $this->waiting = false;
             return;
         }

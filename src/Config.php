@@ -156,8 +156,9 @@ final class Config
             // Days past 'days' are summed into their month, kept 'months' months (0: for good).
             // 'depth': the folder levels a section's views are counted for exactly (1 to 4;
             // 2: /news/ and /news/2026/ -- 3 where a language takes the first: /de/news/2026/).
-            // Where the statistics pages live: <dashboardPath>/dashboard, /stats, /shield
-            // (StatsPage::links(), ::viewFor()). Something in front is fine: /admin/rs.
+            // Where the dashboard's pages live (Settings::$routes, Routes): the core's
+            // below <dashboardPath>/waf, the statistics' below <dashboardPath>/stats
+            // (ext.stats.path). Something in front is fine: /admin/rs.
             'dashboardPath' => '/rs',
             // Plugins by class name: told what was decided and how a request ended
             // (proposal 0023). The statistics come with 'ext' => ['stats' => ['enabled' => true]].

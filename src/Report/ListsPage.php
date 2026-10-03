@@ -208,7 +208,7 @@ final class ListsPage
             . implode('', array_map(static fn ($k, $v): string => '<input type="hidden" name="' . $e((string) $k) . '" value="' . $e(is_scalar($v) ? (string) $v : '') . '">', array_keys($more), $more));
         /** @var array<string, string> $links */
         $links = array_filter((array) ($o['links'] ?? []), 'is_string');
-        $h = Frame::tabs($links, 'lists', $lang) . '<p class="note">' . $e($t['intro']) . '</p>';
+        $h = Frame::tabs($s, $links, 'lists', $lang) . '<p class="note">' . $e($t['intro']) . '</p>';
         $msg = is_array($o['message'] ?? null) ? $o['message'] : null;
         if ($msg !== null && is_string($msg['message'] ?? null)) {
             $h .= '<div class="msg ' . (($msg['ok'] ?? false) ? 'ok' : 'bad') . '" role="status">' . $e($msg['message']) . '</div>';

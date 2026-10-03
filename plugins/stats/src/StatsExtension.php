@@ -22,9 +22,11 @@ use CjwNetwork\RequestShield\Rules\Vocabulary;
  * offers it on its first lookup; without plugins/stats (a smaller build)
  * `set stats on` is an unknown setting.
  *
- * What stays in the core until 0031 B.5/B.7: stats-group, stats-access,
- * stats-session and stats-path -- Access and the dashboard's frame read them,
- * and the core never reads an extension's slot.
+ * Its pages (routes(), 0031 B.5) live below `set stats-path` (default
+ * <dashboard-path>/stats): the registry in the compiled settings knows them,
+ * the frame's tabs and the pace's exemption follow. What stays in the core
+ * until 0031 B.7: stats-group, stats-access and stats-session -- Access reads
+ * them, and the core never reads an extension's slot.
  */
 final class StatsExtension implements Extension
 {
@@ -40,11 +42,11 @@ final class StatsExtension implements Extension
      * The compiled slot: every key there, the statistics off. What a reader
      * sees when the extension did not compile (no slot at all).
      *
-     * @return array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, hosts: list<string>, skip: list<string>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}}
+     * @return array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, path: string, hosts: list<string>, skip: list<string>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}}
      */
     public static function defaults(): array
     {
-        return ['enabled' => false, 'parts' => self::PARTS, 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 60, 'depth' => 2, 'hosts' => [], 'skip' => [],
+        return ['enabled' => false, 'parts' => self::PARTS, 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 60, 'depth' => 2, 'path' => '/rs/stats', 'hosts' => [], 'skip' => [],
             'crawlerLog' => ['dir' => null, 'kinds' => [], 'days' => 30, 'query' => true]];
     }
 
@@ -52,11 +54,11 @@ final class StatsExtension implements Extension
      * The statistics' settings of $s: its compiled slot, or the defaults when
      * there is none -- a reader never sees a missing key.
      *
-     * @return array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, hosts: list<string>, skip: list<string>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}}
+     * @return array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, path: string, hosts: list<string>, skip: list<string>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}}
      */
     public static function of(Settings $s): array
     {
-        /** @var array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, hosts: list<string>, skip: list<string>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}} */
+        /** @var array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, path: string, hosts: list<string>, skip: list<string>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}} */
         return $s->ext['stats'] ?? self::defaults();
     }
 
@@ -80,6 +82,7 @@ final class StatsExtension implements Extension
         $v->set('stats-depth', 'int', 'folder levels a section\'s views are counted for exactly: 1 to 4', null, 'depth');
         $v->set('stats-hours', 'int', 'days the hourly counters are kept', null, 'hours');
         $v->set('stats-days', 'int', 'days the daily counters are kept', null, 'days');
+        $v->set('stats-path', 'string', 'where the statistics pages live (default <dashboard-path>/stats): /sites, /overview, /visitors, /protection below it', null, 'path');
         $v->set('stats-hosts', 'words', 'the websites with statistics of their own: names, *.domain, host, sites',
             static fn ($value, string $at): array => self::hostnames('stats-hosts', $value, $at), 'hosts', serverWide: true);
         $v->set('crawler-log', 'path', 'one log per known crawler and day in this directory', null, 'crawlerLog.dir');
@@ -173,11 +176,31 @@ final class StatsExtension implements Extension
             'months' => max(0, Settings::int($raw, 'months', 'ext.stats.months', 0)),
             'flush' => max(0, Settings::int($raw, 'flush', 'ext.stats.flush', 60)),
             'depth' => $depth,
+            'path' => self::path($raw, $base),
             'hosts' => self::hosts($raw, $base),
             'skip' => $skip,
             'crawlerLog' => ['dir' => $dir, 'kinds' => $kinds, 'days' => max(1, Settings::int($log, 'days', 'ext.stats.crawlerLog.days', 30)),
                 'query' => Settings::bool($log, 'query', 'ext.stats.crawlerLog.query', true)],
         ];
+    }
+
+    /**
+     * Where the pages live: set stats-path, else <dashboard-path>/stats. The
+     * plugin owns it; the core's pages stay at <dashboard-path>/waf/.
+     *
+     * @param array<string, mixed> $raw
+     */
+    private static function path(array $raw, Settings $base): string
+    {
+        $p = $raw['path'] ?? null;
+        if ($p === null) {
+            return $base->dashboardPath . '/stats';
+        }
+        // Names of letters, digits and . _ ~ -, but no "." or ".." of their own (as dashboard-path).
+        if (!is_string($p) || !preg_match('#^(/[A-Za-z0-9._~-]+)+$#', $p) || preg_match('#/\.+(/|$)#', $p)) {
+            throw Settings::wrong('ext.stats.path', 'a path such as /rs/stats or /admin/statistics');
+        }
+        return $p;
     }
 
     /**
@@ -223,9 +246,24 @@ final class StatsExtension implements Extension
         return ($compiled['enabled'] ?? false) === true || (is_array($log) && ($log['dir'] ?? null) !== null) ? [StatsPlugin::class] : [];
     }
 
-    public static function routes(): array
+    /**
+     * The statistics' pages below their path: the start (all websites with
+     * stats-hosts, else the overview), all websites (with stats-hosts; a
+     * reader's), the overview (the admin's), visitors and pages and the
+     * protection (a reader's). The core's Rules & setup, Live and Lists come
+     * after them in the tabs.
+     */
+    public static function routes(array $compiled): array
     {
-        return [];
+        $path = is_string($compiled['path'] ?? null) ? $compiled['path'] : '/rs/stats';
+        $sites = ($compiled['hosts'] ?? []) !== [];
+        return [$path => ['key' => $sites ? 'sites' : 'all', 'tab' => null, 'role' => $sites ? 'reader' : 'admin', 'order' => 5]]
+            + ($sites ? [$path . '/sites' => ['key' => 'sites', 'tab' => ['All websites', 'Alle Websites'], 'role' => 'reader', 'order' => 10]] : [])
+            + [
+                $path . '/overview' => ['key' => 'all', 'tab' => ['Dashboard', 'Dashboard'], 'role' => 'admin', 'order' => 20],
+                $path . '/visitors' => ['key' => 'site', 'tab' => ['Visitors & pages', 'Besucher & Seiten'], 'role' => 'reader', 'order' => 30],
+                $path . '/protection' => ['key' => 'shield', 'tab' => ['Protection', 'Schutz'], 'role' => 'reader', 'order' => 40],
+            ];
     }
 
     public static function commands(): array

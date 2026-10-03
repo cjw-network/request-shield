@@ -234,7 +234,7 @@ if ($path === '/search') {
     }
     header('Content-Type: text/html; charset=utf-8');
     echo \CjwNetwork\RequestShield\Report\StatsPage::render($shield->settings, ['view' => $view, 'who' => $who,
-        'links' => array_map($url, \CjwNetwork\RequestShield\Access::links($who, \CjwNetwork\RequestShield\Report\Frame::links($shield->settings))),
+        'links' => array_map($url, \CjwNetwork\RequestShield\Access::links($shield->settings, $who, \CjwNetwork\RequestShield\Report\Frame::links($shield->settings))),
         'days' => $days, 'crawler' => $only, 'path' => isset($_GET['path']) ? (string) $_GET['path'] : null, 'sort' => (string) ($_GET['sort'] ?? ''),
         'lang' => (string) ($_GET['lang'] ?? 'auto'), 'accept' => $request->header('accept-language'), 'fragment' => isset($_GET['fragment']),
         'check' => $_GET, 'ip' => $request->clientIp, 'from' => (string) ($_GET['from'] ?? ''), 'to' => (string) ($_GET['to'] ?? ''),

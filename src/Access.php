@@ -240,16 +240,26 @@ final class Access
     }
 
     /**
-     * The dashboard's tabs for a reader: a customer gets its statistics only
-     * (all its websites, visitors and pages, the protection) -- never Rules &
-     * setup, the overview of the server, the live view or the lists.
+     * The dashboard's tabs for a reader: the admin ('*') gets every link, a
+     * customer the pages whose route is a reader's (its statistics: all its
+     * websites, visitors and pages, the protection) -- never Rules & setup,
+     * the overview of the server, the live view or the lists.
      *
      * @param array<string, string> $links
      * @return array<string, string>
      */
-    public static function links(string $who, array $links): array
+    public static function links(Settings $s, string $who, array $links): array
     {
-        return $who === '*' ? $links : array_intersect_key($links, ['sites' => 1, 'site' => 1, 'shield' => 1]);
+        if ($who === '*') {
+            return $links;
+        }
+        $reader = [];
+        foreach ($s->routes as $r) {
+            if ($r['role'] === 'reader') {
+                $reader[$r['key']] = 1;
+            }
+        }
+        return array_intersect_key($links, $reader);
     }
 
     /**

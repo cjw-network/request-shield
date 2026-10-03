@@ -789,20 +789,19 @@ final class Shield
     }
 
     /**
-     * Whether a request is for one of the dashboard's pages (dashboard-path:
-     * /rs/live, /rs/stats/visitors … -- also below a prefix, /demo/rs/live) from an
-     * address the restrict rule over that path allows. Without such a rule
-     * the pages count like any other: an open dashboard keeps its flood guard.
+     * Whether a request is for one of the dashboard's pages (the compiled
+     * routes: /rs/waf/live, /rs/stats/visitors … -- also below a prefix,
+     * /demo/rs/waf/live) from an address the restrict rule over that path
+     * allows. Without such a rule the pages count like any other: an open
+     * dashboard keeps its flood guard. Only called with restrict rules in
+     * force; the routes are a handful of string comparisons.
      */
     private function dashboardOnly(Request $request): bool
     {
         $s = $this->settings;
         $path = $request->matchPath();
-        if (stripos($path, $s->dashboardPath) === false && stripos($path, $s->statsPath) === false) {
+        if (Routes::match($s, $path) === null) {
             return false;                                   // the common case: a search or two
-        }
-        if (!Report\Frame::isPage($s, $path)) {
-            return false;
         }
         foreach ($s->restricted as $r) {
             foreach ($r['paths'] as $pattern) {

@@ -148,7 +148,7 @@ final class AlertsExtension implements Extension
     }
 
     public static function plugins(array $compiled): array { return []; }   // Plugin classes to run per request, from the compiled slot (0031 B.4)
-    public static function routes(): array { return []; }       // pages under dashboard-path (0031 B.5)
+    public static function routes(array $compiled): array { return []; }   // its pages: path => key, tab, role, order (0031 B.5)
     public static function commands(): array { return []; }     // command-line commands (0031 D.1)
     public static function check(Settings $s): array { return []; }   // warnings for `check` (0031 B.4)
 }
@@ -218,8 +218,8 @@ it fits next to the core:
 | | The statistics plugin | The core |
 |---|---|---|
 | **Its words** in the rule file | `set stats …`, `stats-hosts`, `stats-group`, `stats-access`, `stats-skip`, `set stats-path`, `set stats-session` ([statistics](statistics.md)) | everything else |
-| **Its address** | `set stats-path` (default `<dashboard-path>/stats`): `/sites`, `/overview`, `/visitors`, `/protection` | `<dashboard-path>/waf/`: `live`, `lists`, `rules` |
-| **Its pages** | `StatsPage::viewFor($settings, $path)` says which page a path is (null: not one of its own), `StatsPage::render()` draws it, `StatsPage::links()` the tabs | `Frame::pageFor()`, `Frame::links()` |
+| **Its address** | its own setting `ext.stats.path` (`set stats-path`, default `<dashboard-path>/stats`); `StatsExtension::routes()` declares `/sites`, `/overview`, `/visitors`, `/protection` below it into `$s->routes` | `Routes::core()`: `<dashboard-path>/waf/`: `live`, `lists`, `rules` |
+| **Its pages** | `StatsPage::viewFor($settings, $path)` says which page a path is (null: not one of its own, from `$s->routes`), `StatsPage::render()` draws it, `StatsPage::links()` the tabs | `Frame::pageFor()`, `Frame::links()` (both from `$s->routes`) |
 | **Who may read them** | `Access::gate()`: the admin everything, a customer its group (`who`) | the site's own rules (`restrict <dashboard-path>/** to …`) |
 | **Its data** | files per website and hour under `store-dir/stats/`, APCu as a buffer | the store (counters, bans) and the log |
 
@@ -228,14 +228,18 @@ What a plugin with pages should do the same way:
 - **One address of its own, configurable.** A site with an `/rs/` of its own,
   or two dashboards on one host, moves it with one line; the tabs and links
   follow (`links()` builds them from the setting, never from a fixed path).
-- **Not count itself.** The core's `Frame::isPage()` knows the dashboard's
-  and the plugin's pages; a request to them is not a visitor, and the pace
-  leaves the admin's page views alone when a `restrict` rule lets the address
-  in.
+- **Declare its pages.** `Extension::routes(array $compiled)` returns them
+  (full path => key, tab labels, role `admin|reader`, order) and they are
+  compiled into `$s->routes` next to the core's; `Frame`, the tabs and
+  `Shield::dashboardOnly()` derive from that table -- a request to one of
+  them is not a visitor, and the pace leaves the admin's page views alone
+  when a `restrict` rule lets the address in. The shield serving them comes
+  with 0031 step B.6; until then the site routes them.
 - **Say who asked.** A page that shows other people's data takes the `who`
   the gate returned and filters by it itself (`StatsPage` refuses another
   group's website whatever address is asked for). The links a customer gets
-  come through `Access::links($who, …)`: no tab it may not open.
+  come through `Access::links($settings, $who, …)`: no tab it may not open
+  (the routes whose role is `reader`).
 - **The site draws the frame.** The plugin returns HTML (or JSON with
   `format=json`); headers, the status and the route stay with the site's
   front controller, as in the [demo](../../examples/demo/index.php).

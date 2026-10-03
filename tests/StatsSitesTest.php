@@ -272,8 +272,8 @@ return [
     'set stats-path: the plugin\'s own address -- its pages below it, the core\'s stay at <dashboard-path>/waf/' => function (): void {
         $dir = sitesStatsDir();
         try {
-            same('/rs/stats', sitesStatsSettings($dir, '')->statsPath, 'the default: <dashboard-path>/stats');
-            same('/admin/rs/stats', sitesStatsSettings($dir, "set dashboard-path /admin/rs\n")->statsPath);
+            same('/rs/stats', sitesStatsSettings($dir, '')->ext['stats']['path'] ?? null, 'the default: <dashboard-path>/stats (ext.stats.path, 0031 B.5)');
+            same('/admin/rs/stats', sitesStatsSettings($dir, "set dashboard-path /admin/rs\n")->ext['stats']['path'] ?? null);
             $s = sitesStatsSettings($dir, "set stats-path /statistik\nset stats-hosts a.de\n");
             same(['sites' => '/statistik/sites', 'all' => '/statistik/overview', 'site' => '/statistik/visitors', 'shield' => '/statistik/protection', 'rules' => '/rs/waf/rules'],
                 StatsPage::links($s), 'the plugin\'s pages below its path; rules is the core\'s');

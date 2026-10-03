@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield\Report;
 
+use CjwNetwork\RequestShield\Routes;
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Stats;
 use CjwNetwork\RequestShield\StatsExtension;
@@ -187,8 +188,9 @@ final class StatsPage
         // The tabs: visitors and pages (editors) -- protection (admins). An
         // embedding page can show one only ('tabs' => false).
         // Live and lists are the core's pages (Report\LivePage, ListsPage): tabs here when the site has them.
-        $tabs = $links !== [] ? array_intersect_key(['sites' => $t['tabSites'], 'all' => $t['tabAll'], 'site' => $t['tabSite'], 'shield' => $t['tabShield'], 'rules' => $t['tabRules'],
-            'live' => \CjwNetwork\RequestShield\Report\Frame::TABS['live'][$lang === 'de' ? 1 : 0], 'lists' => \CjwNetwork\RequestShield\Report\Frame::TABS['lists'][$lang === 'de' ? 1 : 0]], $links)
+        // Its own labels for its own views; the other pages' (live, lists, an extension's) from the routes.
+        $tabs = $links !== [] ? array_intersect_key(['sites' => $t['tabSites'], 'all' => $t['tabAll'], 'site' => $t['tabSite'], 'shield' => $t['tabShield'], 'rules' => $t['tabRules']]
+            + array_map(static fn (array $tab): string => $tab[$lang === 'de' ? 1 : 0], Routes::tabs($s)), $links)
             : ['site' => $t['tabSite'], 'shield' => $t['tabShield'], 'rules' => $t['tabRules']];
         $h = '';
         if (($o['tabs'] ?? true) && count($tabs) > 1) {
@@ -573,39 +575,50 @@ final class StatsPage
     }
 
     /**
-     * The addresses of the four views under the settings' dashboard-path:
-     * the dashboard (everything), stats (visitors and pages), shield (the
-     * protection), rules (the way of a request, every rule and setting) --
-     * for 'links', and for a site's routes.
+     * The addresses of the views this page renders, from the compiled routes:
+     * the statistics' own (StatsExtension::routes(): sites with stats-hosts,
+     * all -- the dashboard --, site -- visitors and pages --, shield -- the
+     * protection) below stats-path, and the core's rules (the way of a
+     * request, every rule and setting) -- for 'links', and for a site's routes.
      *
-     * @return array{sites?: string, all: string, site: string, shield: string, rules: string} sites: with stats-hosts (all websites side by side)
+     * @return array<string, string> sites?, all, site, shield, rules => address
      */
     public static function links(Settings $s, string $prefix = ''): array
     {
-        // The plugin's pages under its own path (set stats-path, default <dashboard-path>/stats);
-        // "rules" is the core's (Rules & setup, under <dashboard-path>/waf/).
-        $own = $prefix . $s->statsPath;
-        return (StatsExtension::of($s)['hosts'] !== [] ? ['sites' => $own . '/sites'] : []) + ['all' => $own . '/overview', 'site' => $own . '/visitors',
-            'shield' => $own . '/protection', 'rules' => $prefix . $s->dashboardPath . '/waf/rules'];
+        $out = [];
+        foreach ($s->routes as $path => $r) {
+            if ($r['tab'] !== null && self::owns($r) && !isset($out[$r['key']])) {
+                $out[$r['key']] = $prefix . $path;
+            }
+        }
+        return $out;
     }
 
     /**
      * Which view a path asks for (sites, all, site, shield, rules), or null;
-     * capitals do not matter. <dashboard-path>/stats is the plugin's start:
-     * all websites with stats-hosts, else the overview.
+     * capitals do not matter. stats-path itself is the plugin's start: all
+     * websites with stats-hosts, else the overview.
      */
     public static function viewFor(Settings $s, string $path): ?string
     {
         $p = strtolower(rtrim($path, '/'));
-        foreach (self::links($s) as $view => $link) {
-            if ($p === strtolower($link)) {
-                return $view;
+        foreach ($s->routes as $route => $r) {
+            if (self::owns($r) && $p === strtolower(rtrim($route, '/'))) {
+                return $r['key'];
             }
         }
-        if ($p === strtolower($s->statsPath)) {
-            return StatsExtension::of($s)['hosts'] !== [] ? 'sites' : 'all';
-        }
         return null;
+    }
+
+    /**
+     * A route this page renders: the statistics extension's, and the core's
+     * Rules & setup (the setup view lives here until 0031 B.8).
+     *
+     * @param array{key: string, ext: ?string} $r
+     */
+    private static function owns(array $r): bool
+    {
+        return $r['ext'] === 'stats' || ($r['ext'] === null && $r['key'] === 'rules');
     }
 
     /**

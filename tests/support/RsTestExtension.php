@@ -61,7 +61,7 @@ final class RsTestExtension implements Extension
         if (is_int($max) && count($marks) > $max) {
             throw Settings::wrong('ext.rs-test.marks', "at most $max marks (marks-max)");
         }
-        return ['failAt' => is_string($failAt) ? $failAt : null, 'marks' => $marks, 'hosts' => $base->hosts];
+        return ['failAt' => is_string($failAt) ? $failAt : null, 'marks' => $marks, 'hosts' => $base->hosts, 'dashboardPath' => $base->dashboardPath];
     }
 
     public static function plugins(array $compiled): array
@@ -69,9 +69,11 @@ final class RsTestExtension implements Extension
         return [];
     }
 
-    public static function routes(): array
+    /** One page of its own below dashboard-path (a fixture for the routes registry, 0031 B.5). */
+    public static function routes(array $compiled): array
     {
-        return [];
+        $base = is_string($compiled['dashboardPath'] ?? null) ? $compiled['dashboardPath'] : '/rs';
+        return [$base . '/rs-test/ping' => ['key' => 'ping', 'tab' => null, 'role' => 'admin', 'order' => 90]];
     }
 
     public static function commands(): array

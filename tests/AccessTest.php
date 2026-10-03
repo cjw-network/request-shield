@@ -182,8 +182,8 @@ return [
                 Access::site($s, 'customer-a', 'c.de'), Access::site($s, 'customer-a', 'group:customer-b')], 'only its group or one of its websites');
             same('c.de', Access::site($s, '*', 'c.de'), 'the admin: anything');
             $links = StatsPage::links($s);
-            same(['sites', 'site', 'shield'], array_keys(Access::links('customer-a', $links + ['live' => '/rs/waf/live', 'lists' => '/rs/waf/lists'])), 'its tabs');
-            $o = ['links' => Access::links('customer-a', $links), 'lang' => 'en', 'now' => 1790800000, 'who' => 'customer-a'];
+            same(['sites', 'site', 'shield'], array_keys(Access::links($s, 'customer-a', $links + ['live' => '/rs/waf/live', 'lists' => '/rs/waf/lists'])), 'its tabs');
+            $o = ['links' => Access::links($s, 'customer-a', $links), 'lang' => 'en', 'now' => 1790800000, 'who' => 'customer-a'];
             $rules = StatsPage::render($s, ['view' => 'rules'] + $o);
             truthy(strpos($rules, 'The way of a request') === false && strpos($rules, 'Rules &amp; setup') === false, 'Rules & setup asked for: not shown');
             $other = StatsPage::render($s, ['view' => 'site', 'site' => 'c.de'] + $o);
@@ -219,7 +219,7 @@ foreach ($g["headers"] as $h) { header($h, false); }
 http_response_code($g["status"]);
 if ($g["who"] === null) { echo (string) $g["body"]; exit; }
 $view = StatsPage::viewFor($s, $r->path) ?? "site";
-echo StatsPage::render($s, ["view" => $view, "who" => $g["who"], "links" => Access::links($g["who"], StatsPage::links($s)), "lang" => "en", "site" => $_GET["site"] ?? null]);
+echo StatsPage::render($s, ["view" => $view, "who" => $g["who"], "links" => Access::links($s, $g["who"], StatsPage::links($s)), "lang" => "en", "site" => $_GET["site"] ?? null]);
 ');
         $port = freePort();
         // REQUEST_SHIELD_CONFIG: index.php gates the pages itself; bootstrap.php must not start the shield from a config/ of this checkout.

@@ -243,7 +243,7 @@ final class LivePage
         $every = max(1, min(60, is_int($o['every'] ?? null) ? $o['every'] : 3));
         /** @var array<string, string> $links */
         $links = array_filter((array) ($o['links'] ?? []), 'is_string');
-        $h = Frame::tabs($links, 'live', $lang);
+        $h = Frame::tabs($s, $links, 'live', $lang);
         $memory = self::fromMemory($s);
         $h .= '<p class="note">' . $e(sprintf($t['intro'], $every)) . ' '
             . ($memory ? $e(sprintf($t['memory'], Describe::span($s->liveKeep, $lang))) : ($s->logFile !== null ? $e(sprintf($t['level'], $t['lv.' . $s->logLevel] ?? $s->logLevel)) : '')) . '</p>'

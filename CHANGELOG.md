@@ -62,6 +62,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   S2 (APCu), and what is not active in it ([docs](docs/features/settings.md#what-this-installation-can-do-the-tiers)).
 
 ### Changed
+- **The dashboard's pages are a registry** (0031 step B.5): `Settings::$routes`
+  is compiled from the core's `<dashboard-path>/waf` pages (`Routes::core()`)
+  and what every offered extension declares with
+  `Extension::routes(array $compiled)` (its compiled slot in, full paths out):
+  path => key, extension, tab labels (English, German), role `admin|reader`,
+  order. Two routes on one path refuse to compile, naming both owners.
+  `Frame::links()`, `isPage()`, `pageFor()` and `tabs()`, `StatsPage::links()`
+  and `viewFor()`, `Shield::dashboardOnly()` (the pace's exemption for the
+  dashboard's own requests, now without `Report` and without the stats path)
+  and `Access::links()` (a reader's tabs are the routes whose role is `reader`)
+  derive from it; `Frame::TABS` is gone, `Frame::tabs()` and `Access::links()`
+  take the settings as their first parameter. `set stats-path` is the
+  statistics extension's (`'ext' => ['stats' => ['path' => …]]` in PHP arrays,
+  default `<dashboard-path>/stats`); `Settings::$statsPath` and `statsPath()`
+  are removed. Compiled settings format 43: every installation compiles once
+  more after the update, nothing to do.
 - **The statistics are an extension** (0031 steps B.3, B.4):
   `plugins/stats/src/StatsExtension.php` registers `set stats`, `stats-flush`,
   `stats-months`, `stats-depth`, `stats-hours`, `stats-days`, `stats-hosts`,
@@ -78,9 +94,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   under `'ext' => ['stats' => [..., 'crawlerLog' => [...]]]` instead of the
   top-level `'stats'` and `'crawlerLog'`. `StatsPlugin` is appended to the
   settings' plugins by `StatsExtension::plugins()` when the rules are
-  compiled -- the `Shield` no longer wires it. `stats-group`, `stats-access`,
-  `stats-session` and `stats-path` stay in the core until 0031 B.5/B.7
-  (`Access` and `Frame` read them). The extension is only named
+  compiled -- the `Shield` no longer wires it. `stats-group`, `stats-access`
+  and `stats-session` stay in the core until 0031 B.7 (`Access` and `Frame`
+  read them); `stats-path` moved in B.5. The extension is only named
   (`REQUEST_SHIELD_EXTENSIONS`: by `bootstrap.php`, or with Composer by
   `plugins/stats/shipped.php` through the package's autoload `files`);
   `Rules\Vocabulary` loads and offers it when the rules are compiled, if
