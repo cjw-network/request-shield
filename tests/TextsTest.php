@@ -59,7 +59,7 @@ return [
     },
     'the pages in the language: the check page, a pause, "not found"' => function (): void {
         $challenge = ['algorithm' => 'SHA-256', 'challenge' => str_repeat('a', 64), 'maxnumber' => 1000, 'salt' => 's', 'signature' => str_repeat('b', 64)];
-        $page = ChallengePage::render($challenge, 'rs_solution', false, Texts::all('de'));
+        $page = ChallengePage::render($challenge, 'rss', false, Texts::all('de'));
         truthy(strpos($page, '<html lang="de">') !== false && strpos($page, 'Einen Moment, bitte') !== false && strpos($page, 'Bitte aktivieren Sie JavaScript') !== false, 'the check page in German');
         $r = Request::fromServer(['REQUEST_URI' => '/', 'REQUEST_METHOD' => 'GET']);
         ob_start();

@@ -28,6 +28,11 @@ it expires (the hard `limit` still applies).
 - **Stateless:** challenge and pass cookie are signed (HMAC) with `secret`;
   the pass cookie is bound to the client bucket and (by default) its
   User-Agent. Solutions are single-use and expire (`solutionTtl`).
+- **Small on the wire:** the pass cookie is `rsp=2.<expires base36>.<tag>.<mac>`
+  (43 bytes of value, a 64-bit client tag and a 128-bit MAC, base64url); the
+  browser sends it with every request while the pass lasts. The solution
+  travels once, in `rss`. `rs` = RequestShield; `cookie` and `solution-cookie`
+  set other names.
 - **Forms are checked and sent again:** a POST that meets the check gets the
   check page carrying the form's fields, which sends them again once solved —
   nothing typed is lost. Forms with files, or larger than 256 KB, cannot be

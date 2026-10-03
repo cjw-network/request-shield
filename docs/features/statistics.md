@@ -313,7 +313,7 @@ set stats-session 8h                                          # how long a login
   this itself, whatever address is asked for.
 - **Three ways in:**
   1. **The form:** the token by POST (only from the page itself, `Origin`
-     checked), then a signed session cookie (`rs_stats`, HttpOnly,
+     checked), then a signed session cookie (`rsd`, HttpOnly,
      SameSite=Lax, Secure on HTTPS) for `stats-session`. The token never
      appears in an address. `?rs-logout=1` signs out.
   2. **A signed link from the customer's own menu** (a hosting panel, the

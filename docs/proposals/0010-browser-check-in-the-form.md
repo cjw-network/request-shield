@@ -61,7 +61,7 @@ tag). The box:
    (default — no visitor who only reads spends any computing time), on
    loading, or when the button is pressed.
 3. The browser solves the task (the same solver as the check page) and puts the
-   answer into a hidden field (`rs_solution`) of the form.
+   answer into a hidden field (`rss`) of the form.
 4. **On sending**, `requirePass()` also looks at that field: a valid, unused
    answer for this visitor → the pass cookie is set, the form goes through —
    as if the visitor had held a pass already. Every answer counts once.

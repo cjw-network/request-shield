@@ -28,6 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   S2 (APCu), and what is not active in it ([docs](docs/features/settings.md#what-this-installation-can-do-the-tiers)).
 
 ### Changed
+- **Shorter cookies** (0031 step A2.2, ADR 0014): the cookies are `rsp` (the
+  pass; was `rs_pass`), `rss` (the solution; was `rs_solution`) and `rsd`
+  (the statistics session; was `rs_stats`), and the pass cookie is
+  `2.<expires base36>.<tag base64url 11>.<mac base64url 22>` -- 43 bytes
+  instead of 66, the same 64-bit client tag and 128-bit MAC. A browser sends
+  it with every request while the pass lasts; a v1 pass is not read any more
+  (the visitor is checked once more). `cookie` and `solution-cookie` in the
+  rule file still set other names.
 - **Shorter header names** (0031 step A2.1, ADR 0014): the debug header is
   `X-RS: <action> <reason>; rule=<ID>` (was `X-Request-Shield`), a watched
   rule's verdict `X-RS-Monitor` (was `X-Request-Shield-Monitor`), and the

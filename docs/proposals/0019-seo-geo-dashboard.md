@@ -142,7 +142,7 @@ confirmed by the site's data protection officer; not legal advice.*
 
 ### The shield's own pass cookie
 
-The pass cookie (`rs_pass`, set after the browser check, bound to the client's
+The pass cookie (`rsp`, set after the browser check, bound to the client's
 address group and browser) *could* recognise a returning browser. It exists for
 **security**: to spare a checked browser the check again. Using it for
 statistics would change its purpose (purpose limitation, Art. 5(1)(b) GDPR)

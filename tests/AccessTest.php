@@ -45,7 +45,7 @@ function accessReq(string $uri = '/rs/stats/visitors', array $headers = [], stri
 function accessCookie(array $g): string
 {
     foreach ($g['headers'] as $h) {
-        if (preg_match('/^Set-Cookie: rs_stats=([^;]*)/', $h, $m) === 1) {
+        if (preg_match('/^Set-Cookie: rsd=([^;]*)/', $h, $m) === 1) {
             return $m[1];
         }
     }
@@ -103,22 +103,22 @@ return [
             $cookie = accessCookie($g);
             same([303, true], [$g['status'], in_array('Location: /rs/stats/visitors?days=7', $g['headers'], true)], 'right: a cookie, then the page by GET');
             truthy(preg_match('/^customer-a\.\d+\.[0-9a-f]{8}\.[0-9a-f]{32}$/', $cookie) === 1, 'the cookie: who, until when, signed -- no token in it');
-            truthy((bool) preg_grep('/^Set-Cookie: rs_stats=.*; HttpOnly; SameSite=Lax; Secure$/', $g['headers']), 'HttpOnly, SameSite=Lax, Secure on HTTPS');
-            $g = Access::gate($s, accessReq('/rs/stats/visitors', ['Cookie' => "rs_stats=$cookie"]), [], [], $o);
+            truthy((bool) preg_grep('/^Set-Cookie: rsd=.*; HttpOnly; SameSite=Lax; Secure$/', $g['headers']), 'HttpOnly, SameSite=Lax, Secure on HTTPS');
+            $g = Access::gate($s, accessReq('/rs/stats/visitors', ['Cookie' => "rsd=$cookie"]), [], [], $o);
             same([200, 'customer-a'], [$g['status'], $g['who']], 'the cookie: Customer A');
             $tampered = (string) preg_replace('/^customer-a/', 'customer-b', $cookie);
-            same(null, Access::gate($s, accessReq('/', ['Cookie' => "rs_stats=$tampered"]), [], [], $o)['who'], 'another group in it: the signature does not fit');
+            same(null, Access::gate($s, accessReq('/', ['Cookie' => "rsd=$tampered"]), [], [], $o)['who'], 'another group in it: the signature does not fit');
             same(null, Access::fromCookie($s, $cookie, 1790800000 + 28801), 'after 8 hours: ended');
             $rotated = accessSettings($dir, '[ACC-A2] stats-access "Customer A" sha256:' . hash('sha256', 'a-new-token-for-a') . "\n");
             same(null, Access::fromCookie($rotated, $cookie, 1790800001), 'a token added or removed for the group: its sessions end');
             same('customer-a', Access::fromCookie(accessSettings($dir), $cookie, 1790800001), 'the same tokens: still in');
-            $g = Access::gate($s, accessReq('/rs/stats/visitors?rs-logout=1', ['Cookie' => "rs_stats=$cookie"]), ['rs-logout' => '1'], [], $o);
-            truthy($g['who'] === null && (bool) preg_grep('/^Set-Cookie: rs_stats=; Path=\/; Max-Age=0/', $g['headers']), 'signed out: the cookie deleted');
+            $g = Access::gate($s, accessReq('/rs/stats/visitors?rs-logout=1', ['Cookie' => "rsd=$cookie"]), ['rs-logout' => '1'], [], $o);
+            truthy($g['who'] === null && (bool) preg_grep('/^Set-Cookie: rsd=; Path=\/; Max-Age=0/', $g['headers']), 'signed out: the cookie deleted');
             same(['*', 200], array_values(array_intersect_key(Access::gate($s, accessReq(), [], [], $o + ['admin' => true]), ['who' => 1, 'status' => 1])),
                 'admin: the site knows its administrator (say, by its address): everything, no form');
             same([null, 401], array_values(array_intersect_key(Access::gate($s, accessReq('/rs/stats/sites?rs-login=1'), ['rs-login' => '1'], [], $o + ['admin' => true]), ['who' => 1, 'status' => 1])),
                 'with ?rs-login=1 the form all the same (to try a customer\'s view)');
-            same('customer-a', Access::gate($s, accessReq('/', ['Cookie' => "rs_stats=$cookie"]), [], [], $o + ['admin' => true])['who'], 'a customer\'s cookie first: its own view, on the administrator\'s machine too');
+            same('customer-a', Access::gate($s, accessReq('/', ['Cookie' => "rsd=$cookie"]), [], [], $o + ['admin' => true])['who'], 'a customer\'s cookie first: its own view, on the administrator\'s machine too');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }
@@ -243,7 +243,7 @@ echo StatsPage::render($s, ["view" => $view, "who" => $g["who"], "links" => Acce
             [$status, $headers] = $http('POST', '/rs/stats/visitors', ['Origin' => "http://127.0.0.1:$port"], 'rs-token=' . rawurlencode(ACCESS_A));
             $cookie = '';
             foreach ($headers as $line) {
-                if (preg_match('/^Set-Cookie: (rs_stats=[^;]+)/i', $line, $m) === 1) {
+                if (preg_match('/^Set-Cookie: (rsd=[^;]+)/i', $line, $m) === 1) {
                     $cookie = $m[1];
                 }
             }

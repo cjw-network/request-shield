@@ -55,7 +55,7 @@ $rule = Shield::currentRule();
 $verdict = $decision === null ? 'not checked' : $decision->action . ($rule !== null ? ' · rule ' . $rule : '');
 
 if ($path === '/reset') {                       // forget the pass, to see the check again
-    setcookie('rs_pass', '', ['expires' => 1, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
+    setcookie('rsp', '', ['expires' => 1, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
     header('Location: ' . $front . '/', true, 303);
     exit;
 }

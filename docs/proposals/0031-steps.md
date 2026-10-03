@@ -74,7 +74,7 @@ the model you trust most there, not fast mode.
 
 ### Phase A2 — Bytes
 - [x] **A2.1** Headers `X-Request-Shield*` → `X-RS*` (`X-RS`, `X-RS-Monitor`, `X-RS-Check`, `X-RS-Access`) in code, tests, demos, docs; internal headers removed before output (test). `f7873a2`
-- [ ] **A2.2** Cookie names `rsp/rss/rsd`; pass cookie v2 (`2.<expires base36>.<tag b64url 11>.<mac b64url 22>`), `v1` removed — `ChallengeTest`/`ChallengeJsTest` adjusted.
+- [x] **A2.2** Cookie names `rsp/rss/rsd`; pass cookie v2 (`2.<expires base36>.<tag b64url 11>.<mac b64url 22>`), `v1` removed — `ChallengeTest`/`ChallengeJsTest` adjusted. `(this commit; hash follows)`
 - [ ] **A2.3** `tests/WireBytesTest.php` (cookie ≤ 48 B, no `X-RS*` on a pass without debug, header-block limit, challenge page gzip limit); bytes in the bench; a bytes line in `browser-challenge.md`.
 
 ### Phase B — Decoupling
@@ -137,13 +137,14 @@ the model you trust most there, not fast mode.
 
 ## Status
 
-- **Last step done:** A2.1
-- **Next step:** A2.2
+- **Last step done:** A2.2
+- **Next step:** A2.3
 - **Open owner questions:** see the proposal's last section.
 - **Deviations from the plan:** none.
 - **Review:** `pr-review-toolkit` is not installed on the machine that wrote phase 0 and A.1–A.2; the fallback (code-review skill, sonnet, low) was used — for phase 0 (documents only) once over the whole phase, for the code steps once per step. A2.1 likewise (not installed on that machine either; the skill runs as a fork, so on the session's model, not sonnet -- no findings).
 - **Static analysis on this machine:** PHPStan runs; `composer taint` (Psalm 6) crashes with `Class "Composer\InstalledVersions" not found` because the local Composer is 1.10 (its autoloader lacks the class). CI runs it (`static-analysis.yml`); on a machine with Composer ≥ 2 run `composer install` and `composer taint` before pushing code steps.
 - **Finding from A.1:** the bench command in `AGENTS.md` needs `-d opcache.file_update_protection=0`, otherwise the "setup" lines show milliseconds for freshly compiled settings (fixed in AGENTS.md).
+- **Finding from A2.2:** `ChallengeJsTest` needed no change: the page script takes the cookie name from the page (`RS.cookie`). The demo page reads the pass cookie's expiry itself (base36 now); nothing else outside the shield parses it.
 - **Finding from A2.1:** `X-RS-Access` exists only in proposal 0027 (renamed there and in its SVG); the code header comes with B.7. Not in the plan's table: the 429 JSON answer for API clients carries `Request-Shield-Challenge` and takes `Request-Shield-Solution` (no `X-`, rare, only on a refusal) -- left as they are; an owner decision whether A2.3 shortens them too (`RS-Challenge`/`RS-Solution`).
 - **Finding from A3.4:** under `TESTS_HOSTING=minimal` the demos died with 500 (`putenv()` disabled; they tell the rules their subdirectory that way) and one DemoTest server did not end on `proc_terminate()`, so the whole run hung for an hour with no CPU — `tests/run.php` has no per-test timeout. Fixed the demos (`function_exists('putenv')` guard, the placeholders' default `/`); the two subdirectory cases skip under minimal hosting. Still open: a watchdog in the runner (kill and fail a test after N seconds) — a small step for phase F.
 - **Finding from A3.1:** an end-to-end test that starts the server through `env …` must `exec env …` — otherwise `proc_terminate()` ends the shell and the server lives on (BootstrapTest left ten servers running and doubled the bench numbers). Pattern for every E2E test: the command starts with `exec`. The default directories moved out of the temp dir, so `.request-shield/` is in `.gitignore` (the demo tests make one next to the demo rules).

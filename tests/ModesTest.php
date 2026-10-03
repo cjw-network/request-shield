@@ -166,7 +166,7 @@ return [
         $s = modesSettings("set secret " . MODES_SECRET . "\nset search-engines off\nchallenge /login max-age 5m\nchallenge /account\n");
         $shield = new Shield($s, new MemoryStore());
         $settle = static function (string $uri, string $pass) use ($shield): string {
-            $r = creq($uri, ['rs_pass' => $pass]);
+            $r = creq($uri, ['rsp' => $pass]);
             return $shield->settle($shield->decide($r, 1000.0), $r, 1000.0)['decision']->action;
         };
         $old = modesPass($s, 1000.0, 600);

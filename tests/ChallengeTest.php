@@ -75,7 +75,13 @@ return [
         truthy(!$p->valid($v, '203.0.113.8', 'UA', 4000.0), 'other client');
         truthy(!$p->valid($v, '203.0.113.7', 'Other UA', 4000.0), 'other User-Agent');
         truthy(!$p->valid($v, '203.0.113.7', 'UA', 5001.0), 'expired');
-        truthy(!$p->valid(str_replace('.5000.', '.9999.', $v), '203.0.113.7', 'UA', 4000.0), 'extended');
+        truthy(!$p->valid(str_replace('.' . base_convert('5000', 10, 36) . '.', '.' . base_convert('9999', 10, 36) . '.', $v), '203.0.113.7', 'UA', 4000.0), 'extended');
+        truthy(preg_match('/^2\.[0-9a-z]{1,8}\.[A-Za-z0-9_-]{11}\.[A-Za-z0-9_-]{22}$/', $v) === 1, 'v2: "2.<expires base36>.<tag 11>.<mac 22>", cookie-safe characters only: ' . $v);
+        same(43, strlen($p->issue('203.0.113.7', 'UA', 1790000000)), '43 bytes for a Unix time of today');
+        same(5000, $p->expires($v), 'the expiry can be read back');
+        same(1790000000, $p->expires($p->issue('b', 'UA', 1790000000)), 'exactly, for a real time too');
+        truthy(!$p->valid('v1.5000.' . substr(hash_hmac('sha256', 'x', SECRET), 0, 16) . '.' . substr(hash_hmac('sha256', 'y', SECRET), 0, 32), '203.0.113.7', 'UA', 4000.0), 'the v1 format is not read any more');
+        truthy(!$p->valid('2.' . base_convert('5000', 10, 36) . '.' . explode('.', $v)[2] . '.' . str_repeat('A', 22), '203.0.113.7', 'UA', 4000.0), 'a wrong MAC');
         truthy((new PassCookie(SECRET, false))->valid((new PassCookie(SECRET, false))->issue('b', 'UA1', 5000), 'b', 'UA2', 1.0), 'User-Agent binding can be off');
     },
     'secret: made once, kept, shared' => function (): void {
@@ -99,15 +105,15 @@ return [
         $rs = json_decode($m[1], true);
         same(1000, $rs['c']['maxnumber'], 'level 0: minimum difficulty');
 
-        $r = $gate->resolve($challenged, $base, creq('/page', ['rs_solution' => solveInPhp($rs['c'])]), 1001.0);
+        $r = $gate->resolve($challenged, $base, creq('/page', ['rss' => solveInPhp($rs['c'])]), 1001.0);
         same(Decision::ALLOW_UNCACHED, $r['decision']->action, 'solved: through, not cached');
-        $pass = cookieValue($r['cookies'], 'rs_pass');
+        $pass = cookieValue($r['cookies'], 'rsp');
         truthy($pass !== null && $pass !== '', 'pass cookie set');
-        same('', cookieValue($r['cookies'], 'rs_solution'), 'solution cookie removed');
+        same('', cookieValue($r['cookies'], 'rss'), 'solution cookie removed');
 
-        $r = $gate->resolve($challenged, $base, creq('/other', ['rs_pass' => $pass]), 1500.0);
+        $r = $gate->resolve($challenged, $base, creq('/other', ['rsp' => $pass]), 1500.0);
         same(Decision::ALLOW, $r['decision']->action, 'pass: through as the checks decided');
-        same(Decision::CHALLENGE, $gate->resolve($challenged, $base, creq('/other', ['rs_pass' => $pass], 'GET', '198.51.100.1'), 1500.0)['decision']->action, 'the pass is for one client only');
+        same(Decision::CHALLENGE, $gate->resolve($challenged, $base, creq('/other', ['rsp' => $pass], 'GET', '198.51.100.1'), 1500.0)['decision']->action, 'the pass is for one client only');
     },
     'gate: difficulty grows with the level; POST is throttled; exempt paths pass' => function (): void {
         $gate = new Gate(ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 5000], 'exemptPaths' => ['#^/api/#']]), SECRET);
@@ -120,15 +126,15 @@ return [
     'gate: a solution buys one pass, not one per replay' => function (): void {
         $gate = new Gate(ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 1000]]), SECRET, null, 64, new MemoryStore());
         $c = (new ProofOfWork(SECRET))->create('203.0.113.7', 1000, 2000);
-        $solved = creq('/', ['rs_solution' => solveInPhp($c)]);
+        $solved = creq('/', ['rss' => solveInPhp($c)]);
         same(Decision::ALLOW_UNCACHED, $gate->resolve(Decision::challenge('requests'), Decision::allow(), $solved, 1000.0)['decision']->action, 'first use');
         same(Decision::CHALLENGE, $gate->resolve(Decision::challenge('requests'), Decision::allow(), $solved, 1010.0)['decision']->action, 'replayed');
     },
     'gate: a wrong solution gets a new challenge and loses its cookie' => function (): void {
         $gate = new Gate(ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 1000]]), SECRET);
-        $r = $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', ['rs_solution' => 'bogus']), 1.0);
+        $r = $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', ['rss' => 'bogus']), 1.0);
         same(Decision::CHALLENGE, $r['decision']->action);
-        same('', cookieValue($r['cookies'], 'rs_solution'));
+        same('', cookieValue($r['cookies'], 'rss'));
     },
     'search engines: a verified crawler passes, a fake one does not' => function (): void {
         $cache = [];
@@ -161,10 +167,10 @@ return [
         $r = $shield->settle($shield->decide(creq('/'), $now), creq('/'), $now);
         same(Decision::CHALLENGE, $r['decision']->action, '4th: challenged');
         preg_match('/var RS=(\{.*?\});\(function/s', $r['page'], $m);
-        $solved = creq('/', ['rs_solution' => solveInPhp(json_decode($m[1], true)['c'])]);
+        $solved = creq('/', ['rss' => solveInPhp(json_decode($m[1], true)['c'])]);
         $r = $shield->settle($shield->decide($solved, $now), $solved, $now);
         same(Decision::ALLOW_UNCACHED, $r['decision']->action);
-        $withPass = creq('/?x=1', ['rs_pass' => cookieValue($r['cookies'], 'rs_pass')]);
+        $withPass = creq('/?x=1', ['rsp' => cookieValue($r['cookies'], 'rsp')]);
         $r = $shield->settle($shield->decide($withPass, $now), $withPass, $now);
         same('query parameter', $r['decision']->reason, 'with a pass, the cacheable definition still counts');
         exec('rm -rf ' . escapeshellarg($dir));
@@ -183,15 +189,15 @@ return [
         same(Decision::CHALLENGE, $r['decision']->action, 'first visit: challenged');
         same('always', $r['decision']->reason);
         preg_match('/var RS=(\{.*?\});\(function/s', (string) $r['page'], $m);
-        $solved = creq('/login', ['rs_solution' => solveInPhp(json_decode($m[1], true)['c'])]);
+        $solved = creq('/login', ['rss' => solveInPhp(json_decode($m[1], true)['c'])]);
         $r = $shield->settle($shield->decide($solved, 2.0), $solved, 2.0);
         same(Decision::ALLOW_UNCACHED, $r['decision']->action, 'solved');
-        $withPass = creq('/login', ['rs_pass' => (string) cookieValue($r['cookies'], 'rs_pass')]);
+        $withPass = creq('/login', ['rsp' => (string) cookieValue($r['cookies'], 'rsp')]);
         same(Decision::ALLOW, $shield->settle($shield->decide($withPass, 3.0), $withPass, 3.0)['decision']->action, 'with the pass: through');
         $post = $shield->settle($shield->decide(creq('/login', [], 'POST'), 4.0), creq('/login', [], 'POST'), 4.0);
         same(Decision::CHALLENGE, $post['decision']->action, 'a POST without a pass: not through');
         truthy(is_string($post['page']) && strpos($post['page'], 'then what you entered is sent') !== false, 'but checked, and the form sent again -- not a pause');
-        $postWithPass = creq('/login', ['rs_pass' => (string) cookieValue($r['cookies'], 'rs_pass')], 'POST');
+        $postWithPass = creq('/login', ['rsp' => (string) cookieValue($r['cookies'], 'rsp')], 'POST');
         same(Decision::ALLOW_UNCACHED, $shield->settle($shield->decide($postWithPass, 5.0), $postWithPass, 5.0)['decision']->action, 'a POST with the pass: through, uncached');
         exec('rm -rf ' . escapeshellarg($dir));
     },
@@ -203,10 +209,10 @@ return [
         // A pass issued at 1000 (valid until 4600).
         $r = $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/'), 1000.0);
         preg_match('/var RS=(\{.*?\});\(function/s', (string) $r['page'], $m);
-        $pass = cookieValue($gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', ['rs_solution' => solveInPhp(json_decode($m[1], true)['c'])]), 1000.0)['cookies'], 'rs_pass');
-        same(Decision::ALLOW_UNCACHED, $gate->resolve($app, $base, creq('/x', ['rs_pass' => $pass]), 1200.0, ['forced' => true])['decision']->action, 'a pass is enough');
-        same(Decision::ALLOW_UNCACHED, $gate->resolve($app, $base, creq('/x', ['rs_pass' => $pass]), 1200.0, ['forced' => true, 'fresh' => 300])['decision']->action, 'issued 200 s ago: fresh enough for 300');
-        same(Decision::CHALLENGE, $gate->resolve($app, $base, creq('/x', ['rs_pass' => $pass]), 1400.0, ['forced' => true, 'fresh' => 300])['decision']->action, 'issued 400 s ago: not for 300');
+        $pass = cookieValue($gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', ['rss' => solveInPhp(json_decode($m[1], true)['c'])]), 1000.0)['cookies'], 'rsp');
+        same(Decision::ALLOW_UNCACHED, $gate->resolve($app, $base, creq('/x', ['rsp' => $pass]), 1200.0, ['forced' => true])['decision']->action, 'a pass is enough');
+        same(Decision::ALLOW_UNCACHED, $gate->resolve($app, $base, creq('/x', ['rsp' => $pass]), 1200.0, ['forced' => true, 'fresh' => 300])['decision']->action, 'issued 200 s ago: fresh enough for 300');
+        same(Decision::CHALLENGE, $gate->resolve($app, $base, creq('/x', ['rsp' => $pass]), 1400.0, ['forced' => true, 'fresh' => 300])['decision']->action, 'issued 400 s ago: not for 300');
         same(Decision::ALLOW, $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/api/x'), 1.0)['decision']->action, 'exempt path, budget');
         same(Decision::CHALLENGE, $gate->resolve($app, $base, creq('/api/x'), 1.0, ['forced' => true])['decision']->action, 'exempt path, asked for by the application: checked');
         // A POST with its form: the page carries it; its solution comes by POST.
@@ -215,8 +221,8 @@ return [
         truthy(strpos((string) $r['page'], '<form id="resend" method="post" action="/comment?x=1"><input type="hidden" name="comment" value="&quot;hi&quot;"><input type="hidden" name="a[b]" value="1">') !== false, (string) $r['page']);
         preg_match('/var RS=(\{.*?\});\(function/s', (string) $r['page'], $m);
         $sol = solveInPhp(json_decode($m[1], true)['c']);
-        same(Decision::ALLOW_UNCACHED, $gate->resolve($app, $base, creq('/comment', ['rs_solution' => $sol], 'POST'), 2.0, ['forced' => true])['decision']->action, 'the form sent again, solved');
-        same(Decision::THROTTLE, $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/comment', ['rs_solution' => $sol], 'POST'), 2.0)['decision']->action, 'not asked for: a POST is still throttled');
+        same(Decision::ALLOW_UNCACHED, $gate->resolve($app, $base, creq('/comment', ['rss' => $sol], 'POST'), 2.0, ['forced' => true])['decision']->action, 'the form sent again, solved');
+        same(Decision::THROTTLE, $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/comment', ['rss' => $sol], 'POST'), 2.0)['decision']->action, 'not asked for: a POST is still throttled');
         $lost = $gate->resolve($app, $base, creq('/upload', [], 'POST'), 1.0, ['forced' => true, 'resend' => false]);
         truthy(strpos((string) $lost['page'], 'Please go back and send the form again') !== false && strpos((string) $lost['page'], 'id="resend"') === false, 'a form that cannot come back: asked to send it again');
     },
@@ -250,13 +256,13 @@ return [
         truthy((new \CjwNetwork\RequestShield\Challenge\ProofOfWork(SECRET))->verify($std, \CjwNetwork\RequestShield\IpAddress::bucket('203.0.113.7'), 2.0), 'an answer in ALTCHA\'s encoding verifies');
         $r = $gate->resolve(Decision::challenge('always'), Decision::allow(), creq('/login', [], 'POST'), 2.0, ['solution' => $answer]);
         same(Decision::ALLOW_UNCACHED, $r['decision']->action, 'a POST with the answer in the form: through');
-        $pass = cookieValue($r['cookies'], 'rs_pass');
+        $pass = cookieValue($r['cookies'], 'rsp');
         truthy($pass !== null && $pass !== '', 'with a pass');
         same(Decision::THROTTLE, $gate->resolve(Decision::challenge('always'), Decision::allow(), creq('/login', [], 'POST'), 2.0, ['solution' => $answer])['decision']->action, 'the same answer twice: no');
-        same(null, $gate->widgetTask(creq('/x', ['rs_pass' => $pass]), 3.0), 'with a pass: no task');
-        same(2 + $c->passTtl, $gate->passUntil(creq('/x', ['rs_pass' => $pass]), 3.0), 'until when the pass holds');
+        same(null, $gate->widgetTask(creq('/x', ['rsp' => $pass]), 3.0), 'with a pass: no task');
+        same(2 + $c->passTtl, $gate->passUntil(creq('/x', ['rsp' => $pass]), 3.0), 'until when the pass holds');
         same(0, $gate->passUntil(creq('/x'), 3.0), 'without one: 0');
-        truthy(is_array($gate->widgetTask(creq('/x', ['rs_pass' => $pass]), 2 + $c->passTtl - 20.0)), 'a pass about to run out: a task anyway');
+        truthy(is_array($gate->widgetTask(creq('/x', ['rsp' => $pass]), 2 + $c->passTtl - 20.0)), 'a pass about to run out: a task anyway');
         foreach (['request-shield', '/a b', '/x/../y"', '/', '/x/../y', '/..'] as $bad) {
             try {
                 ChallengeSettings::from(['widgetPath' => $bad]);
@@ -293,8 +299,8 @@ return [
         $r = $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/'), 1.0);
         preg_match('/var RS=(\{.*?\});\(function/s', (string) $r['page'], $m);
         $plain = solveInPhp(json_decode($m[1], true)['c']);
-        $pass = cookieValue($gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', ['rs_solution' => $plain]), 1.0)['cookies'], 'rs_pass');
-        same(Decision::CHALLENGE, $gate->resolve($spent, Decision::allow(), creq('/x', ['rs_pass' => $pass]), 2.0, $earn)['decision']->action, 'a pass does not get past a spent budget');
+        $pass = cookieValue($gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', ['rss' => $plain]), 1.0)['cookies'], 'rsp');
+        same(Decision::CHALLENGE, $gate->resolve($spent, Decision::allow(), creq('/x', ['rsp' => $pass]), 2.0, $earn)['decision']->action, 'a pass does not get past a spent budget');
         same(Decision::CHALLENGE, $gate->resolve($spent, Decision::allow(), creq('/api/x'), 2.0, $earn)['decision']->action, 'nor an exempt path');
         // its own task, bound to it
         for ($i = 0; $i < 5; $i++) {
@@ -306,10 +312,10 @@ return [
         same(1000, $task['maxnumber'], 'the first time: difficulty-min');
         truthy(strpos($task['salt'], '&b=posts') !== false, 'bound to the budget');
         $other = (new \CjwNetwork\RequestShield\Challenge\ProofOfWork(SECRET))->create($bucket, 1000, 100, 'searches');
-        same(Decision::CHALLENGE, $gate->resolve($spent, Decision::allow(), creq('/x', ['rs_solution' => solveInPhp($other)]), 3.0, $earn)['decision']->action, 'another budget\'s solution does not count');
+        same(Decision::CHALLENGE, $gate->resolve($spent, Decision::allow(), creq('/x', ['rss' => solveInPhp($other)]), 3.0, $earn)['decision']->action, 'another budget\'s solution does not count');
         $plain2 = (new \CjwNetwork\RequestShield\Challenge\ProofOfWork(SECRET))->create($bucket, 1000, 100);
-        same(Decision::CHALLENGE, $gate->resolve($spent, Decision::allow(), creq('/x', ['rs_solution' => solveInPhp($plain2)]), 3.0, $earn)['decision']->action, 'nor an ordinary one');
-        $r = $gate->resolve($spent, Decision::allow(), creq('/x', ['rs_solution' => solveInPhp($task)]), 4.0, $earn);
+        same(Decision::CHALLENGE, $gate->resolve($spent, Decision::allow(), creq('/x', ['rss' => solveInPhp($plain2)]), 3.0, $earn)['decision']->action, 'nor an ordinary one');
+        $r = $gate->resolve($spent, Decision::allow(), creq('/x', ['rss' => solveInPhp($task)]), 4.0, $earn);
         same(Decision::ALLOW_UNCACHED, $r['decision']->action, 'its own solution: through');
         same(0.0, $store->peek('posts:' . $bucket, 60, 4.0), 'and the counter starts again');
         // A budget written in a site block (rules per website): its own counter, "<site>@<name>".
@@ -322,7 +328,7 @@ return [
         $siteEarn = ['earn' => ['window' => 60, 'counter' => 'a.de@posts']];
         $r = $siteGate->resolve($spent, Decision::allow(), creq('/x'), 3.0, $siteEarn);
         preg_match('/var RS=(\{.*?\});\(function/s', (string) $r['page'], $m);
-        same(Decision::ALLOW_UNCACHED, $siteGate->resolve($spent, Decision::allow(), creq('/x', ['rs_solution' => solveInPhp(json_decode($m[1], true)['c'])]), 4.0, $siteEarn)['decision']->action, 'a site\'s budget: its own solution, through');
+        same(Decision::ALLOW_UNCACHED, $siteGate->resolve($spent, Decision::allow(), creq('/x', ['rss' => solveInPhp(json_decode($m[1], true)['c'])]), 4.0, $siteEarn)['decision']->action, 'a site\'s budget: its own solution, through');
         same([0.0, 5.0, 1.0], [$siteStore->peek('a.de@posts:' . $bucket, 60, 4.0), $siteStore->peek('posts:' . $bucket, 60, 4.0), $siteStore->peek('solved:a.de@posts:' . $bucket, 3600, 4.0)],
             'the site\'s counter starts again, the same name elsewhere untouched; its solves counted under its own name');
         $r = $gate->resolve($spent, Decision::allow(), creq('/x'), 5.0, $earn);

@@ -54,8 +54,8 @@ final class Config
                 'passTtl' => 3600,
                 'solutionTtl' => 300,
                 'difficulty' => ['min' => 50000, 'max' => 500000],
-                'cookie' => 'rs_pass',
-                'solutionCookie' => 'rs_solution',
+                'cookie' => 'rsp',
+                'solutionCookie' => 'rss',
                 'bindUserAgent' => true,
                 // Verified crawlers are never challenged (the limit still applies).
                 // true: the engines in Challenge\SearchEngines::defaults(); false: none.

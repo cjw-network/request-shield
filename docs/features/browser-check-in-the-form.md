@@ -46,7 +46,7 @@ written by hand. `widget('load')` checks at once instead of on the first input;
    less than 30 seconds left gets a task anyway.
 2. The browser solves the task (the check page's own solver; the widget's
    difficulty is lower, `set widget-difficulty 25000`: the visitor is typing)
-   and puts the answer into a hidden field, `rs_solution`.
+   and puts the answer into a hidden field, `rss`.
 3. When the form is sent, the shield checks the answer — signed, for this
    visitor, a few minutes valid, **once** — sets the pass cookie and takes the
    field out of `$_POST`: the application never sees it.
@@ -62,7 +62,7 @@ cache and an ETag; for a strict Content-Security-Policy it is a file, not an
 inline script.
 
 Because the endpoint speaks ALTCHA's format, ALTCHA's own widget should work
-against it instead (its `challengeurl` pointing at the endpoint, `name="rs_solution"`):
+against it instead (its `challengeurl` pointing at the endpoint, `name="rss"`):
 the shield accepts answers in ALTCHA's encoding (tested); the widget itself has
 not been tried with it yet.
 

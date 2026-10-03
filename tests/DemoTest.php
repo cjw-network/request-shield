@@ -136,7 +136,7 @@ $examples = function (string $prefix): void {
             same(303, $r['status'], 'reset redirects');
             same($prefix . '/', $r['location'], 'back to the demo\'s front page');
             // PHP deletes a cookie as "name=deleted" with an expiry in the past.
-            truthy(in_array($r['cookies']['rs_pass'] ?? null, ['', 'deleted'], true), 'the pass cookie is deleted');
+            truthy(in_array($r['cookies']['rsp'] ?? null, ['', 'deleted'], true), 'the pass cookie is deleted');
             $r = $get('GET', '/');
             truthy(preg_match('#reject 404 &quot;blocked path&quot; rule=SCAN-HIDDEN &quot;GET http://127\.0\.0\.1' . preg_quote($prefix, '#') . '/\.env&quot;#', $r['body']) === 1, 'the log on the page, with the full URL');
             truthy(strpos($r['body'], ' 127.0.0.0/24 reject') !== false, 'the address anonymised in the log');
@@ -196,9 +196,9 @@ $challenge = function (string $prefix): void {
             same(200, $r['status'], 'solved');
             truthy(strpos($r['body'], 'You passed the browser check') !== false, 'the page behind the check');
             truthy(strpos($r['body'], 'What just happened') !== false, 'and what just happened, step by step');
-            $pass = $r['cookies']['rs_pass'] ?? '';
+            $pass = $r['cookies']['rsp'] ?? '';
             truthy($pass !== '', 'pass cookie');
-            same(200, $get('GET', '/challenge', ['Cookie' => 'rs_pass=' . $pass])['status'], 'with the pass: straight through');
+            same(200, $get('GET', '/challenge', ['Cookie' => 'rsp=' . $pass])['status'], 'with the pass: straight through');
         }, $prefix);
 };
 
@@ -242,16 +242,16 @@ $appChallenges = function (string $prefix): void {
             $r = $get('POST', '/comment', ['Cookie' => $rs['cookie'] . '=' . $payload], $form);
             same(200, $r['status'], 'sent again: through');
             truthy(strpos($r['body'], 'your comment &quot;Hello &lt;b&gt;world&lt;/b&gt;&quot; arrived') !== false, 'the comment arrived');
-            $pass = $r['cookies']['rs_pass'] ?? '';
+            $pass = $r['cookies']['rsp'] ?? '';
             truthy($pass !== '', 'and a pass');
-            same(200, $get('POST', '/comment', ['Cookie' => "rs_pass=$pass"], 'comment=again')['status'], 'with the pass: straight through');
+            same(200, $get('POST', '/comment', ['Cookie' => "rsp=$pass"], 'comment=again')['status'], 'with the pass: straight through');
             same(429, $get('POST', '/comment', ['Cookie' => $rs['cookie'] . '=' . $payload], $form)['status'], 'the same solution twice: no');
             // A page that asks for the check with a header.
             $r = $get('GET', '/profile');
             same(429, $r['status'], 'the page asked for the check');
             truthy(strpos(implode("\n", $r['headers']), 'X-RS-Check') === false, 'the internal header is taken out before the check page goes out');
             truthy(strpos($r['body'], 'var RS=') !== false && strpos($r['body'], 'This page asked for the browser check') === false, 'the check page, nothing of the page');
-            $r = $get('GET', '/profile', ['Cookie' => "rs_pass=$pass"]);
+            $r = $get('GET', '/profile', ['Cookie' => "rsp=$pass"]);
             same(200, $r['status'], 'with a pass: the page');
             truthy(strpos($r['body'], 'This page asked for the browser check with a header') !== false, 'the page itself');
             truthy(strpos(implode("\n", $r['headers']), 'X-RS-Check') === false, 'the header never reaches the browser');
@@ -290,35 +290,35 @@ $widget = function (string $prefix): void {
             $r = $get('GET', '/request-shield/challenge', ['Accept-Language' => 'de']);
             same(200, $r['status']);
             $task = json_decode($r['body'], true);
-            same([false, 'rs_solution', 'Browser geprüft'], [$task['passed'], $task['field'], $task['texts']['checked']]);
+            same([false, 'rss', 'Browser geprüft'], [$task['passed'], $task['field'], $task['texts']['checked']]);
             truthy(strpos(implode("\n", $r['headers']), 'Cache-Control: no-store') !== false, 'never cached');
             [$payload] = solveInNode($task['challenge']);
             // The form with the answer -- and a file: straight through
-            [$type, $body] = multipart(['message' => 'Hello <there>', 'rs_solution' => $payload], 'attachment', 'note.txt', 'twelve bytes');
+            [$type, $body] = multipart(['message' => 'Hello <there>', 'rss' => $payload], 'attachment', 'note.txt', 'twelve bytes');
             $r = $get('POST', '/contact', ['Content-Type' => $type], $body);
             same(200, $r['status'], 'the form went through');
             truthy(strpos($r['body'], 'your message &quot;Hello &lt;there&gt;&quot; arrived with the file &quot;note.txt&quot; (12 bytes)') !== false, 'message and file arrived');
-            $pass = $r['cookies']['rs_pass'] ?? '';
+            $pass = $r['cookies']['rsp'] ?? '';
             truthy($pass !== '', 'and a pass cookie');
             // The same answer again: used up -- the check page (a file cannot come back)
-            [$type, $body] = multipart(['message' => 'again', 'rs_solution' => $payload], 'attachment', 'note.txt', 'x');
+            [$type, $body] = multipart(['message' => 'again', 'rss' => $payload], 'attachment', 'note.txt', 'x');
             $r = $get('POST', '/contact', ['Content-Type' => $type], $body);
             same(429, $r['status'], 'an answer counts once');
             truthy(strpos($r['body'], 'Please go back and send the form again') !== false, 'files cannot come back: asked to send again');
             // A used answer in a form without files: the check page, which sends the
             // form again -- without the old answer, or it would be refused again and again.
-            $r = $get('POST', '/contact', [], 'message=stale&rs_solution=' . rawurlencode($payload));
+            $r = $get('POST', '/contact', [], 'message=stale&rss=' . rawurlencode($payload));
             truthy(strpos($r['body'], 'name="message" value="stale"') !== false, 'the form is carried');
-            truthy(strpos($r['body'], 'name="rs_solution"') === false, 'but not the used answer');
+            truthy(strpos($r['body'], 'name="rss"') === false, 'but not the used answer');
             preg_match('/var RS=(\{.*?\});\(function/s', $r['body'], $m);
             $rs = json_decode($m[1] ?? 'null', true);
             [$fresh] = solveInNode($rs['c']);
             same(200, $get('POST', '/contact', ['Cookie' => $rs['cookie'] . '=' . $fresh], 'message=stale')['status'], 'sent again with the new answer: through');
             // With the pass: the endpoint says so, the form goes through without an answer
-            $j = json_decode($get('GET', '/request-shield/challenge', ['Cookie' => "rs_pass=$pass"])['body'], true);
+            $j = json_decode($get('GET', '/request-shield/challenge', ['Cookie' => "rsp=$pass"])['body'], true);
             same(true, $j['passed']);
             truthy(is_int($j['until']) && $j['until'] > time() + 30 && $j['until'] <= time() + 61, 'and until when the pass holds (pass-ttl 1m): the widget fetches a task before');
-            same(200, $get('POST', '/contact', ['Cookie' => "rs_pass=$pass"], 'message=hi')['status']);
+            same(200, $get('POST', '/contact', ['Cookie' => "rsp=$pass"], 'message=hi')['status']);
             // Past challenge-at without a pass (it ran out): a form is checked and
             // sent again -- not a pause that loses what was typed.
             for ($n = 0; $n < 25 && $get('GET', '/contact')['status'] === 200; $n++) {
@@ -334,7 +334,7 @@ $widget = function (string $prefix): void {
             $r = $get('POST', '/contact', ['Cookie' => $rs['cookie'] . '=' . $payload], 'message=typed+for+minutes');
             same(200, $r['status'], 'sent again: through');
             truthy(strpos($r['body'], 'your message &quot;typed for minutes&quot; arrived') !== false, 'the message arrived');
-            truthy(($r['cookies']['rs_pass'] ?? '') !== '', 'and a new pass');
+            truthy(($r['cookies']['rsp'] ?? '') !== '', 'and a new pass');
         }, $prefix);
 };
 
@@ -377,11 +377,11 @@ $earnBack = function (string $prefix): void {
             same(429, $r['status'], 'edit 4: the check');
             truthy(strpos($r['body'], '<input type="hidden" name="message" value="the fourth">') !== false, 'the form comes along');
             [$solution] = solveInNode($task($r));
-            $r = $get('POST', '/edit', ['Cookie' => 'rs_solution=' . $solution], 'message=' . rawurlencode('the fourth'));
+            $r = $get('POST', '/edit', ['Cookie' => 'rss=' . $solution], 'message=' . rawurlencode('the fourth'));
             same(200, $r['status'], 'sent again with the solution: through');
             truthy(strpos($r['body'], 'Saved: &quot;the fourth&quot;') !== false, 'the form arrived');
-            $pass = $r['cookies']['rs_pass'] ?? '';
-            same(200, $get('POST', '/edit', ['Cookie' => "rs_pass=$pass"], 'message=next')['status'], 'the counter started again');
+            $pass = $r['cookies']['rsp'] ?? '';
+            same(200, $get('POST', '/edit', ['Cookie' => "rsp=$pass"], 'message=next')['status'], 'the counter started again');
         }, $prefix);
 };
 
@@ -401,18 +401,18 @@ $pace = function (string $prefix): void {
                 $get('GET', '/page/about');
             }
             [$solution] = solveInNode($task($get('GET', '/page/about')));
-            $pass = $get('GET', '/page/about', ['Cookie' => "rs_solution=$solution"])['cookies']['rs_pass'] ?? '';
+            $pass = $get('GET', '/page/about', ['Cookie' => "rss=$solution"])['cookies']['rsp'] ?? '';
             truthy($pass !== '', 'past 20: the check, and a pass');
             for ($i = 23; $i <= 60; $i++) {
-                $get('GET', '/page/about', ['Cookie' => "rs_pass=$pass"]);
+                $get('GET', '/page/about', ['Cookie' => "rsp=$pass"]);
             }
-            $r = $get('GET', '/page/about', ['Cookie' => "rs_pass=$pass", 'Accept-Language' => 'de']);
+            $r = $get('GET', '/page/about', ['Cookie' => "rsp=$pass", 'Accept-Language' => 'de']);
             same(429, $r['status'], 'past 60: the pass does not get past it');
             same('challenge requests; rule=DEMO-PACE', $r['shield']);
             truthy(strpos($r['body'], 'Sie haben in kurzer Zeit viele Anfragen gesendet') !== false, 'says why, in the visitor\'s language');
             [$solution] = solveInNode($task($r));
-            same(200, $get('GET', '/page/about', ['Cookie' => "rs_pass=$pass; rs_solution=$solution"])['status'], 'solved: through');
-            same(200, $get('GET', '/page/about', ['Cookie' => "rs_pass=$pass"])['status'], 'and the counter started again');
+            same(200, $get('GET', '/page/about', ['Cookie' => "rsp=$pass; rss=$solution"])['status'], 'solved: through');
+            same(200, $get('GET', '/page/about', ['Cookie' => "rsp=$pass"])['status'], 'and the counter started again');
         }, $prefix);
 };
 
@@ -459,7 +459,7 @@ $customer = function (string $prefix): void {
         $in = $get('GET', substr($link, strpos($link, '/rs/stats/') ?: 0));
         same(303, $in['status'], 'the link: a redirect');
         truthy(strpos((string) $in['location'], 'rs-sig') === false, 'the signature taken out of the address');
-        $cookie = 'rs_stats=' . ($in['cookies']['rs_stats'] ?? '');
+        $cookie = 'rsd=' . ($in['cookies']['rsd'] ?? '');
         $page = $get('GET', '/rs/stats/sites', ['Cookie' => $cookie]);
         same(200, $page['status'], 'the customer\'s view');
         truthy(strpos($page['body'], 'Customer A') !== false && strpos($page['body'], 'Customer B') === false, 'Customer A only');
@@ -468,7 +468,7 @@ $customer = function (string $prefix): void {
         $json = json_decode($get('GET', '/rs/stats/overview?format=json&site=' . rawurlencode('Customer B'), ['Cookie' => $cookie])['body'], true);
         truthy(is_array($json) && ($json['site'] ?? null) !== 'Customer B', 'asking for another customer\'s site does not show it');
         $out = $get('GET', '/rs/stats/sites?rs-logout=1', ['Cookie' => $cookie]);
-        truthy(in_array($out['status'], [200, 303], true) && ($out['cookies']['rs_stats'] ?? 'x') === '', 'signed out: the cookie deleted');
+        truthy(in_array($out['status'], [200, 303], true) && ($out['cookies']['rsd'] ?? 'x') === '', 'signed out: the cookie deleted');
     }, $prefix);
 };
 

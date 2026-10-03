@@ -118,16 +118,16 @@ return [
             $r = $get('GET', '/page', $ua + ['Cookie' => $rs['cookie'] . '=' . $payload]);
             same(200, $r['status'], 'solved: the page itself');
             same('allow-uncached', $r['json']['shield'] ?? null, 'this answer is not cached');
-            truthy(($r['cookies']['rs_pass'] ?? '') !== '', 'pass cookie set');
-            same('', $r['cookies']['rs_solution'] ?? null, 'solution cookie removed');
+            truthy(($r['cookies']['rsp'] ?? '') !== '', 'pass cookie set');
+            same('', $r['cookies']['rss'] ?? null, 'solution cookie removed');
 
-            $pass = $r['cookies']['rs_pass'];
+            $pass = $r['cookies']['rsp'];
             for ($i = 0; $i < 5; $i++) {
-                $r = $get('GET', '/page', $ua + ['Cookie' => 'rs_pass=' . $pass]);
+                $r = $get('GET', '/page', $ua + ['Cookie' => 'rsp=' . $pass]);
             }
             same(200, $r['status'], 'with the pass cookie: through');
             same('allow', $r['json']['shield'] ?? null);
-            same(429, $get('GET', '/page', ['User-Agent' => 'another browser', 'Cookie' => 'rs_pass=' . $pass])['status'], 'the pass is bound to the User-Agent');
+            same(429, $get('GET', '/page', ['User-Agent' => 'another browser', 'Cookie' => 'rsp=' . $pass])['status'], 'the pass is bound to the User-Agent');
             same(429, $get('GET', '/page', $ua + ['Cookie' => $rs['cookie'] . '=' . $payload])['status'], 'the same solution again: a new challenge');
         });
     },

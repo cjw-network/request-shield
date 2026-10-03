@@ -37,7 +37,7 @@ function logoRefused(string $svg, string $part): void
 
 return [
     'the page: a ring that fills, a dot circling a plain shield, a smile and a calm "!" ready -- no motion for those who ask for none' => function (): void {
-        $page = ChallengePage::render(PAGE_TASK, 'rs_solution', false);
+        $page = ChallengePage::render(PAGE_TASK, 'rss', false);
         truthy(strpos($page, '<svg id="r" viewBox="0 0 120 120"') !== false, 'the ring');
         truthy(strpos($page, '<circle id="b" class="f"') !== false, 'its arc, filled by the progress');
         truthy(strpos($page, '<g class="o">') !== false, 'the circling dot');
@@ -49,7 +49,7 @@ return [
         truthy(strpos($page, "state('ok')") !== false && strpos($page, 'setTimeout(function () {') !== false, 'done: the smile, then on at once');
         same(false, strpos($page, 'id="p"'), 'the old bar is gone');
         truthy(strlen($page) < 10000, 'still small: ' . strlen($page) . ' bytes');
-        truthy(strpos(ChallengePage::render(PAGE_TASK, 'rs_solution', false, [], ['action' => '/x', 'fields' => []]), '<form id="resend"') !== false, 'a form to send again: as before');
+        truthy(strpos(ChallengePage::render(PAGE_TASK, 'rss', false, [], ['action' => '/x', 'fields' => []]), '<form id="resend"') !== false, 'a form to send again: as before');
     },
     'a site\'s own logo: checked, inlined in the middle, its IDs kept apart from the page\'s' => function (): void {
         $svg = '<?xml version="1.0"?><!-- made by hand --><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" width="200" class="big">'
@@ -62,7 +62,7 @@ return [
         truthy(strpos($logo, 'id="rsl-m"') !== false && strpos($logo, 'fill="url(#rsl-m)"') !== false && strpos($logo, 'href="#rsl-b"') !== false, 'IDs prefixed, references too -- the page\'s #m and #b stay the page\'s');
         truthy(strpos($logo, 'made by hand') === false && strpos($logo, '<?xml') === false, 'no comments, no declaration');
         same('0 0 30 20', (string) preg_replace('/.*viewBox="([^"]*)".*/s', '$1', ChallengeLogo::check('<svg width="30" height="20"><rect width="3" height="3"/></svg>', 'x')), 'no viewBox: from width and height');
-        $page = ChallengePage::render(PAGE_TASK, 'rs_solution', false, [], null, null, $logo);
+        $page = ChallengePage::render(PAGE_TASK, 'rss', false, [], null, null, $logo);
         truthy(strpos($page, $logo) !== false && strpos($page, ChallengeLogo::DEFAULT) === false, 'on the page instead of the shield');
         $file = logoFile($svg);
         try {

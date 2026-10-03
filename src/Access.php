@@ -34,7 +34,7 @@ use CjwNetwork\RequestShield\Store\Store;
  */
 final class Access
 {
-    public const COOKIE = 'rs_stats';
+    public const COOKIE = 'rsd';
 
     /** Wrong tokens or signatures a minute per address before 429. */
     public const TRIES = 10;

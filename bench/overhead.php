@@ -102,7 +102,7 @@ $m = 5000;
 $t = hrtime(true);
 for ($i = 0; $i < $m; $i++) {
     $c = $pow->create('203.0.113.7', 50000, 2000000000);
-    $page = CjwNetwork\RequestShield\Challenge\ChallengePage::render($c, 'rs_solution', true);
+    $page = CjwNetwork\RequestShield\Challenge\ChallengePage::render($c, 'rss', true);
 }
 printf("  %-7s %6.2f µs per challenge page (%d bytes)\n", 'page', (hrtime(true) - $t) / $m / 1000, strlen($page));
 $c = $pow->create('203.0.113.7', 2000, 2000000000);

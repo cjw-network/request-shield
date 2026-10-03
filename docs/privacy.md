@@ -245,7 +245,7 @@ the wording and the legal basis.*
 > It processes your IP address (for IPv6: your network prefix) to count requests
 > per client for a short time (usually one minute) and, when unusually many
 > requests arrive, may ask your browser to solve a small computational task. If
-> it does, it sets a technically necessary cookie ("rs_pass", valid for one
+> it does, it sets a technically necessary cookie ("rsp", valid for one
 > hour) so you are not asked again. No data is passed to third parties. Legal
 > basis: our legitimate interest in the security of our website, Art. 6(1)(f)
 > GDPR. [If the log is on:] Refused requests are logged with a shortened IP

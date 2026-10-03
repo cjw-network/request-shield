@@ -57,7 +57,7 @@ $e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 
 // "Forget my pass": delete the pass cookie, to see the check again.
 if ($path === '/reset') {
-    setcookie('rs_pass', '', ['expires' => 1, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
+    setcookie('rsp', '', ['expires' => 1, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
     header('Location: ' . $url('/'), true, 303);
     exit;
 }
@@ -260,12 +260,12 @@ if ($content === null && !in_array($path, ['/', '/index.php', '/challenge'], tru
 }
 
 $rule = Shield::currentRule();
-// The pass cookie carries its expiry: v1.<expires>.<client>.<signature>. (Shown
-// here only; the shield checks the signature, this page just reads the time.)
+// The pass cookie carries its expiry: 2.<expires, base36>.<client>.<signature>.
+// (Shown here only; the shield checks the signature, this page just reads the time.)
 $passLeft = null;
-$pass = explode('.', (string) ($_COOKIE['rs_pass'] ?? ''));
-if (count($pass) === 4 && ctype_digit($pass[1]) && (int) $pass[1] > time()) {
-    $passLeft = (int) $pass[1] - time();
+$pass = explode('.', (string) ($_COOKIE['rsp'] ?? ''));
+if (count($pass) === 4 && $pass[0] === '2' && preg_match('/^[0-9a-z]{1,8}$/', $pass[1]) === 1 && (int) base_convert($pass[1], 36, 10) > time()) {
+    $passLeft = (int) base_convert($pass[1], 36, 10) - time();
 }
 $status = [
     'Decision' => $decision !== null ? $decision->action . ($decision->reason !== '' ? ' (' . $decision->reason . ')' : '') : '—',
@@ -468,7 +468,7 @@ $responseLines = array_map(static function (string $line) use ($short): array {
   <section class="card"><h3>What just happened</h3><ol class="happened">
     <li>You opened <code>/challenge</code>, where every visitor is checked (<code>[DEMO-LOGIN] challenge **/challenge</code>). Without a pass, the shield sent — instead of this page — a small page with a task, signed so it cannot be forged: <em>find the number n for which sha256(code + n) gives this result</em>.</li>
     <li>That page's script tried numbers until it found n — on average some tens of thousands of attempts, a fraction of a second — put the answer in a cookie and loaded the page again.</li>
-    <li>The shield checked the answer (one calculation, well under a millisecond; every answer counts only once) and handed out the pass cookie <code>rs_pass</code>.</li>
+    <li>The shield checked the answer (one calculation, well under a millisecond; every answer counts only once) and handed out the pass cookie <code>rsp</code>.</li>
     <li>With the pass you get through straight away<?= $passLeft !== null ? ' — for ' . (int) $passLeft . ' more seconds here (<code>set pass-ttl 1m</code>; a real site: an hour)' : '' ?>. After that, or after <a href="<?= $e($url('/reset')) ?>">Reset my pass</a>, the check comes again.</li>
   </ol>
   <div class="diagram"><?= Diagram::browserCheck() ?></div>
