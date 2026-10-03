@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The plugins guide rewritten around extensions** (0031 step D.3):
+  `docs/features/plugins.md` explains the two interfaces (`Extension` at
+  compile time, `Plugin` per request), the capabilities, `plugin … from`, the
+  served pages and the commands in one place; ADR 0008 (extension points
+  resolved at compile time) and ADR 0009 (plugins tighten, never loosen) are
+  accepted. With this, phase D of 0031 (CLI and namespace) is complete.
 - **The statistics plugin in its own namespace, and plugins from a file**
   (0031 step D.2): `plugins/stats/src` is `CjwNetwork\RequestShield\Stats\…`
   (`Stats\StatsExtension`, `Stats\StatsPlugin`, `Stats\Report\StatsPage`, …;

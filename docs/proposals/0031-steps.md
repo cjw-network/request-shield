@@ -98,7 +98,7 @@ the model you trust most there, not fast mode.
 ### Phase D — CLI + namespace
 - [x] **D.1** `bin/request-shield` as a dispatch table + `Extension::commands()`; `stats` into the plugin. `16e7999`
 - [x] **D.2** `plugins/stats/src` → `CjwNetwork\RequestShield\Stats\`; `composer.json`/`bootstrap.php`/`phpstan.neon.dist` adjusted; `plugin … from <file>`. `b22dc35`
-- [ ] **D.3** `docs/features/plugins.md` rewritten around `Extension`; ADRs 0008/0009 accepted.
+- [x] **D.3** `docs/features/plugins.md` rewritten around `Extension`; ADRs 0008/0009 accepted. `(this commit; hash follows)`
 
 ### Phase E — Single file
 - [ ] **E.1** `Rules\Shipped` replaces every `__DIR__` read of `rules/` (6 places) — `grep "__DIR__ . '/.."` in `src/` empty.
@@ -137,10 +137,12 @@ the model you trust most there, not fast mode.
 
 ## Status
 
-- **Last step done:** D.2
-- **Next step:** D.3
+- **Last step done:** D.3 (phase D complete)
+- **Next step:** E.1
 - **Open owner questions:** see the proposal's last section.
 - **Deviations from the plan:** D.1 -- the dispatch table in `bin/request-shield` holds the extensions' commands (`Extension::commands()`, `Cli\Command`, `Cli\Context`); the core's own commands stay the `if` blocks they are. Turning them into command classes moves 600 lines for no change in behaviour; it pays when the single file assembles the CLI (E.2), and is noted there. (B.3 kept `stats-group`, `stats-access`, `stats-session`, `stats-path` in the core for a while; B.5 moved `stats-path`, B.7 the rest -- as the proposal's B.3 row says.)
+- **Open from the D.3 review (code already committed, to fix with E.1 or before):** (1) `Dashboard::routeFor()` pre-filters with `stripos($path, $s->dashboardPath)`, but `set stats-path` may lie elsewhere (`/admin/statistics`): such routes are never served -- check the routes' own prefixes too, or compile a prefix list. (2) `RuleFile` records a `plugin … from` file in `$this->seen` only when the class was not loaded yet; record its stat whenever the file exists, so a changed plugin file is noticed on every compile. (3) `StatsExtension::check()`'s "plugin not installed" branch is unreachable (same package); remove it.
+- **Finding from D.3:** the guide keeps its three linked anchors and the two code examples word for word (PluginTest runs the `Acme\Shield` one from the doc); the rule "read only" became "tighten, never loosen" (ADR 0009). ADR 0008's capability list names what exists (`ApiProvider` is planned, G.0). No code changed. Reviewed with the code-review skill, no workflow.
 - **Finding from D.2:** the move was scripted: every unqualified core class a moved file names got a `use` line (calls, type hints, `implements`, relative `Store\…` references needed a second pass); the bootstrap's autoloader maps the `Stats\` prefix to plugins/stats/src, composer.json the same (`composer dump-autoload` on a dev machine). `plugin … from` records `pluginFiles` (class => absolute path), watched like a rule file; `Settings::compiledExt()` loads a file before it records the hooks, `Shield::plugins()` before `class_exists()`. Checks ran one after another. Reviewed with the code-review skill, no workflow.
 - **Finding from D.1:** the stats block was the only CLI code outside PHPStan's paths; moved into the plugin it surfaced three typing gaps (`StatsReport::build()` returned `forms`/`backend` without declaring them, with the finished shape `VisitorsPage` already declared). `Cli\Context` carries the common options as parsed by the script (`days`, `json`, `period`, `feed`, `test`, `list`, …); a command parses nothing itself. Checks ran one after another. Reviewed with the code-review skill, no workflow.
 - **Finding from C.4:** the handler runs in `Shield::run()` after the dashboard route and before the app-challenge watch; it asks the plugin instances `Shield::plugins()` already made (one `instanceof` per plugin, only when `hooks['handler']` is set). The `Response` class from B.6 serves it; `Request::cacheKey()` sorts the raw pairs byte-wise after re-encoding (`a%5Bb%5D=1` before `a=2`). The five hooks are complete now (`ruleCounts`, `sink`, `pages`, `ruleProvider`, `handler`). Checks ran one after another. Reviewed with the code-review skill, no workflow.

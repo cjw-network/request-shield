@@ -1,6 +1,6 @@
 # ADR 0008 — Extension points are resolved at compile time
 
-- Status: proposed (2026-10-03; accepted with [0031](../proposals/0031-robust-core-plugins.md) phase B)
+- Status: accepted (2026-10-03, with [0031](../proposals/0031-robust-core-plugins.md) phases B–D: `Extension`, `Rules\Vocabulary`, the five capabilities, `Cli\Command`)
 
 ## Context
 
@@ -12,12 +12,12 @@ passing request nothing when it is not used (`AGENTS.md`).
 ## Decision
 
 - Two interfaces: `Extension` (static, compile time: vocabulary, compile,
-  routes, commands, check) and `Plugin` (per request, as today). Optional
-  capabilities on `Plugin` (`RuleProvider`, `Handler`, `Pages`, `Sink`,
-  `RuleCounts`, `ApiProvider` on `Extension`) are discovered by `instanceof`
-  **when the settings are compiled** and written into the compiled settings:
-  `$s->hooks` (hook ⇒ classes), `$s->routes`, `$s->ext` (plugin id ⇒ checked
-  values).
+  plugins, routes, commands, check) and `Plugin` (per request, as today).
+  Optional capabilities on `Plugin` (`RuleCounts`, `Sink`, `Pages`,
+  `RuleProvider`, `Handler`; `ApiProvider` on `Extension` is planned, 0031
+  G.0) are discovered by `instanceof` **when the settings are compiled** and
+  written into the compiled settings: `$s->hooks` (hook ⇒ classes),
+  `$s->routes`, `$s->ext` (extension id ⇒ checked values).
 - The request path only tests `($s->hooks['x'] ?? []) !== []`. No
   `class_exists`, no reflection, no `stat()` per request.
 - Every call into a plugin passes one guard that catches `\Throwable` and logs
