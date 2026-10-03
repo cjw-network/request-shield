@@ -69,8 +69,8 @@ the model you trust most there, not fast mode.
 ### Phase A3 — Hosting tiers
 - [x] **A3.1** Cache path → `.request-shield/` **next to the settings file** (not `store-dir/cache`: the store dir is only known after compiling), the store's default → `.request-shield/store` there (never the shared temp dir — the secret lives in the store); not writable → compiled on every request (S0), no fatal; `Tier::of()`, `check` and `version` name the tier and what is inactive — `HostingTiersTest` S0 + S1 + defaults. `aa778b4`
 - [x] **A3.2** `Live` with a file fallback (`store-dir/live.log`, the log's line format, `O_APPEND`, rotated past 500 KB, read by `LogTail`); every APCu check through `Capability::apcu()`. Settings freshness, the crawler DNS cache and `Stats` already had file fallbacks (stat per request, `store-dir/se/`, hour files) — kept, now behind the one check. `75cfcf7`
-- [x] **A3.3** `Http::get()` (file_get_contents, else curl) for feed/crawler updates; `Http::offline()` tells the CLI what to do where neither can — `tests/HttpTest.php` runs PHP with `allow_url_fopen=0` and with curl disabled against a server of its own. *(hash: next commit)*
-- [ ] **A3.4** `HostingTiersTest` S1/S2 (same requests, same decisions) + CI leg "minimal hosting" in `tests.yml`; README numbers per tier.
+- [x] **A3.3** `Http::get()` (file_get_contents, else curl) for feed/crawler updates; `Http::offline()` tells the CLI what to do where neither can — `tests/HttpTest.php` runs PHP with `allow_url_fopen=0` and with curl disabled against a server of its own. `4cab57d`
+- [x] **A3.4** `HostingTiersTest` S2 and "same requests, same decisions at S0/S1/S2"; CI leg "minimal hosting" (`TESTS_HOSTING=minimal` → `serverPhp()` restricts every server a test starts); README cost table names the tiers; ADR 0013 accepted. *(hash: next commit)*
 
 ### Phase A2 — Bytes
 - [ ] **A2.1** Headers `X-Request-Shield*` → `X-RS*` (`X-RS`, `X-RS-Monitor`, `X-RS-Check`, `X-RS-Access`) in code, tests, demos, docs; internal headers removed before output (test).
@@ -137,13 +137,14 @@ the model you trust most there, not fast mode.
 
 ## Status
 
-- **Last step done:** A3.3
-- **Next step:** A3.4
+- **Last step done:** A3.4 (phase A3 complete)
+- **Next step:** A2.1
 - **Open owner questions:** see the proposal's last section.
 - **Deviations from the plan:** none.
 - **Review:** `pr-review-toolkit` is not installed on the machine that wrote phase 0 and A.1–A.2; the fallback (code-review skill, sonnet, low) was used — for phase 0 (documents only) once over the whole phase, for the code steps once per step.
 - **Static analysis on this machine:** PHPStan runs; `composer taint` (Psalm 6) crashes with `Class "Composer\InstalledVersions" not found` because the local Composer is 1.10 (its autoloader lacks the class). CI runs it (`static-analysis.yml`); on a machine with Composer ≥ 2 run `composer install` and `composer taint` before pushing code steps.
 - **Finding from A.1:** the bench command in `AGENTS.md` needs `-d opcache.file_update_protection=0`, otherwise the "setup" lines show milliseconds for freshly compiled settings (fixed in AGENTS.md).
+- **Finding from A3.4:** under `TESTS_HOSTING=minimal` the demos died with 500 (`putenv()` disabled; they tell the rules their subdirectory that way) and one DemoTest server did not end on `proc_terminate()`, so the whole run hung for an hour with no CPU — `tests/run.php` has no per-test timeout. Fixed the demos (`function_exists('putenv')` guard, the placeholders' default `/`); the two subdirectory cases skip under minimal hosting. Still open: a watchdog in the runner (kill and fail a test after N seconds) — a small step for phase F.
 - **Finding from A3.1:** an end-to-end test that starts the server through `env …` must `exec env …` — otherwise `proc_terminate()` ends the shell and the server lives on (BootstrapTest left ten servers running and doubled the bench numbers). Pattern for every E2E test: the command starts with `exec`. The default directories moved out of the temp dir, so `.request-shield/` is in `.gitignore` (the demo tests make one next to the demo rules).
 - **Finding from A.3:** under PHP's built-in server APCu is *on* (its SAPI `cli-server` is not "cli" to APCu), so with rule files the shield re-reads the sources only every `recheck` seconds (10) — end-to-end tests that rewrite a rule file must set `set recheck 0` (RobustnessTest does). Worth a line in `docs/features/rule-files.md` when F.1 touches it.
 - **Finding from A.2:** the "once a minute" throttle of error-log lines was per process only (`static` is reset per request under PHP-FPM and the built-in server) — it now also uses APCu or a marker file in the temp dir, so a broken deploy logs one line a minute, not one per visitor. A3.1 should move the marker next to the compiled settings (`store-dir/cache`).

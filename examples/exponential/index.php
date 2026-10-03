@@ -35,7 +35,9 @@ $url = static fn (string $local): string => $local === '/' ? './' : ltrim($local
 // the site itself would see. At the root this changes nothing.
 $query = (string) ($_SERVER['QUERY_STRING'] ?? '');
 $_SERVER['REQUEST_URI'] = $path . ($query !== '' ? '?' . $query : '');
-putenv('EXP_DEMO_HOME=' . $front . '/');
+if (function_exists('putenv')) {                // a tight shared host may disable it: the rules' default then
+    putenv('EXP_DEMO_HOME=' . $front . '/');
+}
 
 // ── The integration, as in config.php ───────────────────────────────────────
 define('REQUEST_SHIELD_CONFIG', __DIR__ . '/demo.rules');

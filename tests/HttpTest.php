@@ -22,7 +22,7 @@ function withHttpServer(callable $body): void
         if ($p === "/big") { echo str_repeat("x", 5000); return; }
         http_response_code(500); echo "boom";');
     $port = freePort();
-    $proc = proc_open(sprintf('exec %s -S 127.0.0.1:%d %s > /dev/null 2>&1', escapeshellarg(PHP_BINARY), $port, escapeshellarg("$dir/router.php")), [], $pipes);
+    $proc = proc_open(sprintf('exec %s -S 127.0.0.1:%d %s > /dev/null 2>&1', serverPhp(), $port, escapeshellarg("$dir/router.php")), [], $pipes);
     for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
         usleep(100000);
     }

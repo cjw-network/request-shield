@@ -31,7 +31,7 @@ function withLibrary(array $files, ?string $env, callable $body): void
     // exec: the shell becomes env, env becomes PHP -- proc_terminate() then ends the server, not a shell around it.
     $proc = proc_open(sprintf('exec env -u REQUEST_SHIELD_CONFIG %s %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
         $env !== null ? 'REQUEST_SHIELD_CONFIG=' . escapeshellarg(str_replace('__LIB__', $lib, $env)) : '',
-        escapeshellarg(PHP_BINARY), escapeshellarg("$lib/bootstrap.php"), $port, escapeshellarg("$lib/docroot")), [], $pipes);
+        serverPhp(), escapeshellarg("$lib/bootstrap.php"), $port, escapeshellarg("$lib/docroot")), [], $pipes);
     for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
         usleep(100000);
     }

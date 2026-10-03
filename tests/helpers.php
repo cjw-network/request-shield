@@ -50,3 +50,19 @@ function freePort(): int
     fclose($probe);
     return (int) substr($name, strrpos($name, ':') + 1);
 }
+
+/**
+ * PHP for a server a test starts (php -S): the binary, and -- with
+ * TESTS_HOSTING=minimal (the CI leg "minimal hosting", ADR 0013) -- the
+ * restrictions of a tight shared host: no APCu, no allow_url_fopen, the shell
+ * functions disabled, 64 MB. The shield must decide the same under them.
+ */
+function serverPhp(): string
+{
+    $php = escapeshellarg(PHP_BINARY);
+    if (getenv('TESTS_HOSTING') === 'minimal') {
+        $php .= ' -d apc.enabled=0 -d allow_url_fopen=0 -d memory_limit=64M'
+            . ' -d disable_functions=exec,shell_exec,proc_open,popen,system,passthru,putenv,set_time_limit,dl';
+    }
+    return $php;
+}

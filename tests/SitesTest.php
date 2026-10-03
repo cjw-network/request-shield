@@ -160,7 +160,7 @@ return [
         file_put_contents("$dir/host.rules", "set store-dir $dir/store\nset site-from host\nhost shop.a.de a.de news.b.de other.org\nexempt none\n" . substr((string) file_get_contents("$dir/main.rules"), (int) strpos((string) file_get_contents("$dir/main.rules"), '[BASE-PACE]')));
         $port = freePort();
         $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1', escapeshellarg("$dir/host.rules"),
-            escapeshellarg(PHP_BINARY), escapeshellarg(dirname(__DIR__) . '/bootstrap.php'), $port, escapeshellarg("$dir/docroot")), [], $pipes);
+            serverPhp(), escapeshellarg(dirname(__DIR__) . '/bootstrap.php'), $port, escapeshellarg("$dir/docroot")), [], $pipes);
         for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
             usleep(100000);
         }

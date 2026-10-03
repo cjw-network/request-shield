@@ -43,4 +43,30 @@ jobs:
         run: php tests/run.php
 
       - name: Cost of a passing request (smoke benchmark)
-        run: php bench/overhead.php 20000
+        run: php -d opcache.file_update_protection=0 bench/overhead.php 20000
+
+  # Shared hosting at its most restrictive (ADR 0013, tier S1): the servers the
+  # end-to-end tests start run without APCu, without allow_url_fopen, with the
+  # shell functions disabled and 64 MB -- the shield must decide the same.
+  minimal-hosting:
+    name: PHP 8.0, minimal hosting (S1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+          extensions: 'pcntl, :apcu'
+          ini-values: 'opcache.enable_cli=1, opcache.file_update_protection=0'
+          coverage: none
+          tools: none
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Tests, the servers restricted
+        env:
+          TESTS_HOSTING: minimal
+        run: php tests/run.php

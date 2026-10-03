@@ -32,7 +32,9 @@ $pathOf = static fn (string $local, string $method = 'GET', string $ip = ''): st
     . '&url=' . rawurlencode($front . $local) . ($ip !== '' ? '&ip=' . rawurlencode($ip) : '') . '#check';
 // The shield's own pages (404, a pause, the check page) link back to the demo's
 // front page: "set home ${REQUEST_SHIELD_DEMO_HOME:-/}" in the rules.
-putenv('REQUEST_SHIELD_DEMO_HOME=' . $front . '/');
+if (function_exists('putenv')) {                // a tight shared host may disable it: the rules' default "/" then
+    putenv('REQUEST_SHIELD_DEMO_HOME=' . $front . '/');
+}
 
 // ── The integration: the first lines of the front controller ─────────────────
 // Everything below this block runs only for requests the shield lets through.

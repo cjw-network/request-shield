@@ -12,8 +12,12 @@ use CjwNetwork\RequestShield\Tier;
  * files; S2 in APCu. The same requests, the same decisions.
  */
 
-/** @param callable(callable(string): array{status: int, body: string}, string): void $body gets a GET function and the directory */
-function withTier(string $rules, callable $body, bool $readOnly = false): void
+/**
+ * @param callable(callable(string): array{status: int, body: string}, string): void $body gets a GET function and the directory
+ * @param bool $readOnly S0: nothing can be made next to the rules
+ * @param bool $apcu S2: APCu on in the server (the built-in server has it unless told otherwise)
+ */
+function withTier(string $rules, callable $body, bool $readOnly = false, bool $apcu = false): void
 {
     $dir = sys_get_temp_dir() . '/rs-tier-' . getmypid() . '-' . mt_rand();
     mkdir("$dir/docroot", 0700, true);
@@ -24,8 +28,8 @@ function withTier(string $rules, callable $body, bool $readOnly = false): void
         chmod("$dir/site", 0500);                 // nothing can be made next to the rules: no cache, no store
     }
     $port = freePort();
-    $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d apc.enabled=0 -d auto_prepend_file=%s -d log_errors=1 -d error_log=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
-        escapeshellarg("$dir/site/site.rules"), escapeshellarg(PHP_BINARY), escapeshellarg(dirname(__DIR__) . '/bootstrap.php'), escapeshellarg("$dir/php-errors.log"), $port, escapeshellarg("$dir/docroot")), [], $pipes);
+    $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d apc.enabled=%d -d auto_prepend_file=%s -d log_errors=1 -d error_log=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
+        escapeshellarg("$dir/site/site.rules"), serverPhp(), $apcu ? 1 : 0, escapeshellarg(dirname(__DIR__) . '/bootstrap.php'), escapeshellarg("$dir/php-errors.log"), $port, escapeshellarg("$dir/docroot")), [], $pipes);
     for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
         usleep(100000);
     }
@@ -114,6 +118,52 @@ return [
             truthy(strpos($text, 'warning: nothing is counted') !== false, "and what is off:\n$text");
             same(3, $code, 'check exits 3: warnings');
         }, true);
+    },
+    'RSF5.2 S2 on the real path: APCu -- the pace counts in memory, no counter files' => function (): void {
+        if (!function_exists('proc_open')) {
+            skip('no proc_open');
+        }
+        if (!extension_loaded('apcu') || getenv('TESTS_HOSTING') === 'minimal') {
+            skip('no APCu extension here (or the minimal-hosting run)');
+        }
+        withTier("block /secret/**\nlimit requests 2/min\nhost 127.0.0.1\n", function (callable $get, string $dir): void {
+            same(404, $get('/secret/x')['status']);
+            same(200, $get('/')['status'], 'first');
+            same(200, $get('/')['status'], 'second');
+            same(429, $get('/')['status'], 'the third is one too many: counted in APCu');
+            same([], glob("$dir/site/.request-shield/store/*/*.c"), 'no counter files: the memory counted');
+        }, false, true);
+    },
+    'RSF5.2 the same requests, the same decisions at S0, S1 and S2 -- the stateless rules do not depend on the tier' => function (): void {
+        if (!function_exists('proc_open')) {
+            skip('no proc_open');
+        }
+        $rules = "block /secret/**\nhost 127.0.0.1\nallow POST /contact\nrestrict /admin/** to 192.0.2.0/24\ncache-query page\n";
+        $ask = ['/', '/secret/x', '/admin/users', '/contact', '/about?utm_source=x'];
+        $decide = static function (callable $get) use ($ask): array {
+            $out = [];
+            foreach ($ask as $uri) {
+                $r = $get($uri);
+                $out[$uri] = $r['status'] . ' ' . $r['body'];
+            }
+            return $out;
+        };
+        $got = [];
+        withTier($rules, function (callable $get) use (&$got, $decide): void { $got['S1'] = $decide($get); });
+        if (!rootHere()) {
+            withTier($rules, function (callable $get) use (&$got, $decide): void { $got['S0'] = $decide($get); }, true);
+        }
+        if (extension_loaded('apcu') && getenv('TESTS_HOSTING') !== 'minimal') {
+            withTier($rules, function (callable $get) use (&$got, $decide): void { $got['S2'] = $decide($get); }, false, true);
+        }
+        same('200 ok allow', $got['S1']['/'], 'the page passes, cacheable');
+        same('404 ', substr($got['S1']['/secret/x'], 0, 4), 'a blocked path');
+        same('403', substr($got['S1']['/admin/users'], 0, 3), 'a restricted area');
+        same('200 ok allow-uncached', $got['S1']['/about?utm_source=x'], 'an unknown parameter: uncached');
+        foreach ($got as $tier => $decisions) {
+            same($got['S1'], $decisions, "$tier decides as S1 does");
+        }
+        truthy(count($got) >= 2, 'at least two tiers compared: ' . implode(', ', array_keys($got)));
     },
     'RSF5.2 S1 on the real path: a writable directory, no APCu -- the pace counts in files' => function (): void {
         if (!function_exists('proc_open')) {

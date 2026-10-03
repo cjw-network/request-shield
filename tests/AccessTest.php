@@ -223,7 +223,7 @@ echo StatsPage::render($s, ["view" => $view, "who" => $g["who"], "links" => Acce
 ');
         $port = freePort();
         // REQUEST_SHIELD_CONFIG: index.php gates the pages itself; bootstrap.php must not start the shield from a config/ of this checkout.
-        $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=/nonexistent exec %s -S 127.0.0.1:%d %s > /dev/null 2>&1', escapeshellarg(PHP_BINARY), $port, escapeshellarg("$dir/docroot/index.php")), [], $pipes);
+        $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=/nonexistent exec %s -S 127.0.0.1:%d %s > /dev/null 2>&1', serverPhp(), $port, escapeshellarg("$dir/docroot/index.php")), [], $pipes);
         for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
             usleep(100000);
         }

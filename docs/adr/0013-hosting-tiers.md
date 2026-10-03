@@ -1,6 +1,6 @@
 # ADR 0013 — PHP is the only requirement; a writable directory and APCu are tiers
 
-- Status: proposed (2026-10-03; accepted with [0031](../proposals/0031-robust-core-plugins.md) phase A3)
+- Status: accepted (2026-10-03; [0031](../proposals/0031-robust-core-plugins.md) phase A3)
 
 ## Context
 

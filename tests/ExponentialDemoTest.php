@@ -18,7 +18,7 @@ function withExponentialDemo(callable $body, string $prefix = ''): void
     mkdir($var, 0700, true);
     $port = freePort();
     $root = dirname(__DIR__);
-    $cmd = sprintf('EXP_DEMO_VAR=%s exec %s -S 127.0.0.1:%d %s > /dev/null 2>&1', escapeshellarg($var), escapeshellarg(PHP_BINARY), $port,
+    $cmd = sprintf('EXP_DEMO_VAR=%s exec %s -S 127.0.0.1:%d %s > /dev/null 2>&1', escapeshellarg($var), serverPhp(), $port,
         $prefix === '' ? escapeshellarg($root . '/examples/exponential/router.php') : '-t ' . escapeshellarg($root));
     $proc = proc_open($cmd, [], $pipes);
     for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {

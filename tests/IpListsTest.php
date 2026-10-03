@@ -388,7 +388,7 @@ return [
         file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nexempt none\n[SITE-SECRET] block **/secret/**\n[SITE-SCAN] ban after 3 refusals in 5m for 10m\n");
         $port = freePort();
         $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1', escapeshellarg("$dir/site.rules"),
-            escapeshellarg(PHP_BINARY), escapeshellarg(dirname(__DIR__) . '/bootstrap.php'), $port, escapeshellarg("$dir/docroot")), [], $pipes);
+            serverPhp(), escapeshellarg(dirname(__DIR__) . '/bootstrap.php'), $port, escapeshellarg("$dir/docroot")), [], $pipes);
         for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
             usleep(100000);
         }

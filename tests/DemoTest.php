@@ -20,7 +20,7 @@ function withDemo(callable $body, string $prefix = ''): void
     $port = freePort();
     $root = dirname(__DIR__);
     $cmd = sprintf('REQUEST_SHIELD_DEMO_VAR=%s exec %s -S 127.0.0.1:%d %s > /dev/null 2>&1',
-        escapeshellarg($var), escapeshellarg(PHP_BINARY), $port,
+        escapeshellarg($var), serverPhp(), $port,
         $prefix === '' ? escapeshellarg($root . '/examples/demo/router.php') : '-t ' . escapeshellarg($root));
     $proc = proc_open($cmd, [], $pipes);
     for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
@@ -477,14 +477,24 @@ return [
     'the demo: /challenge is always checked; solved, it opens' => fn () => $challenge(''),
     'the demo: past 20 requests a minute the check appears on any page' => fn () => $budget(''),
     'the demo: search budget, edit form, a POST elsewhere, admin and API by address' => fn () => $forms(''),
-    'the demo in a subdirectory, without rewrite rules: the same' => fn () => $examples($sub),
+    'the demo in a subdirectory, without rewrite rules: the same' => function () use ($examples, $sub): void {
+        if (getenv('TESTS_HOSTING') === 'minimal') {
+            skip('the demo tells the rules its subdirectory through putenv(), which this host disables -- a site there writes the path into the rules');
+        }
+        $examples($sub);
+    },
     'the demo in a subdirectory: /challenge is always checked' => fn () => $challenge($sub),
     'the demo in a subdirectory: the budget' => fn () => $budget($sub),
     'the demo in a subdirectory: search, forms, admin and API' => fn () => $forms($sub),
     'the demo: the site asks for the check -- a comment sent again after it, a page that asks with a header' => fn () => $appChallenges(''),
     'the demo in a subdirectory: the site asks for the check' => fn () => $appChallenges($sub),
     'the demo: the check inside the form -- task, answer in the form, a file straight through' => fn () => $widget(''),
-    'the demo in a subdirectory: the check inside the form' => fn () => $widget($sub),
+    'the demo in a subdirectory: the check inside the form' => function () use ($widget, $sub): void {
+        if (getenv('TESTS_HOSTING') === 'minimal') {
+            skip('the demo tells the rules its subdirectory through putenv(), which this host disables');
+        }
+        $widget($sub);
+    },
     'the demo: earn a spent budget back -- an API with a header, a form sent again, twice as hard the second time' => fn () => $earnBack(''),
     'the demo: past 60 requests a minute, a check no pass gets past -- solved, the counter starts again' => fn () => $pace(''),
     'the demo in a subdirectory: earn a spent budget back' => fn () => $earnBack($sub),

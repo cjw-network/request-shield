@@ -239,10 +239,15 @@ headers behind a trusted proxy, every check on:
 
 | PHP 8.1 | per passing request |
 |---|---|
-| checks, APCu store | ~12 µs |
-| checks, file store | ~42 µs |
+| checks, APCu store (tier S2) | ~12 µs |
+| checks, file store (tier S1, the shared-hosting norm) | ~42 µs |
 | settings: rule files (compiled, APCu) / PHP file | ~5.5 / ~8 µs |
+| settings compiled on every request (tier S0: nowhere to write) | + ~30 µs |
 | challenge page / solution check / pass cookie (challenged clients only) | ~12 / ~9 / ~5 µs |
+
+The tiers ([settings](docs/features/settings.md#what-this-installation-can-do-the-tiers)):
+PHP ≥ 8.0 is the only requirement; a writable directory and APCu make it
+faster. `request-shield check site.rules` says which tier a hosting gives.
 
 ## Tests and checks
 

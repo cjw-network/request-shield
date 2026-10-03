@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   S2 (APCu), and what is not active in it ([docs](docs/features/settings.md#what-this-installation-can-do-the-tiers)).
 
 ### Changed
+- **A CI leg "minimal hosting"** (0031 step A3.4, ADR 0013 accepted): the
+  servers the end-to-end tests start run as a tight shared host would have
+  them -- no APCu, no `allow_url_fopen`, the shell functions disabled, 64 MB
+  (`TESTS_HOSTING=minimal`); `tests/HostingTiersTest.php` sends the same
+  requests at S0, S1 and S2 and expects the same decisions.
 - **Updates fetch with curl where `allow_url_fopen` is off** (0031 step A3.3):
   `feeds update` and `crawlers update` use `file_get_contents` or, without
   it, curl (`Http::get()`); where neither can, they say so and what to do
