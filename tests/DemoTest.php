@@ -84,7 +84,7 @@ $examples = function (string $prefix): void {
             truthy(strpos($r['body'], 'href="' . $prefix . '/challenge"') !== false, 'links start where the demo lives');
             truthy(strpos($r['body'], 'action="' . $prefix . '/edit"') !== false, 'so does the form');
             truthy(preg_match('#<tr id="t3-1">\s*<td class="no"><a href="\#t3-1">3\.1</a></td>#', $r['body']) === 1, 'one numbered row per test, with its own anchor');
-            truthy(strpos($r['body'], '<tr class="group"><th colspan="4">7 · Forms (POST)</th></tr>') !== false, 'grouped, the groups numbered');
+            truthy(strpos($r['body'], '<tr class="group"><th colspan="4">7 · Budgets and pace <span class="feature">RSF03-01</span></th></tr>') !== false, 'grouped by feature, the groups numbered -- from the rules\' # demo: groups');
             truthy(strpos($r['body'], 'href="' . $prefix . '/rules?method=GET&amp;url=' . rawurlencode($prefix . '/.env') . '&amp;ip=127.0.0.1#check">See the path') !== false, 'each example links to its path on the rules page');
             $rules = $get('GET', '/rules?method=GET&url=' . rawurlencode($prefix . '/files/%2e%2e/secret') . '&ip=127.0.0.1');
             truthy(strpos($rules['body'], 'This visitor gets a broken request (400)') !== false, 'and the rules page checks exactly that address, encoding and all');
@@ -143,6 +143,47 @@ $examples = function (string $prefix): void {
             $r = $get('GET', '/');
             truthy(preg_match('#reject 404 &quot;blocked path&quot; rule=SCAN-HIDDEN &quot;GET http://127\.0\.0\.1' . preg_quote($prefix, '#') . '/\.env&quot;#', $r['body']) === 1, 'the log on the page, with the full URL');
             truthy(strpos($r['body'], ' 127.0.0.0/24 reject') !== false, 'the address anonymised in the log');
+        }, $prefix);
+};
+
+$groups = function (string $prefix): void {
+        if (!function_exists('proc_open')) {
+            skip('no proc_open');
+        }
+        $groups = \CjwNetwork\RequestShield\Report\DemoSite::groups(dirname(__DIR__) . '/examples/demo/request-shield.rules');
+        truthy(count($groups) >= 10, 'the demo has its groups: ' . count($groups));
+        // A server per group: the demo counts every request against its pace (20 a minute).
+        $answered = 0;
+        foreach ($groups as $g) {
+            withDemo(function (callable $get) use ($g, &$answered): void {
+                $home = $get('GET', '/')['body'];
+                truthy(strpos($home, '<tbody id="g' . $g['n'] . '">') !== false && strpos($home, '<span class="feature">' . $g['id'] . '</span>') !== false, "group {$g['n']} ({$g['id']}) on the page");
+                foreach ($g['rows'] as $r) {
+                    $id = 't' . str_replace('.', '-', $r['n']);
+                    truthy(strpos($home, '<tr id="' . $id . '"') !== false, "row {$r['n']} on the page");
+                    if ($r['kind'] === 'try') {
+                        if ($r['method'] === 'GET') {
+                            truthy($get('GET', $r['url'])['status'] < 500, "try {$r['n']}: {$r['url']} opens");
+                        }
+                        continue;
+                    }
+                    $a = json_decode($get('GET', '/__answer?n=' . $r['n'])['body'], true);
+                    truthy(is_array($a) && isset($a['outcome']), "row {$r['n']}: an answer");
+                    $want = (string) $r['outcome'];
+                    $got = (string) $a['outcome'];
+                    $watched = $r['by'] !== null && ($a['watched'] ?? null) !== null && strpos((string) $a['watched'], (string) $r['by']) !== false;
+                    truthy($got === $want || ($want === 'answered' && in_array($got, ['passes', 'uncached'], true)) || $watched,
+                        "row {$r['n']} ({$r['method']} {$r['url']}): the server answers $got" . ($a['rule'] !== null ? " by {$a['rule']}" : '') . ", the rules say $want" . ($r['by'] !== null ? " by {$r['by']}" : ''));
+                    if ($r['by'] !== null && !$watched) {
+                        same($r['by'], $a['rule'], "row {$r['n']}: the rule behind it");
+                    }
+                    $answered++;
+                }
+            }, $prefix);
+        }
+        truthy($answered >= 30, "rows answered on the server: $answered");
+        withDemo(function (callable $get): void {
+            same(404, $get('GET', '/__answer?n=99.9')['status'], 'a row that is not there');
         }, $prefix);
 };
 
@@ -480,6 +521,8 @@ $customer = function (string $prefix): void {
 $sub = '/examples/demo/index.php';
 return [
     'the demo: every example link does what the page says' => fn () => $examples(''),
+    'the demo: every group of the rules is on the page, each row answered on the server as request-shield test decides it, each try row opens (0031 F.4)' => fn () => $groups(''),
+    'the demo in a subdirectory: the groups' => fn () => $groups($sub),
     'the demo: /challenge is always checked; solved, it opens' => fn () => $challenge(''),
     'the demo: past 20 requests a minute the check appears on any page' => fn () => $budget(''),
     'the demo: search budget, edit form, a POST elsewhere, admin and API by address' => fn () => $forms(''),

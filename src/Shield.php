@@ -1422,6 +1422,15 @@ final class Shield
         );
     }
 
+    /**
+     * The store this shield counts in -- for a page that shows what a request
+     * would meet now (the demo's answer, Inspector), never written through here.
+     */
+    public function store(): Store
+    {
+        return $this->store;
+    }
+
     /** The store the settings ask for ("auto": APCu when usable, else files). */
     public static function storeFor(Settings $s): Store
     {

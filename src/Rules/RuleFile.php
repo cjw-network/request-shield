@@ -286,7 +286,8 @@ final class RuleFile
         $r->c['sites'] = array_map(static fn (array $n): string => $n[0], $r->siteNames);
         $r->c['site'] = $site;
         foreach ($r->examples as $x) {
-            if ($x['by'] !== null && !isset($r->ids[$x['by']])) {
+            // "by built-in": a fixed check that has no ID (a path out of the site's folder, a size limit).
+            if ($x['by'] !== null && $x['by'] !== 'built-in' && !isset($r->ids[$x['by']])) {
                 throw new RuleFileException("{$x['at']}: expect … by {$x['by']} -- no rule has that ID");
             }
         }
@@ -1583,7 +1584,7 @@ final class RuleFile
      */
     private function expect(array $args, string $at, string $file, ?string $text): void
     {
-        $usage = 'expect <METHOD> <address> passes|uncached|answered|check|<4xx> [by <ID>] [from <address>] [with pass] [times <n>] [ua "<User-Agent>"] [header <Name>:<value>]...';
+        $usage = 'expect <METHOD> <address> passes|uncached|answered|check|<4xx> [by <ID>|built-in] [from <address>] [with pass] [times <n>] [ua "<User-Agent>"] [header <Name>:<value>]...';
         if (count($args) < 3) {
             throw new RuleFileException("$at: $usage");
         }

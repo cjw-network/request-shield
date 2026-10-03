@@ -126,14 +126,34 @@ final class Examples
     }
 
     /**
+     * One example, decided as `request-shield test` decides it: on a fresh
+     * store, with its pass, its count and its headers (the demo's answer to
+     * a row that needs them, 0031 F.4).
+     *
+     * @param Example $x
+     * @return Result
+     */
+    public static function one(Settings $s, array $x): array
+    {
+        return self::decide($s, $x, true);
+    }
+
+    /**
      * @param Example $x
      * @return Result
      */
     private static function decide(Settings $s, array $x, bool $asWritten): array
     {
         $about = $x['by'] ?? (in_array($x['outcome'], ['passes', 'uncached', 'answered'], true) ? null : $x['rule']);
-        $parts = parse_url($x['url']);
-        $parts = is_array($parts) ? $parts : [];
+        // A path is a path ("//admin/" too -- parse_url() would take "admin" for a host);
+        // only a full address names a scheme and a host.
+        if ($x['url'][0] === '/') {
+            $q = strpos($x['url'], '?');
+            $parts = $q === false ? ['path' => $x['url']] : ['path' => substr($x['url'], 0, $q), 'query' => substr($x['url'], $q + 1)];
+        } else {
+            $parts = parse_url($x['url']);
+            $parts = is_array($parts) ? $parts : [];
+        }
         $host = isset($parts['host']) ? strtolower($parts['host']) : ($x['site'] ?? ($s->hosts[0] ?? 'www.example.org'));
         $path = ($parts['path'] ?? '/') . (isset($parts['query']) ? '?' . $parts['query'] : '');
         $https = ($parts['scheme'] ?? 'https') === 'https';
@@ -203,6 +223,9 @@ final class Examples
     /** Whether a rule still decides anything here: named in the settings' origins or bans (not only described or watched). */
     private static function inEffect(Settings $s, string $id): bool
     {
+        if ($id === 'built-in') {
+            return true;                // the fixed checks: always there
+        }
         foreach ($s->bans as $b) {
             if ($b['rule'] === $id) {
                 return true;

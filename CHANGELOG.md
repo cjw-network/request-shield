@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The demo from its rules** (0031 step F.4): the demo's front page draws its
+  rows from the `# demo:` groups at the end of `examples/demo/request-shield.rules`
+  (13 groups, one per feature, 53 examples -- `request-shield test` decides
+  the same lines), through `Report\DemoSite` and `Report\ExamplesPage`;
+  "Show the answer" is decided on the server (`/__answer`) with the live rules
+  and store, nothing counted; the site's pages moved to `pages.php`.
+  `DemoTest` goes through every group and row. `expect … by built-in` names a
+  fixed check without an ID; `Shield::store()` gives the store a shield counts
+  in.
+
 - **Demo groups and more for `expect`** (0031 step F.3): `# demo: RSF02-06
   <slug> <title>` opens a group in a rule file -- the comment lines below
   explain it, the examples after it belong to it -- and `# try: GET /path
@@ -646,6 +656,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   demo has them at `/rs/…`, restricted to this machine.
 
 ### Fixed
+- **An example's path that starts with `//`** (`expect GET //admin/ 403`) was
+  read as an address with the host `admin` and the path `/`, and passed; it
+  is the path `//admin/` now, as a browser sends it (0031 step F.4).
 - **The statistics on a path of their own are served** (open from the 0031
   D.3 review): with `set stats-path` outside `dashboard-path` (such as
   `/admin/statistics`) the shield never served those pages, because its

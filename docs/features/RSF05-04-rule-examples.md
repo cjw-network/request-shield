@@ -50,7 +50,7 @@ After the address, the outcome and the options may come in any order.
 | `answered` | either of the two: the site answers it. For near misses that must not be refused, whatever the site's cache rules say |
 | `check` | the browser check |
 | `403`, `404`, `405`, `429` … | refused with that status |
-| `by <ID>` | the rule that must decide. **Without it, the rule the line follows** (the last rule with an ID above it in the same file); for `uncached`, nothing is checked unless `by` is written; `passes` and `answered` take no `by` (no rule decides a request that passes) |
+| `by <ID>` | the rule that must decide (`by built-in`: a fixed check without an ID, such as a path out of the site's folder). **Without it, the rule the line follows** (the last rule with an ID above it in the same file); for `uncached`, nothing is checked unless `by` is written; `passes` and `answered` take no `by` (no rule decides a request that passes) |
 | `from <address>` | the visitor's address; default `198.51.100.7`, a documentation range. For `restrict`, `exempt`, `deny`, the lists |
 | `ua "<User-Agent>"` | the visitor's User-Agent (`ua "Mozilla/5.0 (compatible; Googlebot/2.1)"`); default an ordinary browser's |
 | `header <Name>:<value>` | a header the request carries (`header Origin:https://www.example.org`); a value with spaces in quotes (`header Accept-Language:"de, en;q=0.8"`, `\"` for a quote inside); several allowed |
@@ -95,6 +95,12 @@ expect GET /oldies           answered          # a near miss
   `site` block belongs to that website's reading.
 - In an `expect` line a `#` inside quotes is part of the value (`ua "Bot #1"`);
   the comment starts at a `#` outside them.
+
+The demo's front page is drawn from these groups (`Report\DemoSite`,
+`Report\ExamplesPage`): one numbered row per line, "Show the answer" decided
+on the server with the live rules and store, nothing counted. An example
+decided by a fixed check with no ID -- a path out of the site's folder, a size
+limit -- names it `by built-in`.
 
 `request-shield test` (and `Examples::run()`) gives each example the status
 and the headers the visitor would get: 200 and the site's own headers when it

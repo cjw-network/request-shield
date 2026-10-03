@@ -23,9 +23,8 @@ use CjwNetwork\RequestShield\Stats\StatsExtension;
 const FEATURE_GAPS = [
     // A feature documented inside another page for now (rule-files.md, "The built-in rules").
     'page' => ['RSF02-02', 'RSF02-06'],
-    // No "# demo:" group yet -- the markers come with F.3, the groups with F.6.
-    'demo' => ['RSF01-01', 'RSF01-02', 'RSF01-03', 'RSF01-04', 'RSF02-01', 'RSF02-02', 'RSF02-03', 'RSF02-04', 'RSF02-05', 'RSF02-06',
-        'RSF03-01', 'RSF03-02', 'RSF03-03', 'RSF03-04', 'RSF04-01', 'RSF05-01', 'RSF05-03', 'RSF05-04', 'RSF05-05', 'RSF06-01', 'RSF06-02', 'RSF06-03'],
+    // No "# demo:" group with an effect and a near miss yet (the demo's groups came with F.4; F.6 adds these).
+    'demo' => ['RSF01-01', 'RSF01-02', 'RSF01-03', 'RSF01-04', 'RSF02-04', 'RSF02-06', 'RSF05-01', 'RSF05-04', 'RSF05-05'],
     // On the request path, but no test of the id sits in a file that starts a server (many are
     // exercised by another feature's end-to-end test, not yet under their own id).
     'e2e' => ['RSF01-01', 'RSF01-04', 'RSF02-02', 'RSF02-03', 'RSF02-04', 'RSF02-05', 'RSF03-01', 'RSF03-03', 'RSF03-04', 'RSF04-01'],
@@ -161,7 +160,7 @@ return [
         same(FEATURE_GAPS['demo'], $missing, 'features without a demo group that shows a refusal and a near miss (FEATURE_GAPS[demo] -- remove an id once its group is there)');
         foreach ($exempt as $id => $why) {
             truthy(isset($features[$id]) && !$features[$id]['planned'], "$id in .demo-exempt is a feature of the index");
-            truthy(!isset($demos[$id]), "$id is exempt and has a demo group all the same -- take it out of .demo-exempt");
+            same([], $demos[$id] ?? [], "$id is exempt: its group, if any, has \"# try:\" rows only -- an expect line there means it can be shown, so take it out of .demo-exempt");
         }
     },
     'RSF06-04 the contract: every rule word and set key belongs to a feature of the index; the extensions\' words to their extension\'s feature' => function (): void {

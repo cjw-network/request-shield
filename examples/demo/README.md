@@ -9,14 +9,19 @@ php -S 127.0.0.1:8080 examples/demo/router.php
 
 Open http://127.0.0.1:8080/ — the page shows the full URL you asked for, the
 shield's decision, the request as it arrived (headers the shield removed are
-struck out) and the headers of the answer, and links to one example per
-feature. **Show the answer** next to each fetches it in the background and
-shows status and headers — also for answers the page itself never sees
-(404, 400, 429):
+struck out) and the headers of the answer, and the examples, grouped by
+feature.
 
-The page lists every test in a numbered table — 1.1, 1.2, … — grouped by what
-it shows; each number is a link to its row (`…/demo/#t3-2`), so tests can be
-named in a conversation or an issue. Among them:
+**The rows come from the rules.** Each group is a `# demo: RSF<gg>-<nn>` block
+at the end of `request-shield.rules`: its comment lines are the explanation,
+its `expect` lines the rows, `# try:` lines rows to look at. `request-shield
+test` decides the very same lines, so the page cannot promise what the rules
+do not do. The page numbers them — 1.1, 1.2, … — and each number is a link to
+its row (`…/demo/#t3-2`), so a row can be named in a conversation or an
+issue. **Show the answer** decides the row on the server, with the live rules
+and store and nothing counted (`/__answer?n=3.2`): status, headers, verdict
+and the steps, for the row's own address. The site's pages are in
+`pages.php`, the integration in `index.php`. Among the rows:
 
 | Link | What happens |
 |---|---|

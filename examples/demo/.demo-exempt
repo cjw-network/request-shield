@@ -4,3 +4,5 @@
 RSF05-02  settings: every line of the demo's rules is one; a group of its own would show nothing new
 RSF05-07  the single file: how the shield is installed, not what it decides
 RSF06-04  plugins and extensions: PHP classes, not rule lines (the demo's statistics are one)
+RSF03-03  the check inside the form: the box solves it while a visitor types, the page reads the answer -- shown as "# try:" rows, decided by no rule an expect line could name
+RSF03-04  the site asks for the check: the page decides (requirePass(), X-RS-Check: 1) -- shown as "# try:" rows

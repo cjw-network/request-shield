@@ -437,6 +437,17 @@ feeds with `feed <name> from <file>`, strict via `site`, sites, `@attacks` with
 `expect`, crawlers via demo UA and documentation ranges, error pages after 0030,
 bans enforced in a `site` block) are closed one commit each.
 
+*As built in F.4:* "Show the answer" is decided on the server **in the same
+process** (`Report\DemoSite::answer()`: `Inspector::trace()` with the live
+settings and store, nothing counted), not over loopback -- PHP's built-in
+server answers one request at a time, so a request to itself from inside a
+request would never return. A row that needs a count or a pass (`times`,
+`with pass`) is decided by `request-shield test` only. `examples/demo/index.php`
+keeps the integration (where the demo lives must be known before the rules are
+read, and before the shield's classes are loaded), the pages moved to
+`pages.php`. `examples/exponential` keeps its own rows until I.1 gives its
+application rules `expect` lines and groups.
+
 ### Documentation by perspective, plain language, always with a diagram
 
 `docs/for/<role>.md` entry pages — each answers *what do I see, what do the
