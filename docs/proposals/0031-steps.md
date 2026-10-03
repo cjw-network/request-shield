@@ -92,7 +92,7 @@ the model you trust most there, not fast mode.
 ### Phase C — Rule chain
 - [x] **C.1** `Step` + `Shield::chain()`; `Inspector::trace()` iterates `chain()`. `ef5af20`
 - [x] **C.2** `explain()` cases into the rule classes (`Step::explain`). `6a0f9f8`
-- [x] **C.3** `SetupPage` from `chain()`; `RuleProvider` hook (stages, `stricter()` only, a throw → pass) — RobustnessTest case 1 through the public API. `(this commit; hash follows)`
+- [x] **C.3** `SetupPage` from `chain()`; `RuleProvider` hook (stages, `stricter()` only, a throw → pass) — RobustnessTest case 1 through the public API. `96127bb`
 - [ ] **C.4** `Handler` hook for passing requests (`protect()` after `settle()`), `Response` class, `Request::cacheKey()`.
 
 ### Phase D — CLI + namespace
