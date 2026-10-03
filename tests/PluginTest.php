@@ -108,12 +108,15 @@ return [
             same([], (new Shield(Settings::from([]), new MemoryStore()))->plugins(), 'no plugin: nothing to tell');
             $made = (new Shield(Settings::from(['ext' => ['stats' => ['enabled' => true]], 'storeDir' => sys_get_temp_dir()]), new MemoryStore()))->plugins();
             same([StatsPlugin::class], array_map('get_class', $made), 'the statistics come with set stats on');
-            $made = (new Shield(Settings::from(['plugins' => ['RsRecordingPlugin', 'RsMissing\\Plugin', 'RsNotAPlugin']]), new MemoryStore()))->plugins();
+            // A store directory of this run's own: "noted once a minute" is kept there, and a run
+            // a minute after another must still see its own line.
+            $made = (new Shield(Settings::from(['plugins' => ['RsRecordingPlugin', 'RsMissing\\Plugin', 'RsNotAPlugin'], 'storeDir' => "$log.d"]), new MemoryStore()))->plugins();
             same(['RsRecordingPlugin'], array_map('get_class', $made), 'a missing class and one that is no Plugin are left out');
             truthy(is_file($log) && strpos((string) file_get_contents($log), 'request-shield: plugin RsMissing\\Plugin is missing or no') !== false, 'and noted in PHP\'s error log');
         } finally {
             ini_set('error_log', (string) $old);
             @unlink($log);
+            exec('rm -rf ' . escapeshellarg("$log.d"));
         }
     },
     'RSF06-04 record(): the plugins hear the decision -- final, or "continues" with ended() after the site; a failing plugin changes nothing' => function (): void {
@@ -121,7 +124,7 @@ return [
         $old = ini_set('error_log', $log);
         try {
             RsRecordingPlugin::$heard = [];
-            $shield = new Shield(Settings::from(['plugins' => ['RsBrokenPlugin', 'RsRecordingPlugin'], 'storeDir' => sys_get_temp_dir()]), new MemoryStore());
+            $shield = new Shield(Settings::from(['plugins' => ['RsBrokenPlugin', 'RsRecordingPlugin'], 'storeDir' => "$log.d"]), new MemoryStore());
             $r = pluginReq('/.env');
             $d = $shield->decide($r, 1000.0);
             $shield->record($r, $d, $shield->explain($d, $r), 1000.0);
@@ -130,6 +133,7 @@ return [
         } finally {
             ini_set('error_log', (string) $old);
             @unlink($log);
+            exec('rm -rf ' . escapeshellarg("$log.d"));
         }
     },
     'RSF06-04 Seen: the website, who came, a bot\'s family -- worked out once, on demand' => function (): void {
