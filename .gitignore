@@ -7,3 +7,4 @@
 
 # What the shield keeps next to a rule file (compiled settings, counters, the secret)
 .request-shield/
+/build/out/

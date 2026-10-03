@@ -25,7 +25,8 @@
   [known crawlers](features/known-crawlers.md) ·
   [statistics](features/statistics.md) ·
   [plugins](features/plugins.md) ·
-  [settings](features/settings.md)
+  [settings](features/settings.md) ·
+  [the single file](features/single-file.md)
 - **Privacy** — what the shield processes about visitors, feature by feature,
   and the GDPR: [privacy and the GDPR](privacy.md)
 - **For AI agents** — [llms.txt](../llms.txt) is the entry; the prompts:

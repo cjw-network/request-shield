@@ -137,6 +137,36 @@ files):
 A manifest per edition (`mini`, `api`, `waf`, `stats`, later `full`) lists the
 directories; the same script builds every edition.
 
+**As built in E.2 (deviations from the list above):**
+
+- **Every declaration is conditional** (`if (true) { … }` inside each
+  namespace block). Step 3's guard alone does not work: at the top level PHP
+  binds a class at compile time, and OPcache binds all of a cached script's
+  classes when it loads it -- before any code runs. The guard then found
+  `Shield` declared by the file itself and returned (the file did nothing),
+  and a second include under OPcache was fatal ("Cannot declare class").
+  Conditional classes are declared when the code reaches them, after the
+  guard. `SingleFileTest` loads the file twice with OPcache on and off.
+- **The CLI is a class**, `src/Cli.php` (`Cli::main($argv)`), and
+  `bin/request-shield` calls it -- so the build embeds it without a transform
+  of script code, and PHPStan covers it. The commands keep their `exit()`.
+- **Minify** (step 5) is line-based and limited to the visitors' scripts
+  (`ChallengePage::SCRIPT`, `Widget::BOX`): each line trimmed, empty lines and
+  whole-line `//` comments dropped, line breaks kept; a nowdoc with a template
+  literal is left alone. The challenge page's CSS is a compact string already.
+- **Editions:** `mini` and `stats` build; `waf` and `api` refuse with the step
+  they wait for (G.3, G.0). Until G.3 the mini file contains `src/Report`
+  (the core still names `Report\Inspector`, `LogTail`, `Frame`), so the
+  test "the mini edition contains no `Report\` class" moves to G.3.
+- **An add-on file is loaded, not yet switched on by the rules.** The stats
+  file declares its classes after the mini file (and does nothing, with one
+  error-log line, before it). Offering its extension before the compile,
+  making its plugin per request, serving its pages and its command from a
+  single-file install is open -- noted in 0031's steps file for E.3/E.6.
+- **Measured** (`bench/single-file.php`, PHP 8.3, OPcache and APCu, built-in
+  server): the file costs 50–150 µs per request beyond a page without the
+  shield, the source tree 250–450 µs; 0.95 MB, 2.5 MB of OPcache.
+
 ### The bootstrap block — and the fix in `bootstrap.php`
 
 ```php

@@ -28,7 +28,12 @@ things come first: **it must be right, and it must be fast.**
    cases, configuration, cost, limits); a planned one a proposal in
    `docs/proposals/`; a design decision an ADR in `docs/adr/`; every change a
    line in `CHANGELOG.md` under *Unreleased* — in the same pull request.
-7. **Fail safe.** When the shield is unsure (a store that cannot be written,
+7. **The single file.** `php build/single-file.php` turns `src/` into one
+   file ([the single file](docs/features/single-file.md)); `tests/SingleFileTest.php`
+   builds it and puts a request through it. A source file holds declarations
+   only -- no code at its top level, or the build refuses. The shipped data is
+   read through `Rules\Shipped` only, nothing else names `rules/`.
+8. **Fail safe.** When the shield is unsure (a store that cannot be written,
    an index that may be stale), it lets the request through rather than
    blocking a real user; only clear cases are refused.
 

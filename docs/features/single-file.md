@@ -1,0 +1,88 @@
+# The single file
+
+request-shield can be one PHP file: `request-shield.php`, the **mini edition**.
+It holds the checks, the answers, the browser check, the log, the rule
+compiler, the command line and the shipped rule sets. A site without Composer
+uploads it, puts its rules next to it and switches it on with one
+`auto_prepend_file` line. The design is [proposal 0002](../proposals/0002-single-file-build.md);
+the release with checksums and a signature, `verify`, `self-update` and `init`
+follow in phase E of [0031](../proposals/0031-robust-core-plugins.md).
+
+## Building it
+
+```
+php build/single-file.php                              # build/out/request-shield.php
+php build/single-file.php --edition=stats              # build/out/request-shield-stats.php
+php build/single-file.php --out=/tmp/rs.php --build=v0.4.0
+```
+
+| Edition | File | What is in it |
+|---|---|---|
+| `mini` | `request-shield.php` | `src/` with the command line (`Cli`), the rule sets and crawler lists of `rules/` embedded in `Rules\Shipped` |
+| `stats` | `request-shield-stats.php` | `plugins/stats/src`, loaded after the mini file |
+| `waf` | — | not yet: the dashboard's pages are still in the mini file; step G.3 moves them out |
+| `api` | — | not yet: the API plugin comes with step G.0 |
+
+The build is deterministic: the same sources and `--build` give the same
+bytes. It refuses, and writes nothing, when a source file has code outside
+its declarations, when `Rules\Shipped` or `Shield` no longer have the places
+it fills, or when classes extend each other in a circle.
+
+## What the file does
+
+- **Included** (`auto_prepend_file`, or `require` in a front controller), it
+  protects the request with the rules it finds: the constant or environment
+  variable `REQUEST_SHIELD_CONFIG`, else `request-shield.rules` next to the
+  file, `config/request-shield.rules`, `config/request-shield.php` --
+  `bootstrap.php`'s order. Naming the file saves up to three `is_file()`.
+- **Run directly** (`php request-shield.php check site.rules`), it is the
+  command line, the same as `bin/request-shield`.
+- **Required by a script on the command line**, it declares its classes and
+  does nothing else.
+- **Included twice**, or after another copy of the library, it does nothing
+  the second time.
+
+The shipped rule sets come from the file itself, not from `rules/`. The
+compiled settings watch the file instead of `rules/*.rules`, so an update of
+the file compiles the rules again. `rules/crawlers.php` is not embedded: with
+settings from a PHP array and no `crawlers` key, the file builds the known
+crawlers from its rule set once per process. A rule file (`protectFile()`)
+never needs that.
+
+## How it is put together
+
+Each source file becomes a `namespace X { … }` block, parents and interfaces
+first. Every declaration sits inside `if (true) { … }`. At the top level PHP
+and OPcache declare a class before any code runs, so the guard that stops a
+second include would come too late and the second include would be fatal. A
+conditional declaration happens when the code reaches it, after the guard.
+The challenge page's script and the widget's lose their indentation and
+whole-line comments; nothing is renamed.
+
+## Cost
+
+Measured with `php bench/single-file.php` on PHP 8.3 with OPcache and APCu,
+on PHP's built-in server, a page behind the same rule file:
+
+| | per request, beyond a page without the shield |
+|---|---|
+| the source tree (`bootstrap.php`, the autoloader) | 250–450 µs |
+| the single file | 50–150 µs |
+
+The file has about 0.95 MB and takes about 2.5 MB of OPcache memory. The
+ranges are two runs on a busy development machine; the built-in server's own
+share is the same in both, and the order of the two has held in every run.
+
+## Limits
+
+- **Add-on editions are not switched on by the rules yet.** The statistics
+  file loads after the mini file and declares its classes. A site that wants
+  them needs the extension offered before the rules compile, its plugin made
+  per request, its pages and its `stats` command. That wiring is open in
+  0031's steps file.
+- **Not together with a Composer install of the library.** If Composer has
+  loaded `Shield` already, the file does nothing. If Composer has loaded some
+  of the library's classes but not `Shield`, the file stops at the first one
+  it declares again, a fatal error. Use one of the two.
+- The command line's `self-update`, `verify` and `init` are not there yet
+  (step E.6).

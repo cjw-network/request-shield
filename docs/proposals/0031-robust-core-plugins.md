@@ -298,7 +298,7 @@ admin module. Every adapter is **thin**: everything reusable lives in the core.
 
 ### The single-file build (proposal 0002)
 
-Details in [0002](0002-single-file-build.md). In short: `build/single-file.php`
+Details in [0002](0002-single-file-build.md) (with what E.1 and E.2 built differently: conditional declarations, the CLI as a class, add-on files loaded but not yet switched on by the rules). In short: `build/single-file.php`
 (PHP, no dependency, deterministic), `Rules\Shipped` replaces the six
 `__DIR__` reads (`rules/crawlers.php` is **not** embedded), the bootstrap
 search order `REQUEST_SHIELD_CONFIG` → `request-shield.rules` next to the file

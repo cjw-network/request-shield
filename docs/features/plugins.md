@@ -123,8 +123,8 @@ alert-to ops@example.org
   without the pages a route answers 404.
 - **Its commands:** `commands()` names the commands it adds to
   `bin/request-shield` (name => a `Cli\Command` with `usage()` and
-  `run(Cli\Context): int`): the script reads the rules, compiles the
-  settings, parses the common options and runs the command from its table;
+  `run(Cli\Context): int`): the tool (`Cli::main()`, which the script and
+  the single file run) reads the rules, compiles the settings, parses the common options and runs the command from its table;
   the usage lists the extension's lines (`stats`: `plugins/stats/src/Cli/StatsCommand.php`).
 - **Its warnings:** `check(Settings $s)` returns what `request-shield check`
   should say about the compiled settings (a plugin class that is not there, a

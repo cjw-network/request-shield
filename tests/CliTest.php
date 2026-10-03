@@ -30,6 +30,18 @@ return [
             same(3, count($out), 'nothing more without a rule file');
         }
     },
+    'the tool is the class Cli: Cli::main($argv) runs it without the script, as the single file will (0031 E.2)' => function (): void {
+        if (!function_exists('exec')) {
+            skip('no exec');
+        }
+        $code = 'require ' . var_export(dirname(__DIR__) . '/bootstrap.php', true) . '; exit(\\CjwNetwork\\RequestShield\\Cli::main(["request-shield", "version"]));';
+        exec(escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg($code) . ' 2>&1', $out, $exit);
+        same(0, $exit, implode(' | ', $out));
+        same('request-shield ' . Shield::VERSION . ' (source)', $out[0] ?? '', 'the same first line as the script');
+        exec(escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg(str_replace('"version"', '"nothing"', $code)) . ' 2>&1', $out2, $exit2);
+        same(2, $exit2, 'a wrong command: the usage, exit 2');
+        truthy(strpos(implode("\n", $out2), 'usage: request-shield') === 0, implode(' | ', $out2));
+    },
     'RSF5.2 request-shield version site.rules: the store in use, the mode, the versions of the site\'s files' => function (): void {
         $dir = sys_get_temp_dir() . '/rs-cli-' . getmypid() . '-' . mt_rand();
         mkdir($dir, 0700, true);

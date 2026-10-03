@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The single file** (0031 step E.2, proposal 0002): `php build/single-file.php`
+  builds `request-shield.php`, the mini edition in one file -- the core, the
+  command line and the shipped rule sets embedded; included it protects the
+  site with the rules it finds (bootstrap.php's order), run directly it is the
+  command line. `--edition=stats` builds the statistics as
+  `request-shield-stats.php`; `waf` and `api` say which step they wait for.
+  Deterministic; every declaration is conditional, so a second include (with
+  or without OPcache) does nothing. `tests/SingleFileTest.php` builds both and
+  puts a request through the file; `bench/single-file.php` compares it with
+  the source tree. See [the single file](docs/features/single-file.md).
 - **`Rules\Shipped`, the one reader of `rules/`** (0031 step E.1): the
   shipped rule sets, the feed catalog, the crawlers' address lists and the
   ready crawlers are read through one class, so the single-file build (E.2)
@@ -168,6 +178,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   S2 (APCu), and what is not active in it ([docs](docs/features/settings.md#what-this-installation-can-do-the-tiers)).
 
 ### Changed
+- **The command line is the class `Cli`** (0031 step E.2, first part):
+  `src/Cli.php` holds what `bin/request-shield` was, `Cli::main($argv)`; the
+  script is three lines that call it. The single file runs the same class
+  when it is run directly. Commands, options, output and exit codes are
+  unchanged; the tool's code is under PHPStan now.
 - **The dashboard's pages are a registry** (0031 step B.5): `Settings::$routes`
   is compiled from the core's `<dashboard-path>/waf` pages (`Routes::core()`)
   and what every offered extension declares with
