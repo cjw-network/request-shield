@@ -102,7 +102,7 @@ the model you trust most there, not fast mode.
 
 ### Phase E — Single file
 - [x] **E.1** `Rules\Shipped` replaces every `__DIR__` read of `rules/` (6 places) — `grep "__DIR__ . '/.."` in `src/` empty. `e17b2fc`
-- [x] **E.2** `build/single-file.php` (deterministic, manifests mini/waf/stats/api, heredoc minify) + `tests/SingleFileTest.php`. `HASH-E2`
+- [x] **E.2** `build/single-file.php` (deterministic, manifests mini/waf/stats/api, heredoc minify) + `tests/SingleFileTest.php`. `1e4b1c0`
 - [ ] **E.3** `REQUEST_SHIELD_ENTRY`/`rsEntry()` in the runner and the 9 E2E tests; `RuleFileTest:493` adjusted; CI leg `single`.
 - [ ] **E.4** `tests.yml` with a `plan` job (PR: 3 legs + minimal hosting; main: 14; nightly: all).
 - [ ] **E.5** `release.yml`: build×2 + cmp, suite against the file, `SHA256SUMS`, minisign + attestation, release assets; environment `release`, tag ruleset; public key in `SECURITY.md`/`Shipped::PUBKEY`.
