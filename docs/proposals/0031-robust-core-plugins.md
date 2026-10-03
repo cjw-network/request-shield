@@ -543,7 +543,8 @@ the monorepo becomes `v1.2.0` in the mirror. Development stays one clone.
   `actions/attest-build-provenance` → GitHub release with `request-shield.php`,
   `.minisig`, `SHA256SUMS`, later the other editions and the WordPress zip.
   Secrets in the `release` environment with a required reviewer; tag ruleset
-  `v*`/`*/v*`. Actions pinned by SHA.
+  `v*`/`*/v*`. Actions pinned by SHA. *(E.5 built all but the signature; the
+  owner moved the release key to the end -- step H.2a, before v1.0.)*
 - CI legs: PR = 3 (8.0 file source, 8.4 APCu source, 8.4 APCu **single**) +
   minimal hosting + static; push to main = 12 source + 2 single; nightly = all
   + determinism check.

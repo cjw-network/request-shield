@@ -180,6 +180,16 @@ file in every leg of the matrix. **E.4:** the `plan` job (`build/ci-plan.php`)
 gives a pull request 3 legs, a push to main 14 (2 of them single), nightly
 all 24 and the determinism check (every edition built twice, `cmp`).
 
+**As built in E.5:** `release.yml` without the signature -- the owner moved
+the release key to the end (2026-10-04): check (the tag on `main`,
+`build/release-check.php`: `Shield::VERSION` and the changelog section),
+every edition built twice and `cmp`, the suite against the file,
+`SHA256SUMS`, `attest-build-provenance`, the GitHub release with the
+changelog section as notes, published from the `release` environment. Actions
+pinned by commit. The minisign step, `.minisig` assets, the public key in
+`SECURITY.md`/`README.md`/`Shipped::PUBKEY` and the environment's secrets are
+step H.2a in 0031's steps file.
+
 ### The bootstrap block — and the fix in `bootstrap.php`
 
 ```php

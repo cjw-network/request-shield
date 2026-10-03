@@ -79,6 +79,17 @@ tree's `Shipped`. CI runs it on PHP 8.4 with APCu for every pull request, on
 8.0 and 8.4 for a push to main, on every leg nightly, and checks the built
 file with `php -l` on every PHP version it runs.
 
+## Released
+
+A tag `vX.Y.Z` on `main` builds the release (`.github/workflows/release.yml`):
+`build/release-check.php` checks that `Shield::VERSION` and the changelog name
+the version; every edition is built twice and compared byte for byte; the
+suite runs against the built file; `SHA256SUMS` and a build provenance
+attestation go with `request-shield.php` and `request-shield-stats.php` onto
+the GitHub release. The stable address is
+`https://github.com/cjw-network/request-shield/releases/latest/download/request-shield.php`.
+A minisign signature is not there yet: it comes with the release key.
+
 ## Cost
 
 Measured with `php bench/single-file.php` on PHP 8.3 with OPcache and APCu,

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The release workflow** (0031 step E.5): a tag `vX.Y.Z` on `main` is
+  checked (`build/release-check.php`: `Shield::VERSION` and the changelog's
+  section name it), every edition is built twice and compared, the suite runs
+  against the built file, and `request-shield.php`, `request-shield-stats.php`
+  and `SHA256SUMS` are published with a build provenance attestation and the
+  changelog's section as notes. Actions pinned by commit. The minisign
+  signature comes with the release key, later.
 - **CI plans its legs per event** (0031 step E.4): a `plan` job asks
   `build/ci-plan.php` -- a pull request runs 3 legs (PHP 8.0 file store, 8.4
   APCu, 8.4 APCu against the single file) plus minimal hosting, a push to main

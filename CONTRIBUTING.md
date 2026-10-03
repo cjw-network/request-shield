@@ -60,8 +60,17 @@ things come first: **it must be right, and it must be fast.**
    (`php bin/update-crawler-lists --check`); a weekly workflow
    (`crawler-lists.yml`) fails when an operator's list has changed since.
 2. `CHANGELOG.md`: *Unreleased* becomes the version with its date; the README's
-   status.
+   status; `Shield::VERSION` the version without `-dev`.
+   `php build/release-check.php vX.Y.Z` says whether the three agree.
 3. Tests on every PHP version, PHPStan, Psalm (CI), then tag `vX.Y.Z` on `main`.
+   The tag starts `.github/workflows/release.yml`: it checks again, builds
+   every edition twice and compares them, runs the suite against the built
+   file, writes `SHA256SUMS`, attests the build and, after the `release`
+   environment's reviewer approves, publishes `request-shield.php`,
+   `request-shield-stats.php` and `SHA256SUMS` with the changelog's section
+   as the notes. The minisign signature follows with the release key (0031
+   step H.2a).
+4. After the release: `Shield::VERSION` to the next version with `-dev`.
 
 ## Commits
 
