@@ -34,6 +34,10 @@ function examplesOf(string $text, bool $asWritten = false, ?string $only = null,
 }
 
 return [
+    'RSF05-04 an example of a feed whose list is not fetched yet is skipped, not failed (0031 F.6)' => function (): void {
+        $run = examplesOf("[S-F] feed spamhaus-drop deny\nexpect GET / from 203.0.113.5 403 by S-F\n");
+        same(1, count(array_filter($run['lines'], static fn (string $l): bool => strncmp($l, 'skip site.rules:3', 17) === 0)), 'skipped: ' . implode(' | ', $run['lines']));
+    },
     'RSF05-04 an example of a deny line is decided -- also the 101st, past the list the pages show (0031 F.6)' => function (): void {
         $lines = '';
         for ($i = 1; $i <= 101; $i++) {

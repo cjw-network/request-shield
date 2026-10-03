@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`feed <name> from <file>`, and the demo shows a blocklist** (0031 step
+  F.6, RSF01-03): a list of the site's own in a file beside the rules -- read
+  when they compile, watched like a rule file, never fetched and never too
+  old (`feeds … update` leaves it alone); for a server without the internet,
+  or a demo. The demo keeps out `feeds/demo-blocklist.txt` (documentation
+  ranges). `request-shield test` decides a feed line's example instead of
+  skipping it as not in effect.
 - **The demo shows the deny list and bans** (0031 step F.6, RSF01-02): an
   address kept out (`[DEMO-DENY] deny 203.0.113.66`) next to its neighbour,
   and a scanner banned at its sixth refusal (watched in the demo, decided

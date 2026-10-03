@@ -190,7 +190,7 @@ final class Feeds
      * a list that cannot be read, or shrank to less than half (unless
      * $force), is kept as it was. Returns what happened, in words.
      *
-     * @param list<array{name: string, urls: list<string>, format: string, every: int, wideOk: bool}> $feeds
+     * @param list<array{name: string, urls: list<string>, format: string, every: int, wideOk: bool, file?: ?string}> $feeds
      * @param (callable(string, array<string, string>): (array{status: int, body: string, headers: array<string, string>}|null))|null $fetch
      * @return array<string, string> name => what happened
      */
@@ -209,6 +209,10 @@ final class Feeds
                 continue;                                   // named by several rules: fetched once
             }
             $done[$name] = true;
+            if (is_string($f['file'] ?? null)) {
+                $report[$name] = 'a file of the site\'s own (' . basename($f['file']) . '): read with the rules, nothing to fetch';
+                continue;
+            }
             $meta = self::meta($dir, $name);
             if (!$force && $now - $meta['checked'] < $f['every']) {
                 $report[$name] = 'not due: fetched ' . self::ago($now - $meta['checked']) . ' ago (at most every ' . self::ago($f['every']) . ')';

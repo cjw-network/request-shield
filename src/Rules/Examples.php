@@ -236,6 +236,11 @@ final class Examples
         if (strpos("\n" . ($s->denyTable['ids'] ?? ''), "\n" . $id . "\n") !== false) {
             return true;
         }
+        foreach ($s->feeds as $f) {
+            if ($f['rule'] === $id && $f['state'] === 'in force') {
+                return true;            // a feed line whose list is used: in the feeds, not in the origins
+            }
+        }
         foreach ($s->origins as $section => $map) {
             if (in_array($section, ['at', 'rev', 'text', 'monitor', 'area', 'warnings'], true)) {
                 continue;

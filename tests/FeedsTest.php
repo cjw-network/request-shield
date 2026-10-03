@@ -41,6 +41,43 @@ function feedReq(string $ip, string $path = '/', string $ua = 'Mozilla/5.0 Firef
 }
 
 return [
+    'RSF01-03 feed <name> from <file>: a list of the site\'s own beside the rules -- read when they compile, watched, never fetched, never too old (0031 F.6)' => function (): void {
+        $dir = ruleDir(['site.rules' => "[S-OWN] feed own-list from lists/own.txt deny\n", 'lists/own.txt' => "# ours\n203.0.113.0/28\n198.51.100.9   ; a single one\nnot an address\n"]);
+        try {
+            $read = RuleFile::read(["$dir/site.rules"]);
+            same("$dir/lists/own.txt", $read['config']['feeds'][0]['file'] ?? null, 'the file, relative to the rule file');
+            truthy(isset($read['seen']["$dir/lists/own.txt"]), 'watched like a rule file: a change compiles the rules again');
+            $s = Settings::from($read['config']);
+            same(['in force', 2, "$dir/lists/own.txt"], [$s->feeds[0]['state'], $s->feeds[0]['count'], $s->feeds[0]['file']], 'in force at once, the comment and the line that is no address left out');
+            $shield = new Shield($s, new MemoryStore());
+            $d = $shield->decide(Request::fromServer(['REQUEST_URI' => '/', 'REMOTE_ADDR' => '203.0.113.9']), 1000.0);
+            same([403, 'S-OWN'], [$d->status, $shield->explain($d, Request::fromServer(['REQUEST_URI' => '/', 'REMOTE_ADDR' => '203.0.113.9']))], 'an address in the range: kept out by the rule');
+            truthy($shield->decide(Request::fromServer(['REQUEST_URI' => '/', 'REMOTE_ADDR' => '203.0.113.99']), 1000.0)->passes(), 'outside it: through');
+            $report = Feeds::update($s->feeds, "$dir/store-feeds", static function (): ?array {
+                throw new TestFailure('a file is never fetched');
+            });
+            truthy(strpos($report['own-list'] ?? '', 'nothing to fetch') !== false, 'feeds update leaves it alone: ' . json_encode($report));
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+        // Watched (count, monitor): the file is watched all the same.
+        $dir = ruleDir(['site.rules' => "[S-TRY] feed own-list from lists/own.txt count\n", 'lists/own.txt' => "203.0.113.0/28\n"]);
+        try {
+            $read = RuleFile::read(["$dir/site.rules"]);
+            truthy(isset($read['seen']["$dir/lists/own.txt"]), 'a counted (watched) list\'s file is watched too');
+            same('in force', Settings::from($read['config'])->monitor->feeds[0]['state'] ?? null, 'and counted');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+        foreach (["feed own-list from nothing.txt deny\n" => 'no file', "feed own-list from\n" => 'the file is missing'] as $text => $why) {
+            try {
+                rulesFrom($text);
+                throw new TestFailure("accepted: $text");
+            } catch (RuleFileException $e) {
+                truthy(strpos($e->getMessage(), $why) !== false && strpos($e->getMessage(), 'site.rules:1') !== false, $e->getMessage());
+            }
+        }
+    },
     'RSF01-03 the formats: plain (comments), DShield\'s columns, JSON lines, a JSON document\'s fields anywhere' => function (): void {
         same(['45.1.2.3', '45.2.0.0/16', '2a01:4f8::1'], Feeds::parse("# a header\n45.1.2.3   # a scanner\n; another comment\n\n45.2.0.0/16 extra words\n2a01:4f8::1\n", 'plain'));
         same(['185.12.59.0/24', '45.3.4.0/24'], Feeds::parse("#\n#   DShield\n185.12.59.0\t185.12.59.255\t24\t323\tBLIX\n45.3.4.0\t45.3.4.255\t24\nbroken line\n", 'dshield'));

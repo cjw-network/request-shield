@@ -196,8 +196,11 @@ final class RuleFile
     {
         $r = self::reading($files, false, $site);
         if ($r['monitored']) {
-            // Rules marked "monitor": read once more with them, for the log.
-            $r['config']['monitorRules'] = self::reading($files, true, $site)['config'];
+            // Rules marked "monitor": read once more with them, for the log -- and what that
+            // reading watches is watched too (a watched feed's file, say).
+            $m = self::reading($files, true, $site);
+            $r['config']['monitorRules'] = $m['config'];
+            $r['seen'] += $m['seen'];
         }
         unset($r['monitored']);
         return $r;
@@ -266,7 +269,8 @@ final class RuleFile
         $feedsDir = is_string($r->c['storeDir'] ?? null) ? $r->c['storeDir'] . '/feeds' : null;
         if ($feedsDir !== null && !empty($r->c['feeds'])) {
             foreach ((array) $r->c['feeds'] as $f) {
-                $feedFile = is_array($f) && is_string($f['name'] ?? null) ? $feedsDir . '/' . $f['name'] . '.txt' : null;
+                // A list from a file of the site's own (feed … from), else what the last fetch wrote.
+                $feedFile = is_array($f) && is_string($f['file'] ?? null) ? $f['file'] : (is_array($f) && is_string($f['name'] ?? null) ? $feedsDir . '/' . $f['name'] . '.txt' : null);
                 $stat = $feedFile === null ? null : self::stat($feedFile);
                 if ($feedFile !== null && $stat !== null) {
                     $r->seen[$feedFile] = $stat;
@@ -656,7 +660,8 @@ final class RuleFile
             }
         }
         // feed … count: counted and logged as "would refuse", never enforced -- a list tried safely.
-        if ($keyword === 'feed' && ($c = array_search('count', $parts, true)) !== false && $c <= 2) {
+        // The action follows the name, the address or "from <file>": position 1, 2 or 3.
+        if ($keyword === 'feed' && ($c = array_search('count', $parts, true)) !== false && $c <= (($parts[1] ?? '') === 'from' ? 3 : 2)) {
             $monitor = true;
             $parts[$c] = 'deny';
             $line = (string) preg_replace('/\bcount\b/', 'deny', $line, 1);
@@ -859,7 +864,7 @@ final class RuleFile
                 $this->ban($args, $at);
                 return;
             case 'feed':
-                $this->feed($args, $at);
+                $this->feed($args, $at, $file);
                 return;
             case 'method':
                 $this->list('methods', $args, $at, static function (string $m) use ($at): string {
@@ -1222,16 +1227,32 @@ final class RuleFile
      *
      * @param list<string> $args
      */
-    private function feed(array $args, string $at): void
+    private function feed(array $args, string $at, string $ruleFile): void
     {
-        $usage = 'feed <name> [<https-url>] deny|check|count|ban-signal <n> [at <paths>] [format <format>] [wide-ok]';
+        $usage = 'feed <name> [<https-url> | from <file>] deny|check|count|ban-signal <n> [at <paths>] [format <format>] [wide-ok]';
         $name = strtolower((string) array_shift($args));
         if (preg_match('/^[a-z0-9][a-z0-9-]{0,40}$/', $name) !== 1) {
             throw new RuleFileException("$at: $usage -- a name of letters, digits and -");
         }
         $catalog = Feeds::catalog();
         $url = null;
-        if (isset($args[0]) && preg_match('#^[a-z]+://#i', $args[0]) === 1) {
+        $from = null;
+        if (($args[0] ?? null) === 'from') {
+            // A list of the site's own in a file beside the rules (a DMZ, a demo): read when the
+            // rules are compiled, watched like a rule file, never fetched.
+            array_shift($args);
+            $written = (string) array_shift($args);
+            if ($written === '') {
+                throw new RuleFileException("$at: feed <name> from <file> -- the file is missing");
+            }
+            $from = $written[0] === '/' ? $written : dirname($ruleFile) . '/' . $written;
+            if (!is_file($from)) {
+                throw new RuleFileException("$at: feed $name from $written -- no file $from");
+            }
+            if (isset($catalog[$name])) {
+                throw new RuleFileException("$at: \"$name\" is a feed of the catalog -- a list of your own takes a name of its own");
+            }
+        } elseif (isset($args[0]) && preg_match('#^[a-z]+://#i', $args[0]) === 1) {
             $url = (string) array_shift($args);
             if (strncmp($url, 'https://', 8) !== 0 || filter_var($url, FILTER_VALIDATE_URL) === false) {
                 throw new RuleFileException("$at: a feed's address is https:// -- not \"$url\"");
@@ -1240,7 +1261,7 @@ final class RuleFile
                 throw new RuleFileException("$at: \"$name\" is a feed of the catalog -- a list of your own takes a name of its own");
             }
         } elseif (!isset($catalog[$name])) {
-            throw new RuleFileException("$at: no feed \"$name\" in the catalog" . self::suggest($name, array_keys($catalog)) . ' -- a list of your own: feed <name> https://… <action>');
+            throw new RuleFileException("$at: no feed \"$name\" in the catalog" . self::suggest($name, array_keys($catalog)) . ' -- a list of your own: feed <name> https://… <action>, or feed <name> from <file> <action>');
         }
         $action = (string) array_shift($args);
         $weight = 1;
@@ -1255,8 +1276,8 @@ final class RuleFile
             throw new RuleFileException("$at: $usage");
         }
         $paths = [];
-        $format = $url === null ? $catalog[$name]['format'] : 'plain';
-        $wide = $url === null ? $catalog[$name]['wideOk'] : false;
+        $format = $url === null && $from === null ? $catalog[$name]['format'] : 'plain';
+        $wide = $url === null && $from === null ? $catalog[$name]['wideOk'] : false;
         while ($args !== []) {
             $word = array_shift($args);
             if ($word === 'at') {
@@ -1288,7 +1309,7 @@ final class RuleFile
             'name' => $name, 'urls' => $url !== null ? [$url] : ($c['urls'] ?? []), 'format' => $format, 'every' => $c['every'] ?? 3600, 'wideOk' => $wide,
             'action' => $action, 'weight' => $weight, 'paths' => $paths, 'rule' => $this->rid,
             'title' => $c['title'] ?? $name, 'terms' => $c['terms'] ?? '', 'watched' => isset($this->origins['monitor'][$this->rid]),
-        ];
+        ] + ($from !== null ? ['file' => $from] : []);
     }
 
     /**

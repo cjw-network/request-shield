@@ -1,0 +1,5 @@
+# A blocklist of the demo's own (feed demo-blocklist from feeds/demo-blocklist.txt):
+# one address or range per line, "#" a comment -- the format of a public list.
+# Documentation ranges only: no real address belongs in a demo.
+203.0.113.128/25
+198.51.100.200

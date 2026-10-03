@@ -702,8 +702,8 @@ final class Cli
             }
             foreach (array_merge($settings->feeds, $settings->monitor !== null ? $settings->monitor->feeds : []) as $f) {
                 if ($f['state'] !== 'in force') {
-                    fwrite(STDERR, "warning: {$f['rule']}: the feed {$f['name']} is " . ($f['state'] === 'too old' ? 'older than feeds-max-age and not used' : 'not fetched yet')
-                        . " -- request-shield feeds $file update (cron, e.g. hourly)\n");
+                    fwrite(STDERR, "warning: {$f['rule']}: the feed {$f['name']} is " . ($f['file'] !== null ? "a file that cannot be read: {$f['file']} -- not used until it can"
+                        : ($f['state'] === 'too old' ? 'older than feeds-max-age and not used' : 'not fetched yet') . " -- request-shield feeds $file update (cron, e.g. hourly)") . "\n");
                     $warnings++;
                 }
             }

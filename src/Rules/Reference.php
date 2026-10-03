@@ -75,7 +75,7 @@ final class Reference
             'setting' => '`exempt.ips`', 'about' => 'never counted and never checked, still refused for blocked paths and attack patterns ([IP lists](RSF01-02-ip-lists.md))'],
         ['words' => ['deny'], 'syntax' => '`deny <addresses or ranges> [until <day>[T<hh:mm>]]`',
             'setting' => '`deny`', 'about' => 'kept out: 403 before every other check ([IP lists](RSF01-02-ip-lists.md))'],
-        ['words' => ['feed'], 'syntax' => '`feed <name> [<https-url>] deny|check|count|ban-signal <n> [at <paths>] [format <f>] [wide-ok]`',
+        ['words' => ['feed'], 'syntax' => '`feed <name> [<https-url> | from <file>] deny|check|count|ban-signal <n> [at <paths>] [format <f>] [wide-ok]`',
             'setting' => '`feeds`', 'about' => 'a public blocklist, fetched by `request-shield feeds … update`; above the site blocks ([feeds](RSF01-03-blocklist-feeds.md))'],
         ['words' => ['ban'], 'syntax' => '`ban after <n> <signal> in <time> for <time>`',
             'setting' => '`bans`', 'about' => 'a client past `<n>` signals (`limits`, `refusals`, `checks`, a budget\'s name) is answered only 429 for a while; above the site blocks ([IP lists](RSF01-02-ip-lists.md#bans))'],

@@ -163,7 +163,7 @@ final class Settings
         public int $liveKeep = 3600,
         /** @readonly where a ban is kept: memory (the store), or file (also a file in store-dir: it survives a restart of APCu) */
         public string $banKeep = 'memory',
-        /** @var list<array{name: string, title: string, action: string, weight: int, paths: list<string>, rule: string, terms: string, urls: list<string>, format: string, every: int, wideOk: bool, count: int, fetched: int, state: string}> @readonly the public blocklists named, as the pages show them */
+        /** @var list<array{name: string, title: string, action: string, weight: int, paths: list<string>, rule: string, terms: string, urls: list<string>, format: string, every: int, wideOk: bool, count: int, fetched: int, state: string, file: ?string}> @readonly the public blocklists named, as the pages show them */
         public array $feeds = [],
         /** @var array<string, array{4: string, 6: string, ids: string, dir?: string}> @readonly per action (deny, check, signal): the feeds without "at", as one table */
         public array $feedTables = [],
@@ -750,7 +750,7 @@ final class Settings
      * when the next list grows too old].
      *
      * @param array<mixed> $c
-     * @return array{0: list<array{name: string, title: string, action: string, weight: int, paths: list<string>, rule: string, terms: string, urls: list<string>, format: string, every: int, wideOk: bool, count: int, fetched: int, state: string}>, 1: array<string, array{4: string, 6: string, ids: string, dir?: string}>, 2: list<array{action: string, table: array{4: string, 6: string, ids: string, dir?: string}, paths: list<string>}>, 3: array<string, int>, 4: int, 5: int}
+     * @return array{0: list<array{name: string, title: string, action: string, weight: int, paths: list<string>, rule: string, terms: string, urls: list<string>, format: string, every: int, wideOk: bool, count: int, fetched: int, state: string, file: ?string}>, 1: array<string, array{4: string, 6: string, ids: string, dir?: string}>, 2: list<array{action: string, table: array{4: string, 6: string, ids: string, dir?: string}, paths: list<string>}>, 3: array<string, int>, 4: int, 5: int}
      */
     private static function feeds(array $c): array
     {
@@ -773,18 +773,30 @@ final class Settings
             $name = $f['name'];
             $rule = is_string($f['rule'] ?? null) ? $f['rule'] : "feeds[$i]";
             $paths = array_values(array_filter((array) ($f['paths'] ?? []), 'is_string'));
-            $meta = $dir === null ? ['checked' => 0, 'count' => 0] : \CjwNetwork\RequestShield\Rules\Feeds::meta($dir, $name);
-            $text = $dir === null ? false : @file_get_contents("$dir/$name.txt");
-            $state = 'in force';
-            if ($text === false) {
-                $state = 'not fetched';
-            } elseif ($now - $meta['checked'] > $maxAge) {
-                $state = 'too old';
+            $file = is_string($f['file'] ?? null) ? $f['file'] : null;
+            if ($file !== null) {
+                // feed … from <file>: the site's own list, as current as the rules (no fetch, no age).
+                $body = @file_get_contents($file);
+                $ranges = $body === false ? [] : \CjwNetwork\RequestShield\Rules\Feeds::clean(\CjwNetwork\RequestShield\Rules\Feeds::parse($body,
+                    is_string($f['format'] ?? null) ? $f['format'] : 'plain'), (bool) ($f['wideOk'] ?? false))['ranges'];
+                $meta = ['checked' => (int) @filemtime($file), 'count' => count($ranges)];
+                $state = $body === false ? 'not fetched' : 'in force';
+            } else {
+                $meta = $dir === null ? ['checked' => 0, 'count' => 0] : \CjwNetwork\RequestShield\Rules\Feeds::meta($dir, $name);
+                $text = $dir === null ? false : @file_get_contents("$dir/$name.txt");
+                $state = 'in force';
+                if ($text === false) {
+                    $state = 'not fetched';
+                } elseif ($now - $meta['checked'] > $maxAge) {
+                    $state = 'too old';
+                }
+                $ranges = $state === 'in force' ? array_values(array_filter(explode("\n", (string) $text), static fn (string $l): bool => $l !== '')) : [];
             }
-            $ranges = $state === 'in force' ? array_values(array_filter(explode("\n", (string) $text), static fn (string $l): bool => $l !== '')) : [];
             if ($state === 'in force') {
-                $until = $meta['checked'] + $maxAge + 1;
-                $next = $next === 0 ? $until : min($next, $until);
+                if ($file === null) {
+                    $until = $meta['checked'] + $maxAge + 1;
+                    $next = $next === 0 ? $until : min($next, $until);
+                }
                 if ($paths === []) {
                     $entries[$f['action']][] = [$ranges, $rule];
                 } else {
@@ -799,7 +811,7 @@ final class Settings
                 'paths' => $paths, 'rule' => $rule, 'terms' => is_string($f['terms'] ?? null) ? $f['terms'] : '',
                 'urls' => array_values(array_filter((array) ($f['urls'] ?? []), 'is_string')), 'format' => is_string($f['format'] ?? null) ? $f['format'] : 'plain',
                 'every' => is_int($f['every'] ?? null) ? $f['every'] : 3600, 'wideOk' => (bool) ($f['wideOk'] ?? false),
-                'count' => count($ranges), 'fetched' => $meta['checked'], 'state' => $state,
+                'count' => count($ranges), 'fetched' => $meta['checked'], 'state' => $state, 'file' => $file,
             ];
         }
         $tables = [];

@@ -131,6 +131,22 @@ while the shield finds an address in 2–3 µs at any list size. So there is no
 `.htaccess` export. On shared hosting the shield in PHP is the place for these
 lists; on a server you control, the firewall export.
 
+## A list of your own in a file: `feed … from`
+
+```text
+[SITE-OWN] feed own-list from lists/own.txt deny     # beside the rules, versioned with them
+```
+
+The file holds addresses and ranges in the plain format (one per line, `#`
+or `;` a comment; `format` takes the others as for a fetched list). It is read
+when the rules are compiled and watched like a rule file -- a change compiles
+them again --, never fetched and never too old: `request-shield feeds …
+update` leaves it alone, and it is in force from the first request. For a
+server without the internet (a DMZ: fetch the public lists elsewhere and copy
+them in), for a demo, or for a short list the site keeps itself. The path is
+relative to the rule file it is written in; a file that is not there is an
+error with its line.
+
 ## Why the lists are not in the repository
 
 - **Terms:** several lists do not allow passing them on, or only under their
@@ -177,3 +193,19 @@ lists itself.
   watch the live view.
 - Lists that need an account or API key (AbuseIPDB, CrowdSec) are not in the
   catalog: adapters later (proposal phase 4), opt-in.
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF01-03 · Public blocklists**
+
+Addresses on a list are kept out before anything else. A public list is fetched by request-shield feeds … update; this one is a file beside the rules (feed … from), read with them -- for a demo, or a server without the internet.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/` | no access (403) · rule DEMO-FEED — from 203.0.113.140 | An address in a range on the list |
+| `/` | the site answers it — from 203.0.113.20 | an address outside it |
+| `/` | no access (403) · rule DEMO-FEED — from 198.51.100.200 | A single address on the list |
+<!-- /examples -->
