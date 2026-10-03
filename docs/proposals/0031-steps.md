@@ -90,7 +90,7 @@ the model you trust most there, not fast mode.
 - [x] **B.10** `Pages` hook in `Responder::body()`/`Gate` (kinds `error|challenge|access-login`). `b637558`
 
 ### Phase C — Rule chain
-- [x] **C.1** `Step` + `Shield::chain()`; `Inspector::trace()` iterates `chain()`. `(this commit; hash follows)`
+- [x] **C.1** `Step` + `Shield::chain()`; `Inspector::trace()` iterates `chain()`. `ef5af20`
 - [ ] **C.2** `explain()` cases into the rule classes (`Step::explain`).
 - [ ] **C.3** `SetupPage` from `chain()`; `RuleProvider` hook (stages, `stricter()` only, a throw → pass) — RobustnessTest case 1 through the public API.
 - [ ] **C.4** `Handler` hook for passing requests (`protect()` after `settle()`), `Response` class, `Request::cacheKey()`.
