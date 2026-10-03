@@ -311,32 +311,15 @@ final class Feeds
     }
 
     /**
-     * The default fetch: HTTPS with a timeout, at most MAX_BYTES.
+     * The default fetch: HTTPS with a timeout, at most MAX_BYTES; curl where allow_url_fopen is off.
      *
      * @param array<string, string> $headers
      * @return array{status: int, body: string, headers: array<string, string>}|null
      */
     public static function get(string $url, array $headers): ?array
     {
-        $h = "User-Agent: request-shield feed update\r\n";
-        foreach ($headers as $k => $v) {
-            $h .= "$k: $v\r\n";
-        }
-        $ctx = stream_context_create(['http' => ['timeout' => 30, 'header' => $h, 'follow_location' => 1, 'ignore_errors' => true],
-            'ssl' => ['verify_peer' => true, 'verify_peer_name' => true]]);
-        $body = @file_get_contents($url, false, $ctx, 0, self::MAX_BYTES);
-        $status = 0;
-        $out = [];
-        /** @var list<string> $http_response_header filled by file_get_contents() */
-        foreach ($http_response_header as $line) {
-            if (preg_match('#^HTTP/\S+\s+(\d{3})#', $line, $m) === 1) {
-                $status = (int) $m[1];
-                $out = [];                                  // after a redirect: the last answer's headers
-            } elseif (($c = strpos($line, ':')) !== false) {
-                $out[strtolower(trim(substr($line, 0, $c)))] = trim(substr($line, $c + 1));
-            }
-        }
-        return $status === 0 ? null : ['status' => $status, 'body' => is_string($body) ? $body : '', 'headers' => $out];
+        // file_get_contents, or curl where allow_url_fopen is off (Http).
+        return \CjwNetwork\RequestShield\Http::get($url, $headers, 30, self::MAX_BYTES, 'request-shield feed update');
     }
 
     /** Where one address's part of a list is kept: the list itself when it has one address. */

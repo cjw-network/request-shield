@@ -96,15 +96,15 @@ final class CrawlerLists
      * was there (unless $force). Nothing is written for a list that fails.
      *
      * @param array<string, string> $lists name => the file it is read from now (its "source" says where to fetch it)
-     * @param (callable(string): (string|false))|null $fetch the body of an https address; default: file_get_contents with a timeout
+     * @param (callable(string): (string|false))|null $fetch the body of an https address; default: Http::get() with a timeout
      * @return array<string, string> name => what happened, in words
      */
     public static function update(array $lists, string $dir, ?callable $fetch = null, bool $force = false): array
     {
         $fetch ??= static function (string $url) {
-            $ctx = stream_context_create(['http' => ['timeout' => 20, 'user_agent' => 'request-shield crawler list update', 'follow_location' => 1],
-                'ssl' => ['verify_peer' => true, 'verify_peer_name' => true]]);
-            return @file_get_contents($url, false, $ctx);
+            // file_get_contents, or curl where allow_url_fopen is off (Http).
+            $r = \CjwNetwork\RequestShield\Http::get($url, [], 20, 0, 'request-shield crawler list update');
+            return $r !== null && $r['status'] === 200 ? $r['body'] : false;
         };
         if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
             throw new \RuntimeException("cannot create $dir");

@@ -293,6 +293,10 @@ if ($command === 'feeds') {
                 echo "no feed in the rules (feed <name> <action>)\n";
                 exit(0);
             }
+            if (($offline = \CjwNetwork\RequestShield\Http::offline()) !== null) {
+                fwrite(STDERR, "request-shield: $offline\n");
+                exit(1);
+            }
             $failed = false;
             $changed = false;
             foreach (\CjwNetwork\RequestShield\Rules\Feeds::update($named, $dir, null, $force) as $name => $happened) {
@@ -552,6 +556,10 @@ if ($command === 'stats') {
 if ($command === 'crawlers') {
     $dir = $settings->storeDir . '/crawlers';
     if ($what === 'update') {
+        if (($offline = \CjwNetwork\RequestShield\Http::offline()) !== null) {
+            fwrite(STDERR, "request-shield: $offline\n");
+            exit(1);
+        }
         // The file each list is read from now: an earlier update, else the shipped one.
         $lists = [];
         foreach (RuleFile::crawlerListFiles($read['config']) as $name => $shipped) {

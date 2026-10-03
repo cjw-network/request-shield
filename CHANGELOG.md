@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   S2 (APCu), and what is not active in it ([docs](docs/features/settings.md#what-this-installation-can-do-the-tiers)).
 
 ### Changed
+- **Updates fetch with curl where `allow_url_fopen` is off** (0031 step A3.3):
+  `feeds update` and `crawlers update` use `file_get_contents` or, without
+  it, curl (`Http::get()`); where neither can, they say so and what to do
+  (run the update elsewhere, copy `store-dir/feeds` and `store-dir/crawlers`).
 - **The live view works without APCu** (0031 step A3.2): with the file store
   `set live on` keeps its rows in `<store-dir>/live.log` (full addresses, the
   log's line format, rotated past 500 KB, `live-keep` honoured) instead of
