@@ -24,10 +24,10 @@ const FEATURE_GAPS = [
     // A feature documented inside another page for now (rule-files.md, "The built-in rules").
     'page' => ['RSF02-02', 'RSF02-06'],
     // No "# demo:" group with an effect and a near miss yet (the demo's groups came with F.4; F.6 adds these).
-    'demo' => ['RSF01-04', 'RSF02-04', 'RSF02-06', 'RSF05-01', 'RSF05-04', 'RSF05-05'],
+    'demo' => ['RSF02-04', 'RSF02-06', 'RSF05-01', 'RSF05-04', 'RSF05-05'],
     // On the request path, but no test of the id sits in a file that starts a server -- they get
     // one with their demo group (DemoTest runs each group on a server under its id).
-    'e2e' => ['RSF01-04', 'RSF02-04'],
+    'e2e' => ['RSF02-04'],
 ];
 
 /**

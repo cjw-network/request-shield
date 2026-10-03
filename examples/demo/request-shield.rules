@@ -102,11 +102,18 @@ set         live on
 # per request. Try a list first: "count" only counts and logs what it would do.
 #[DEMO-DROP]        feed spamhaus-drop count                       # hijacked networks; later: deny
 #[DEMO-DSHIELD]     feed dshield-top20 count                       # the networks scanning most; later: check (non-commercial terms)
+[DEMO-FEED]         feed demo-blocklist from feeds/demo-blocklist.txt deny   # a blocklist in a file beside the rules: read with them, never fetched
+
+# An address the site keeps out for good (the dashboard's lists add to this).
+[DEMO-DENY]         deny 203.0.113.66                             # a documentation address
+
+# A crawler of the demo's own, proved by its published address list -- and the
+# site does not want it. (Real crawlers come with the library: rules/crawlers.rules.)
+[DEMO-BOT]          crawler ai-training ua /DemoBot/ ranges crawlers/demo-bot.json   # documentation ranges
+[DEMO-BOT-NO]       crawler DEMO-BOT block
 
 # Automatic bans -- watched only here (monitor): the log says whom they would
 # have banned, nobody is (a demo that bans this machine would be no demo).
-[DEMO-FEED]         feed demo-blocklist from feeds/demo-blocklist.txt deny   # a blocklist in a file beside the rules: read with them, never fetched
-[DEMO-DENY]         deny 203.0.113.66                             # an address the site keeps out (a documentation address)
 [DEMO-SCAN]         monitor ban after 5 refusals in 5m for 10m    # a scanner: five refusals for what only attackers ask for
 set         stats-depth 4                                          # sections to the fourth folder: the demo lives under /qbixserver/request-shield/examples/demo/
 set         stats-hosts localhost84 127.0.0.1                     # statistics per website: these two names; any other Host counts as "other hosts"
@@ -172,6 +179,14 @@ expect GET /.env        from 203.0.113.71 times 5 404 by SCAN-HIDDEN     # the f
 expect GET /            from 203.0.113.140 403 by DEMO-FEED   # An address in a range on the list
 expect GET /            from 203.0.113.20 answered           # an address outside it
 expect GET /            from 198.51.100.200 403 by DEMO-FEED  # A single address on the list
+
+# demo: RSF01-04 known-crawlers Crawlers that prove who they are
+# A crawler names itself in its User-Agent -- anyone can. The shield believes
+# the name only from the crawler's published addresses (or DNS), then does what
+# the site wants with it: allow, check or block, by kind or one by one.
+expect GET /  ua "Mozilla/5.0 (compatible; DemoBot/1.0)" from 192.0.2.40 403 by DEMO-BOT-NO   # DemoBot from its own addresses: proved, and the site blocks it
+expect GET /  ua "Mozilla/5.0 (compatible; DemoBot/1.0)" from 198.51.100.7 answered          # the same name from elsewhere: only a claim, an ordinary visitor
+expect GET /  from 192.0.2.40 answered                                                       # a browser from DemoBot's addresses
 
 # demo: RSF04-01 cacheable-definition What a cache may keep
 # Every page passes; only some may be kept by a cache. Unknown paths and

@@ -145,3 +145,19 @@ Measured on PHP 8.1 with OPcache, µs per request:
   ordinary visitor until the next update (or verified by DNS, where it has DNS).
 - `robots.txt` remains the polite way to ask crawlers to stay away; `block`
   is for those that do not ask.
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF01-04 · Crawlers that prove who they are**
+
+A crawler names itself in its User-Agent -- anyone can. The shield believes the name only from the crawler's published addresses (or DNS), then does what the site wants with it: allow, check or block, by kind or one by one.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/` | no access (403) · rule DEMO-BOT-NO — from 192.0.2.40, as "Mozilla/5.0 (compatible; DemoBot/1.0)" | DemoBot from its own addresses: proved, and the site blocks it |
+| `/` | the site answers it — from another address (198.51.100.7), as "Mozilla/5.0 (compatible; DemoBot/1.0)" | the same name from elsewhere: only a claim, an ordinary visitor |
+| `/` | the site answers it — from 192.0.2.40 | a browser from DemoBot's addresses |
+<!-- /examples -->

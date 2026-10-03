@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The demo shows a crawler that proves who it is** (0031 step F.6,
+  RSF01-04): DemoBot, a crawler of the demo's own with its address list in
+  `examples/demo/crawlers/demo-bot.json` (documentation ranges), blocked by the
+  site -- from its addresses it is believed, the same name from elsewhere is an
+  ordinary visitor.
 - **`feed <name> from <file>`, and the demo shows a blocklist** (0031 step
   F.6, RSF01-03): a list of the site's own in a file beside the rules -- read
   when they compile, watched like a rule file, never fetched and never too
