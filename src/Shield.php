@@ -48,6 +48,15 @@ use CjwNetwork\RequestShield\Store\Store;
  */
 final class Shield
 {
+    /**
+     * The library's version: the next release while on main ("-dev"), the tag
+     * once released -- the release job refuses a tag that does not match.
+     * BUILD is "source" in the repository; the single-file build (proposal
+     * 0002) writes the tag and commit into it.
+     */
+    public const VERSION = '0.4.0-dev';
+    public const BUILD = 'source';
+
     /** @var list<Rule> */
     private array $rules = [];
 

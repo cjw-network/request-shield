@@ -15,7 +15,11 @@
  *   php bin/request-shield token site.rules "<group>"|'*'
  *   php bin/request-shield feeds site.rules [list|update|export] [--force] [--format=plain|nginx|nftables|ipset] [--write=<file>]
  *   php bin/request-shield stats site.rules [--days=7 | --from=2026-01-01 --to=2026-09-30] [--by=day|week|month|year] [--crawler=<ID>] [--path=/news/] [--sort=views|blocked|refused|checked|throttled] [--site=<website>|other | --group=<group>] [--json]
+ *   php bin/request-shield version [site.rules]
  *
+ * version: the library's version and build, PHP, whether APCu is there and
+ *         the shipped rule sets' versions; with a rule file also the store in
+ *         use, the mode and the versions of the site's own rule files.
  * check:  reads every file, reports the first error with file and line, and
  *         warns about rule files anyone else could change.
  * show:   the rules in effect after merging, each with the line it comes from.
@@ -124,6 +128,46 @@ foreach ($args as $a) {
     }
 }
 [$command, $file, $what] = $rest + [null, null, null];
+
+if ($command === 'version' || $command === '--version') {
+    // What is installed: for a bug report, a support call, or an agent that
+    // checks what it downloaded. Never on a request path.
+    $v = \CjwNetwork\RequestShield\Shield::VERSION;
+    $apcu = \CjwNetwork\RequestShield\Store\ApcuStore::usable();
+    echo 'request-shield ' . $v . ' (' . \CjwNetwork\RequestShield\Shield::BUILD . ")\n";
+    echo 'PHP ' . PHP_VERSION . ', APCu ' . ($apcu ? 'available' : 'not available' . (PHP_SAPI === 'cli' ? ' here (apc.enable_cli=1 switches it on for the CLI)' : '')) . "\n";
+    $shipped = [];
+    foreach (glob(dirname(__DIR__) . '/rules/*.rules') ?: [] as $set) {
+        if (preg_match('/^version[ \t]+(\S+)/m', (string) file_get_contents($set), $m) === 1) {
+            $shipped[] = '@' . basename($set, '.rules') . ' ' . $m[1];
+        }
+    }
+    echo 'shipped rule sets: ' . ($shipped !== [] ? implode(' · ', $shipped) : 'none') . "\n";
+    if ($file !== null) {
+        if (substr($file, -6) !== '.rules') {
+            fwrite(STDERR, "request-shield: $file is not a rule file (.rules)\n");
+            exit(2);
+        }
+        try {
+            $read = RuleFile::read(array_merge($sources, [$file]));
+            $s = Settings::from($read['config']);
+        } catch (InvalidArgumentException $e) {
+            fwrite(STDERR, $e->getMessage() . "\n");
+            exit(1);
+        }
+        $store = \CjwNetwork\RequestShield\Shield::storeFor($s);
+        $kind = ['ApcuStore' => 'apcu', 'FileStore' => 'file', 'MemoryStore' => 'memory'][substr(strrchr(get_class($store), '\\') ?: '', 1)] ?? get_class($store);
+        echo "rules: $file, mode $s->mode" . ($s->sites !== [] ? ', ' . count(array_unique(array_values($s->sites))) . ' site block(s)' : '') . "\n";
+        echo "store: $kind (set store $s->store)" . ($kind === 'file' ? ", $s->storeDir" : '') . "\n";
+        $own = [];
+        foreach ($s->origins['versions'] ?? [] as $name => $version) {
+            $own[] = "$name $version";
+        }
+        echo 'versions in the rule files: ' . ($own !== [] ? implode(' · ', $own) : 'none (version <v> names one)') . "\n";
+    }
+    exit(0);
+}
+
 if (!in_array($command, ['check', 'show', 'reload', 'trace', 'test', 'crawlers', 'feeds', 'stats', 'token', 'deny', 'allow', 'unlist', 'lists'], true) || $file === null
     || ($command === 'token' && $what === null)
     || ($command === 'feeds' && $what !== null && !in_array($what, ['list', 'update', 'export'], true))
@@ -138,7 +182,8 @@ if (!in_array($command, ['check', 'show', 'reload', 'trace', 'test', 'crawlers',
         . "       request-shield stats <main.rules> [--days=7 | --from=YYYY-MM-DD --to=YYYY-MM-DD] [--by=day|week|month|year] [--crawler=<ID>] [--path=/news/] [--sort=views|blocked|refused|checked|throttled] [--site=<website>|other | --group=<group>] [--json]\n"
         . "       request-shield deny|allow <main.rules> <address|range> [--for=7d | --until=2026-10-07[T15:30]] [--reason=\"…\"] [--force]\n"
         . "       request-shield unlist <main.rules> <address|range>\n"
-        . "       request-shield lists <main.rules>\n");
+        . "       request-shield lists <main.rules>\n"
+        . "       request-shield version [<main.rules>]\n");
     exit(2);
 }
 if (substr($file, -6) !== '.rules') {

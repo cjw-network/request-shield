@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`request-shield version [site.rules]`** (0031 step A.1): the library's
+  version (`Shield::VERSION`, `0.4.0-dev` on main) and build, PHP, whether
+  APCu is there, the shipped rule sets' versions; with a rule file also the
+  store in use, the mode and the versions the site's files name.
 - **The plan for v1.0** (proposal 0031, with its step list and resume prompt
   in `docs/proposals/0031-steps.md`): a robust core, compile-time extension
   points, a mini single-file edition without any backend (proposal 0002),

@@ -184,8 +184,9 @@ set          log /var/log/request-shield.log
 `php bin/request-shield check|show|reload site.rules` checks it, shows the
 rules in effect with their origins, or makes every server read it again;
 `trace site.rules "GET https://…/wp-login.php"` shows what happens to a
-request, check by check. The same as a page for the admin area:
-[the active rules page](docs/features/active-rules-page.md).
+request, check by check; `version [site.rules]` says what is installed (the
+version, PHP, APCu, the store in use, the rule sets' versions). The same as a
+page for the admin area: [the active rules page](docs/features/active-rules-page.md).
 
 Or as a PHP array — every key, with its default, is in `src/Config.php`;
 `config/request-shield.dist.php` is a starting point:

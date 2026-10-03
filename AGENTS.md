@@ -19,7 +19,9 @@ the current state and the next step are in `docs/proposals/0031-steps.md`
 
 - **Correct and fast, always.** Every change: tests (`php tests/run.php`), a
   benchmark before and after (`php -d apc.enable_cli=1 -d opcache.enable_cli=1
-  bench/overhead.php`), numbers in the pull request. Nothing a feature needs may
+  -d opcache.file_update_protection=0 bench/overhead.php` -- without the last
+  flag OPcache re-reads the freshly compiled settings for 2 s and the "setup"
+  lines show milliseconds), numbers in the pull request. Nothing a feature needs may
   run on the passing path when the feature is not used. A `stat()` costs more
   than most checks — avoid them on the request path.
 - **Tests:** unit tests plus an end-to-end case for request-path changes; the
