@@ -238,6 +238,30 @@ final class Shield
     }
 
     /**
+     * The first plugin with the Handler capability that answers the request
+     * (0031 C.4), or null: on to the application. A handler that throws is
+     * noted once a minute and skipped -- the site stays up.
+     */
+    public function handle(Request $request, Decision $decision): ?Response
+    {
+        foreach ($this->plugins() as $plugin) {
+            if (!$plugin instanceof Handler) {
+                continue;
+            }
+            try {
+                $response = $plugin->handle($request, $decision);
+            } catch (\Throwable $e) {
+                self::failed('handler', get_class($plugin) . ' failed to answer, the application runs: ' . $e->getMessage());
+                continue;
+            }
+            if ($response !== null) {
+                return $response;
+            }
+        }
+        return null;
+    }
+
+    /**
      * The rule chain (0031 C.1): every step in the order the shield checks,
      * the stages' steps without a rule where their settings are not in use.
      * Derived from the rules when first asked (a trace, the rules page) --
@@ -428,6 +452,16 @@ final class Shield
             $post = $_POST;
             Dashboard::serve($s, $request, $route, $get, $post, self::$ruleFile)->send();
             exit;
+        }
+        // A plugin that answers passing requests itself (Handler, 0031 C.4): an HTTP
+        // cache hit, a page of its own -- one array access when none has it.
+        if (($s->hooks['handler'] ?? []) !== []) {
+            $response = $shield->handle($request, $decision);
+            if ($response !== null) {
+                $_SERVER['REQUEST_SHIELD'] = $decision->action;
+                $response->send();
+                exit;
+            }
         }
         if ($s->appChallenge && ($request->method === 'GET' || $request->method === 'HEAD')) {
             $shield->watchForChallengeHeader();

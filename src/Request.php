@@ -141,6 +141,23 @@ final class Request
     }
 
     /**
+     * The key an HTTP cache keeps the answer under (0031 C.4): scheme and host
+     * in lower case, the path as the application routes it, the parameters
+     * sorted by name (a[b]=1&a=2 and a=2&a[b]=1 are one key), nothing of the
+     * client. For GET and HEAD; the cache decides whether the answer may be
+     * kept (Decision::cacheable()).
+     */
+    public function cacheKey(): string
+    {
+        $pairs = [];
+        foreach ($this->queryPairs() as [$name, $value, $raw]) {
+            $pairs[] = rawurlencode(urldecode(explode('=', $raw, 2)[0])) . '=' . rawurlencode($value);
+        }
+        sort($pairs, SORT_STRING);
+        return strtolower($this->scheme . '://' . $this->host) . $this->matchPath() . ($pairs === [] ? '' : '?' . implode('&', $pairs));
+    }
+
+    /**
      * The query's parameters as PHP will see them: [name, value, raw pair],
      * a name such as "a[b]" as "a", the value decoded; the raw pair as it
      * stands in the query string.

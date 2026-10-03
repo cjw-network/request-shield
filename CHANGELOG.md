@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The Handler capability** (0031 step C.4): a plugin answers a passing
+  request itself, after every rule, the check and the shield's own pages --
+  an HTTP cache hit, a page of its own -- with a `Response` that goes out as
+  it is; null means on to the application, a failure is noted once a minute
+  and the application runs; one array access when no plugin has it.
+  `Request::cacheKey()` names an answer for a cache (scheme and host lower
+  case, the routed path, the parameters sorted). Compiled settings format 49.
+  With this, phase C of 0031 (the rule chain) is complete.
 - **The RuleProvider capability** (0031 step C.3): a plugin adds rules of
   its own to the chain -- steps with a key, a stage (never before the lists)
   and a rule; the shield puts each after its stage's steps, the trace and the

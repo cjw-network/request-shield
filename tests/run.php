@@ -15,6 +15,7 @@ require __DIR__ . '/support/CountingPlugin.php';    // a plugin with the RuleCou
 require __DIR__ . '/support/SinkPlugin.php';        // a plugin with the Sink capability (0031 B.9)
 require __DIR__ . '/support/PagesPlugin.php';       // a plugin with the Pages capability (0031 B.10)
 require __DIR__ . '/support/RulesPlugin.php';       // a plugin with the RuleProvider capability (0031 C.3)
+require __DIR__ . '/support/HandlerPlugin.php';     // a plugin with the Handler capability (0031 C.4)
 
 final class TestFailure extends RuntimeException
 {
