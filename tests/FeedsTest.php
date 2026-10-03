@@ -215,7 +215,7 @@ return [
             } catch (InvalidArgumentException $e) {
                 truthy(strpos($e->getMessage(), 'not "htaccess"') !== false, 'not .htaccess: measured far too slow for lists');
             }
-            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
+            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli());
             exec("$bin feeds " . escapeshellarg("$dir/site.rules") . ' export --format=nginx --write=' . escapeshellarg("$dir/deny.conf") . ' 2>&1', $out, $code);
             truthy($code === 0 && strpos((string) file_get_contents("$dir/deny.conf"), 'deny 45.10.0.0/22;') !== false, 'the command line writes it: ' . implode(' ', $out));
             exec("$bin feeds " . escapeshellarg("$dir/site.rules") . ' 2>&1', $list, $code);

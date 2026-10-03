@@ -266,7 +266,7 @@ return [
             same('updated', $s->crawlers['CRAWL-CLAUDEBOT']['lists']['anthropic']['from']);
             truthy(isset($read['seen']["$store/crawlers/anthropic.json"]) && isset($read['seen']["$store/crawlers"]), 'watched: a new update recompiles the rules');
             same(['anthropic' => '@anthropic'], array_intersect_key(RuleFile::crawlerListFiles($read['config']), ['anthropic' => 1]), 'what crawlers update fetches: the shipped list by name (Shipped::crawlerList())');
-            truthy(isset($read['seen'][dirname(__DIR__) . '/rules/crawlers/anthropic.json']), 'the shipped list watched as before');
+            truthy(isset($read['seen'][(string) \CjwNetwork\RequestShield\Rules\Shipped::crawlerListFile('anthropic')]), 'the shipped list watched (rules/crawlers/anthropic.json, or the single file)');
         } finally {
             exec('rm -rf ' . escapeshellarg($site));
         }
@@ -277,13 +277,13 @@ return [
         }
         $dir = crawlerDir(['site.rules' => "crawlers ai-training block\ncrawler CRAWL-GPTBOT check\n"]);
         try {
-            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield') . ' crawlers ' . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' crawlers ' . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
             $shown = implode("\n", $out);
             same(0, $code, $shown);
             truthy(preg_match('/^CRAWL-GPTBOT\s+ai-training\s+check\s+ranges: openai-gptbot \(\d{4}-\d\d-\d\d, shipped\)$/m', $shown) === 1, $shown);
             truthy(preg_match('/^CRAWL-CLAUDEBOT\s+ai-training\s+block/m', $shown) === 1, 'the kind\'s policy');
             $out = [];
-            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield') . ' trace ' . escapeshellarg("$dir/site.rules") . ' "GET /" --ip=' . ANTHROPIC_IP . ' ' . escapeshellarg('--ua=' . CLAUDEBOT) . ' 2>&1', $out, $code);
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' trace ' . escapeshellarg("$dir/site.rules") . ' "GET /" --ip=' . ANTHROPIC_IP . ' ' . escapeshellarg('--ua=' . CLAUDEBOT) . ' 2>&1', $out, $code);
             same(4, $code, 'refused: exit 4');
             truthy(strpos(implode("\n", $out), 'Known crawlers') !== false, implode("\n", $out));
         } finally {

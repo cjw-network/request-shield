@@ -61,7 +61,7 @@ function withModes(string $rules, callable $body): void
     file_put_contents($dir . '/site.rules', "set store file\nset store-dir $dir/store\nset secret " . MODES_SECRET . "\nset debug-header on\nset log $dir/shield.log\nset log-level flag\nexempt none\n" . $rules);
     $port = freePort();
     $cmd = sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
-        escapeshellarg($dir . '/site.rules'), serverPhp(), escapeshellarg(dirname(__DIR__) . '/bootstrap.php'),
+        escapeshellarg($dir . '/site.rules'), serverPhp(), escapeshellarg(rsEntry()),
         $port, escapeshellarg($dir . '/docroot'));
     $proc = proc_open($cmd, [], $pipes);
     for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {

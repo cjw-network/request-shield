@@ -15,6 +15,9 @@ declare(strict_types=1);
  */
 function withDemo(callable $body, string $prefix = ''): void
 {
+    if (rsSingle() !== null) {
+        skip('the demos show the source tree\'s integration (they require bootstrap.php, whose own search starts the shield); the single file has its case in SingleFileTest');
+    }
     $var = sys_get_temp_dir() . '/rshield-demo-' . getmypid() . '-' . mt_rand();
     mkdir($var, 0700, true);
     $port = freePort();

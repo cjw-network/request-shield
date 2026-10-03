@@ -326,7 +326,7 @@ return [
         if (!function_exists('exec')) {
             skip('no exec');
         }
-        $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
+        $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli());
         $dir = ruleDir(['site.rules' => "block /x/**\nlimit requests 5/min\nrestrict /rs/** to 127.0.0.1 ::1\n", 'ext/a.rules' => "challenge /login\n", 'bad.rules' => "blok /x\n"]);
         try {
             exec("$bin check " . escapeshellarg("$dir/site.rules") . ' --source=' . escapeshellarg("$dir/ext/*.rules") . ' 2>&1', $out, $code);
@@ -391,7 +391,7 @@ return [
             $html = \CjwNetwork\RequestShield\Report\RulesPage::render($s, ['store' => new MemoryStore()]);
             truthy(strpos($html, 'Open at /admin/files/**: every block above — only for 192.0.2.0/24') !== false, 'the exception on the page');
             truthy(strpos($html, 'Open at /downloads/**: backups, dumps and archives') !== false && strpos($html, '⚠ for everyone') !== false, 'the open one, with a warning');
-            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
+            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli());
             exec("$bin check " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
             same(3, $code, 'a warning');
             truthy(strpos(implode("\n", $out), 'warning: site.rules:2: blocked paths are open there for everyone') !== false, implode("\n", $out));
@@ -468,7 +468,7 @@ return [
         try {
             $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
             same(['SCAN' => '2026.10.1', 'CRAWL' => '2026.10.1', 'ext/shop.rules' => '1.4.0', 'SITE' => '2026-09-29.2'], $s->origins['versions'], 'the built-ins, then in the order read; a file without namespace by its name');
-            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
+            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli());
             exec("$bin check " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
             truthy(strpos(implode("\n", $out), 'rule sets SCAN 2026.10.1, CRAWL 2026.10.1, ext/shop.rules 1.4.0, SITE 2026-09-29.2') !== false, implode("\n", $out));
             $html = \CjwNetwork\RequestShield\Report\RulesPage::render($s, ['store' => new MemoryStore()]);
@@ -490,15 +490,27 @@ return [
         $lib = sys_get_temp_dir() . '/rshield-lib-' . getmypid() . '-' . mt_rand();
         try {
             mkdir($lib, 0700, true);
-            foreach (['src', 'rules', 'bin', 'bootstrap.php'] as $part) {
-                exec('cp -r ' . escapeshellarg(dirname(__DIR__) . "/$part") . ' ' . escapeshellarg($lib));
+            if (rsSingle() === null) {
+                foreach (['src', 'rules', 'bin', 'bootstrap.php'] as $part) {
+                    exec('cp -r ' . escapeshellarg(dirname(__DIR__) . "/$part") . ' ' . escapeshellarg($lib));
+                }
+                $f = "$lib/rules/scanners.rules";
+                $tool = "$lib/bin/request-shield";
+            } else {
+                // The single file: the set is embedded, so the update is a new file.
+                $f = $tool = "$lib/request-shield.php";
+                copy(rsSingle(), $f);
             }
-            $f = "$lib/rules/scanners.rules";
-            file_put_contents($f, str_replace('[SCAN-BACKUP@1]', '[SCAN-BACKUP@2]', (string) file_get_contents($f)));
-            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg("$lib/bin/request-shield") . ' check ' . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
+            // The set only (the single file holds other texts that name the rule): from its start on, once.
+            $text = (string) file_get_contents($f);
+            $at = rsSingle() === null ? 0 : (int) strpos($text, "'scanners' => <<<'RS_SHIPPED'");
+            $hit = strpos($text, '[SCAN-BACKUP@1]', $at);
+            truthy($hit !== false && ($at > 0 || rsSingle() === null), 'the shipped rule is there to change');
+            file_put_contents($f, substr_replace($text, '[SCAN-BACKUP@2]', (int) $hit, strlen('[SCAN-BACKUP@1]')));
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($tool) . ' check ' . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
             same(3, $code, 'check warns');
             truthy(strpos(implode("\n", $out), 'warning: SITE-DL (site.rules:2) was written for SCAN-BACKUP revision 1; SCAN-BACKUP is now revision 2') !== false, implode("\n", $out));
-            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg("$lib/bin/request-shield") . ' trace ' . escapeshellarg("$dir/site.rules") . ' ' . escapeshellarg('GET https://x.example/backup.sql') . ' 2>&1', $out2, $code2);
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($tool) . ' trace ' . escapeshellarg("$dir/site.rules") . ' ' . escapeshellarg('GET https://x.example/backup.sql') . ' 2>&1', $out2, $code2);
             same(4, $code2, 'the changed rule still applies elsewhere');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir) . ' ' . escapeshellarg($lib));

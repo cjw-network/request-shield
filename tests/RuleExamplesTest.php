@@ -123,7 +123,7 @@ return [
         $dir = ruleDir(['ok.rules' => "set store-dir /nonexistent\n[S-A] block /a   # old\nexpect GET /a 404\nexpect GET /ab answered   # a near miss\n",
             'bad.rules' => "set store-dir /nonexistent\n[S-A] block /a\nexpect GET /a passes   # wrong on purpose\n",
             'broken.rules' => "expect GET /a nothing\n"]);
-        $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
+        $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli());
         try {
             exec("$bin test " . escapeshellarg("$dir/ok.rules") . ' --junit=' . escapeshellarg("$dir/r.xml") . ' 2>&1', $out, $code);
             same(0, $code, implode("\n", $out));

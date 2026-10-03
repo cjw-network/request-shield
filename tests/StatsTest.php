@@ -455,7 +455,7 @@ return [
         file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset stats on\nset stats-depth 3\nexempt none\nrestrict /rs/** to 127.0.0.1 ::1\n");
         $port = freePort();
         $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1', escapeshellarg("$dir/site.rules"),
-            serverPhp(), escapeshellarg(dirname(__DIR__) . '/bootstrap.php'), $port, escapeshellarg("$dir/docroot")), [], $pipes);
+            serverPhp(), escapeshellarg(rsEntry()), $port, escapeshellarg("$dir/docroot")), [], $pipes);
         for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
             usleep(100000);
         }
@@ -469,7 +469,7 @@ return [
             $get('/missing-page', "Referer: http://127.0.0.1:$port/news/x\r\n");
             $get('/index.php/.env');
             $get('/index.php/.env');
-            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
+            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli());
             exec("$bin stats " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
             $shown = implode("\n", $out);
             same(0, $code, $shown);

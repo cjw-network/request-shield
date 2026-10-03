@@ -59,6 +59,25 @@ conditional declaration happens when the code reaches it, after the guard.
 The challenge page's script and the widget's lose their indentation and
 whole-line comments; nothing is renamed.
 
+## Tested
+
+`tests/SingleFileTest.php` builds both editions and checks the file: `php -l`,
+one `declare`, two builds byte-identical, loading twice with and without
+OPcache, the command line, a request through it, the minified scripts. The
+whole suite also runs against the file:
+
+```
+php build/single-file.php && php build/single-file.php --edition=stats
+REQUEST_SHIELD_ENTRY=$PWD/build/out/request-shield.php php tests/run.php
+```
+
+The runner, the end-to-end servers and the command-line tests then use the
+built file (with the statistics file beside it) instead of `bootstrap.php`
+and `bin/request-shield`. The demos and `ShippedTest` skip there: the demos
+show the source tree's integration, and `ShippedTest` needs the source
+tree's `Shipped`. CI runs this as the leg `single`, and checks the built file
+with `php -l` on every PHP version.
+
 ## Cost
 
 Measured with `php bench/single-file.php` on PHP 8.3 with OPcache and APCu,

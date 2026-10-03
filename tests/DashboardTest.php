@@ -27,7 +27,7 @@ function withDashboard(string $rules, callable $body): void
     file_put_contents("$dir/docroot/index.php", '<?php echo "site " . ($_SERVER["REQUEST_SHIELD"] ?? "-") . " " . $_SERVER["REQUEST_URI"];');
     file_put_contents("$dir/site.rules", "set recheck 0\nset store file\nset store-dir $dir/store\n" . str_replace('__DIR__', $dir, $rules));
     file_put_contents("$dir/prepend.php", '<?php define("REQUEST_SHIELD_EXTENSIONS", ["CjwNetwork\\\\RequestShield\\\\Stats\\\\StatsExtension", "CjwNetwork\\\\RequestShield\\\\Tests\\\\RsTestExtension"]);'
-        . 'require ' . var_export(dirname(__DIR__) . '/bootstrap.php', true) . '; foreach (glob(' . var_export(__DIR__ . '/support/*.php', true) . ') as $f) { require $f; }' . "\n"
+        . 'require ' . var_export(rsEntry(), true) . '; foreach (glob(' . var_export(__DIR__ . '/support/*.php', true) . ') as $f) { require $f; }' . "\n"
         . '\CjwNetwork\RequestShield\Shield::protectFile(' . var_export("$dir/site.rules", true) . ', null, ' . var_export("$dir/cache", true) . ');');
     $port = freePort();
     $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=/nonexistent exec %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
@@ -129,7 +129,7 @@ return [
             if (!function_exists('exec')) {
                 skip('no exec');
             }
-            exec(sprintf('%s %s check %s 2>&1', PHP_BINARY, escapeshellarg(dirname(__DIR__) . '/bin/request-shield'), escapeshellarg("$dir/site.rules")), $out, $exit);
+            exec(sprintf('%s %s check %s 2>&1', PHP_BINARY, escapeshellarg(rsCli()), escapeshellarg("$dir/site.rules")), $out, $exit);
             $text = implode("\n", $out);
             truthy(strpos($text, "warning: the dashboard's pages are open to everyone (") !== false && strpos($text, 'restrict /rs/** to') !== false && substr_count($text, 'open to everyone') === 1, 'check warns once, naming the fix: ' . $text);
         });

@@ -167,6 +167,17 @@ directories; the same script builds every edition.
   server): the file costs 50–150 µs per request beyond a page without the
   shield, the source tree 250–450 µs; 0.95 MB, 2.5 MB of OPcache.
 
+**As built in E.3:** every test takes the library from `rsEntry()` and the
+command line from `rsCli()` (`tests/helpers.php`), not only nine end-to-end
+tests; with `REQUEST_SHIELD_ENTRY` these are two generated files next to the
+built one that load it and `request-shield-stats.php` (the file cannot switch
+the statistics on by itself yet, see E.2). The demos skip under the single
+file: they require `bootstrap.php`, whose own search starts the shield, so a
+prepended file would always pre-empt them; they show the source tree's
+integration. `RuleFileTest`'s library update edits the embedded set in a copy
+of the file. CI: the leg `single` (PHP 8.4, APCu) and `php -l` of the built
+file in every leg of the matrix; the `plan` job follows in E.4.
+
 ### The bootstrap block — and the fix in `bootstrap.php`
 
 ```php

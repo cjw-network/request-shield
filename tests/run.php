@@ -8,8 +8,8 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/../bootstrap.php';
 require __DIR__ . '/helpers.php';
+require rsEntry();                                   // bootstrap.php, or the built single file (REQUEST_SHIELD_ENTRY, 0031 E.3)
 require __DIR__ . '/support/RsTestExtension.php';   // the test extension (0031 B.2); an E2E server loads it from its prepend file
 require __DIR__ . '/support/CountingPlugin.php';    // a plugin with the RuleCounts capability (0031 B.8)
 require __DIR__ . '/support/SinkPlugin.php';        // a plugin with the Sink capability (0031 B.9)

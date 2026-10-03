@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The suite runs against the single file** (0031 step E.3):
+  `REQUEST_SHIELD_ENTRY=<built request-shield.php> php tests/run.php` loads
+  the built file (and the statistics file beside it) instead of
+  `bootstrap.php`; every end-to-end server and command-line test takes the
+  library from `rsEntry()` and `rsCli()`. CI runs it as the leg `single` and
+  checks the built file with `php -l` on every PHP version.
 - **The single file** (0031 step E.2, proposal 0002): `php build/single-file.php`
   builds `request-shield.php`, the mini edition in one file -- the core, the
   command line and the shipped rule sets embedded; included it protects the

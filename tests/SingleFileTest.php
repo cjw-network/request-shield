@@ -53,6 +53,15 @@ function singlePhp(string $code, string $flags = ''): array
 }
 
 return [
+    'the suite runs on what REQUEST_SHIELD_ENTRY names: the built file, or else the source tree (0031 E.3)' => function (): void {
+        $from = (string) (new ReflectionClass(Shield::class))->getFileName();
+        same(rsSingle() ?? realpath(dirname(__DIR__) . '/src/Shield.php'), $from, 'where Shield comes from in this run');
+        if (rsSingle() !== null) {
+            truthy(class_exists(\CjwNetwork\RequestShield\Stats\StatsPlugin::class, false) && (string) (new ReflectionClass(\CjwNetwork\RequestShield\Stats\StatsPlugin::class))->getFileName() === dirname(rsSingle()) . '/request-shield-stats.php',
+                'the statistics from the file beside it');
+            same(['entry', 'cli'], [basename(rsEntry(), '.php') === 'rs-test-entry' ? 'entry' : rsEntry(), basename(rsCli(), '.php') === 'rs-test-cli' ? 'cli' : rsCli()], 'servers and the command line use it too');
+        }
+    },
     'the build: one file that php -l accepts, one declare, nothing read relative to the sources, the version and the build named, byte-identical twice' => function (): void {
         $file = singleFile();
         exec(escapeshellarg(PHP_BINARY) . ' -l ' . escapeshellarg($file) . ' 2>&1', $out, $code);
@@ -141,7 +150,10 @@ return [
         [$out] = singlePhp($read);
         $built = json_decode(implode("\n", $out), true);
         truthy(is_array($built) && count($built) === 2, implode(' | ', $out));
-        $source = [\CjwNetwork\RequestShield\Challenge\ChallengePage::SCRIPT, (new ReflectionClassConstant(\CjwNetwork\RequestShield\Challenge\Widget::class, 'BOX'))->getValue()];
+        // The scripts as the sources have them (this process may run on the single file itself).
+        [$src] = singlePhp(str_replace('require ' . var_export($file, true), 'require ' . var_export(dirname(__DIR__) . '/bootstrap.php', true), $read));
+        $source = json_decode(implode("\n", $src), true);
+        truthy(is_array($source) && count($source) === 2, implode(' | ', $src));
         $node = nodeBinary();
         foreach ($source as $i => $js) {
             $lines = array_values(array_filter(array_map('trim', explode("\n", (string) $js)), static fn (string $l): bool => $l !== '' && strncmp($l, '//', 2) !== 0));

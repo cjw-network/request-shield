@@ -11,6 +11,9 @@ declare(strict_types=1);
 /** Starts the Exponential demo, runs $body with a request function, stops it. */
 function withExponentialDemo(callable $body, string $prefix = ''): void
 {
+    if (rsSingle() !== null) {
+        skip('the demos show the source tree\'s integration (they require bootstrap.php, whose own search starts the shield); the single file has its case in SingleFileTest');
+    }
     if (!function_exists('proc_open')) {
         skip('no proc_open');
     }

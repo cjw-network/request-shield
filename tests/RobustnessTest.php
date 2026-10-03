@@ -28,7 +28,7 @@ function withFailing(string $rules, string $known, callable $body): void
     // recheck 0: the built-in server has APCu (its SAPI is not "cli" to APCu), and with
     // APCu the shield looks at the rule files only every 10 s -- here every request must.
     file_put_contents("$dir/site.rules", "set recheck 0\n" . str_replace('__DIR__', $dir, $rules));
-    file_put_contents("$dir/prepend.php", '<?php require ' . var_export(dirname(__DIR__) . '/bootstrap.php', true) . ";\n"
+    file_put_contents("$dir/prepend.php", '<?php require ' . var_export(rsEntry(), true) . ";\n"
         . '\CjwNetwork\RequestShield\Shield::protectFile(' . var_export("$dir/site.rules", true) . ', ' . $known . ', ' . var_export("$dir/cache", true) . ');');
     $port = freePort();
     $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=/nonexistent exec %s -d auto_prepend_file=%s -d log_errors=1 -d error_log=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',

@@ -16,8 +16,16 @@ function withLibrary(array $files, ?string $env, callable $body): void
 {
     $lib = sys_get_temp_dir() . '/rs-boot-' . getmypid() . '-' . mt_rand();
     mkdir("$lib/docroot", 0700, true);
-    foreach (['src', 'rules', 'bootstrap.php'] as $part) {
-        exec('cp -r ' . escapeshellarg(dirname(__DIR__) . "/$part") . ' ' . escapeshellarg($lib));
+    // The library: the source tree's parts -- or, with REQUEST_SHIELD_ENTRY, the single file,
+    // whose own bootstrap searches the same places next to it.
+    $entry = "$lib/bootstrap.php";
+    if (rsSingle() === null) {
+        foreach (['src', 'rules', 'bootstrap.php'] as $part) {
+            exec('cp -r ' . escapeshellarg(dirname(__DIR__) . "/$part") . ' ' . escapeshellarg($lib));
+        }
+    } else {
+        $entry = "$lib/request-shield.php";
+        copy(rsSingle(), $entry);
     }
     file_put_contents("$lib/docroot/index.php", '<?php echo "ok " . ($_SERVER["REQUEST_SHIELD"] ?? "-");');
     foreach ($files as $name => $contents) {
@@ -31,7 +39,7 @@ function withLibrary(array $files, ?string $env, callable $body): void
     // exec: the shell becomes env, env becomes PHP -- proc_terminate() then ends the server, not a shell around it.
     $proc = proc_open(sprintf('exec env -u REQUEST_SHIELD_CONFIG %s %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
         $env !== null ? 'REQUEST_SHIELD_CONFIG=' . escapeshellarg(str_replace('__LIB__', $lib, $env)) : '',
-        serverPhp(), escapeshellarg("$lib/bootstrap.php"), $port, escapeshellarg("$lib/docroot")), [], $pipes);
+        serverPhp(), escapeshellarg($entry), $port, escapeshellarg("$lib/docroot")), [], $pipes);
     for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
         usleep(100000);
     }

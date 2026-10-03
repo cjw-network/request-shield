@@ -94,7 +94,7 @@ return [
             }
             same([], Settings::from([])->plugins, 'none by default');
             file_put_contents("$dir/check.rules", "[SITE-X] plugin RsMissing\\Plugin\n");
-            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield') . ' check ' . escapeshellarg("$dir/check.rules") . ' 2>&1', $out, $code);
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' check ' . escapeshellarg("$dir/check.rules") . ' 2>&1', $out, $code);
             truthy($code === 3 && strpos(implode("\n", $out), 'warning: SITE-X: plugin RsMissing\\Plugin is not there, or is no CjwNetwork\\RequestShield\\Plugin -- it is left out') !== false,
                 'check warns about a plugin it cannot find: ' . implode("\n", $out));
         } finally {
@@ -167,7 +167,7 @@ final class RsE2eBroken implements CjwNetwork\RequestShield\Plugin {
     public function ended(CjwNetwork\RequestShield\Request $r, int $status, array $headers, CjwNetwork\RequestShield\Seen $seen, float $now): void { throw new RuntimeException("x"); }
 }
 ');
-        file_put_contents("$dir/prepend.php", '<?php require ' . var_export(dirname(__DIR__) . '/bootstrap.php', true) . '; require ' . var_export("$dir/plugin.php", true) . '; \CjwNetwork\RequestShield\Shield::protectFile(' . var_export("$dir/site.rules", true) . ');');
+        file_put_contents("$dir/prepend.php", '<?php require ' . var_export(rsEntry(), true) . '; require ' . var_export("$dir/plugin.php", true) . '; \CjwNetwork\RequestShield\Shield::protectFile(' . var_export("$dir/site.rules", true) . ');');
         file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nexempt none\nrestrict **/admin/** to 192.0.2.1\nplugin RsE2eBroken\nplugin RsE2ePlugin\n");
         $port = freePort();
         // REQUEST_SHIELD_CONFIG: the prepend file starts the shield itself; bootstrap.php must not, from a config/ of this checkout.

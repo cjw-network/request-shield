@@ -106,7 +106,8 @@ return [
     },
     'a passing request pays nothing for the shipped extension: the bootstrap loads no registry class (ADR 0008)' => function (): void {
         // A fresh CLI process: after bootstrap.php, the extension is named (the constant) but nothing of it is loaded;
-        // the first lookup loads and offers it.
+        // the first lookup loads and offers it. The autoloader's matter: the source tree's bootstrap also when the
+        // suite runs against the single file (which declares its classes, cheaply, from OPcache).
         $code = 'require ' . var_export(dirname(__DIR__) . '/bootstrap.php', true) . ';'
             . ' $loaded = array_values(array_intersect(get_declared_classes(), ["CjwNetwork\\RequestShield\\Stats\\StatsExtension", "CjwNetwork\\RequestShield\\Extension", "CjwNetwork\\RequestShield\\Rules\\Vocabulary"]));'
             . ' $named = defined("REQUEST_SHIELD_EXTENSIONS") ? constant("REQUEST_SHIELD_EXTENSIONS") : null;'

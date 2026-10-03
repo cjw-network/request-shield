@@ -30,7 +30,13 @@ things come first: **it must be right, and it must be fast.**
    line in `CHANGELOG.md` under *Unreleased* — in the same pull request.
 7. **The single file.** `php build/single-file.php` turns `src/` into one
    file ([the single file](docs/features/single-file.md)); `tests/SingleFileTest.php`
-   builds it and puts a request through it. A source file holds declarations
+   builds it and puts a request through it. The whole suite runs against the
+   built file too:
+   `php build/single-file.php && php build/single-file.php --edition=stats`, then
+   `REQUEST_SHIELD_ENTRY=$PWD/build/out/request-shield.php php tests/run.php`
+   (CI leg `single`). A test that starts a server or the command line takes
+   them from `rsEntry()` and `rsCli()` (`tests/helpers.php`), never from
+   `bootstrap.php` or `bin/request-shield` directly. A source file holds declarations
    only -- no code at its top level, or the build refuses. The shipped data is
    read through `Rules\Shipped` only, nothing else names `rules/`.
 8. **Fail safe.** When the shield is unsure (a store that cannot be written,

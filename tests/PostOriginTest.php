@@ -102,7 +102,7 @@ RULES);
         }
         $dir = ruleDir(['site.rules' => "host www.example.org\n[F-ORIGIN] post-origin same   # forms from here only\n"]);
         try {
-            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield') . ' trace ' . escapeshellarg("$dir/site.rules") . ' "POST https://www.example.org/contact" 2>&1', $out);
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' trace ' . escapeshellarg("$dir/site.rules") . ' "POST https://www.example.org/contact" 2>&1', $out);
             truthy(strpos(implode("\n", $out), 'Where forms come from') !== false && strpos(implode("\n", $out), 'neither Origin nor Referer: the browser check  [F-ORIGIN]') !== false, implode("\n", $out));
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));

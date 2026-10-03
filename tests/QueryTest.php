@@ -173,7 +173,7 @@ return [
         }
         $dir = queryDir(QUERY_RULES . "query strict\n");
         try {
-            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield') . ' show ' . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' show ' . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
             $shown = implode("\n", $out);
             same(0, $code, $shown);
             truthy(preg_match('~^query page int  sort word  ids list  price number  key id  code /\[a-z\]\{2\}-\[0-9\]\{3\}/ +# \(site\.rules:2\)$~m', $shown) === 1, $shown);

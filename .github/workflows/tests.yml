@@ -36,6 +36,13 @@ jobs:
       - name: Syntax check (PHP ${{ matrix.php }})
         run: find src plugins tests bench config examples bootstrap.php -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
 
+      - name: The single file builds, and PHP ${{ matrix.php }} reads it
+        run: |
+          php build/single-file.php --build=ci
+          php build/single-file.php --edition=stats --build=ci
+          php -l build/out/request-shield.php > /dev/null
+          php -l build/out/request-shield-stats.php > /dev/null
+
       - name: Tests
         env:
           # With APCu every test must run; without it the APCu store test is skipped on purpose.
@@ -69,4 +76,37 @@ jobs:
       - name: Tests, the servers restricted
         env:
           TESTS_HOSTING: minimal
+        run: php tests/run.php
+
+  # The suite against the built single file (0031 E.3): REQUEST_SHIELD_ENTRY
+  # makes the runner, the end-to-end servers and the command line use
+  # build/out/request-shield.php (with request-shield-stats.php) instead of
+  # bootstrap.php. Skips are expected here: the demos show the source tree's
+  # integration, and ShippedTest's cases need the source tree's Shipped.
+  single:
+    name: PHP 8.4 + APCu, against the single file
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: 'apcu, pcntl'
+          ini-values: 'apc.enable_cli=1, opcache.enable_cli=1, opcache.file_update_protection=0'
+          coverage: none
+          tools: none
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Build the single file
+        run: |
+          php build/single-file.php --build=ci
+          php build/single-file.php --edition=stats --build=ci
+
+      - name: Tests against the file
+        env:
+          REQUEST_SHIELD_ENTRY: ${{ github.workspace }}/build/out/request-shield.php
         run: php tests/run.php

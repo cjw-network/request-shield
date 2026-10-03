@@ -173,7 +173,7 @@ return [
                 . '<optgroup label="In no group"><option value="c.de">c.de</option></optgroup><option value="(other)">') !== false, 'the switch: a section per group, then the rest');
             truthy(strpos($h, 'Customer A: all 2 websites: a.de, b.de</p>') !== false && strpos($h, 'site=group%3Acustomer-a') !== false, 'named under the title, kept in the links');
             truthy(strpos(\CjwNetwork\RequestShield\Report\SetupPage::render($s, 'en', []), 'Customer A: a.de, b.de') !== false, 'shown with the settings');
-            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield') . ' stats ' . escapeshellarg("$dir/site.rules");
+            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' stats ' . escapeshellarg("$dir/site.rules");
             exec("$bin --group=\"Customer A\" --json 2>&1", $out, $code);
             same(0, $code, implode("\n", $out));
             exec("$bin --group=nobody 2>&1", $bad, $code);
@@ -302,7 +302,7 @@ return [
             $all = StatsPage::render($s, ['view' => 'site', 'action' => '/rs/stats', 'lang' => 'de', 'now' => SITES_T0]);
             truthy(strpos($all, '<option value="" selected>Alle Websites</option>') !== false && strpos($all, 'site=') === false, 'all: no site in the links');
             truthy(strpos(StatsPage::render(sitesStatsSettings($dir, ''), ['view' => 'site', 'lang' => 'en', 'now' => SITES_T0]), 'name="site"') === false, 'without stats-hosts: no switch');
-            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield') . ' stats ' . escapeshellarg("$dir/site.rules");
+            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' stats ' . escapeshellarg("$dir/site.rules");
             file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset stats on\nset stats-hosts a.de b.de\n");
             exec("$bin --site=b.de --json 2>&1", $out, $code);
             same(0, $code, implode("\n", $out));

@@ -214,7 +214,7 @@ return [
         $dir = accessDir();
         accessSettings($dir);
         mkdir("$dir/docroot");
-        $boot = dirname(__DIR__) . '/bootstrap.php';
+        $boot = rsEntry();
         file_put_contents("$dir/docroot/index.php", '<?php
 require ' . var_export($boot, true) . ';
 use CjwNetwork\RequestShield\{Access, Request, Settings};

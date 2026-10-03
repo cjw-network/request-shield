@@ -46,6 +46,9 @@ const SHIPPED_SITE = "host a.example\ninclude @wordpress @tracking\n[OWN-CLAUDE]
 
 return [
     'in the repository: the sets, the feed catalog and the address lists are read from rules/; a name never leaves the directory' => function (): void {
+        if (rsSingle() !== null) {
+            skip('the suite runs against the single file, whose data is embedded (SingleFileTest checks it)');
+        }
         $root = (string) realpath(dirname(__DIR__) . '/rules');
         same(false, Shipped::embedded());
         truthy(strpos((string) Shipped::rules('scanners'), 'SCAN-HIDDEN') !== false, 'a set by name');
@@ -64,6 +67,9 @@ return [
         if (!function_exists('exec')) {
             skip('no exec');
         }
+        if (rsSingle() !== null) {
+            skip('the suite runs against the single file: Shipped is declared by it already (SingleFileTest puts a request through it)');
+        }
         $dir = sys_get_temp_dir() . '/rs-shipped-' . getmypid() . '-' . mt_rand();
         mkdir($dir, 0700, true);
         try {
@@ -71,7 +77,7 @@ return [
             file_put_contents("$dir/site.rules", SHIPPED_SITE);
             // The same rules read here, from rules/, to compare with.
             $here = RuleFile::read(["$dir/site.rules"]);
-            file_put_contents("$dir/run.php", '<?php require ' . var_export("$dir/Shipped.php", true) . '; require ' . var_export(dirname(__DIR__) . '/bootstrap.php', true) . ";\n"
+            file_put_contents("$dir/run.php", '<?php require ' . var_export("$dir/Shipped.php", true) . '; require ' . var_export(rsEntry(), true) . ";\n"
                 . 'use CjwNetwork\\RequestShield\\Rules\\{Feeds, RuleFile, Shipped}; use CjwNetwork\\RequestShield\\Settings;' . "\n"
                 . '$read = RuleFile::read([' . var_export("$dir/site.rules", true) . ']);' . "\n"
                 . '$s = Settings::from($read["config"]);' . "\n"

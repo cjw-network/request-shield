@@ -29,7 +29,7 @@ function withTier(string $rules, callable $body, bool $readOnly = false, bool $a
     }
     $port = freePort();
     $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d apc.enabled=%d -d auto_prepend_file=%s -d log_errors=1 -d error_log=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
-        escapeshellarg("$dir/site/site.rules"), serverPhp(), $apcu ? 1 : 0, escapeshellarg(dirname(__DIR__) . '/bootstrap.php'), escapeshellarg("$dir/php-errors.log"), $port, escapeshellarg("$dir/docroot")), [], $pipes);
+        escapeshellarg("$dir/site/site.rules"), serverPhp(), $apcu ? 1 : 0, escapeshellarg(rsEntry()), escapeshellarg("$dir/php-errors.log"), $port, escapeshellarg("$dir/docroot")), [], $pipes);
     for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
         usleep(100000);
     }
@@ -112,7 +112,7 @@ return [
             }
             truthy(!is_dir("$dir/site/.request-shield"), 'nothing could be made next to the rules');
             same('', trim((string) @file_get_contents("$dir/php-errors.log")), 'no error: compiled on every request, quietly');
-            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield') . ' check ' . escapeshellarg("$dir/site/site.rules") . ' 2>&1', $out, $code);
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' check ' . escapeshellarg("$dir/site/site.rules") . ' 2>&1', $out, $code);
             $text = implode("\n", $out);
             truthy(strpos($text, 'tier: S0') !== false, "check names the tier:\n$text");
             truthy(strpos($text, 'warning: nothing is counted') !== false, "and what is off:\n$text");
@@ -176,7 +176,7 @@ return [
             same(429, $get('/')['status'], 'the third is one too many: counted in files');
             truthy(is_dir("$dir/site/.request-shield/store"), 'the store next to the rules');
             truthy(glob("$dir/site/.request-shield/settings-*.php") !== [], 'the compiled settings next to the rules');
-            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield') . ' version ' . escapeshellarg("$dir/site/site.rules") . ' 2>&1', $out, $code);
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' version ' . escapeshellarg("$dir/site/site.rules") . ' 2>&1', $out, $code);
             truthy(strpos(implode("\n", $out), 'tier: S1') !== false, "version names the tier:\n" . implode("\n", $out));
         });
     },

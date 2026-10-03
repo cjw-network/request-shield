@@ -267,7 +267,7 @@ return [
         mkdir($dir, 0700, true);
         file_put_contents("$dir/site.rules", "include @attacks\nrestrict /rs/** to 127.0.0.1 ::1\n");
         try {
-            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
+            $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli());
             exec("$bin check " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
             same(0, $code, implode("\n", $out));
             truthy(strpos(implode("\n", $out), 'attack patterns') !== false, implode("\n", $out));

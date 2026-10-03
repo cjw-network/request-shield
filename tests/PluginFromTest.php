@@ -93,7 +93,7 @@ return [
             $s2 = Settings::from($read['config']);
             same(0, count((new Shield($s2, new MemoryStore()))->plugins()), 'left out; the site stays up');
             if (function_exists('exec')) {
-                exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield') . ' check ' . escapeshellarg("$dir/missing.rules") . ' 2>&1', $out, $code);
+                exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' check ' . escapeshellarg("$dir/missing.rules") . ' 2>&1', $out, $code);
                 truthy(strpos(implode("\n", $out), 'nowhere.php -- the file is not there') !== false, 'check names it: ' . implode(' | ', $out));
             }
         } finally {

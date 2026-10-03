@@ -38,7 +38,7 @@ function withHttpServer(callable $body): void
 /** Http::get() in a PHP with the given ini settings; returns what it printed (json). */
 function httpIn(string $ini, string $url): mixed
 {
-    $code = 'require ' . var_export(dirname(__DIR__) . '/bootstrap.php', true) . '; echo json_encode(["get" => \CjwNetwork\RequestShield\Http::get(' . var_export($url, true) . ', ["If-None-Match" => "\"v1\""], 5, 1000, "rs-test"), "offline" => \CjwNetwork\RequestShield\Http::offline()]);';
+    $code = 'require ' . var_export(rsEntry(), true) . '; echo json_encode(["get" => \CjwNetwork\RequestShield\Http::get(' . var_export($url, true) . ', ["If-None-Match" => "\"v1\""], 5, 1000, "rs-test"), "offline" => \CjwNetwork\RequestShield\Http::offline()]);';
     exec(escapeshellarg(PHP_BINARY) . " $ini -r " . escapeshellarg($code) . ' 2>&1', $out, $exit);
     return json_decode(implode('', $out), true) ?? ['raw' => implode("\n", $out), 'exit' => $exit];
 }
