@@ -55,8 +55,9 @@ final class Inspector
      * client's address.
      *
      * @param array<string, string> $headers extra headers ("User-Agent" => ...)
+     * @param list<string> $trusted the trusted proxies (Settings::$trustedProxies)
      */
-    public static function request(string $method, string $url, string $ip, array $headers = []): Request
+    public static function request(string $method, string $url, string $ip, array $headers = [], array $trusted = []): Request
     {
         // A full URL, or a path: "//admin/users" is a path here (as a browser
         // sends it in the request line), not a host.
@@ -82,7 +83,8 @@ final class Inspector
         foreach ($headers as $name => $value) {
             $server['HTTP_' . strtoupper(str_replace('-', '_', $name))] = $value;
         }
-        return Request::fromServer($server);
+        // $trusted: the site's proxies (trust) -- from one of them, X-Forwarded-For names the visitor.
+        return Request::fromServer($server, $trusted);
     }
 
     /**

@@ -41,3 +41,19 @@ Part of building the request: about 1–2 µs.
 
 The shield cannot know your network: without `trustedProxies`, a site behind
 a proxy sees the proxy as its only client — list it.
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF01-01 · A proxy in front of the site**
+
+Behind a proxy, every request comes from the proxy's address. From a trusted proxy (trust 198.51.100.1), X-Forwarded-For names the visitor -- and only from there: anyone can send the header.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/admin/` | the site answers it — from 198.51.100.1, with X-Forwarded-For: 192.0.2.10 | Through the trusted proxy, a visitor from the office: the visitor's address decides |
+| `/admin/` | no access (403) · rule DEMO-ADMIN — from 198.51.100.1, with X-Forwarded-For: 203.0.113.9 | the same proxy, a visitor from elsewhere |
+| `/admin/` | no access (403) · rule DEMO-ADMIN — from 203.0.113.50, with X-Forwarded-For: 192.0.2.10 | The header from anyone else: not believed |
+<!-- /examples -->

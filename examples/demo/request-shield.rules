@@ -144,6 +144,14 @@ set         debug-header on
 # machine, decided by request-shield test from a documentation address unless
 # "from" says otherwise. "# try:" rows are there to look at, not decided.
 
+# demo: RSF01-01 trusted-proxies A proxy in front of the site
+# Behind a proxy, every request comes from the proxy's address. From a trusted
+# proxy (trust 198.51.100.1), X-Forwarded-For names the visitor -- and only
+# from there: anyone can send the header.
+expect GET /admin/      from 198.51.100.1 header X-Forwarded-For:192.0.2.10 answered          # Through the trusted proxy, a visitor from the office: the visitor's address decides
+expect GET /admin/      from 198.51.100.1 header X-Forwarded-For:203.0.113.9 403 by DEMO-ADMIN # the same proxy, a visitor from elsewhere
+expect GET /admin/      from 203.0.113.50 header X-Forwarded-For:192.0.2.10 403 by DEMO-ADMIN # The header from anyone else: not believed
+
 # demo: RSF04-01 cacheable-definition What a cache may keep
 # Every page passes; only some may be kept by a cache. Unknown paths and
 # parameters reach the site, but marked so a cache does not keep them -- made-up

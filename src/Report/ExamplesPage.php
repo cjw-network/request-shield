@@ -166,6 +166,10 @@ final class ExamplesPage
         if ($r['ua'] !== null) {
             $about[] = 'as "' . $r['ua'] . '"';
         }
+        foreach ($r['headers'] as $name => $value) {
+            // The headers are what the example is about as often as not (X-Forwarded-For, Origin).
+            $about[] = 'with ' . str_replace(' ', '-', ucwords(str_replace('-', ' ', (string) $name))) . ': ' . $value;
+        }
         return $out . ($about !== [] ? ' — ' . implode(', ', $about) : '');
     }
 }

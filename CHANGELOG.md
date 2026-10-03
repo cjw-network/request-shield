@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The demo shows trusted proxies** (0031 step F.6, RSF01-01): a group with
+  the admin area behind the proxy `198.51.100.1` -- through it the visitor's
+  address decides, the header from anyone else is not believed. The page's
+  answer reads `X-Forwarded-For` as the rules do (`Inspector::request()` takes
+  the trusted proxies).
 - **Each demo group is its feature's end-to-end test** (0031 step F.6): `DemoTest`
   runs every `# demo:` group on a real server under the feature's id -- each
   `expect` row sent through the shield as a real request from the example's

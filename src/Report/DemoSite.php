@@ -121,7 +121,7 @@ final class DemoSite
             $headers['user-agent'] = $row['ua'];
         }
         $url = $row['url'][0] === '/' ? 'http://' . $host . $front . $row['url'] : $row['url'];
-        $t = (new Inspector($s, $store))->trace(Inspector::request($row['method'], $url, $from, $headers));
+        $t = (new Inspector($s, $store))->trace(Inspector::request($row['method'], $url, $from, $headers, $s->trustedProxies));
         $d = $t['decision'];
         $steps = [];
         foreach ($t['steps'] as $step) {
