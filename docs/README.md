@@ -83,6 +83,15 @@
   [0003 append-only file counters](adr/0003-append-only-file-counters.md) ·
   [0004 stateless challenge and pass](adr/0004-stateless-signed-challenge-and-pass.md) ·
   [0005 settings compiled for OPcache](adr/0005-settings-compiled-for-opcache.md) ·
-  [0006 the core and its plugins](adr/0006-core-and-plugins.md)
+  [0006 the core and its plugins](adr/0006-core-and-plugins.md) ·
+  proposed with 0031:
+  [0007 an error in the shield lets the request pass](adr/0007-fail-safe-pass-through.md) ·
+  [0008 extension points resolved at compile time](adr/0008-extension-points-resolved-at-compile-time.md) ·
+  [0009 plugins tighten, never loosen](adr/0009-plugins-tighten-never-loosen.md) ·
+  [0010 one signed file per edition](adr/0010-single-file-and-editions.md) ·
+  [0011 one source for reference, demos and tests](adr/0011-one-source-for-reference-demos-and-tests.md) ·
+  [0012 one repository with split mirrors, signed releases](adr/0012-repository-structure-and-release-signing.md) ·
+  [0013 hosting tiers](adr/0013-hosting-tiers.md) ·
+  [0014 every byte counts: the `rs` prefix](adr/0014-wire-bytes-and-the-rs-prefix.md)
 
 New proposals: copy the shape of 0001, next number, status **Draft**.
