@@ -33,6 +33,9 @@ use CjwNetwork\RequestShield\Rules\Shipped;
  *   php bin/request-shield <an extension's command> site.rules …   (stats: the statistics plugin's, see its usage)
  *   -- stats site.rules [--days=7 | --from=2026-01-01 --to=2026-09-30] [--by=day|week|month|year] [--crawler=<ID>] [--path=/news/] [--sort=views|blocked|refused|checked|throttled] [--site=<website>|other | --group=<group>] [--json]
  *   php bin/request-shield version [site.rules]
+ *   php request-shield.php init --app=plain|wordpress|symfony|exponential [--docroot=<dir>] [--out=<file>] [--force]
+ *   php request-shield.php verify request-shield.php [--sums=SHA256SUMS] [--sig=request-shield.php.minisig] [--key=<public key>]
+ *   php request-shield.php self-update [--check] [--to=vX.Y.Z] [--major]     (the single file only)
  *
  * version: the library's version and build, PHP, whether APCu is there and
  *         the shipped rule sets' versions; with a rule file also the store in
@@ -90,6 +93,8 @@ final class Cli
         $listUntil = null;
         $listReason = '';
         $feedOpts = ['format' => 'plain', 'write' => null];
+        // init, verify, self-update (0031 E.6): their options.
+        $release = ['app' => null, 'docroot' => null, 'out' => null, 'sums' => null, 'sig' => null, 'key' => null, 'check' => false, 'to' => null, 'major' => false];
         $testOpts = ['only' => null, 'asWritten' => false, 'junit' => null];
         foreach ($args as $a) {
             if ($a === '--force') {
@@ -134,12 +139,35 @@ final class Cli
                 $testOpts['asWritten'] = true;
             } elseif (strncmp($a, '--junit=', 8) === 0) {
                 $testOpts['junit'] = substr($a, 8);
-
+            } elseif (preg_match('/^--(app|docroot|out|sums|sig|key|to)=(.*)$/s', $a, $m) === 1) {
+                $release[$m[1]] = $m[2];
+            } elseif ($a === '--check' || $a === '--major') {
+                $release[substr($a, 2)] = true;
             } else {
                 $rest[] = $a;
             }
         }
         [$command, $file, $what] = $rest + [null, null, null];
+
+        // Commands without a rule file (0031 E.6).
+        if ($command === 'init') {
+            exit(Rules\Starter::run($release['app'], $release['docroot'], $release['out'], $force, STDOUT, STDERR));
+        }
+        if ($command === 'verify') {
+            if ($file === null) {
+                fwrite(STDERR, "usage: request-shield verify <request-shield.php> [--sums=<SHA256SUMS>] [--sig=<file.minisig>] [--key=<public key>]\n");
+                exit(2);
+            }
+            exit(Release\Verify::run($file, $release['sums'], $release['sig'], $release['key'] ?? Shipped::PUBKEY, STDOUT, STDERR));
+        }
+        if ($command === 'self-update') {
+            if (!Shipped::embedded()) {
+                fwrite(STDERR, "request-shield: self-update replaces the single file, and this is a source checkout or a Composer install -- update it with git or composer\n");
+                exit(2);
+            }
+            $self = (string) (new \ReflectionClass(Shipped::class))->getFileName();
+            exit((new Release\SelfUpdate($self, Shipped::PUBKEY, Shield::VERSION))->run($release['check'], $release['to'], $release['major'], STDOUT, STDERR));
+        }
 
         if ($command === 'version' || $command === '--version') {
             // What is installed: for a bug report, a support call, or an agent that
@@ -212,7 +240,10 @@ final class Cli
                 . "       request-shield deny|allow <main.rules> <address|range> [--for=7d | --until=2026-10-07[T15:30]] [--reason=\"…\"] [--force]\n"
                 . "       request-shield unlist <main.rules> <address|range>\n"
                 . "       request-shield lists <main.rules>\n"
-                . "       request-shield version [<main.rules>]\n");
+                . "       request-shield version [<main.rules>]\n"
+                . "       request-shield init --app=" . implode('|', Shipped::starters()) . " [--docroot=<dir>] [--out=<file>] [--force]\n"
+                . "       request-shield verify <request-shield.php> [--sums=<SHA256SUMS>] [--sig=<file.minisig>] [--key=<public key>]\n"
+                . "       request-shield self-update [--check] [--to=vX.Y.Z] [--major]\n");
             exit(2);
         }
         if (substr($file, -6) !== '.rules') {

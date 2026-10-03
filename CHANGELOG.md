@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`init`, `verify`, `self-update`** (0031 step E.6): `request-shield init
+  --app=plain|wordpress|symfony|exponential` writes a commented starter rule
+  file in monitor mode (refused inside `--docroot`, or over a file without
+  `--force`); `verify <file>` checks the checksum from `SHA256SUMS` and, with
+  a release key and sodium, the minisign signature (pure PHP,
+  `Release\Minisign`); `self-update [--check] [--to=vX.Y.Z] [--major]`
+  replaces the single file and the statistics file beside it with a signed
+  release, every file checked before any is replaced, the old ones kept as
+  `.prev`. Until the release key exists, `verify` checks the checksum only and
+  `self-update` refuses.
 - **The release workflow** (0031 step E.5): a tag `vX.Y.Z` on `main` is
   checked (`build/release-check.php`: `Shield::VERSION` and the changelog's
   section name it), every edition is built twice and compared, the suite runs

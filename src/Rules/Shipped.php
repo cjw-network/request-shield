@@ -35,6 +35,17 @@ final class Shipped
     /** @var array<string, string> name => the contents of rules/crawlers/<name>.json; empty in the repository */
     public const CRAWLER_LISTS = [];
 
+    /** @var array<string, string> app => the contents of rules/starter/<app>.rules (`init --app=`); empty in the repository */
+    public const STARTERS = [];
+
+    /**
+     * The release key (minisign, Ed25519; the public key's base64 line): what
+     * `verify` and `self-update` check a download's signature with. Empty until
+     * the owner makes the key (0031 step H.2a) -- then verify checks the
+     * checksum only and says so, and self-update refuses.
+     */
+    public const PUBKEY = '';
+
     /** @var array{crawlers: array<string, array{kind: string, ua: string, dns: list<string>, ranges: list<string>, lists: array<string, array<string, ?string>>, policy: string, nets: array<string, list<array{0: string, 1: int}>>}>, index: string, ids: list<string>, names: array<string, string>}|null */
     private static ?array $crawlers = null;
 
@@ -95,6 +106,32 @@ final class Shipped
             return self::FEEDS;
         }
         return (string) @file_get_contents(self::dir() . '/feeds.json');
+    }
+
+    /** The starter rule file for an application (rules/starter/<app>.rules), null when there is none. */
+    public static function starter(string $app): ?string
+    {
+        if (!self::valid($app)) {
+            return null;
+        }
+        if (self::embedded()) {
+            return self::embeddedStarters()[$app] ?? null;
+        }
+        $text = @file_get_contents(self::dir() . "/starter/$app.rules");
+        return $text === false ? null : $text;
+    }
+
+    /**
+     * The applications there is a starter for, sorted.
+     *
+     * @return list<string>
+     */
+    public static function starters(): array
+    {
+        $names = self::embedded() ? array_keys(self::embeddedStarters())
+            : array_map(static fn (string $f): string => basename($f, '.rules'), glob(self::dir() . '/starter/*.rules') ?: []);
+        sort($names, SORT_STRING);
+        return $names;
     }
 
     /** A shipped address list (rules/crawlers/<name>.json) as JSON, null when there is none of that name. */
@@ -170,6 +207,12 @@ final class Shipped
     private static function embeddedRules(): array
     {
         return self::RULES;
+    }
+
+    /** @return array<string, string> STARTERS, typed (empty in the repository) */
+    private static function embeddedStarters(): array
+    {
+        return self::STARTERS;
     }
 
     /** @return array<string, string> CRAWLER_LISTS, typed (empty in the repository) */

@@ -1,0 +1,30 @@
+# request-shield rules for a Symfony (or Ibexa) site -- a starter from `request-shield init --app=symfony`.
+#
+# It starts in monitor mode: every rule is checked and logged as it would
+# decide, nobody is refused. Read the log for a few days, add what the site
+# needs (docs/llm/write-rules.md), run `request-shield test` on this file
+# (it decides every expect line), then change "monitor" to "enforce".
+#
+# Keep this file, the log and .request-shield/ OUTSIDE the document root.
+
+ids SITE
+version 1
+
+set mode monitor                         # off | monitor | enforce | strict
+set log  .request-shield/shield.log      # what was decided, and why (relative to this file)
+
+# The site's names: a request for any other Host is refused. Uncomment with yours.
+# [SITE-HOST]  host www.example.org example.org
+
+include @wordpress                       # this is not WordPress: its scanner paths are refused
+expect GET /wp-login.php         404 by WP-SCRIPTS     # a WordPress script on a site that has none
+include @tracking                        # the marketing tags (utm_* …) are known parameters
+expect GET /?utm_source=mail     answered              # a campaign tag
+include @attacks                         # injection patterns in the address and the query
+
+[SITE-PACE]  limit requests 60/min challenge-at 30     # per visitor: the browser check past 30 a minute
+expect GET /                     answered              # the front page
+expect GET /.env                 404 by SCAN-HIDDEN    # a hidden file (the built-in scanners rules)
+
+[SITE-SHIELD]  restrict **/rs/** to 127.0.0.1 ::1      # the shield's own pages: only this machine
+expect GET /rs/waf/live          403 by SITE-SHIELD

@@ -30,13 +30,17 @@ function shippedEmbedded(): string
     foreach (glob("$root/rules/crawlers/*.json") ?: [] as $f) {
         $lists[basename($f, '.json')] = (string) file_get_contents($f);
     }
+    $starters = [];
+    foreach (glob("$root/rules/starter/*.rules") ?: [] as $f) {
+        $starters[basename($f, '.rules')] = (string) file_get_contents($f);
+    }
     $out = str_replace(
-        ['public const RULES = [];', "public const FEEDS = '';", 'public const CRAWLER_LISTS = [];', "return dirname(__DIR__, 2) . '/rules';"],
+        ['public const RULES = [];', "public const FEEDS = '';", 'public const CRAWLER_LISTS = [];', 'public const STARTERS = [];', "return dirname(__DIR__, 2) . '/rules';"],
         ['public const RULES = ' . var_export($rules, true) . ';', 'public const FEEDS = ' . var_export((string) file_get_contents("$root/rules/feeds.json"), true) . ';',
-            'public const CRAWLER_LISTS = ' . var_export($lists, true) . ';', "return '/nonexistent/rules';"],
+            'public const CRAWLER_LISTS = ' . var_export($lists, true) . ';', 'public const STARTERS = ' . var_export($starters, true) . ';', "return '/nonexistent/rules';"],
         $src, $count);
-    if ($count !== 4) {
-        throw new TestFailure("Shipped.php no longer has the four places the build fills ($count found)");
+    if ($count !== 5) {
+        throw new TestFailure("Shipped.php no longer has the five places the build fills ($count found)");
     }
     return $out;
 }
@@ -62,6 +66,7 @@ return [
         same(['built-in scanners.rules', null], [Shipped::label("$root/scanners.rules"), Shipped::label(__FILE__)]);
         same(require "$root/crawlers.php", Shipped::crawlers(), 'the ready crawlers are rules/crawlers.php');
         same(RuleFile::shippedReady(), Shipped::crawlers(), 'and what the shipped set compiles to (the single file builds them so)');
+        truthy(strpos((string) Shipped::starter('plain'), 'set mode monitor') !== false && Shipped::starter('../plain') === null && Shipped::starter('nothing') === null, 'the starters for init');
     },
     'embedded (the single file): nothing is read from rules/, the same rules compile to the same settings, the file itself is watched' => function (): void {
         if (!function_exists('exec')) {
@@ -82,7 +87,7 @@ return [
                 . '$read = RuleFile::read([' . var_export("$dir/site.rules", true) . ']);' . "\n"
                 . '$s = Settings::from($read["config"]);' . "\n"
                 . 'echo json_encode(["embedded" => Shipped::embedded(), "config" => $read["config"], "seen" => array_keys($read["seen"]), "blocked" => count($s->blockedPaths),'
-                . ' "crawlers" => array_keys(Settings::from([])->crawlers), "feeds" => array_keys(Feeds::catalog()), "sets" => Shipped::sets(), "isShipped" => Shipped::isShipped(' . var_export("$dir/Shipped.php", true) . ')]);');
+                . ' "crawlers" => array_keys(Settings::from([])->crawlers), "feeds" => array_keys(Feeds::catalog()), "sets" => Shipped::sets(), "starters" => array_map([Shipped::class, "starter"], Shipped::starters()), "isShipped" => Shipped::isShipped(' . var_export("$dir/Shipped.php", true) . ')]);');
             exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg("$dir/run.php") . ' 2>&1', $out, $code);
             $got = json_decode(implode("\n", $out), true);
             truthy($code === 0 && is_array($got), 'ran: ' . implode("\n", $out));
@@ -95,6 +100,7 @@ return [
             same(array_keys(Settings::from([])->crawlers), $got['crawlers'], 'settings from a PHP array: the shipped crawlers, built from the embedded set and lists');
             same(array_keys(Feeds::catalog()), $got['feeds'], 'the feed catalog');
             same(Shipped::sets(), $got['sets']);
+            same(array_map([Shipped::class, 'starter'], Shipped::starters()), $got['starters'], 'the starters, embedded');
             same(true, $got['isShipped'], 'the single file is "shipped" for check');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));

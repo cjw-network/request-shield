@@ -79,6 +79,40 @@ tree's `Shipped`. CI runs it on PHP 8.4 with APCu for every pull request, on
 8.0 and 8.4 for a push to main, on every leg nightly, and checks the built
 file with `php -l` on every PHP version it runs.
 
+## Starting, checking, updating
+
+```
+php request-shield.php init --app=plain --docroot=/var/www/html --out=/var/www/request-shield.rules
+php request-shield.php verify request-shield.php          # SHA256SUMS next to it
+php request-shield.php self-update --check                # exit 10: a newer release exists
+```
+
+- **`init --app=plain|wordpress|symfony|exponential`** writes a commented
+  starter rule file (`rules/starter/<app>.rules`, embedded in the file) in
+  monitor mode, with an `expect` line for each rule, so `test` passes on it
+  at once and `check` has nothing to warn about. Without `--out` it prints
+  the file. It refuses a file inside `--docroot`, and one that exists unless
+  `--force`.
+- **`verify <file>`** compares the file with `SHA256SUMS` (next to it, or
+  `--sums=`). With a release key -- `Shipped::PUBKEY`, or `--key=` -- and
+  sodium it also checks the minisign signature (`<file>.minisig`, or
+  `--sig=`), whose trusted comment must name the same checksum. Without a key
+  or without sodium it says that the signature was not checked. Exit 0: the
+  released file; 1: not; 2: something it needs is missing.
+- **`self-update [--check] [--to=vX.Y.Z] [--major]`** replaces the running
+  single file, and `request-shield-stats.php` beside it, with a signed
+  release. It reads the release's signature first: its trusted comment
+  names the version and the checksum. Then it downloads every file, checks
+  the signature, the checksum and `php -l`, and only then replaces them.
+  The old files stay as `.prev`. It refuses a downgrade, the same version,
+  and a new major version without `--major`. It runs on the command line
+  only, never by itself, and not without the release key. In a source
+  checkout it points to git or Composer.
+
+The signature check is minisign's format, in pure PHP with sodium
+(`Release\Minisign`). The tests hold it to signatures made by minisign 0.12
+itself.
+
 ## Released
 
 A tag `vX.Y.Z` on `main` builds the release (`.github/workflows/release.yml`):
@@ -115,5 +149,6 @@ share is the same in both, and the order of the two has held in every run.
   loaded `Shield` already, the file does nothing. If Composer has loaded some
   of the library's classes but not `Shield`, the file stops at the first one
   it declares again, a fatal error. Use one of the two.
-- The command line's `self-update`, `verify` and `init` are not there yet
-  (step E.6).
+- `self-update` refuses until the releases are signed: the release key comes
+  last (0031 step H.2a). Until then `verify` checks the checksum only, and
+  says so.

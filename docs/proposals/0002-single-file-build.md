@@ -190,6 +190,22 @@ pinned by commit. The minisign step, `.minisig` assets, the public key in
 `SECURITY.md`/`README.md`/`Shipped::PUBKEY` and the environment's secrets are
 step H.2a in 0031's steps file.
 
+**As built in E.6:** `verify`, `self-update` and `init` (`Release\Verify`,
+`Release\SelfUpdate`, `Rules\Starter`; the check `Release\Minisign`, held to
+signatures made by minisign 0.12). Differences from the text above:
+`self-update` learns the next version from the release's signature file
+(its trusted comment, `request-shield vX.Y.Z sha256:<hex>`, proven by the
+global signature), so `--check` downloads one small file and no API is asked.
+It prints the release's address instead of the changelog section. Edition
+files beside it (`request-shield-stats.php`) are updated with it, all checked
+before any is replaced; the same version is refused as well as a downgrade.
+Until the release key exists (H.2a) `Shipped::PUBKEY` is empty: `verify`
+checks the checksum and says the signature was not checked, `self-update`
+refuses. Every signature, the statistics file's too, must carry that
+trusted comment. `init` takes `--docroot` to refuse a file inside it; the
+starters are `rules/starter/{plain,wordpress,symfony,exponential}.rules`,
+embedded as `Shipped::STARTERS`.
+
 ### The bootstrap block — and the fix in `bootstrap.php`
 
 ```php

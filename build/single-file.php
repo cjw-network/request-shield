@@ -295,8 +295,8 @@ function nowdoc(string $text): string
 }
 
 /**
- * Shipped.php's body with the data in it -- the three constants filled,
- * dir() never reached. The four places must be as the class has them;
+ * Shipped.php's body with the data in it -- the four constants filled,
+ * dir() never reached. The five places must be as the class has them;
  * tests/ShippedTest.php replaces the same ones.
  */
 function shipped(string $body): string
@@ -311,6 +311,11 @@ function shipped(string $body): string
         $lists[basename($f, '.json')] = (string) file_get_contents($f);
     }
     ksort($lists, SORT_STRING);
+    $starters = [];
+    foreach (glob(ROOT . '/rules/starter/*.rules') ?: [] as $f) {
+        $starters[basename($f, '.rules')] = (string) file_get_contents($f);
+    }
+    ksort($starters, SORT_STRING);
     $map = static function (array $data): string {
         $out = "[\n";
         foreach ($data as $name => $text) {
@@ -322,6 +327,7 @@ function shipped(string $body): string
         'public const RULES = [];' => 'public const RULES = ' . $map($rules) . ';',
         "public const FEEDS = '';" => 'public const FEEDS = ' . nowdoc((string) file_get_contents(ROOT . '/rules/feeds.json')) . ';',
         'public const CRAWLER_LISTS = [];' => 'public const CRAWLER_LISTS = ' . $map($lists) . ';',
+        'public const STARTERS = [];' => 'public const STARTERS = ' . $map($starters) . ';',
         "return dirname(__DIR__, 2) . '/rules';" => "return __DIR__ . '/rules';         // never reached: the data is embedded",
     ];
     foreach ($replace as $from => $to) {
