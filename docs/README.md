@@ -28,6 +28,9 @@
   [settings](features/settings.md)
 - **Privacy** — what the shield processes about visitors, feature by feature,
   and the GDPR: [privacy and the GDPR](privacy.md)
+- **For AI agents** — [llms.txt](../llms.txt) is the entry; the prompts:
+  [install a site](llm/prompts/install.md) · [review the project](llm/prompts/review.md);
+  [writing rule examples](llm/write-rule-examples.md)
 - **Use cases** — scenarios end to end:
   [shared hosting DoS guard](use-cases/shared-hosting-dos-guard.md) ·
   [page cache pollution](use-cases/page-cache-pollution.md) ·

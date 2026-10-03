@@ -1,0 +1,32 @@
+# request-shield
+
+> A dependency-free PHP (>= 8.0) mini web application firewall that runs before the application
+> (auto_prepend_file or the first line of a front controller). One file to deploy, the rules in a
+> plain text file. Decides whether a request reaches the application and whether a cache may keep
+> the answer. Fast with APCu (~12 µs per request), minimal requirements without it.
+
+## Start here
+
+- [AGENTS.md](AGENTS.md): the rules for working on this repository (correct and fast, fail safe, tests, docs).
+- [Install](docs/llm/install.md): download, verify, place outside the docroot, activate, verify. *(coming with 0031 step E.7; until then: README.md "Installation")*
+- [Write rules for an application](docs/llm/write-rules.md): what to look at in the app, what to write, monitor first. *(step E.7)*
+- [Check what you wrote](docs/llm/check.md): `check`, `test`, `trace`; reading errors; when to enforce. *(step E.7)*
+- [Write examples next to the rules](docs/llm/write-rule-examples.md): `expect` lines, one near miss per rule, no personal data.
+- [Prompts](docs/llm/prompts/install.md): the install prompt a site owner gives an agent, and the [review prompt](docs/llm/prompts/review.md) that checks the project against its goals.
+
+## Understand
+
+- [The parts and their switches](docs/explained/parts.md) · [the browser check](docs/explained/browser-check.md)
+- Features, one page each: `docs/features/*.md` (index in [docs/README.md](docs/README.md))
+- Rule files: [docs/features/rule-files.md](docs/features/rule-files.md) · examples and `request-shield test`: [docs/features/rule-examples.md](docs/features/rule-examples.md)
+- Shipped rule sets: `rules/scanners.rules`, `rules/attacks.rules`, `rules/tracking.rules`, `rules/crawlers.rules`, `rules/wordpress.rules` (for sites that are NOT WordPress; to be renamed `@not-wordpress`)
+- The plan for v1.0: [proposal 0031](docs/proposals/0031-robust-core-plugins.md), progress in [0031-steps.md](docs/proposals/0031-steps.md)
+- [CHANGELOG.md](CHANGELOG.md) · [SECURITY.md](SECURITY.md)
+
+## Never
+
+- Never switch from `set mode monitor` to `enforce` without showing the owner `request-shield test` and the log.
+- Never put real visitor addresses, names, tokens or secrets into rule files or examples (documentation ranges only: 192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24).
+- Never guess address ranges for `restrict`; ask the owner.
+- Never place the shield, its rules, its `store-dir` or its log inside the document root.
+- Never install anything the task did not ask for.
