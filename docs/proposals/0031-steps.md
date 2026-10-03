@@ -57,7 +57,7 @@ the model you trust most there, not fast mode.
 - [x] **0.3** Renumber the local drafts: `0002-check-levels.md` → `0032-check-levels.md` (with a section "Relation to 0004 modes"), `0003-event-log.md` → `0033-event-log.md` (relation to the `Sink` hook and `set log`); `docs/README.md` updated, 0007 noted as free; stash `local README proposal links` dropped. `910af9a`
 - [x] **0.4** `llms.txt` (start here / understand / never), `docs/llm/prompts/install.md`, `docs/llm/prompts/review.md` (the two prompts verbatim). `a76231d`
 - [x] **0.5** `.gitattributes` comment corrected; `tests/DocsTest.php`: no duplicate proposal numbers, every `NNNN-*.md` linked from `docs/README.md`, every path in `llms.txt` exists — green, and red without 0.3. `1f042ba`
-- [x] **0.6** ADR placeholders (status proposed): 0007 fail-safe pass-through, 0008 compile-time extension points, 0009 plugins tighten only, 0010 single file and editions, 0011 one source for reference, demos and tests (RSF), 0012 repository structure and signing, 0013 hosting tiers, 0014 wire bytes and the `rs` prefix. *(hash: the commit after 0.5)*
+- [x] **0.6** ADR placeholders (status proposed): 0007 fail-safe pass-through, 0008 compile-time extension points, 0009 plugins tighten only, 0010 single file and editions, 0011 one source for reference, demos and tests (RSF), 0012 repository structure and signing, 0013 hosting tiers, 0014 wire bytes and the `rs` prefix. `a321324` (the steps-file line itself lands with A.1)
 
 ### Phase A — Robustness
 - [ ] **A.1** `Shield::VERSION` + `request-shield version` (version, build, PHP, store, tier, rule-set versions) — `tests/CliTest.php`.

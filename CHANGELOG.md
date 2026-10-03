@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The plan for v1.0** (proposal 0031, with its step list and resume prompt
+  in `docs/proposals/0031-steps.md`): a robust core, compile-time extension
+  points, a mini single-file edition without any backend (proposal 0002),
+  hosting tiers, the `rs` prefix for headers and cookies, feature ids (`RSF…`)
+  with docs, a demo and tests for every feature, the API and CMS adapters as
+  plugins, the repository and release structure; ADRs 0007–0014 (proposed);
+  `llms.txt` and the two prompts (`docs/llm/prompts/`) for AI agents; the two
+  older drafts as proposals 0032 and 0033; `tests/DocsTest.php` keeps the
+  numbers unique and the links whole.
 - **Forms in the statistics** (proposal 0028, phase 2; the part `forms`): each
   form (POST, PUT, PATCH, DELETE outside `api-path`) with how many were sent,
   where from (the website's own page, "this website", another website by its
