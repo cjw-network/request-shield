@@ -60,7 +60,7 @@ the model you trust most there, not fast mode.
 - [x] **0.6** ADR placeholders (status proposed): 0007 fail-safe pass-through, 0008 compile-time extension points, 0009 plugins tighten only, 0010 single file and editions, 0011 one source for reference, demos and tests (RSF), 0012 repository structure and signing, 0013 hosting tiers, 0014 wire bytes and the `rs` prefix. `a321324` (the steps-file line itself lands with A.1)
 
 ### Phase A — Robustness
-- [x] **A.1** `Shield::VERSION` + `request-shield version` (version, build, PHP, store, rule-set versions; the tier comes with A3.1) — `tests/CliTest.php`. *(hash: next commit)*
+- [x] **A.1** `Shield::VERSION` + `request-shield version` (version, build, PHP, store, rule-set versions; the tier comes with A3.1) — `tests/CliTest.php`. `a73a8e0`
 - [ ] **A.2** Fail-safe wrapper: try/catch(\Throwable) around the body of `protect()`/`protectFile()`, `requirePass()`, `consume()`, `widget()`, the `ob_start` callback → `allowUncached('shield error')`, `Shield::failed()` throttled — `tests/RobustnessTest.php` cases 1, 7, 9 — red without the wrapper.
 - [ ] **A.3** Compile fallback: catch in `Settings::load()/loadFor()` → last good compiled settings + `.failed` marker; none → `mode off` + log; `TypeError` in `import()` → `unlink` + rebuild — RobustnessTest cases 5, 6, 8, 10.
 - [ ] **A.4** Bootstrap search order (`REQUEST_SHIELD_CONFIG` → `request-shield.rules` next to the file → `config/request-shield.rules` → `config/request-shield.php`) in `bootstrap.php`; README install section corrected; E2E test without `REQUEST_SHIELD_CONFIG`.
