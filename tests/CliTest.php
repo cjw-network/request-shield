@@ -50,4 +50,19 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'the extensions\' commands (0031 D.1): the statistics\' stats is one, run from the table; the usage lists it with the plugin\'s own line' => function (): void {
+        $commands = \CjwNetwork\RequestShield\StatsExtension::commands();
+        same(['stats'], array_keys($commands));
+        truthy(is_subclass_of($commands['stats'], \CjwNetwork\RequestShield\Cli\Command::class), 'a Cli\\Command');
+        truthy(strncmp($commands['stats']::usage(), 'request-shield stats <main.rules>', 33) === 0, 'its usage line: ' . $commands['stats']::usage());
+        same([], \CjwNetwork\RequestShield\Tests\RsTestExtension::commands(), 'an extension without commands: none');
+        if (!function_exists('exec')) {
+            skip('no exec');
+        }
+        exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield') . ' 2>&1', $out, $code);
+        same(2, $code, 'no command: the usage, exit 2');
+        $usage = implode("\n", $out);
+        truthy(strpos($usage, '       ' . $commands['stats']::usage()) !== false, 'the usage prints the plugin\'s line from the table: ' . $usage);
+        truthy(strpos($usage, 'request-shield check|show|reload') !== false, 'and the core\'s');
+    },
 ];

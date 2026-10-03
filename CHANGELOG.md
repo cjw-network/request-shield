@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The extensions' commands** (0031 step D.1): `Extension::commands()`
+  names the commands an extension adds to `bin/request-shield` (name => a
+  `Cli\Command` with `usage()` and `run(Cli\Context)`); the script runs them
+  from a table, after reading the rules and parsing the common options, and
+  its usage lists their lines. `stats` is the statistics plugin's command now
+  (`plugins/stats/src/Cli/StatsCommand.php`); its syntax is unchanged.
 - **The Handler capability** (0031 step C.4): a plugin answers a passing
   request itself, after every rule, the check and the shield's own pages --
   an HTTP cache hit, a page of its own -- with a `Response` that goes out as

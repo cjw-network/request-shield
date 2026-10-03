@@ -160,6 +160,12 @@ set alerts-after 20
 alert-to ops@example.org
 ```
 
+- **Its commands.** `Extension::commands()` names the commands an extension
+  adds to `bin/request-shield` (name => a `Cli\Command` class with `usage()`
+  and `run(Cli\Context): int`): the script reads the rules, compiles the
+  settings, parses the common options and runs the command from its table;
+  the usage lists the extension's lines. The statistics' `stats` is the first
+  (`plugins/stats/src/Cli/StatsCommand.php`).
 - **Offered, then known.** `plugin <class>` offers an extension for the rest
   of the reading; the shipped ones are only named (the constant
   `REQUEST_SHIELD_EXTENSIONS`: `bootstrap.php` defines it right after the

@@ -333,9 +333,10 @@ final class StatsExtension implements Extension
             ];
     }
 
+    /** `request-shield stats <main.rules>`: the counters in words, or as JSON (0031 D.1). */
     public static function commands(): array
     {
-        return [];
+        return ['stats' => Cli\StatsCommand::class];
     }
 
     public static function check(Settings $s): array

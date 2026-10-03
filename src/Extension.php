@@ -69,10 +69,11 @@ interface Extension
     public static function routes(array $compiled): array;
 
     /**
-     * Its command-line commands: name => how to run it (0031 D.1 defines the
-     * entries; until then []).
+     * Its command-line commands (0031 D.1): name => the class that runs it
+     * (Cli\Command); `request-shield <name> <main.rules> …` reads the rules,
+     * compiles the settings and hands the command a Cli\Context.
      *
-     * @return array<string, mixed>
+     * @return array<string, class-string<\CjwNetwork\RequestShield\Cli\Command>>
      */
     public static function commands(): array;
 
