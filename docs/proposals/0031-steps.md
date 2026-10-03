@@ -62,9 +62,9 @@ the model you trust most there, not fast mode.
 ### Phase A — Robustness
 - [x] **A.1** `Shield::VERSION` + `request-shield version` (version, build, PHP, store, rule-set versions; the tier comes with A3.1) — `tests/CliTest.php`. `a73a8e0`
 - [x] **A.2** Fail-safe wrapper: try/catch(\Throwable) around the body of `protect()`/`protectFile()`, `requirePass()`, `consume()`, `widget()`, the `ob_start` callback → `allowUncached('shield error')`, `Shield::failed()` throttled — `tests/RobustnessTest.php` cases 1, 7, 9 — red without the wrapper. `da2aae9`
-- [x] **A.3** Compile fallback: catch in `Settings::load()/loadFor()` → last good compiled settings + `.failed` marker; none → `mode off` + log; `TypeError` in `import()` → `unlink` + rebuild — RobustnessTest cases 5, 6, 8, 10. Fail safe only on the request path (`loadFor()`, `load(…, failSafe: true)`); `load()` for tools keeps throwing. *(hash: next commit)*
-- [ ] **A.4** Bootstrap search order (`REQUEST_SHIELD_CONFIG` → `request-shield.rules` next to the file → `config/request-shield.rules` → `config/request-shield.php`) in `bootstrap.php`; README install section corrected; E2E test without `REQUEST_SHIELD_CONFIG`.
-- [ ] **A.5** E2E tests set `REQUEST_SHIELD_CONFIG` themselves (PluginTest/AccessTest fail today with a local `config/request-shield.php`).
+- [x] **A.3** Compile fallback: catch in `Settings::load()/loadFor()` → last good compiled settings + `.failed` marker; none → `mode off` + log; `TypeError` in `import()` → `unlink` + rebuild — RobustnessTest cases 5, 6, 8, 10. Fail safe only on the request path (`loadFor()`, `load(…, failSafe: true)`); `load()` for tools keeps throwing. `7e5ce2d`
+- [x] **A.4** Bootstrap search order (`REQUEST_SHIELD_CONFIG` → `request-shield.rules` next to the file → `config/request-shield.rules` → `config/request-shield.php`) in `bootstrap.php`; README install section corrected; E2E test without `REQUEST_SHIELD_CONFIG` (`tests/BootstrapTest.php`, on a copy of the library). *(hash: next commit)*
+- [x] **A.5** E2E tests set `REQUEST_SHIELD_CONFIG` themselves (PluginTest/AccessTest fail today with a local `config/request-shield.php`). *(hash: next commit)*
 
 ### Phase A3 — Hosting tiers
 - [ ] **A3.1** Cache path → `store-dir/cache/`; not writable → compile in memory (S0) instead of a fatal; `check` names the tier and what is inactive — `HostingTiersTest` S0.
@@ -137,8 +137,8 @@ the model you trust most there, not fast mode.
 
 ## Status
 
-- **Last step done:** A.3
-- **Next step:** A.4
+- **Last step done:** A.5 (phase A complete)
+- **Next step:** A3.1
 - **Open owner questions:** see the proposal's last section.
 - **Deviations from the plan:** none.
 - **Review:** `pr-review-toolkit` is not installed on the machine that wrote phase 0 and A.1–A.2; the fallback (code-review skill, sonnet, low) was used — for phase 0 (documents only) once over the whole phase, for the code steps once per step.

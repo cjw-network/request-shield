@@ -134,9 +134,10 @@ architecture decisions. Privacy and the GDPR: [docs/privacy.md](docs/privacy.md)
 
 ### Without Composer (shared hosting)
 
-Put the directory somewhere outside the document root, write the rules to
-`config/request-shield.rules` (or copy `config/request-shield.dist.php` to
-`config/request-shield.php`), and prepend it:
+Three steps: put the directory somewhere **outside** the document root, write
+the rules to `request-shield.rules` next to `bootstrap.php` (or to
+`config/request-shield.rules`; a PHP array in `config/request-shield.php`
+works too, see `config/request-shield.dist.php`), and prepend it:
 
 ```ini
 ; .user.ini in the document root (PHP-FPM, LiteSpeed LSAPI)
@@ -148,9 +149,10 @@ auto_prepend_file = /home/you/request-shield/bootstrap.php
 php_value auto_prepend_file /home/you/request-shield/bootstrap.php
 ```
 
-The settings file can also be named by a constant or an environment variable,
-`REQUEST_SHIELD_CONFIG` (a `.rules` or a `.php` file). Without one the shield
-does nothing.
+`php bin/request-shield check request-shield.rules` tells you the rules are
+in order. The settings file can also be named by a constant or an environment
+variable, `REQUEST_SHIELD_CONFIG` (a `.rules` or a `.php` file; then nothing
+else is looked for). Without any settings file the shield does nothing.
 
 ### With Composer
 

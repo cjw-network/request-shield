@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   compiled settings file cut short is deleted and compiled anew.
   `Settings::load()` for tools still throws; `check` is where a mistake is an
   error ([docs](docs/features/settings.md#when-the-rules-cannot-be-compiled)).
+- **`bootstrap.php` finds the rules on its own** (0031 step A.4): `REQUEST_SHIELD_CONFIG`
+  if set (and then nothing else), else `request-shield.rules` next to it, else
+  `config/request-shield.rules`, else `config/request-shield.php`. Before, a
+  `.rules` file needed the variable; the README's three-step install now
+  holds. `tests/BootstrapTest.php` runs a copy of the library.
 - **`request-shield version [site.rules]`** (0031 step A.1): the library's
   version (`Shield::VERSION`, `0.4.0-dev` on main) and build, PHP, whether
   APCu is there, the shipped rule sets' versions; with a rule file also the
