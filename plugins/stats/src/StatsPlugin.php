@@ -22,7 +22,7 @@ namespace CjwNetwork\RequestShield;
  * answered itself is counted at once; one the site answers, when it has ended
  * (with the site's status).
  */
-final class StatsPlugin implements Plugin
+final class StatsPlugin implements Plugin, RuleCounts
 {
     /** What the shield did to a page it stopped, as the statistics call it. */
     private const BLOCKED = [Decision::REJECT => 'refused', Decision::CHALLENGE => 'checked', Decision::THROTTLE => 'throttled'];
@@ -388,5 +388,27 @@ final class StatsPlugin implements Plugin
             $keys[] = 'nr:' . $path . '|' . ($own ? self::word($parts['path'] ?? '/') : self::word(strtolower($parts['host'])));
         }
         return $keys;
+    }
+
+    /** How often each rule decided (RuleCounts, 0031 B.8): from the counters, when they are kept. */
+    public function ruleCounts(int $days, float $now): array
+    {
+        if (!$this->o['enabled']) {
+            return [];
+        }
+        /** @var array<string, int> $rules */
+        $rules = Report\StatsReport::build($this->settings, null, $days, (int) $now)['rules'];
+        return $rules;
+    }
+
+    /** What the known crawlers did (RuleCounts): from the counters, when they are kept. */
+    public function crawlerCounts(int $days, float $now): ?array
+    {
+        if (!$this->o['enabled']) {
+            return null;
+        }
+        /** @var array<string, array{kind: string, policy: string, name: string, seen: int, verified: int, claimed: int, allowed: int, checked: int, refused: int, throttled: int, robots: int, pages: array<string, int>, last: array{0: int, 1: string}|null}> $crawlers */
+        $crawlers = Report\StatsReport::build($this->settings, null, $days, (int) $now)['crawlers'];
+        return $crawlers;
     }
 }

@@ -114,7 +114,7 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
     /**
      * The view's content: the rule tester, the way, the rules, the settings.
      *
-     * @param array<string, int> $decided rule => how often it decided (StatsReport 'rules')
+     * @param array<string, int> $decided rule => how often it decided (RuleCounts: Counts::rules())
      * @param array{check?: array<mixed>, action?: string, keep?: array<string, string|int>, ip?: string, store?: Store, now?: float} $o
      *   check: the tester's values (method, url, ip, ua), usually $_GET; action: the form's address; keep: hidden
      *   fields the form carries along (days, lang); ip: the address the tester starts with (the viewer's own)
@@ -324,7 +324,6 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
     /**
      * The statistics' settings, for display only: their compiled slot
      * (ext.stats, StatsExtension::compile()), or off without the extension.
-     * Until 0031 B.8, when the plugin shows its own settings.
      *
      * @return array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, hosts: list<string>, skip: list<string>, groups: array<string, array{name: string, sites: list<string>, rule: string}>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}}
      */
@@ -460,28 +459,40 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
     }
 
     /**
-     * The route <dashboard-path>/waf/rules (0031 B.6): rules and setup, the tester, the way. With the statistics
-     * plugin present the page is the statistics' "rules" view (its frame and styling; until 0031 B.8, which gives
-     * this page a frame of its own); without it, the content in the core's frame.
+     * The route <dashboard-path>/waf/rules (0031 B.6): rules and setup, the tester, the
+     * way -- in the core's frame, the numbers from the plugins that count (Counts, B.8).
      *
      * @param array<string, mixed> $route
      * @param array<string, mixed> $ctx
      */
     public static function serve(Settings $s, \CjwNetwork\RequestShield\Request $request, array $route, array $ctx): \CjwNetwork\RequestShield\Response
     {
-        $stats = 'CjwNetwork\\RequestShield\\Report\\StatsPage';
-        if (class_exists($stats) && (($s->ext['stats']['enabled'] ?? false) === true)) {     // until 0031 B.8: with the statistics on, their frame and styling for this view
-            return $stats::serve($s, $request, ['key' => 'rules'] + $route, $ctx);
-        }
         /** @var array<string, string> $links */
         $links = is_array($ctx['links'] ?? null) ? $ctx['links'] : [];
         /** @var array<mixed> $get */
         $get = is_array($ctx['get'] ?? null) ? $ctx['get'] : [];
         $lang = \CjwNetwork\RequestShield\Texts::language(is_string($ctx['lang'] ?? null) ? $ctx['lang'] : 'auto', is_string($ctx['accept'] ?? null) ? $ctx['accept'] : null);
         $lang = $lang === 'de' ? 'de' : 'en';
+        $now = microtime(true);
         $action = $links['rules'] ?? ((is_string($ctx['prefix'] ?? null) ? $ctx['prefix'] : '') . (is_string($route['path'] ?? null) ? $route['path'] : ''));
-        $h = Frame::tabs($s, $links, 'rules', $lang) . self::render($s, $lang, [], ['check' => $get, 'action' => $action, 'keep' => ['lang' => $lang]] + (is_string($ctx['ip'] ?? null) ? ['ip' => $ctx['ip']] : []));
+        $h = Frame::tabs($s, $links, 'rules', $lang)
+            . self::render($s, $lang, Counts::rules($s, 7, $now), ['check' => $get, 'action' => $action, 'now' => $now, 'keep' => ['lang' => $lang]] + (is_string($ctx['ip'] ?? null) ? ['ip' => $ctx['ip']] : []))
+            . '<p class="foot">' . htmlspecialchars(($lang === 'de' ? 'Stand ' : 'As of ') . date($lang === 'de' ? 'd.m.Y H:i:s' : 'Y-m-d H:i:s', (int) $now), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>';
         $label = is_string($ctx['homeLabel'] ?? null) ? $ctx['homeLabel'] : '';
-        return \CjwNetwork\RequestShield\Response::html(200, Frame::page(($lang === 'de' ? 'Regeln & Einrichtung — ' : 'Rules & setup — ') . $label, $lang, $h, ['home' => is_string($ctx['home'] ?? null) ? $ctx['home'] : '/', 'homeLabel' => $label]));
+        return \CjwNetwork\RequestShield\Response::html(200, Frame::page(($lang === 'de' ? 'Regeln & Einrichtung — ' : 'Rules & setup — ') . $label, $lang, $h,
+            ['home' => is_string($ctx['home'] ?? null) ? $ctx['home'] : '/', 'homeLabel' => $label], self::CSS));
     }
+
+    /** The page's own styling, on top of the frame's: cards, notes, the tester, tables. */
+    private const CSS = <<<'CSS'
+h2{font-size:16px;margin:0 0 10px}h2 small{color:var(--m);font-weight:400}h3{font-size:15px;margin:14px 0 6px}
+.sub,.hint,.note,.foot{color:var(--m)}.sub{margin:4px 0 12px}.hint{font-size:12px;margin:4px 0 0}.foot{font-size:13px;margin-top:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:14px;overflow-x:auto}
+.filter{margin:0 0 10px;font-size:14px;color:var(--m);display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}.filter label{display:flex;gap:8px;align-items:center;flex:1 1 320px}
+.filter input[type=text]{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);flex:1;min-width:0}
+.filter button{font:inherit;padding:4px 12px;border:1px solid var(--a);border-radius:6px;background:var(--a);color:#fff;cursor:pointer}
+table{border-collapse:collapse;font-size:14px}td,th{padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{font-weight:500;color:var(--m);font-size:12px}
+.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}code{font-size:13px;word-break:break-all}details summary{cursor:pointer}.diagram svg{max-width:100%;height:auto}
+CSS;
+
 }

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Capabilities on plugins, the first: RuleCounts** (0031 step B.8): the
+  compiler records which plugin class implements which capability into the
+  compiled settings (`hooks`, by `instanceof` when the rules are compiled); the
+  rules and setup page asks `Report\Counts`, which asks the plugins with
+  `RuleCounts` (the statistics plugin has it) -- the core's pages name no
+  plugin any more. Rules & setup is the core's page in the core's frame with
+  its own styling; the statistics page has no `rules` view (its tab leads to
+  the core's page). Compiled settings format 45
+  ([docs](docs/features/plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)).
 - **Who may open the dashboard is the core's, who sees what is the pages'**
   (0031 step B.7): `dashboard-access "<principal>"|* sha256:<hash> [until
   <day>]` and `set dashboard-session` replace `stats-access` and

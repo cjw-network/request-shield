@@ -82,8 +82,8 @@ return [
         // The statistics page's own view: its routes and the core's rules.
         same(['sites' => '/rs/stats/sites', 'all' => '/rs/stats/overview', 'site' => '/rs/stats/visitors', 'shield' => '/rs/stats/protection', 'rules' => '/rs/waf/rules'],
             \CjwNetwork\RequestShield\Report\StatsPage::links($s));
-        same([null, 'rules', 'sites'], [\CjwNetwork\RequestShield\Report\StatsPage::viewFor($s, '/rs/waf/live'), \CjwNetwork\RequestShield\Report\StatsPage::viewFor($s, '/rs/waf/rules'),
-            \CjwNetwork\RequestShield\Report\StatsPage::viewFor($s, '/RS/stats/')], 'viewFor: never the core\'s live view; rules yes; the start alias');
+        same([null, null, 'sites'], [\CjwNetwork\RequestShield\Report\StatsPage::viewFor($s, '/rs/waf/live'), \CjwNetwork\RequestShield\Report\StatsPage::viewFor($s, '/rs/waf/rules'),
+            \CjwNetwork\RequestShield\Report\StatsPage::viewFor($s, '/RS/stats/')], 'viewFor: never the core\'s pages (live, and rules since 0031 B.8); the start alias');
         same('/rs/stats', StatsExtension::of($s)['path'], 'the path in the slot');
         same(StatsExtension::defaults()['path'], StatsExtension::of(Settings::from([]))['path']);
     },

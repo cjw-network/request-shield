@@ -11,6 +11,7 @@ declare(strict_types=1);
 require __DIR__ . '/../bootstrap.php';
 require __DIR__ . '/helpers.php';
 require __DIR__ . '/support/RsTestExtension.php';   // the test extension (0031 B.2); an E2E server loads it from its prepend file
+require __DIR__ . '/support/CountingPlugin.php';    // a plugin with the RuleCounts capability (0031 B.8)
 
 final class TestFailure extends RuntimeException
 {

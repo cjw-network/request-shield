@@ -120,11 +120,11 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         // A path, or with several websites read together a website and its path (a.de/news/).
         $path = isset($o['path']) && $o['path'] !== '' ? (preg_match('#^[a-z0-9*+()][a-z0-9.*+()-]*/#i', (string) $o['path']) === 1 ? (string) $o['path'] : '/' . ltrim((string) $o['path'], '/')) : null;
         $filter = $path;                    // the subtree filter ($path is reused by the loops below)
-        $view = in_array($o['view'] ?? 'site', ['site', 'shield', 'all', 'rules', 'sites'], true) ? ($o['view'] ?? 'site') : 'site';
+        $view = in_array($o['view'] ?? 'site', ['site', 'shield', 'all', 'sites'], true) ? ($o['view'] ?? 'site') : 'site';
         // Who reads (Access::gate()): '*' everything; a customer's group only its statistics --
         // never Rules & setup or the server's overview, whatever address was asked for.
         $who = is_string($o['who'] ?? null) ? $o['who'] : '*';
-        if ($who !== '*' && in_array($view, ['rules', 'all'], true)) {
+        if ($who !== '*' && $view === 'all') {
             $view = 'site';
         }
         if ($who !== '*' && isset(StatsExtension::of($s)['groups'][$who])) {
@@ -223,7 +223,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         }
         $h .= '<a class="pill" href="' . $e($query(['days' => $days, 'by' => $by === 'hour' ? 'day' : $by, 'format' => 'json'] + $range + ($site !== null ? ['site' => $site] : []))) . '">JSON</a></div></div>';
         // The website switch (stats-hosts): all added up, one website, or the names the rules do not know.
-        if (StatsExtension::of($s)['hosts'] !== [] && $view !== 'rules' && $view !== 'sites') {
+        if (StatsExtension::of($s)['hosts'] !== [] && $view !== 'sites') {
             $chosen = false;
             $option = static function (string $value, string $label) use ($site, $e, &$chosen): string {
                 $on = !$chosen && $value === (string) $site;
@@ -277,14 +277,6 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
             $h .= '<p class="foot">' . $e($t['updated'] . ' ' . date($lang === 'de' ? 'd.m.Y H:i:s' : 'Y-m-d H:i:s', $now)) . '</p>';
             return ($o['fragment'] ?? false) ? $h : self::page($h, $o['title'] ?? $t['title'], $lang, $o, $e);
         }
-        if ($view === 'rules') {
-            // Rules & setup: the way of a request, every rule, every setting.
-            $h .= SetupPage::render($s, $lang, $r['rules'], ['check' => (array) ($o['check'] ?? []), 'action' => $action, 'now' => (float) $now,
-                'keep' => ($links !== [] ? [] : ['view' => 'rules']) + ['days' => $days, 'lang' => $lang]] + (isset($o['ip']) ? ['ip' => (string) $o['ip']] : []) + (isset($o['store']) ? ['store' => $o['store']] : []));
-            $h .= '<p class="foot">' . $e($t['updated'] . ' ' . date($lang === 'de' ? 'd.m.Y H:i:s' : 'Y-m-d H:i:s', $now)) . '</p>';
-            return ($o['fragment'] ?? false) ? $h : self::page($h, $o['title'] ?? $t['title'], $lang, $o, $e);
-        }
-
         $tiles = [
             'requests' => $tile('requests', $total, 'req', array_map(static fn (int $a, int $b, int $c, int $d, int $x): int => $a + $b + $c + $d + $x, self::curve($hours, 'passed'), self::curve($hours, 'uncached'), self::curve($hours, 'checked'), self::curve($hours, 'throttled'), self::curve($hours, 'refused'))),
             'people' => $tile('people', self::sum($src, 'people'), 'people', self::curve($hours, 'people')),
@@ -587,7 +579,8 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
     {
         $out = [];
         foreach ($s->routes as $path => $r) {
-            if ($r['tab'] !== null && self::owns($r) && !isset($out[$r['key']])) {
+            // Its own pages, and the core's Rules & setup: the statistics' tabs lead there too.
+            if ($r['tab'] !== null && (self::owns($r) || ($r['ext'] === null && $r['key'] === 'rules')) && !isset($out[$r['key']])) {
                 $out[$r['key']] = $prefix . $path;
             }
         }
@@ -595,7 +588,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
     }
 
     /**
-     * Which view a path asks for (sites, all, site, shield, rules), or null;
+     * Which view a path asks for (sites, all, site, shield), or null;
      * capitals do not matter. stats-path itself is the plugin's start: all
      * websites with stats-hosts, else the overview.
      */
@@ -611,14 +604,13 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
     }
 
     /**
-     * A route this page renders: the statistics extension's, and the core's
-     * Rules & setup (the setup view lives here until 0031 B.8).
+     * A route this page renders: the statistics extension's own (Rules & setup is the core's, SetupPage).
      *
      * @param array{key: string, ext: ?string} $r
      */
     private static function owns(array $r): bool
     {
-        return $r['ext'] === 'stats' || ($r['ext'] === null && $r['key'] === 'rules');
+        return $r['ext'] === 'stats';
     }
 
     /**

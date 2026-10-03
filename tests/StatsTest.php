@@ -78,8 +78,8 @@ return [
         same(['all' => '/rs/stats/overview', 'site' => '/rs/stats/visitors', 'shield' => '/rs/stats/protection', 'rules' => '/rs/waf/rules'], $page::links(Settings::from([])), 'the default: /rs, the plugin\'s pages under /rs/stats/');
         $admin = Settings::from(['dashboardPath' => '/admin/rs']);
         same(['all' => '/admin/rs/stats/overview', 'site' => '/admin/rs/stats/visitors', 'shield' => '/admin/rs/stats/protection', 'rules' => '/admin/rs/waf/rules'], $page::links($admin));
-        same(['all', 'site', 'shield', 'rules', null, null], [$page::viewFor($admin, '/admin/rs/stats/overview'), $page::viewFor($admin, '/Admin/RS/stats/Visitors/'), $page::viewFor($admin, '/admin/rs/stats/protection'), $page::viewFor($admin, '/admin/rs/waf/rules'),
-            $page::viewFor($admin, '/rs/stats/visitors'), $page::viewFor($admin, '/admin/rs/other')], 'which view a path is: capitals and a trailing slash do not matter');
+        same(['all', 'site', 'shield', null, null, null], [$page::viewFor($admin, '/admin/rs/stats/overview'), $page::viewFor($admin, '/Admin/RS/stats/Visitors/'), $page::viewFor($admin, '/admin/rs/stats/protection'), $page::viewFor($admin, '/admin/rs/waf/rules'),
+            $page::viewFor($admin, '/rs/stats/visitors'), $page::viewFor($admin, '/admin/rs/other')], 'which view a path is: capitals and a trailing slash do not matter; the core\'s rules page is none of its views (0031 B.8)');
         same(['all', null, null, null, null], [$page::viewFor($admin, '/admin/rs/stats'), $page::viewFor($admin, '/admin/rs/dashboard'), $page::viewFor($admin, '/admin/rs/shield'),
             $page::viewFor($admin, '/admin/rs/sites'), $page::viewFor($admin, '/admin/rs/rules')], 'the plugin\'s start (the overview without stats-hosts); the old addresses are gone');
         $hosts = Settings::from(['ext' => ['stats' => ['enabled' => true, 'hosts' => ['a.de']]]]);
@@ -549,8 +549,11 @@ return [
             $st = Stats::of($s);
             $st->count(['a:reject', 'r:T-AREA', 'r:built-in', 's:403'], STATS_T0);
             $links = \CjwNetwork\RequestShield\Report\StatsPage::links($s);
-            $view = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'view' => 'rules', 'links' => $links]);
-            truthy(strpos($view, 'class="tab on" href="/rs/waf/rules?days=7&amp;lang=de">Regeln &amp; Aufbau') !== false && strpos($view, 'Der Weg einer Anfrage') !== false, 'the view "Regeln & Aufbau"');
+            // Rules & setup is the core's page (0031 B.8): the frame's tabs, the counts from the plugins that have RuleCounts.
+            $view = \CjwNetwork\RequestShield\Report\Frame::tabs($s, $links, 'rules', 'de')
+                . \CjwNetwork\RequestShield\Report\SetupPage::render($s, 'de', \CjwNetwork\RequestShield\Report\Counts::rules($s, 7, STATS_T0 + 10.0), ['now' => STATS_T0 + 10.0]);
+            truthy(strpos($view, 'class="tab on" href="/rs/waf/rules?lang=de">Regeln &amp; Einrichtung') !== false && strpos($view, 'Der Weg einer Anfrage') !== false, 'the core\'s page "Regeln & Einrichtung", in the frame');
+            truthy(strpos($view, '1× entschieden') !== false || strpos($view, 'entschieden') !== false, 'the rule\'s count from the statistics plugin (RuleCounts): ' . (strpos($view, 'T-AREA') !== false ? 'T-AREA shown' : 'T-AREA missing'));
             $shield = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'view' => 'shield', 'links' => $links]);
             truthy(strpos($shield, 'href="/rs/waf/rules?days=7&amp;lang=de#rule-T-AREA"><code>T-AREA</code></a><br>the intranet only<br><span class="note">site.rules:5') !== false,
                 'the protection view: a rule with what it does, where, and a link to it');
@@ -568,8 +571,8 @@ return [
             truthy(strpos($area, 'a restricted area, and 10.1.2.3 is allowed (10.0.0.0/8)') !== false && strpos($area, 'This visitor sees the page') !== false, 'in English, from inside the area');
             truthy(strpos($page::render($s, 'en', [], ['check' => ['url' => '/x', 'ip' => '<script>'], 'store' => $store, 'ip' => '192.0.2.1']), 'value="192.0.2.1"') !== false, 'an address that is none: the viewer\'s');
             same(0, (int) $store->hit('requests:198.51.100.7', 60, 1000.0) - 1, 'the tester counted nothing');
-            $viewed = \CjwNetwork\RequestShield\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'view' => 'rules', 'links' => $links, 'check' => ['url' => '/old-admin/'], 'ip' => '203.0.113.5', 'store' => $store]);
-            truthy(strpos($viewed, 'href="#rule-T-OLD"') !== false && strpos($viewed, 'value="203.0.113.5"') !== false && strpos($viewed, 'name="view"') === false, 'in the view: its address, no view field');
+            $viewed = \CjwNetwork\RequestShield\Report\SetupPage::render($s, 'de', [], ['check' => ['url' => '/old-admin/'], 'ip' => '203.0.113.5', 'store' => $store, 'now' => STATS_T0 + 10.0, 'action' => '/rs/waf/rules']);
+            truthy(strpos($viewed, 'href="#rule-T-OLD"') !== false && strpos($viewed, 'value="203.0.113.5"') !== false && strpos($viewed, 'name="view"') === false, 'on the core\'s page: its address, no view field');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }

@@ -198,6 +198,24 @@ alert-to ops@example.org
   (`set fail-at <stage>`, `rs-test-mark`), used to make the shield fail on
   purpose where a test wants it.
 
+## Capabilities: what a plugin can do for the pages
+
+A plugin may implement more than `Plugin`. Each extra interface is a
+**capability**: the compiler records which plugin class has which one into
+the compiled settings (`$settings->hooks`, hook name => classes, by
+`instanceof` when the rules are compiled), so a request -- or a page -- asks
+one array and never a plugin. A new capability is a new interface (MINOR); a
+plugin without it costs nothing more. The first (0031 B.8):
+
+| Capability | What it answers | Who asks |
+|---|---|---|
+| `RuleCounts` | `ruleCounts($days, $now)`: rule id => how often it decided; `crawlerCounts($days, $now)`: what each known crawler did | the rules and setup page (`Report\Counts`), when it is drawn -- never a request |
+
+The statistics plugin has it (`set stats on`): the rules page shows "decided
+n times" from its counters. A plugin that throws there is left out; the page
+is drawn without its numbers. The tests' `tests/support/CountingPlugin.php`
+is the smallest.
+
 ## Cost
 
 None without plugins. With plugins, one call to each per request; the

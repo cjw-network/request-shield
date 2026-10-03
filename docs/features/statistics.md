@@ -129,7 +129,7 @@ HTML, 7–8 KB gzipped. Print it where only the site's
 people see it — behind the CMS's login, or at a path restricted to some
 addresses. The demo has it at `/rs/…`.
 
-**Rules & setup** (`'view' => 'rules'`, `/rs/waf/rules`) is for whoever runs the
+**Rules & setup** (`/rs/waf/rules`, the core's page -- its counts come from the plugins with the `RuleCounts` capability, the statistics among them) is for whoever runs the
 shield and wants every technical detail in one place:
 
 - **the rule tester** — an address (a full URL or a path), the kind of request,

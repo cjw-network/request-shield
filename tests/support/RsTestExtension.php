@@ -20,7 +20,7 @@ use CjwNetwork\RequestShield\Settings;
 final class RsTestExtension implements Extension, RoutePage
 {
     /** Where the extension (and, from 0031 C.3, its plugin) throws when asked to. */
-    public const STAGES = ['compile', 'rules', 'handler', 'pages', 'sink', 'decided', 'ended'];
+    public const STAGES = ['compile', 'rules', 'handler', 'pages', 'sink', 'decided', 'ended', 'counts'];
 
     public static function id(): string
     {

@@ -181,7 +181,7 @@ final class Settings
         public array $backend = [],
         /** @var array<string, array<string, mixed>> @readonly the extensions' checked settings by extension id (ext.<id>.*; Extension::compile() fills it, 0031 B.2) -- plugins read their own, the core never does */
         public array $ext = [],
-        /** @var array<string, list<class-string>> @readonly which plugins provide which capability (hook name => classes), recorded at compile time so a request costs one array access to know (0031 B.2–B.10) */
+        /** @var array<string, list<class-string>> @readonly which plugins provide which capability (hook name => classes), recorded at compile time by instanceof (Settings::HOOKS), so a request costs one array access to know; the first is ruleCounts (0031 B.8) */
         public array $hooks = [],
         /** @var array<string, array{key: string, ext: ?string, tab: ?array{0: string, 1: string}, role: string, order: int}> @readonly the dashboard's pages, full path => entry (Routes; the core's, the extensions', in the tabs' order), compiled by compiledExt() -- served by the shield from 0031 B.6 */
         public array $routes = [],
@@ -345,6 +345,19 @@ final class Settings
             }
             $routes[$id] = $class::routes($checked[$id]);
         }
+        // The plugins' capabilities (0031 B.8): which class has which hook, recorded here
+        // by instanceof, so a request -- or a page -- asks one array and never a plugin.
+        $hooks = $s->hooks;
+        foreach ($plugins as $class) {
+            if (!class_exists($class)) {
+                continue;
+            }
+            foreach (self::HOOKS as $hook => $interface) {
+                if (is_subclass_of($class, $interface) && !in_array($class, $hooks[$hook] ?? [], true)) {
+                    $hooks[$hook][] = $class;
+                }
+            }
+        }
         // The same settings with the slots, the plugins and the pages filled in:
         // the value objects (budgets, challenge, monitor) are immutable and shared,
         // so no export()/import() round trip. Positional, in declaration order
@@ -354,6 +367,7 @@ final class Settings
         $e['ext'] = $checked;
         $e['plugins'] = $plugins;
         $e['routes'] = Routes::compile($s->routes, $s->dashboardPath, $routes);
+        $e['hooks'] = $hooks;
         /** @phpstan-ignore argument.type */
         return new self(...array_values($e));
     }
@@ -1202,7 +1216,10 @@ final class Settings
     public const DENY_SHOWN = 100;
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 44;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats; 43: routes compiled, stats path in ext.stats; 44: dashboardAccess, dashboardSession (stats-group in ext.stats)
+    /** The capabilities a Plugin may have: hook name => its interface (recorded by compiledExt()). */
+    private const HOOKS = ['ruleCounts' => RuleCounts::class];
+
+    private const FORMAT = 45;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats; 43: routes compiled, stats path in ext.stats; 44: dashboardAccess, dashboardSession (stats-group in ext.stats); 45: hooks recorded
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 
