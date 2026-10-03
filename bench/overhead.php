@@ -104,7 +104,7 @@ for ($i = 0; $i < $m; $i++) {
     $c = $pow->create('203.0.113.7', 50000, 2000000000);
     $page = CjwNetwork\RequestShield\Challenge\ChallengePage::render($c, 'rss', true);
 }
-printf("  %-7s %6.2f µs per challenge page (%d bytes)\n", 'page', (hrtime(true) - $t) / $m / 1000, strlen($page));
+printf("  %-7s %6.2f µs per challenge page (%d bytes, %d gzipped)\n", 'page', (hrtime(true) - $t) / $m / 1000, strlen($page), strlen((string) gzencode($page, 6)));
 $c = $pow->create('203.0.113.7', 2000, 2000000000);
 for ($n = 0; hash('sha256', $c['salt'] . $n) !== $c['challenge']; $n++);
 $payload = rtrim(strtr(base64_encode(json_encode(['algorithm' => 'SHA-256', 'challenge' => $c['challenge'], 'number' => $n, 'salt' => $c['salt'], 'signature' => $c['signature']])), '+/', '-_'), '=');
@@ -118,4 +118,4 @@ $t = hrtime(true);
 for ($i = 0; $i < $n = 20000; $i++) {
     $ok = $pass->valid($cookie, '203.0.113.7', 'Mozilla/5.0', 1000.0);
 }
-printf("  %-7s %6.2f µs per pass cookie check (%s)\n", 'pass', (hrtime(true) - $t) / 20000 / 1000, $ok ? 'valid' : 'INVALID');
+printf("  %-7s %6.2f µs per pass cookie check (%s; rsp=%s: %d bytes on every request, %d as Set-Cookie)\n", 'pass', (hrtime(true) - $t) / 20000 / 1000, $ok ? 'valid' : 'INVALID', $cookie, strlen('rsp=' . $cookie), strlen(CjwNetwork\RequestShield\Challenge\Gate::cookie('rsp', $cookie, 3600, true)));

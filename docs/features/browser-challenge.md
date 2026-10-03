@@ -139,6 +139,14 @@ in `/etc/resolv.conf`) also keep DNS from making anyone wait.
 Only for challenged clients: page about 12 µs, solution check about 9 µs,
 pass cookie check about 5 µs. The passing path does not change.
 
+Bytes: the pass cookie is 47 bytes with its name (`rsp=…`), sent by the
+browser with every request while the pass lasts; the check page is about
+8.7 KB, 4.1 KB gzipped, once; the headers the shield adds to the check page
+are 71 bytes, to the answer that hands out the pass 168 bytes (two
+`Set-Cookie` lines). A passing request gets no header and no cookie from the
+shield unless `debug-header` is on. The limits are numbers in
+`tests/WireBytesTest.php`; `bench/overhead.php` prints the sizes.
+
 ## Limits
 
 A determined attacker with real browsers pays the CPU and passes; the point is

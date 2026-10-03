@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The bytes on the wire have limits** (0031 step A2.3, ADR 0014 accepted):
+  `tests/WireBytesTest.php` holds them as numbers -- the pass cookie at most
+  48 bytes with its name (today 47), the check page at most 4096 bytes
+  gzipped (today 4065), the headers the shield adds to the check page and to
+  the answer that hands out the pass, and no header or cookie of the shield
+  on a passing request unless `debug-header` is on; `bench/overhead.php`
+  prints the sizes ([docs](docs/features/browser-challenge.md#cost)).
 - **Fail safe** (0031 step A.2, ADR 0007): an exception anywhere inside
   `Shield::protect()`, `protectFile()`, `requirePass()`, `consume()`,
   `widget()` or the check the application asks for lets the request through

@@ -1,6 +1,6 @@
 # ADR 0014 — Every transmitted byte counts: `rs` is the prefix
 
-- Status: proposed (2026-10-03; accepted with [0031](../proposals/0031-robust-core-plugins.md) phase A2)
+- Status: accepted (2026-10-03, with [0031](../proposals/0031-robust-core-plugins.md) phase A2, steps A2.1–A2.3; the build minification comes with E.2)
 
 ## Context
 
