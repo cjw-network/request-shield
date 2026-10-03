@@ -3,7 +3,7 @@
 #
 # Every rule has its own ID -- [DEMO-...] -- and the comment after it is its
 # description on the active rules page (/rules). Decisions and the log name
-# the ID: X-Request-Shield: reject restricted; rule=DEMO-ADMIN
+# the ID: X-RS: reject restricted; rule=DEMO-ADMIN
 # The built-in blocks come from the library's rules/scanners.rules (SCAN-...).
 #
 # The paths start with **/ so the demo works in any directory (/demo/page/about,
@@ -118,7 +118,7 @@ set         recheck 0
 
 # The site may ask for the browser check itself: Shield::active()->requirePass()
 # when a comment is sent (/comment), or the response header
-# X-Request-Shield-Challenge: required on a page (/profile) -- the latter needs:
+# X-RS-Check: 1 on a page (/profile) -- the latter needs:
 set         app-challenge on
 
 # The browser check inside a form (/contact): the box fetches its task here,
@@ -129,5 +129,5 @@ set         widget-path ${REQUEST_SHIELD_DEMO_HOME:-/}request-shield
 # the demo sets the variable to its own front page, wherever it lives.
 set         home ${REQUEST_SHIELD_DEMO_HOME:-/}
 
-# X-Request-Shield: <decision> <reason>; rule=<ID> on every response.
+# X-RS: <decision> <reason>; rule=<ID> on every response.
 set         debug-header on

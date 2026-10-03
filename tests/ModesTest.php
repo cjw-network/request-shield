@@ -209,12 +209,12 @@ return [
             $r = $get('/index.php/.env');
             same(200, $r['status'], 'let through');
             same('allow-uncached', $r['json']['shield'] ?? null, 'and marked: a cache must not keep it');
-            same('monitor reject blocked path; rule=SCAN-HIDDEN', $r['headers']['x-request-shield'] ?? null);
+            same('monitor reject blocked path; rule=SCAN-HIDDEN', $r['headers']['x-rs'] ?? null);
             for ($n = 0; $n < 4; $n++) {
                 $r = $get('/');             // a refused request (.env) counted nothing: this is the 4th of 3
             }
             same(200, $r['status'], 'past the limit: through');
-            truthy(strpos($r['headers']['x-request-shield'] ?? '', 'monitor throttle requests; rule=SITE-REQ') === 0, (string) ($r['headers']['x-request-shield'] ?? ''));
+            truthy(strpos($r['headers']['x-rs'] ?? '', 'monitor throttle requests; rule=SITE-REQ') === 0, (string) ($r['headers']['x-rs'] ?? ''));
             $get('/?n=1');
             same(['consumed' => 'allow-uncached'], $get('/?n=1')['json'], 'consume(): past the limit, let through');
             $lines = implode("\n", $log());
@@ -232,12 +232,12 @@ return [
         withModes($rules, function (callable $get, callable $log): void {
             $r = $get('/old/api');                                          // requests: 1
             same([200, 'allow'], [$r['status'], $r['json']['shield'] ?? null], 'the watched rule refuses nobody');
-            same('reject blocked path; rule=SITE-OLD', $r['headers']['x-request-shield-monitor'] ?? null, 'what it would have done');
+            same('reject blocked path; rule=SITE-OLD', $r['headers']['x-rs-monitor'] ?? null, 'what it would have done');
             same(404, $get('/gone/x')['status'], 'the enforced one as always (refused: not counted)');
             same(['consumed' => 'allow'], $get('/?n=1')['json'] ?? null, 'a watched on-demand budget: 1 of 1');      // requests: 2
             $r = $get('/?n=1');                                             // requests: 3
             same(['consumed' => 'allow'], $r['json'] ?? null, '2 of 1: logged, nothing enforced');
-            same('throttle requests; rule=SITE-REQW', $r['headers']['x-request-shield-monitor'] ?? null, 'the stricter watched limit (2)');
+            same('throttle requests; rule=SITE-REQW', $r['headers']['x-rs-monitor'] ?? null, 'the stricter watched limit (2)');
             $statuses = [];
             for ($n = 0; $n < 4; $n++) {
                 $statuses[] = $get('/')['status'];                          // requests: 4, 5, 6, 7

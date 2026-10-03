@@ -82,7 +82,7 @@ return [
                 $r = $get('/');
                 same(200, $r['status'], 'the site answers');
                 same('ok allow-uncached', $r['body'], 'uncached, and the application knows');
-                truthy(in_array('X-Request-Shield: allow-uncached shield error', $r['headers'], true), 'the debug header names the cause: ' . implode(' | ', $r['headers']));
+                truthy(in_array('X-RS: allow-uncached shield error', $r['headers'], true), 'the debug header names the cause: ' . implode(' | ', $r['headers']));
             }
             $r = $get('/secret/x');
             same(404, $r['status'], 'a blocked path is refused before the failing step runs');

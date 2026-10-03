@@ -318,7 +318,7 @@ keeps both the same.
 | `cookie`, `solution-cookie` | cookie names |
 | `bind-user-agent`, `search-engines`, `debug-header`, `strip-untrusted-forwarded` | `on` / `off` (`search-engines off`: no crawler is recognised) |
 | `dns-lookups` | new DNS lookups a minute to verify search engines, for all requests together (default 30; `0`: none — a DMZ without DNS) |
-| `app-challenge` | `on`: the site may ask for the check with the header `X-Request-Shield-Challenge: required` ([docs](app-challenges.md)) |
+| `app-challenge` | `on`: the site may ask for the check with the header `X-RS-Check: 1` ([docs](app-challenges.md)) |
 | `ipv6-prefix`, `max-uri`, `max-query-parameters`, `max-header-bytes` | numbers |
 | `challenge-logo` | an SVG file (relative to the rule file) for the middle of the check page's ring, checked strictly ([how it looks](browser-challenge.md#how-it-looks)) |
 | `widget-path`, `widget-difficulty` | the browser check inside a form: its endpoint (`/request-shield`; unset: off) and difficulty ([docs](browser-check-in-the-form.md)) |

@@ -12,7 +12,7 @@ Two ways, for two moments:
 | When | How | Without a pass |
 |---|---|---|
 | **Content is sent** (POST) — before the site saves anything | `Shield::active()?->requirePass();` | the check page; afterwards **the form is sent again by itself**, nothing typed is lost |
-| **A page is shown** (a form, GET) | the response header `X-Request-Shield-Challenge: required` | the check page instead of the page; afterwards the page |
+| **A page is shown** (a form, GET) | the response header `X-RS-Check: 1` | the check page instead of the page; afterwards the page |
 
 With a pass — the normal case after the first check — both simply go on.
 
@@ -33,14 +33,16 @@ Shield::active()?->requirePass(300);
 
 ```php
 // On a form's page (any template or plugin that can send a header):
-header('X-Request-Shield-Challenge: required');           // or: required; fresh=300
+header('X-RS-Check: 1');                     // or: 1; fresh=300
 ```
 
 The header variant needs `set app-challenge on` (`'appChallenge' => true`):
 the page is kept back until it is finished, so it can be replaced by the check
 page — output buffering, which costs a little on every GET page, so it is off
-unless asked for. The header never reaches the browser. Without the setting
-the header does nothing.
+unless asked for. The header never reaches the browser: the shield takes it
+out before the page or the check page goes out (`rs` = RequestShield, as in
+every header and cookie of the shield). Without the setting the header does
+nothing.
 
 `requirePass()` needs no setting; it costs nothing until it is called.
 

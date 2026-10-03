@@ -136,7 +136,7 @@ learned rule for the following requests. **Rejected**, because:
 
 What a page needs *for itself, now* stays as it is: `requirePass()`, the check
 in the form, `consume()` for an event, and — with `set app-challenge on` — the
-`X-Request-Shield-Challenge: required` header.
+`X-RS-Check: 1` header.
 
 ## Cost
 

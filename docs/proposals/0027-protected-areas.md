@@ -129,7 +129,7 @@ The rules name the areas; **which page belongs to one, the application can
 decide**. An editor ticks "protected" on a page or a section in the CMS, and
 the template says so, without touching a rule file. This is the way
 [0006](0006-the-site-asks-for-the-check.md) works for the browser check
-(`X-Request-Shield-Challenge: required`), now for a password or a code:
+(`X-RS-Check: 1`), now for a password or a code:
 
 ```text
 [A-PREVIEW] protect area with password $2y$12$… or code for 8h     # an area without paths: only when the application asks
@@ -137,7 +137,7 @@ the template says so, without touching a rule file. This is the way
 
 ```php
 // In the template of a page marked "protected" (needs set app-challenge on):
-header('X-Request-Shield-Access: A-PREVIEW');
+header('X-RS-Access: A-PREVIEW');
 
 // Or before rendering, cheaper (the page is not rendered twice; a POST is sent again after the login):
 Shield::active()?->requireAccess('A-PREVIEW');
@@ -209,7 +209,7 @@ Shield::active()?->requireAccess('A-PREVIEW');
 
 1. `protect … with password` (the form, the cookie, the budget, the log, the
    live view); `bin/request-shield password`; `restrict … or password`; areas
-   without paths that the application asks for (`X-Request-Shield-Access`,
+   without paths that the application asks for (`X-RS-Access`,
    `requireAccess()`).
 2. Codes: `Access::issue()/revoke()`, `request-shield code/codes`, the store
    (files), `?rs-code=` taken out of the address; the dashboard's Codes tab.

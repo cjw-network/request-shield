@@ -78,7 +78,7 @@ links keep working. They stay uncacheable unless `cache-query` names them.
 ## Configuration
 
 Rule file: as above. The line `query strict` has an ID like any rule
-(`[SITE-Q] query strict`); a refusal names it (`X-Request-Shield: reject
+(`[SITE-Q] query strict`); a refusal names it (`X-RS: reject
 unknown parameter; rule=SITE-Q`, the log, the [rules page](active-rules-page.md)).
 `strict` is for the whole site: not inside a `match` block.
 

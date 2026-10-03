@@ -133,7 +133,7 @@ document.querySelectorAll('button[data-u]').forEach(function (b) {
     var sent = (post ? 'POST ' : 'GET ') + url.pathname + url.search + '\n' + (post ? 'Content-Type: application/x-www-form-urlencoded\n\ndemo=1' : '(the browser\'s own headers and cookies)');
     var got = 'HTTP ' + r.status + '\n';
     r.headers.forEach(function (v, k) { got += k + ': ' + v + '\n'; });
-    out.textContent = r.status + ' · ' + (r.headers.get('X-Request-Shield') || '(no decision header)');
+    out.textContent = r.status + ' · ' + (r.headers.get('X-RS') || '(no decision header)');
     [['Request', sent], ['Response headers', got]].forEach(function (p) {
       var d = document.createElement('details'), s = document.createElement('summary'), pre = document.createElement('pre');
       s.textContent = p[0]; pre.textContent = p[1]; d.append(s, pre); out.append(d);
@@ -213,7 +213,7 @@ if ($path === '/' && $method === 'GET') {
         $rows .= '</table>';
     }
     $page('What the shield answers an Exponential site', '<p class="note">The rules of <code>examples/exponential/</code> (the admin as the siteaccess <code>/admin</code>), switched on.'
-        . ' A click opens the address as a visitor would; <b>Show the answer</b> fetches it in the background and shows the status and the header <code>X-Request-Shield</code>'
+        . ' A click opens the address as a visitor would; <b>Show the answer</b> fetches it in the background and shows the status and the header <code>X-RS</code>'
         . ' (the decision and the rule). Once a check is solved (the login, the admin), your browser holds a pass and the rows marked "the check" pass:'
         . ' <a href="' . $e($url('/reset')) . '">forget the pass</a> to see the check again. Why each rule is there: <code>docs/use-cases/exponential.md</code>.</p>'
         . $rows . '<script>' . JS . '</script>');

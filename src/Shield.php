@@ -195,7 +195,7 @@ final class Shield
         self::failed('shield', 'the shield failed and let the request through: ' . get_class($e) . ': ' . $e->getMessage()
             . ' in ' . $e->getFile() . ':' . $e->getLine());
         if ($s !== null && $s->debugHeader && !headers_sent()) {
-            header('X-Request-Shield: ' . $d->action . ' ' . $d->reason);
+            header('X-RS: ' . $d->action . ' ' . $d->reason);
         }
         return $d;
     }
@@ -324,10 +324,10 @@ final class Shield
             $_SERVER['REQUEST_SHIELD_RULE'] = $rule;
         }
         if ($s->debugHeader && !headers_sent()) {
-            header('X-Request-Shield: ' . ($watched !== null && $s->mode === 'monitor' ? 'monitor ' . $watched
+            header('X-RS: ' . ($watched !== null && $s->mode === 'monitor' ? 'monitor ' . $watched
                 : $decision->action . ($decision->reason !== '' ? ' ' . $decision->reason : '') . ($rule !== null ? '; rule=' . $rule : '')));
             if ($watched !== null && $s->mode !== 'monitor') {
-                header('X-Request-Shield-Monitor: ' . $watched);
+                header('X-RS-Monitor: ' . $watched);
             }
         }
         return $decision;
@@ -1123,10 +1123,10 @@ final class Shield
     }
 
     /**
-     * X-Request-Shield-Challenge: required[; fresh=<seconds>] from the
-     * application, on a page (a form's): the page is kept back until it is
-     * finished; without a pass the visitor gets the check page instead. The
-     * header never reaches the browser.
+     * X-RS-Check: 1[; fresh=<seconds>] from the application, on a page (a
+     * form's): the page is kept back until it is finished; without a pass the
+     * visitor gets the check page instead. The header never reaches the
+     * browser.
      */
     private function watchForChallengeHeader(): void
     {
@@ -1136,8 +1136,8 @@ final class Shield
                 if ($decided === null) {
                     $decided = '';
                     foreach (headers_list() as $h) {
-                        if (preg_match('/^X-Request-Shield-Challenge:\s*(.*)$/i', $h, $m)) {
-                            header_remove('X-Request-Shield-Challenge');
+                        if (preg_match('/^X-RS-Check:\s*(.*)$/i', $h, $m)) {
+                            header_remove('X-RS-Check');
                             $page = $this->challengeFor(trim($m[1]));
                             if ($page !== null) {
                                 $decided = $page;
@@ -1163,7 +1163,7 @@ final class Shield
     private function challengeFor(string $value): ?string
     {
         $request = $this->request;
-        if ($request === null || stripos($value, 'required') !== 0) {
+        if ($request === null || !preg_match('/^1\s*(?:;|$)/', $value)) {
             return null;
         }
         $fresh = preg_match('/fresh=(\d+)/', $value, $m) ? (int) $m[1] : null;

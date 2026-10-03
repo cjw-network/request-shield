@@ -28,6 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   S2 (APCu), and what is not active in it ([docs](docs/features/settings.md#what-this-installation-can-do-the-tiers)).
 
 ### Changed
+- **Shorter header names** (0031 step A2.1, ADR 0014): the debug header is
+  `X-RS: <action> <reason>; rule=<ID>` (was `X-Request-Shield`), a watched
+  rule's verdict `X-RS-Monitor` (was `X-Request-Shield-Monitor`), and the
+  site asks for the check with `X-RS-Check: 1[; fresh=N]` (was
+  `X-Request-Shield-Challenge: required`) -- `rs` = RequestShield. The
+  internal header is taken out before the page or the check page goes out
+  (`tests/DemoTest.php`). No old name is read any more.
 - **A CI leg "minimal hosting"** (0031 step A3.4, ADR 0013 accepted): the
   servers the end-to-end tests start run as a tight shared host would have
   them -- no APCu, no `allow_url_fopen`, the shell functions disabled, 64 MB

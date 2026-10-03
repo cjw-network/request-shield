@@ -47,8 +47,8 @@ function withDemo(callable $body, string $prefix = ''): void
                 if (preg_match('#^HTTP/\S+ (\d+)#', $line, $m)) {
                     $status = (int) $m[1];
                 }
-                if (stripos($line, 'X-Request-Shield:') === 0) {
-                    $shield = trim(substr($line, 17));
+                if (stripos($line, 'X-RS:') === 0) {
+                    $shield = trim(substr($line, 5));
                 }
                 if (preg_match('#^Set-Cookie:\s*([^=]+)=([^;]*)#i', $line, $m)) {
                     $cookies[$m[1]] = $m[2];
@@ -88,7 +88,7 @@ $examples = function (string $prefix): void {
             $r = $get('GET', '/page/about?page=2', ['X-Forwarded-For' => '203.0.113.9']);
             truthy(preg_match('#<code>http://127\.0\.0\.1:\d+' . preg_quote($prefix, '#') . '/page/about\?page=2</code>#', $r['body']) === 1, 'the full URL on the page');
             truthy(strpos($r['body'], '<del class="no">X-Forwarded-For: 203.0.113.9</del>') !== false, 'the forged header shown as removed');
-            truthy(strpos($r['body'], 'X-Request-Shield: allow') !== false, 'the answer\'s headers, with the decision');
+            truthy(strpos($r['body'], 'X-RS: allow') !== false, 'the answer\'s headers, with the decision');
             same('allow-uncached query parameter; rule=DEMO-CACHE-QUERY', $get('GET', '/?utm_source=newsletter')['shield']);
             // Known parameters: a number is a number, and nothing else gets in.
             same([404, 'reject unknown parameter; rule=DEMO-STRICT'], [($r = $get('GET', '/?page=2%27'))['status'], $r['shield']], 'not of its type');
@@ -96,7 +96,7 @@ $examples = function (string $prefix): void {
             // A rule being watched: through, and the log notes what it would have done.
             $r = $get('GET', '/old/api');
             same(200, $r['status'], 'monitor: nobody is refused');
-            truthy(in_array('X-Request-Shield-Monitor: reject blocked path; rule=DEMO-OLD', $r['headers'], true), 'what the watched rule would have done');
+            truthy(in_array('X-RS-Monitor: reject blocked path; rule=DEMO-OLD', $r['headers'], true), 'what the watched rule would have done');
             same('challenge always; rule=DEMO-CHECKOUT', $get('GET', '/checkout')['shield'], 'the checkout checks');
             same(200, $get('GET', '/?page=2&fbclid=x&gclid=y')['status'], 'known, and marketing tags');
             same(200, $get('GET', '/rules?method=GET&url=' . rawurlencode('https://www.example.org/x?a=1') . '&ip=')['status'], 'the rules page\'s check, an empty field too');
@@ -249,11 +249,12 @@ $appChallenges = function (string $prefix): void {
             // A page that asks for the check with a header.
             $r = $get('GET', '/profile');
             same(429, $r['status'], 'the page asked for the check');
+            truthy(strpos(implode("\n", $r['headers']), 'X-RS-Check') === false, 'the internal header is taken out before the check page goes out');
             truthy(strpos($r['body'], 'var RS=') !== false && strpos($r['body'], 'This page asked for the browser check') === false, 'the check page, nothing of the page');
             $r = $get('GET', '/profile', ['Cookie' => "rs_pass=$pass"]);
             same(200, $r['status'], 'with a pass: the page');
             truthy(strpos($r['body'], 'This page asked for the browser check with a header') !== false, 'the page itself');
-            truthy(strpos(implode("\n", $r['headers']), 'X-Request-Shield-Challenge') === false, 'the header never reaches the browser');
+            truthy(strpos(implode("\n", $r['headers']), 'X-RS-Check') === false, 'the header never reaches the browser');
         }, $prefix);
 };
 

@@ -42,8 +42,8 @@ function withExponentialDemo(callable $body, string $prefix = ''): void
                 if (preg_match('#^HTTP/\S+ (\d+)#', $line, $m)) {
                     $status = (int) $m[1];
                 }
-                if (stripos($line, 'X-Request-Shield:') === 0) {
-                    $shield = trim(substr($line, 17));
+                if (stripos($line, 'X-RS:') === 0) {
+                    $shield = trim(substr($line, 5));
                 }
             }
             return ['status' => $status, 'shield' => $shield, 'body' => (string) $body];
@@ -95,7 +95,7 @@ return [
             truthy(strpos($get('GET', '/')['body'], '<a href="content/view/full/2">') !== false, 'the links are relative');
             $article = $get('GET', '/news/x?utm_source=nl')['body'];
             truthy(strpos($article, '<summary>Request headers</summary><pre>GET /news/x?utm_source=nl') !== false
-                && strpos($article, 'X-Request-Shield: allow-uncached query parameter; rule=EXP-CACHE-Q') !== false, 'every page shows the request\'s headers and the answer\'s');
+                && strpos($article, 'X-RS: allow-uncached query parameter; rule=EXP-CACHE-Q') !== false, 'every page shows the request\'s headers and the answer\'s');
         });
     },
 ];

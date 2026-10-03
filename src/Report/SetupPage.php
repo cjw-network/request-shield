@@ -46,7 +46,7 @@ final class SetupPage
             'a.429' => '429 (Retry-After)', 'a.405' => '405', 'a.400' => '400, 414, 431', 'a.404' => '404', 'a.403' => '403', 'a.pass' => 'answered, not kept', 'a.check' => 'browser check, then 429', 'a.page' => 'the check page',
             // The settings' groups
             'g.run' => 'Operation', 'g.clients' => 'Visitors and proxies', 'g.limits' => 'Requests', 'g.store' => 'Counters', 'g.check' => 'Browser check', 'g.crawlers' => 'Known crawlers', 'g.stats' => 'Statistics', 'g.log' => 'Log', 'g.files' => 'Rule files',
-            'k.mode' => 'mode', 'k.monitor' => 'rules only watched (monitor)', 'k.debug' => 'X-Request-Shield header', 'k.app' => 'the site may ask for the check',
+            'k.mode' => 'mode', 'k.monitor' => 'rules only watched (monitor)', 'k.debug' => 'X-RS header', 'k.app' => 'the site may ask for the check',
             'k.proxies' => 'trusted proxies', 'k.strip' => 'X-Forwarded-* from others', 'k.stripYes' => 'removed', 'k.stripNo' => 'ignored', 'k.ipv6' => 'IPv6 counted per', 'k.exempt' => 'never counted',
             'k.methods' => 'accepted methods', 'k.hosts' => 'website names', 'k.uri' => 'longest address', 'k.params' => 'most parameters', 'k.headers' => 'most header data', 'k.strictQ' => 'query strict',
             'k.store' => 'store', 'k.storeDir' => 'store directory', 'k.weight' => 'a request a cache must not keep counts', 'k.budgets' => 'budgets',
@@ -86,7 +86,7 @@ final class SetupPage
             'd.check' => 'ein Pass gilt %s%s', 'd.alwaysAt' => '; immer an %d Adressen', 'd.widget' => '; in Formularen unter %s',
             'a.429' => '429 (Retry-After)', 'a.405' => '405', 'a.400' => '400, 414, 431', 'a.404' => '404', 'a.403' => '403', 'a.pass' => 'beantwortet, nicht gecacht', 'a.check' => 'Browser-Check, dann 429', 'a.page' => 'die Check-Seite',
             'g.run' => 'Betrieb', 'g.clients' => 'Besucher und Proxys', 'g.limits' => 'Anfragen', 'g.store' => 'Zähler', 'g.check' => 'Browser-Check', 'g.crawlers' => 'Bekannte Crawler', 'g.stats' => 'Statistik', 'g.log' => 'Log', 'g.files' => 'Regeldateien',
-            'k.mode' => 'Modus', 'k.monitor' => 'nur beobachtete Regeln (monitor)', 'k.debug' => 'Header X-Request-Shield', 'k.app' => 'die Website darf den Check anfordern',
+            'k.mode' => 'Modus', 'k.monitor' => 'nur beobachtete Regeln (monitor)', 'k.debug' => 'Header X-RS', 'k.app' => 'die Website darf den Check anfordern',
             'k.proxies' => 'vertrauenswürdige Proxys', 'k.strip' => 'X-Forwarded-* von anderen', 'k.stripYes' => 'entfernt', 'k.stripNo' => 'ignoriert', 'k.ipv6' => 'IPv6 gezählt pro', 'k.exempt' => 'nie gezählt',
             'k.methods' => 'erlaubte Methoden', 'k.hosts' => 'Namen der Website', 'k.uri' => 'längste Adresse', 'k.params' => 'meiste Parameter', 'k.headers' => 'meiste Header-Daten', 'k.strictQ' => 'query strict',
             'k.store' => 'Speicher', 'k.storeDir' => 'Speicherverzeichnis', 'k.weight' => 'eine nicht cachebare Anfrage zählt', 'k.budgets' => 'Budgets',

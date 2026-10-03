@@ -16,7 +16,7 @@ where it was written:
 
 It appears in
 
-- `X-Request-Shield: reject blocked path; rule=SCAN-HIDDEN` (with
+- `X-RS: reject blocked path; rule=SCAN-HIDDEN` (with
   `set debug-header on`),
 - `$_SERVER['REQUEST_SHIELD_RULE']` and `Shield::currentRule()`, for the
   application,

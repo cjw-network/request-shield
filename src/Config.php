@@ -112,12 +112,11 @@ final class Config
             'crawlerPolicy' => [],
             // both | ranges (the address lists only, no DNS: a DMZ) | dns
             'crawlerVerify' => 'both',
-            // X-Request-Shield: <action> <reason> on every response (for testing).
+            // X-RS: <action> <reason> on every response (for testing).
             'debugHeader' => false,
             // The application may ask for the browser check with a response header,
-            // X-Request-Shield-Challenge: required (for a form page). Needs output
-            // buffering, so it is off unless asked for; Shield::requirePass()
-            // works without it.
+            // X-RS-Check: 1 (for a form page). Needs output buffering, so it is
+            // off unless asked for; Shield::requirePass() works without it.
             'appChallenge' => false,
             // Paths only some addresses may open: [['paths' => [regex, ...], 'ips' => [range, ...]], ...].
             'restricted' => [],

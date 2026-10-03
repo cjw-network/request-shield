@@ -34,7 +34,7 @@ completes it.
 | Mode | What happens |
 |---|---|
 | `off` | Nothing: no checks, no counting, no log. The include stays. |
-| `monitor` | Everything is checked and counted and **logged as it would be decided**, but every request passes. `X-Request-Shield: monitor reject blocked path; rule=…`. Only the cache marking stays (`allow-uncached` never refuses anyone). |
+| `monitor` | Everything is checked and counted and **logged as it would be decided**, but every request passes. `X-RS: monitor reject blocked path; rule=…`. Only the cache marking stays (`allow-uncached` never refuses anyone). |
 | `enforce` | As today (the default). |
 | `strict` | `enforce` with tighter defaults for budgets and the challenge, for a site under attack (below). Rules in the files still win where they set a value. |
 
@@ -109,7 +109,7 @@ request (other numbers only).
   while rules are watched.
 - **In `monitor`, a request that would have been stopped is `allow-uncached`**
   (a cache must not keep it); the log writes `monitor-<action>`, the header
-  `X-Request-Shield: monitor …`; a watched rule `X-Request-Shield-Monitor: …`.
+  `X-RS: monitor …`; a watched rule `X-RS-Monitor: …`.
 - **`strict`'s shorter pass is a ceiling:** a site's shorter `pass-ttl` stays;
   a pass issued before keeps its lifetime.
 - **`off` also switches off** `consume()`, `requirePass()` and the check inside

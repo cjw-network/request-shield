@@ -44,7 +44,7 @@ class Responder
                 header('Retry-After: ' . $decision->retryAfter);
             }
             if ($debugHeader) {
-                header('X-Request-Shield: ' . $decision->action . ' ' . $decision->reason . ($rule !== null ? '; rule=' . $rule : ''));
+                header('X-RS: ' . $decision->action . ' ' . $decision->reason . ($rule !== null ? '; rule=' . $rule : ''));
             }
         }
         return (string) json_encode(['error' => $decision->spent ? 'rate_limited' : 'challenge', 'retryAfter' => $decision->retryAfter ?: null,
@@ -68,7 +68,7 @@ class Responder
             header('Allow: GET, HEAD, POST');
         }
         if ($debugHeader) {
-            header('X-Request-Shield: ' . $decision->action . ' ' . $decision->reason . ($rule !== null ? '; rule=' . $rule : ''));
+            header('X-RS: ' . $decision->action . ' ' . $decision->reason . ($rule !== null ? '; rule=' . $rule : ''));
         }
     }
 

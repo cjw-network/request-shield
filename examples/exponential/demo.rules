@@ -18,5 +18,5 @@ set         store-dir ${EXP_DEMO_VAR:-/tmp/request-shield-exponential-demo}
 set         log ${EXP_DEMO_VAR:-/tmp/request-shield-exponential-demo}/shield.log
 set         log-level flag
 set         recheck 0
-set         debug-header on                                    # X-Request-Shield: <decision>; rule=<ID> on every answer
+set         debug-header on                                    # X-RS: <decision>; rule=<ID> on every answer
 set         home ${EXP_DEMO_HOME:-/}                           # the shield's own pages link back to the demo

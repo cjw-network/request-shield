@@ -11,7 +11,7 @@
 The application can demand the browser check: `Shield::active()->requirePass()`
 before it acts on sent content — without a pass the visitor gets the check,
 and the form is sent again by itself afterwards — and the response header
-`X-Request-Shield-Challenge: required` on a page such as a form.
+`X-RS-Check: 1` on a page such as a form.
 
 ## Motivation
 

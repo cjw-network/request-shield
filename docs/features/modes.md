@@ -83,8 +83,8 @@ does not turn itself on.
 - The line of a watched decision starts with `monitor-`, at the log level of
   the decision it would have been (`set log-level stop` shows what would have
   been refused).
-- `X-Request-Shield: monitor reject blocked path; rule=…` (mode `monitor`) and
-  `X-Request-Shield-Monitor: …` (a rule marked `monitor`), with `set
+- `X-RS: monitor reject blocked path; rule=…` (mode `monitor`) and
+  `X-RS-Monitor: …` (a rule marked `monitor`), with `set
   debug-header on`.
 - The rules page names the mode at the top, lists the watched rules in a group
   of their own ("Watched, not enforced") with how often each would have

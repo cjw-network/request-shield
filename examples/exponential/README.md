@@ -17,7 +17,7 @@ A pretend Exponential site behind these rules (`index.php`, `demo.rules`: the
 numbered tests to click: pages by alias, system URLs, admin modules, internal
 files, downloads, view parameters, the search with its time filter, forms, the
 admin. **Show the answer** fetches each in the background and shows the
-status and the header `X-Request-Shield` (decision and rule). From the
+status and the header `X-RS` (decision and rule). From the
 repository's root:
 
 ```bash

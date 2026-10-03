@@ -134,8 +134,8 @@ if ($path === '/search') {
     $content = ['The old API', 'The site answered: the rule for /old/** is only watched (monitor). The log below notes "monitor-reject" — what it would have done. When the log shows no false hits, remove the word monitor.'];
 } elseif ($path === '/profile') {
     // The page itself asks for the check, with a header (set app-challenge on).
-    header('X-Request-Shield-Challenge: required');
-    $content = ['Profile', $method === 'POST' ? 'Saved: "' . (string) ($_POST['name'] ?? '') . '" (a demo: nothing is saved).' : 'This page asked for the browser check with a header — X-Request-Shield-Challenge: required — so you only see this form with a pass. The header never reaches your browser.'];
+    header('X-RS-Check: 1');
+    $content = ['Profile', $method === 'POST' ? 'Saved: "' . (string) ($_POST['name'] ?? '') . '" (a demo: nothing is saved).' : 'This page asked for the browser check with a header — X-RS-Check: 1 — so you only see this form with a pass. The header never reaches your browser.'];
 } elseif (strncmp($path, '/files/', 7) === 0) {
     $content = ['File reader', 'The file reader would show "' . substr($path, 7) . '" here (a demo: nothing is read). Hidden files and backups get through at /files/ only, and only for this machine (unblock … at **/files/** for 127.0.0.1 ::1); from anywhere else they are refused.'];
 } elseif ($path === '/rules' && $shield !== null) {
@@ -316,7 +316,7 @@ $groups = [
     ],
     'The site asks for the check' => [
         ['/comment', 'A comment form', 'sending it needs a pass: without one, the check — then the comment is sent again by itself'],
-        ['/profile', 'A page that asks for the check', 'the page sets X-Request-Shield-Challenge: required — the form only with a pass'],
+        ['/profile', 'A page that asks for the check', 'the page sets X-RS-Check: 1 — the form only with a pass'],
         ['/contact', 'The check inside the form', 'a box in the form checks while you type — sent straight through, a file too'],
     ],
     'Browser check and pace' => [
@@ -535,7 +535,7 @@ $responseLines = array_map(static function (string $line) use ($short): array {
 <?php endforeach ?></pre>
   </details>
   <details><summary>The answer's headers</summary>
-    <p class="note"><code>X-Request-Shield</code> is the shield's decision, with the rule behind it (the web server adds <code>Date</code>, <code>Server</code> and the like).</p>
+    <p class="note"><code>X-RS</code> is the shield's decision, with the rule behind it (the web server adds <code>Date</code>, <code>Server</code> and the like).</p>
     <pre><?php foreach ($responseLines as [$name, $value]): ?>
 <?= $e($name) ?>: <?= $e($value) ?>
 
