@@ -1,0 +1,41 @@
+# Reference: the set keys
+
+<!-- Written by docs/tools/gen-reference.php from src/Rules/Reference.php -- do not edit; run the tool. -->
+
+Every `set` key, its values, and the feature it belongs to. `${NAME}` in a value is an environment variable ([rule files](../features/RSF05-01-rule-files.md#set)).
+
+| Key | Value | Feature |
+|---|---|---|
+| `secret` | at least 32 characters; better `${SHIELD_SECRET}` than in the file | [RSF03-02](../features/RSF03-02-browser-challenge.md) |
+| `store` | `auto`, `apcu`, `file`, `memory` | [RSF03-01](../features/RSF03-01-budgets.md) |
+| `store-dir` | where file counters, a generated secret, the lists, the feeds and the statistics live; default `.request-shield/store` next to the main rule file (never the system's temp dir, which a shared host shares between customers) | [RSF03-01](../features/RSF03-01-budgets.md) |
+| `pass-ttl`, `solution-ttl` | `3600`, `30m`, `1h`, `1d` | [RSF03-02](../features/RSF03-02-browser-challenge.md) |
+| `difficulty-min`, `difficulty-max` | numbers | [RSF03-02](../features/RSF03-02-browser-challenge.md) |
+| `cookie`, `solution-cookie` | cookie names | [RSF03-02](../features/RSF03-02-browser-challenge.md) |
+| `bind-user-agent`, `search-engines`, `debug-header`, `strip-untrusted-forwarded` | `on` / `off` (`search-engines off`: no crawler is recognised) | [RSF03-02](../features/RSF03-02-browser-challenge.md) |
+| `dns-lookups` | new DNS lookups a minute to verify search engines, for all requests together (default 30; `0`: none — a DMZ without DNS) | [RSF01-04](../features/RSF01-04-known-crawlers.md) |
+| `app-challenge` | `on`: the site may ask for the check with the header `X-RS-Check: 1` ([docs](../features/RSF03-04-app-challenges.md)) | [RSF03-04](../features/RSF03-04-app-challenges.md) |
+| `ipv6-prefix`, `max-uri`, `max-query-parameters`, `max-header-bytes` | numbers | [RSF03-01](../features/RSF03-01-budgets.md) |
+| `challenge-logo` | an SVG file (relative to the rule file) for the middle of the check page's ring, checked strictly ([how it looks](../features/RSF03-02-browser-challenge.md#how-it-looks)) | [RSF03-02](../features/RSF03-02-browser-challenge.md) |
+| `widget-path`, `widget-difficulty` | the browser check inside a form: its endpoint (`/request-shield`; unset: off) and difficulty ([docs](../features/RSF03-03-browser-check-in-the-form.md)) | [RSF03-03](../features/RSF03-03-browser-check-in-the-form.md) |
+| `home` | a path (`/`) or an address: the shield's own pages (404, a pause, the check page) link to it, "To the home page" | [RSF03-02](../features/RSF03-02-browser-challenge.md) |
+| `language` | `auto` (default: the visitor's browser language among those there are texts for, else English) or a code: `de`, `en` | [RSF03-02](../features/RSF03-02-browser-challenge.md) |
+| `text.<key>`, `text.<lang>.<key>` | what visitors read (the rest of the line): for every language, or for one — `set text.de.title Einen Moment, bitte`. Keys: `title`, `text`, `noscript`, `nocookies`, `failed`, `try-again` (`%s` = seconds), `bad-request`, `no-access`, `not-found`, `not-allowed`, `too-long`, `too-many`, `too-large`, `error`. English and German are built in; another language comes with its texts (`text.fr.title …`) |  |
+| `mode` | `off`, `monitor`, `enforce` (default), `strict` ([modes](../features/RSF05-03-modes.md)) | [RSF05-03](../features/RSF05-03-modes.md) |
+| `crawler-verify` | `both` (default), `ranges` (the published address lists only: no DNS, for a DMZ), `dns` ([known crawlers](../features/RSF01-04-known-crawlers.md)) | [RSF01-04](../features/RSF01-04-known-crawlers.md) |
+| `log`, `log-level`, `log-ip`, `log-max-size` | [the log](../features/RSF05-05-log-and-rule-ids.md) | [RSF05-05](../features/RSF05-05-log-and-rule-ids.md) |
+| `stats` | `off` (default), `on`, or the parts: `requests`, `crawlers`, `not-found`, `bots` ([statistics](../features/RSF06-03-statistics.md)) | [RSF06-03](../features/RSF06-03-statistics.md) |
+| `dashboard-path` | where the statistics pages live: `/rs` (default) gives the statistics under `/rs/stats/` (`overview`, `visitors`, `protection`, `sites`) and `/rs/waf/rules`, `/rs/waf/live`, `/rs/waf/lists`; something in front is fine (`/admin/rs`); the shield serves these pages itself -- a `restrict` rule (`restrict **/rs/** to <addresses>`) or a login must cover them, `check` warns otherwise ([statistics](../features/RSF06-03-statistics.md#the-statistics-page)) | [RSF06-01](../features/RSF06-01-active-rules-page.md) |
+| `stats-hours`, `stats-days`, `stats-months`, `stats-flush` | days the hours are kept (7), days the day totals are kept (400, then summed into months), months kept (0: for good), seconds between writes to disk with APCu (60) | [RSF06-03](../features/RSF06-03-statistics.md) |
+| `site-from` | which name picks a site block: `server-name` (the default, the web server's) or `host` (the Host header) — [site blocks](../features/RSF05-01-rule-files.md#site-blocks-rules-per-website) | [RSF05-01](../features/RSF05-01-rule-files.md) |
+| `dashboard-session` | how long a login to the dashboard lasts (`8h`; 1 minute to 30 days) | [RSF06-01](../features/RSF06-01-active-rules-page.md) |
+| `stats-path` | where the statistics plugin's pages live (default `<dashboard-path>/stats`): `…/sites`, `/overview`, `/visitors`, `/protection` below it; the core's stay at `<dashboard-path>/waf/` | [RSF06-03](../features/RSF06-03-statistics.md) |
+| `stats-hosts` | the websites with statistics of their own: names, `*.domain`, `host` (the host rule's), `sites` (the site blocks'); any other name counts as "other hosts" ([statistics per website](../features/RSF06-03-statistics.md#statistics-per-website)) | [RSF06-03](../features/RSF06-03-statistics.md) |
+| `stats-depth` | folder levels a section's views are counted for exactly, 1 to 4 (2: `/news/`, `/news/2026/`; 3 where a language takes the first level: `/de/news/2026/`) | [RSF06-03](../features/RSF06-03-statistics.md) |
+| `crawler-log`, `crawler-log-kinds`, `crawler-log-days`, `crawler-log-query` | one log per known crawler and day: its directory, the kinds logged, days kept (30), whether the query is kept ([statistics](../features/RSF06-03-statistics.md#one-log-per-crawler-optional)) | [RSF06-03](../features/RSF06-03-statistics.md) |
+| `lists-dir` | where the list files `allow.rules` and `deny.rules` live (default `<store-dir>/lists`); they hold only `deny` and `exempt` lines ([IP lists](../features/RSF01-02-ip-lists.md#the-list-files)) | [RSF01-02](../features/RSF01-02-ip-lists.md) |
+| `feeds-max-age` | a fetched list older than this is not used (`3d`; at least `1h`) ([feeds](../features/RSF01-03-blocklist-feeds.md)) | [RSF01-03](../features/RSF01-03-blocklist-feeds.md) |
+| `ban-keep` | `memory` (default) or `file`: a ban also as a file in store-dir, so it survives a restart of APCu ([live and lists](../features/RSF06-02-live-and-lists.md#bans-that-survive-a-restart-set-ban-keep-file)) | [RSF01-02](../features/RSF01-02-ip-lists.md) |
+| `live`, `live-keep` | `on`: the live view from memory, with full addresses (APCu); how long an entry stays (1h; 1m to 1d) ([live and lists](../features/RSF06-02-live-and-lists.md)) | [RSF06-02](../features/RSF06-02-live-and-lists.md) |
+| `ban-growth`, `ban-max` | each ban within a day this many times as long (2), at most (`1d`) ([IP lists](../features/RSF01-02-ip-lists.md#bans)) | [RSF01-02](../features/RSF01-02-ip-lists.md) |
+| `recheck` | how often the files are checked for changes, see below | [RSF05-01](../features/RSF05-01-rule-files.md) |

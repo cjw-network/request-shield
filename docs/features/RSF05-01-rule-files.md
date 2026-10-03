@@ -45,6 +45,7 @@ The demo (`examples/demo/request-shield.rules`) is a complete example.
 One rule per line: a keyword, then values separated by spaces. `#` starts a
 comment at the start of a line or after a space; `\#` is a literal `#`.
 
+<!-- reference rules: docs/tools/gen-reference.php -->
 | Rule | Setting | |
 |---|---|---|
 | `host <names>` | `hosts` | the site's hosts; others 404 |
@@ -53,7 +54,7 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `allow <METHODS> <paths>` | `methodPaths` | those methods only there, else 405 ([access rules](RSF02-03-access-rules.md)) |
 | `restrict <paths> to <addresses or ranges>` | `restricted` | only those addresses, else 403 ([access rules](RSF02-03-access-rules.md)) |
 | `block <paths>` / `unblock <paths>` | `blockedPaths` | 404 before the site sees it / take a block back |
-| `block query|header <Name>|headers|anywhere <regex>` | `contentRules` | attack patterns in the query or the headers, 403 |
+| `block query\|header <Name>\|headers\|anywhere <regex>` | `contentRules` | attack patterns in the query or the headers, 403 |
 | `unblock [<what>] at <paths> [for <addresses>]` | `blockExceptions` | blocked paths let through at some paths only (an admin's file reader) ([access rules](RSF02-03-access-rules.md#exceptions-an-admins-file-reader)) |
 | `query <name> <type> … [at <paths>]` / `query strict` | `queryParams`, `queryStrict` | the query parameters the site takes and their types (`int`, `number`, `word`, `id`, `list`, `text`, `any`, `/regex/`); only `text` and the unknown ones go to the attack patterns; `strict`: anything else 404 ([known parameters](RSF02-05-known-parameters.md)) |
 | `cache-path <paths>` | `cacheable.paths` | what a cache may keep; `any`: every path (default) |
@@ -76,8 +77,15 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `crawlers <kind> allow\|check\|block` / `crawler <ID> allow\|check\|block` | `crawlerPolicy` | what the site does with verified crawlers, by kind (`search`, `ai-search`, `ai-user`, `ai-training`) or one by one ([known crawlers](RSF01-04-known-crawlers.md)) |
 | `crawler <kind> ua /<pattern>/ [dns <suffixes>] [ranges <lists>]` | `crawlers` | a crawler of the site's own, verified by DNS or an address list (`ranges ./ours.json`) |
 | `expect <METHOD> <address> <outcome> [by <ID>] [from <address>] [with pass] [times <n>]` | — | an example of what the rules decide, below the rule it is about; decided by `request-shield test`, never by a request ([examples](RSF05-04-rule-examples.md)) |
+| `match <paths> { … }` | — | the rules of an area in one place: the lines inside apply to its paths only ([match blocks](#match-blocks-the-rules-of-an-area-in-one-place)) |
+| `site <names> { … }` | `sites` | rules for some websites, added to the base ([site blocks](#site-blocks-rules-per-website)) |
+| `ids <PREFIX> [required]` | — | the namespace of this file's IDs; `required`: every rule needs one ([IDs](#ids-namespaces-and-descriptions)) |
+| `version <version>` | — | this file's own version, shown by `check` and on the rules page ([versions](#versions-revisions-and-replacing-a-rule)) |
+| `replace [<ID>] <rule>` | — | a rule swapped in one line, keeping its ID -- and its count in the log ([replacing](#versions-revisions-and-replacing-a-rule)) |
+| `plugin <class> [from <file>]` | `plugins`, `pluginFiles` | a [plugin](RSF06-04-plugins.md), told what was decided and how a request ended; `from` names the file that holds the class, relative to the rule file, for a site without Composer (loaded when the rules are compiled and when the shield makes its plugins); the statistics need none (`set stats on`); a class that is an [extension](RSF06-04-plugins.md#extensions-words-and-settings-of-their-own) brings words and `set` keys of its own, known from its `plugin` line on |
 | `set <key> <value>` | any other setting | see below |
 | `include <path or glob>` | — | further rule files, relative to this one |
+<!-- /reference -->
 
 `none` as the first value empties a list first — the defaults too
 (`exempt none 192.0.2.1`, `block none`).
@@ -308,6 +316,7 @@ keeps both the same.
 
 ### `set`
 
+<!-- reference settings: docs/tools/gen-reference.php -->
 | Key | Value |
 |---|---|
 | `secret` | at least 32 characters; better `${SHIELD_SECRET}` than in the file |
@@ -332,7 +341,6 @@ keeps both the same.
 | `dashboard-path` | where the statistics pages live: `/rs` (default) gives the statistics under `/rs/stats/` (`overview`, `visitors`, `protection`, `sites`) and `/rs/waf/rules`, `/rs/waf/live`, `/rs/waf/lists`; something in front is fine (`/admin/rs`); the shield serves these pages itself -- a `restrict` rule (`restrict **/rs/** to <addresses>`) or a login must cover them, `check` warns otherwise ([statistics](RSF06-03-statistics.md#the-statistics-page)) |
 | `stats-hours`, `stats-days`, `stats-months`, `stats-flush` | days the hours are kept (7), days the day totals are kept (400, then summed into months), months kept (0: for good), seconds between writes to disk with APCu (60) |
 | `site-from` | which name picks a site block: `server-name` (the default, the web server's) or `host` (the Host header) — [site blocks](#site-blocks-rules-per-website) |
-| `plugin` (a rule, not `set`) | `plugin Vendor\Package\MyPlugin [from <file>]`: a [plugin](RSF06-04-plugins.md), told what was decided and how a request ended; `from` names the file that holds the class, relative to the rule file, for a site without Composer (loaded when the rules are compiled and when the shield makes its plugins); the statistics need none (`set stats on`); a class that is an [extension](RSF06-04-plugins.md#extensions-words-and-settings-of-their-own) brings words and `set` keys of its own, known from its `plugin` line on |
 | `dashboard-session` | how long a login to the dashboard lasts (`8h`; 1 minute to 30 days) |
 | `stats-path` | where the statistics plugin's pages live (default `<dashboard-path>/stats`): `…/sites`, `/overview`, `/visitors`, `/protection` below it; the core's stay at `<dashboard-path>/waf/` |
 | `stats-hosts` | the websites with statistics of their own: names, `*.domain`, `host` (the host rule's), `sites` (the site blocks'); any other name counts as "other hosts" ([statistics per website](RSF06-03-statistics.md#statistics-per-website)) |
@@ -344,6 +352,7 @@ keeps both the same.
 | `live`, `live-keep` | `on`: the live view from memory, with full addresses (APCu); how long an entry stays (1h; 1m to 1d) ([live and lists](RSF06-02-live-and-lists.md)) |
 | `ban-growth`, `ban-max` | each ban within a day this many times as long (2), at most (`1d`) ([IP lists](RSF01-02-ip-lists.md#bans)) |
 | `recheck` | how often the files are checked for changes, see below |
+<!-- /reference -->
 
 `${NAME}` is an environment variable, `${NAME:-default}` one that may be unset.
 The values used are recorded: the compiled settings are rebuilt when one

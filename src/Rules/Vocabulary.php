@@ -57,6 +57,19 @@ final class Vocabulary
         'log-ip' => 'RSF05-05', 'log-max-size' => 'RSF05-05',
     ];
 
+    /** @var array<string, string> the feature an extension's words and keys belong to, by the extension's id */
+    public const EXTENSION_FEATURES = ['stats' => 'RSF06-03'];
+
+    /** The feature a word or set key belongs to: the core's (FEATURES), else its extension's; null when none is known. */
+    public static function featureOf(string $word): ?string
+    {
+        if (isset(self::FEATURES[$word])) {
+            return self::FEATURES[$word];
+        }
+        $ext = self::wordFor($word)['id'] ?? self::settingFor($word)['id'] ?? null;
+        return is_string($ext) ? self::EXTENSION_FEATURES[$ext] ?? null : null;
+    }
+
     /** The types a set key may have; the parser checks the value like the core's own (path: relative to the rule file). */
     public const TYPES = ['bool', 'int', 'seconds', 'string', 'words', 'path'];
 

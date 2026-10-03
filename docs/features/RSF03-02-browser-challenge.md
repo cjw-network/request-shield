@@ -156,3 +156,21 @@ A determined attacker with real browsers pays the CPU and passes; the point is
 the cost per address, not a wall. The script is plain ES5 with its own
 SHA-256 (`crypto.subtle` only exists on HTTPS pages); it is tested in Node
 against the PHP check.
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF03-02 · The browser check**
+
+A page where every visitor is checked, as a login would be: the invisible check once, then the page. The checkout asks for a fresh pass.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/challenge` | the invisible browser check · rule DEMO-LOGIN — from another address (198.51.100.7) | A page that always checks the browser |
+| `/challenge` | the site answers it — from another address (198.51.100.7), with a pass | with a pass: the page |
+| `/checkout` | the invisible browser check · rule DEMO-CHECKOUT — from another address (198.51.100.7) | A checkout: only a fresh pass |
+| `/checkout` | the site answers it — from another address (198.51.100.7), with a pass | a pass from a moment ago |
+| `/reset` | look at it | Forget my pass: the check comes back on /challenge |
+<!-- /examples -->

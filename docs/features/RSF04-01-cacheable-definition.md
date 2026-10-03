@@ -46,3 +46,20 @@ About 0.5 µs.
 
 The shield only marks; the cache has to honour the mark. Adapters for
 Exponential, WordPress and Ibexa (planned) do that for their caches.
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF04-01 · What a cache may keep**
+
+Every page passes; only some may be kept by a cache. Unknown paths and parameters reach the site, but marked so a cache does not keep them -- made-up URLs cannot fill it.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/` | passes; a cache may keep it — from another address (198.51.100.7) | A normal page |
+| `/page/about` | passes; a cache may keep it — from another address (198.51.100.7) | A known page |
+| `/?utm_source=newsletter` | passes, but a cache must not keep it — from another address (198.51.100.7) | A link from a newsletter: a known marketing tag, not for a cache |
+| `/random/abc` | passes, but a cache must not keep it — from another address (198.51.100.7) | An unknown path: the site answers it (200 or 404), a cache must not keep it |
+<!-- /examples -->

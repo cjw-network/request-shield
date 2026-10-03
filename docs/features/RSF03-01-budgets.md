@@ -110,3 +110,20 @@ Tested: 8 processes × 250 hits on the file store count exactly 2,000.
 
 Counters belong to one server (APCu) or one file system (files). A site on
 several servers counts per server unless they share the store directory.
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF03-01 · Budgets and pace**
+
+Requests per visitor: past 20 a minute the invisible check, past 60 a check that frees the counter -- no pause.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/` | the invisible browser check · rule DEMO-PACE — from another address (198.51.100.7), 21 times in a row | Any page, 21 times in a minute |
+| `/` | the site answers it — from another address (198.51.100.7), 20 times in a row | 20 times: still the page |
+| `/search?q=shield` | look at it | The search counts its own budget: past 10 a minute, a pause |
+| `POST /edit` | look at it | The edit form a 4th time within a minute: the check, then the form is sent again |
+<!-- /examples -->

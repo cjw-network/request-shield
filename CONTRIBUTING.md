@@ -35,7 +35,11 @@ things come first: **it must be right, and it must be fast.**
    group with an effect (a refusal, the check, or "not for a cache") and a
    near miss that passes (or the reason why not in
    `examples/demo/.demo-exempt`), and its rule words are mapped in
-   `Vocabulary::FEATURES`.
+   `Vocabulary::FEATURES`. A new rule word or set key gets its row in
+   `src/Rules/Reference.php`; `php docs/tools/gen-reference.php` writes the
+   tables in the rule files page and `docs/reference/*` from it, and
+   `php docs/tools/sync-examples.php` the demo's tables into the feature
+   pages (`tests/ReferenceTest.php` fails while either is not current).
 7. **The single file.** `php build/single-file.php` turns `src/` into one
    file ([the single file](docs/features/RSF05-07-single-file.md)); `tests/SingleFileTest.php`
    builds it and puts a request through it. The whole suite runs against the

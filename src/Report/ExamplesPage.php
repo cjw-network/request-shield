@@ -67,6 +67,72 @@ final class ExamplesPage
     }
 
     /**
+     * The groups as Markdown tables, for the docs (`request-shield examples
+     * --markdown`, docs/tools/sync-examples.php): per group its title, its
+     * explanation and a table -- the request, what the rules decide, the row's
+     * comment. $only: one feature's groups.
+     *
+     * @param list<Group> $groups
+     */
+    public static function markdown(array $groups, ?string $only = null): string
+    {
+        $cell = static fn (string $s): string => str_replace(['|', "\n"], ['\\|', ' '], $s);
+        $out = [];
+        foreach ($groups as $g) {
+            if ($only !== null && $g['id'] !== $only) {
+                continue;
+            }
+            $md = '**' . $g['id'] . ($g['title'] !== '' ? ' · ' . $g['title'] : '') . "**\n\n";
+            if ($g['about'] !== []) {
+                $md .= trim(implode(' ', array_map('trim', $g['about']))) . "\n\n";
+            }
+            $md .= "| Request | The rules decide | |\n|---|---|---|\n";
+            foreach ($g['rows'] as $r) {
+                $md .= '| `' . $cell(($r['method'] !== 'GET' ? $r['method'] . ' ' : '') . $r['url']) . '` | ' . $cell(self::expected($r)) . ' | ' . $cell($r['text']) . " |\n";
+            }
+            $out[] = $md;
+        }
+        return implode("\n", $out);
+    }
+
+    /**
+     * The groups as one page that needs no server: each row with what
+     * `request-shield test` decided for it, recorded ($results by the line it
+     * is written at) -- the demo for a static host (`request-shield examples
+     * --html`).
+     *
+     * @param list<Group> $groups
+     * @param array<string, array{status: string, got: string, gotRule: ?string, http: int}> $results by "file:line"
+     */
+    public static function html(array $groups, array $results, string $title, string $recorded): string
+    {
+        $e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
+        $h = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' . $e($title) . '</title>'
+            . '<style>body{margin:0;font:16px/1.55 system-ui,sans-serif;background:#f6f7f9;color:#1d2127}main{max-width:60rem;margin:0 auto;padding:1.2rem 1rem 3rem}'
+            . 'h1{font-size:1.5rem}h2{font-size:1.1rem;margin:2rem 0 .3rem}p.about,p.note{color:#5b6470}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #dfe3e8}'
+            . 'td,th{padding:.45rem .6rem;border-top:1px solid #dfe3e8;text-align:left;vertical-align:top}code{font:13px ui-monospace,monospace}.ok{color:#1e7b43;font-weight:600}.no{color:#a3361f;font-weight:600}'
+            . '@media (prefers-color-scheme:dark){body{background:#15181c;color:#e7e9ec}table{background:#1d2127;border-color:#2d333b}td,th{border-color:#2d333b}p.about,p.note{color:#a0a8b3}}</style></head><body><main>'
+            . '<h1>' . $e($title) . '</h1><p class="note">' . $e($recorded) . '</p>';
+        foreach ($groups as $g) {
+            $h .= '<h2 id="' . $e($g['id']) . '">' . $g['n'] . ' · ' . $e($g['title'] !== '' ? $g['title'] : $g['id']) . ' <small>' . $e($g['id']) . '</small></h2>';
+            if ($g['about'] !== []) {
+                $h .= '<p class="about">' . $e(trim(implode(' ', array_map('trim', $g['about'])))) . '</p>';
+            }
+            $h .= '<table><tr><th>#</th><th>Request</th><th>The rules decide</th><th>Recorded</th></tr>';
+            foreach ($g['rows'] as $r) {
+                $res = $results[$r['at']] ?? null;
+                $mark = ['pass' => '<span class="ok">✓</span> ', 'skip' => '– skipped: '][$res['status'] ?? ''] ?? '<span class="no">✕</span> ';
+                $rec = $r['kind'] === 'try' ? 'to look at in the live demo' : ($res === null ? '—' : $mark
+                    . $e('HTTP ' . $res['http'] . ', ' . $res['got'] . ($res['gotRule'] !== null ? ' by ' . $res['gotRule'] : '')));
+                $h .= '<tr><td>' . $e($r['n']) . '</td><td><code>' . $e(($r['method'] !== 'GET' ? $r['method'] . ' ' : '') . $r['url']) . '</code>'
+                    . ($r['text'] !== '' ? '<br>' . $e($r['text']) : '') . '</td><td>' . $e(self::expected($r)) . '</td><td>' . $rec . '</td></tr>';
+            }
+            $h .= '</table>';
+        }
+        return $h . '</main></body></html>' . "\n";
+    }
+
+    /**
      * What a row shows in words: what the rules decide, the rule, and what is
      * different from a click on this page (another address, a pass, a count).
      *

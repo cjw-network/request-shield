@@ -87,3 +87,23 @@ As PHP settings: `'blockExceptions' => [['paths' => ['#^/admin/files(?:/.*)?$#i'
 A regular expression per configured pattern, only for requests whose method
 has an `allow` list or while `restrict` rules exist — well under a
 microsecond for a handful of patterns.
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF02-03 · Doors for certain people**
+
+Areas by address, forms by path: the office network for the admin area, this machine for the API and the rules page; a form only where one belongs.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/admin/` | no access (403) · rule DEMO-ADMIN — from another address (198.51.100.7) | The admin area: only the office network |
+| `/admin/` | the site answers it — from 192.0.2.10 | from the office network |
+| `//admin/` | no access (403) · rule DEMO-ADMIN — from another address (198.51.100.7) | The admin area, sneaked: //, %61 and case do not get past it |
+| `/api/status` | no access (403) · rule DEMO-API — from another address (198.51.100.7) | The API, from anywhere else |
+| `/api/status` | the site answers it — from 127.0.0.1 | The API, from this machine |
+| `POST /page/about` | "not allowed here" (405) · rule DEMO-FORMS — from another address (198.51.100.7) | A form where none belongs |
+| `POST /edit` | the site answers it — from another address (198.51.100.7) | A form where one belongs |
+<!-- /examples -->

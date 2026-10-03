@@ -132,3 +132,18 @@ enforced rules let through: meant for the days a rule is tried out.
 - `trace` and the rules page's check show a watched budget of its own at 0 (the
   watched counters are kept apart).
 - A pass issued before `strict` was switched on keeps its lifetime.
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF05-03 · A rule being watched**
+
+"monitor" before a rule: the log notes what it would do, nobody is refused. request-shield test decides it switched on; the page lets it through.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/old/news` | "not found" (404) — the site never sees it · rule DEMO-OLD — from another address (198.51.100.7) | An old page: refused once switched on -- watched, it passes |
+| `/older` | the site answers it — from another address (198.51.100.7) | a near miss |
+<!-- /examples -->

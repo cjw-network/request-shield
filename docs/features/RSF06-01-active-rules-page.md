@@ -75,3 +75,19 @@ It never shows the secret. Everything from requests and the log is escaped.
 None on a normal request: the classes are loaded only when the page (or
 `trace`) runs. The page reads at most the last megabyte of the log (and of the
 rotated file), a few milliseconds.
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF06-01 · The active rules page**
+
+Every rule in plain words, with a check for any address: this machine only.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/rules` | no access (403) · rule DEMO-RULES — from another address (198.51.100.7) | from anywhere else |
+| `/rules` | the site answers it — from 127.0.0.1 | The active rules, from this machine |
+| `/rs/waf/rules` | look at it | Rules & setup in the dashboard: the way of a request, every rule |
+<!-- /examples -->

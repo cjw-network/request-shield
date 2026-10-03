@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The reference and the examples from one source** (0031 step F.5):
+  `src/Rules/Reference.php` holds every rule and set key in words (taken from
+  the rule files page's two tables, which are written from it now, plus rows
+  for `match`, `site`, `ids`, `version`, `replace`, `plugin`);
+  `docs/tools/gen-reference.php` writes those tables and `docs/reference/`
+  (`rule-files.md`, `settings.md`, `cli.md`), each row with its feature;
+  `docs/tools/sync-examples.php` puts each feature's demo group into its page.
+  New commands: `request-shield vocabulary [--json]` and `request-shield
+  examples <rules> --markdown [--feature=…] | --html [--out=…] | --coverage`
+  (the `--html` page is the demo recorded by `test`, for a static host).
+  Both tools have `--check`, which the tests run.
 - **The demo from its rules** (0031 step F.4): the demo's front page draws its
   rows from the `# demo:` groups at the end of `examples/demo/request-shield.rules`
   (13 groups, one per feature, 53 examples -- `request-shield test` decides

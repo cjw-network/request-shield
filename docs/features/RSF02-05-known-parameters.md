@@ -134,3 +134,20 @@ until one matches.
 - PHP turns `.` and spaces in parameter names into `_` (`a.b` → `a_b`); the
   shield compares the name as sent. A name declared as `a_b` does not cover
   `a.b` — which is then unknown: refused with `strict`, scanned without.
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF02-05 · Known query parameters**
+
+The site's parameters and their types: anything else is "not found" before a single attack pattern runs.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/?page=2` | the site answers it — from another address (198.51.100.7) | A number where a number belongs |
+| `/?page=2%27` | "not found" (404) — the site never sees it · rule DEMO-STRICT — from another address (198.51.100.7) | A parameter not of its type |
+| `/?debug=1` | "not found" (404) — the site never sees it · rule DEMO-STRICT — from another address (198.51.100.7) | A parameter the site does not know |
+| `/?page=2&fbclid=x&gclid=y` | the site answers it — from another address (198.51.100.7) | Marketing tags (the built-in tracking list) |
+<!-- /examples -->

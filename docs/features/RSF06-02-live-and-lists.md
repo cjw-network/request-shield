@@ -160,3 +160,19 @@ The same as on the command line ([IP lists](RSF01-02-ip-lists.md#the-command-lin
   ban's file, and the lists page (or `allow … --for=1h`) lifts it at once.
 - Still to come ([0026](../proposals/0026-live-view-and-lists.md), phase 4):
   customers' views (their websites only) and lists per website.
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF06-02 · Live and the lists**
+
+What the shield stops right now, and the lists: this machine only.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/rs/waf/live` | no access (403) · rule DEMO-STATS — from another address (198.51.100.7) | from anywhere else |
+| `/rs/waf/live` | the site answers it — from 127.0.0.1 | Live, from this machine |
+| `/rs/waf/lists` | look at it | Keep an address out or let it in, with a comment of your own |
+<!-- /examples -->

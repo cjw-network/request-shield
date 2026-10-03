@@ -76,3 +76,17 @@ visitor's budgets like any request.
 
 Proposal: [0010](../proposals/0010-browser-check-in-the-form.md). Demo:
 `/contact` in `examples/demo`.
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF03-03 · The check inside the form**
+
+A box in the form checks while the visitor types; the form goes straight through, a file too.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/contact` | look at it | The contact form with the box |
+<!-- /examples -->

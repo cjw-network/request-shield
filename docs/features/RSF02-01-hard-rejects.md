@@ -40,3 +40,18 @@ host 0.1, blocked paths 0.8 µs).
 
 The answers are generic on purpose (no rule name), so they do not help a
 scanner tune its requests. Use `debugHeader` while testing.
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF02-01 · Broken requests**
+
+A path that leaves the site's folder, however it is encoded, never reaches the site.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/files/%2e%2e/secret` | a broken request (400) · rule built-in — from another address (198.51.100.7) | Leaving the site's folder |
+| `/files/secret` | the site answers it — from 127.0.0.1 | the same folder, a plain name |
+<!-- /examples -->

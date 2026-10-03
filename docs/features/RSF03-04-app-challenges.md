@@ -98,3 +98,18 @@ types — no check page at all, files included
   controller before the form is handled.
 
 Proposal: [0006](../proposals/0006-the-site-asks-for-the-check.md).
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF03-04 · The site asks for the check**
+
+The page decides: a comment needs a pass, a page sends X-RS-Check: 1. A rule cannot show it -- click.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/comment` | look at it | A comment form: sending it needs a pass, then the comment is sent again by itself |
+| `/profile` | look at it | A page that asks for the check with a header |
+<!-- /examples -->

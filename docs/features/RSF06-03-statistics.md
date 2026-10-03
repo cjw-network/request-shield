@@ -572,3 +572,23 @@ addresses as described above; they are removed after `crawler-log-days`.
 - Without the dashboard (proposal [0012](../proposals/0012-dashboard.md), next
   step) the numbers are read with `bin/request-shield stats`, the JSON, or the
   rules page.
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF06-03 · The statistics**
+
+Who came, what the shield did, pages, crawlers, rules -- per website and per customer: this machine only, or a customer's signed link.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/rs/stats/overview` | no access (403) · rule DEMO-STATS — from another address (198.51.100.7) | from anywhere else |
+| `/rs/stats/overview` | the site answers it — from 127.0.0.1 | The overview, from this machine |
+| `/rs/stats/visitors` | look at it | Visitors & pages, for editors |
+| `/rs/stats/protection` | look at it | Protection, for admins |
+| `/rs/stats/sites` | look at it | All websites, by customer |
+| `/rs/stats/visitors?lang=de` | look at it | Statistik auf Deutsch |
+| `/customer-menu` | look at it | A customer's menu: a signed link opens Customer A's statistics only |
+<!-- /examples -->

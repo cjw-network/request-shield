@@ -30,9 +30,6 @@ const FEATURE_GAPS = [
     'e2e' => ['RSF01-01', 'RSF01-04', 'RSF02-02', 'RSF02-03', 'RSF02-04', 'RSF02-05', 'RSF03-01', 'RSF03-03', 'RSF03-04', 'RSF04-01'],
 ];
 
-/** The extensions' words belong to their feature. */
-const EXTENSION_FEATURES = ['stats' => 'RSF06-03'];
-
 /**
  * The docs index's features: id => ['page' => file or null, 'planned' => bool].
  *
@@ -172,7 +169,7 @@ return [
             truthy(isset($features[$id]) && !$features[$id]['planned'], "$word: $id is a feature of the index, not a planned one");
         }
         foreach (Vocabulary::extensions() as $ext => $class) {
-            truthy(isset(EXTENSION_FEATURES[$ext]) && isset($features[EXTENSION_FEATURES[$ext]]), "the extension $ext ($class) belongs to a feature of the index");
+            truthy(isset(Vocabulary::EXTENSION_FEATURES[$ext]) && isset($features[Vocabulary::EXTENSION_FEATURES[$ext]]), "the extension $ext ($class) belongs to a feature of the index");
         }
         truthy(isset(Vocabulary::extensions()['stats']) && Vocabulary::extensions()['stats'] === StatsExtension::class, 'the statistics are the shipped extension');
     },
