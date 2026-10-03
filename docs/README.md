@@ -63,8 +63,8 @@
   [0028 forms: counted, and sent only from the website itself](proposals/0028-forms.md) (phase 1 implemented; phase 3 with 0008) ·
   [0029 examples next to the rules: expect, a test command, a generated overview](proposals/0029-rule-examples.md) (phase 1 implemented) ·
   [0030 error pages: a quiet page of the shield's own, or the site's](proposals/0030-error-pages.md) (accepted) ·
-  [0031 a robust core, everything else a plugin](proposals/0031-robust-core-plugins.md) (draft — the plan; [steps and progress](proposals/0031-steps.md))
-  (0002, a single-file build, is reserved)
+  [0031 a robust core, everything else a plugin](proposals/0031-robust-core-plugins.md) (draft — the plan; [steps and progress](proposals/0031-steps.md)) ·
+  [0002 the single-file build](proposals/0002-single-file-build.md) (draft; part of 0031)
 - **Roadmap for 0012–0016** (the reasons in [0012](proposals/0012-dashboard.md#roadmap-for-00120016)):
   counters and crawler statistics first (they answer "did GPTBot crawl the
   site, or was it refused?"), then the dashboard read-only, then the IP lists
