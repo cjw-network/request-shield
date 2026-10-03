@@ -113,7 +113,7 @@ the model you trust most there, not fast mode.
 - [x] **F.1** RSF ids in every `docs/features/*.md` H1 and the `docs/README.md` table; test names with ids (a pure renaming commit). `dad11a3`
 - [x] **F.2** `tests/FeatureContractTest.php` (docs ↔ demo ↔ tests ↔ Vocabulary, `.demo-exempt`) — first with an exception list that F.6 empties. `78fcdc0`
 - [x] **F.3** Parser: `# demo:`/`# try:` markers, `ua "…"`, quoted headers; `Examples` returns status + headers. `8f508c8`
-- [x] **F.4** `Report/DemoSite` + `ExamplesPage`, server-side `/__answer`; `examples/demo/index.php` → 3 lines + `pages.php`; `examples/exponential` on the same base; `DemoTest` iterates groups. `HASH-F4`
+- [x] **F.4** `Report/DemoSite` + `ExamplesPage`, server-side `/__answer`; `examples/demo/index.php` → 3 lines + `pages.php`; `examples/exponential` on the same base; `DemoTest` iterates groups. `bd9a4d0`
 - [ ] **F.5** CLI `examples --markdown|--html|--coverage`, `vocabulary`; `docs/tools/sync-examples.php`, `gen-reference.php`, `docs/reference/*` generated; `--check` in CI.
 - [ ] **F.6** Close the gaps: trust, post-origin, feeds (`feed … from <file>`), strict, sites, `@attacks` with `expect`, crawlers, lists/bans — one commit per feature; empty the exception list from F.2.
 - [ ] **F.7** `docs/diagrams/*.dg` + `docs/tools/diagram.php`; Pages export of the recorded demo (`pages.yml`).
