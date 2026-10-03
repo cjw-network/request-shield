@@ -34,6 +34,58 @@ function examplesOf(string $text, bool $asWritten = false, ?string $only = null,
 }
 
 return [
+    'RSF05-04 demo markers: # demo: opens a group -- the comment lines below explain it, its examples carry its id; # try: rows are kept, not decided (0031 F.3)' => function (): void {
+        $dir = ruleDir(['site.rules' => "# demo: RSF02-02 blocked-paths Paths only attackers ask for\n# A scanner asks for backups.\n#   Every one is 404.\n\n"
+            . "[S-OLD] block /old/**\nexpect GET /old/x 404\n# not part of the explanation\nexpect GET /oldies answered\n"
+            . "# try: GET /old/ the page a visitor sees\n# demo: RSF04-01\nexpect GET / answered\n", 'more.rules' => "expect GET /x answered\n"]);
+        try {
+            $r = RuleFile::read(["$dir/site.rules"]);
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+        same([['id' => 'RSF02-02', 'slug' => 'blocked-paths', 'title' => 'Paths only attackers ask for', 'about' => ['A scanner asks for backups.', '  Every one is 404.'], 'at' => 'site.rules:1'],
+            ['id' => 'RSF04-01', 'slug' => '', 'title' => '', 'about' => [], 'at' => 'site.rules:10']], $r['demos'], 'the groups, a bare marker too');
+        same(['RSF02-02', 'RSF02-02', 'RSF04-01'], array_column(array_filter($r['examples'], static fn (array $x): bool => strncmp($x['at'], 'site.rules', 10) === 0), 'demo'), 'each example belongs to the group above it');
+        same([['demo' => 'RSF02-02', 'method' => 'GET', 'url' => '/old/', 'text' => 'the page a visitor sees', 'at' => 'site.rules:9']], $r['tries'], 'a try row: kept, never decided');
+        same(3, count(array_filter($r['examples'], static fn (array $x): bool => strncmp($x['at'], 'site.rules', 10) === 0)), 'a try row is no example');
+        // A line that only looks like a marker is a comment: a rule file never fails on one.
+        $dir = ruleDir(['site.rules' => "# demo: remove before launch\n# try: block /old/** if spam returns\n# demo: RSF2.2 x\n[S-1] block /a   # demo: RSF02-02 in a comment\n"]);
+        try {
+            $r = RuleFile::read(["$dir/site.rules"]);
+            same([[], []], [$r['demos'], $r['tries']], 'no group, no row');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+        // An include does not end the group; another website's block keeps its markers to itself.
+        $dir = ruleDir(['site.rules' => "# demo: RSF02-02\ninclude more.rules\nexpect GET /.env 404 by SCAN-HIDDEN\nsite b.example {\n# demo: RSF04-01\nexpect GET /x answered\n}\nexpect GET /y answered\n",
+            'more.rules' => "[M-1] block /m\n"]);
+        try {
+            $r = RuleFile::read(["$dir/site.rules"]);
+            same(['RSF02-02'], array_column($r['demos'], 'id'), 'the group in another website\'s block is not read with the base');
+            same(['RSF02-02', 'RSF02-02'], array_column(array_values(array_filter($r['examples'], static fn (array $x): bool => strncmp($x['at'], 'site.rules', 10) === 0)), 'demo'), 'after the include, still the group');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'RSF05-04 expect … ua "<User-Agent>" and quoted header values; the results carry the status and the headers a visitor gets (0031 F.3)' => function (): void {
+        $run = examplesOf("[S-BOT] block header User-Agent regex sqlmap\nexpect GET / 403 ua \"sqlmap/1.7 (https://sqlmap.org)\"\nexpect GET / answered ua \"Mozilla/5.0 (X11; Linux x86_64)\"\n"
+            . "expect GET /x answered header Accept-Language:\"de, en;q=0.8\" header X-Note:\"say \\\"hi\\\"\"\nexpect GET /.env 404 by SCAN-HIDDEN\n");
+        same(['pass site.rules:3', 'pass site.rules:4', 'pass site.rules:5', 'pass site.rules:6'], $run['lines']);
+        $own = array_values(array_filter($run['results'], static fn (array $r): bool => strncmp($r['example']['at'], 'site.rules', 10) === 0));
+        same(['sqlmap/1.7 (https://sqlmap.org)', 'Mozilla/5.0 (X11; Linux x86_64)'], [$own[0]['example']['ua'], $own[1]['example']['ua']], 'the User-Agent, spaces and all');
+        same(['accept-language' => 'de, en;q=0.8', 'x-note' => 'say "hi"'], $own[2]['example']['headers'], 'a quoted value keeps its spaces; \\" is a quote inside');
+        same([403, 200, 200, 404], array_column($own, 'http'), 'the status the visitor gets');
+        same([[], true], [$own[1]['headers'], in_array('Cache-Control: no-store', $own[3]['headers'], true)], 'passing: the site\'s own headers; refused: the shield\'s');
+        $hash = examplesOf("expect GET / answered ua \"Bot #1 (x)\" header X-Note:\"see #3\"   # the comment\n");
+        $x = array_values(array_filter($hash['results'], static fn (array $r): bool => strncmp($r['example']['at'], 'site.rules', 10) === 0))[0]['example'];
+        same(['Bot #1 (x)', ['x-note' => 'see #3'], 'the comment'], [$x['ua'], $x['headers'], $x['text']], 'a # inside quotes is part of the value; the comment after them is the comment');
+        try {
+            rulesFrom("expect GET / answered ua \"never closed\n");
+            throw new TestFailure('accepted an open quote');
+        } catch (\CjwNetwork\RequestShield\Rules\RuleFileException $e) {
+            truthy(strpos($e->getMessage(), 'a quote is not closed') !== false, $e->getMessage());
+        }
+    },
     'RSF05-04 expect lines: read with the rules, any order after the address -- never part of the settings' => function (): void {
         $plain = "[S-OLD] block /old/**\nmatch /admin/** {\n  [S-ADM] challenge\n}\n";
         $with = "[S-OLD] block /old/**   # old pages\nexpect GET /old/x 404\nexpect GET /oldies answered   # a near miss\n"

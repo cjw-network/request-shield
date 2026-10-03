@@ -60,19 +60,32 @@ class Responder
             return;
         }
         http_response_code($decision->status);
-        header('Content-Type: text/html; charset=utf-8');
-        header('Cache-Control: no-store');
-        header('X-Robots-Tag: noindex');
-        header('Vary: Accept-Language');     // the texts are in the visitor's language
+        foreach (self::headerLines($decision, $debugHeader, $rule) as $line) {
+            header($line);
+        }
+    }
+
+    /**
+     * The header lines of a refusal's or a check's page, without sending them --
+     * what headers() sends, and what `request-shield test` and the demo show
+     * an example answers with (0031 F.3).
+     *
+     * @return list<string>
+     */
+    public static function headerLines(Decision $decision, bool $debugHeader = false, ?string $rule = null): array
+    {
+        $out = ['Content-Type: text/html; charset=utf-8', 'Cache-Control: no-store', 'X-Robots-Tag: noindex',
+            'Vary: Accept-Language'];    // the texts are in the visitor's language
         if ($decision->retryAfter > 0) {
-            header('Retry-After: ' . $decision->retryAfter);
+            $out[] = 'Retry-After: ' . $decision->retryAfter;
         }
         if ($decision->status === 405) {
-            header('Allow: GET, HEAD, POST');
+            $out[] = 'Allow: GET, HEAD, POST';
         }
         if ($debugHeader) {
-            header('X-RS: ' . $decision->action . ' ' . $decision->reason . ($rule !== null ? '; rule=' . $rule : ''));
+            $out[] = 'X-RS: ' . $decision->action . ' ' . $decision->reason . ($rule !== null ? '; rule=' . $rule : '');
         }
+        return $out;
     }
 
     /**

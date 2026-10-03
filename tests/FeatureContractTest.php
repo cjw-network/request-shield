@@ -72,26 +72,21 @@ function contractTests(): array
 }
 
 /**
- * The demo's groups: id => [the expect lines' outcomes].
+ * The demo's groups as the parser reads them (# demo: markers, 0031 F.3): id
+ * => the outcomes of the examples that belong to it.
  *
  * @return array<string, list<string>>
  */
 function contractDemos(?string $file = null): array
 {
+    $read = RuleFile::read([$file ?? dirname(__DIR__) . '/examples/demo/request-shield.rules']);
     $out = [];
-    $id = null;
-    foreach (preg_split('/\r\n|\n/', (string) file_get_contents($file ?? dirname(__DIR__) . '/examples/demo/request-shield.rules')) ?: [] as $line) {
-        if (preg_match('/^# demo: (RSF\d{2}-\d{2})(\s|$)/', $line, $m) === 1) {
-            $id = $m[1];
-            $out[$id] ??= [];
-        } elseif ($id !== null && preg_match('/^\s*expect\s+\S+\s+\S+(.*)$/', $line, $m) === 1) {
-            // The outcome, wherever it stands after the address (options first is fine):
-            // quoted values and the options' arguments are no outcome.
-            $rest = (string) preg_replace('/"(?:[^"\\\\]|\\\\.)*"|#.*$/', ' ', $m[1]);
-            $rest = (string) preg_replace('/\b(by|from|times|header|ua)\s+\S+/i', ' ', $rest);
-            if (preg_match('/(?:^|\s)(passes|uncached|answered|check|\d{3})(?=\s|$)/i', $rest, $o) === 1) {
-                $out[$id][] = strtolower($o[1]);
-            }
+    foreach ($read['demos'] as $g) {
+        $out[$g['id']] ??= [];
+    }
+    foreach ($read['examples'] as $x) {
+        if ($x['demo'] !== null) {
+            $out[$x['demo']][] = $x['outcome'];
         }
     }
     return $out;
@@ -137,9 +132,9 @@ return [
         same(FEATURE_GAPS['e2e'], $missing['e2e'], 'request-path features without an end-to-end test (FEATURE_GAPS[e2e])');
     },
     'RSF06-04 the contract: every feature has a demo group with an effect and a near miss -- or a reason in .demo-exempt; the gaps only shrink' => function (): void {
-        // The reading of a group, held to what the parser allows (any order after the address, a bare marker).
+        // The groups come from the parser: any order after the address, a bare marker, quotes.
         $tmp = sys_get_temp_dir() . '/rs-contract-' . getmypid() . '.rules';
-        file_put_contents($tmp, "# demo: RSF02-02\nexpect GET /backup.zip by SCAN-BACKUP 404\nexpect GET /a.php ua \"Mozilla 404 passes\" header X-A:1 passes   # 403 in a comment\n"
+        file_put_contents($tmp, "set store-dir /nonexistent/never-written\n# demo: RSF02-02\nexpect GET /backup.zip by SCAN-BACKUP 404\nexpect GET /a.php ua \"Mozilla 404 passes\" header X-A:1 passes   # 403 in a comment\n"
             . "# demo: RSF04-01 the cache\nexpect GET /x uncached\nexpect GET /y times 3 414\n");
         try {
             same(['RSF02-02' => ['404', 'passes'], 'RSF04-01' => ['uncached', '414']], contractDemos($tmp), 'the outcome anywhere after the address, a bare marker, quotes and options skipped');

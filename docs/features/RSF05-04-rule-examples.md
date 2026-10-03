@@ -36,7 +36,7 @@ that breaks one is seen before the deploy, not by a visitor. Proposal
 ## The line
 
 ```text
-expect <METHOD> <address> <outcome> [by <ID>] [from <address>] [with pass] [times <n>] [header <Name>:<value>]...
+expect <METHOD> <address> <outcome> [by <ID>] [from <address>] [with pass] [times <n>] [ua "<User-Agent>"] [header <Name>:<value>]...
 ```
 
 After the address, the outcome and the options may come in any order.
@@ -52,7 +52,8 @@ After the address, the outcome and the options may come in any order.
 | `403`, `404`, `405`, `429` … | refused with that status |
 | `by <ID>` | the rule that must decide. **Without it, the rule the line follows** (the last rule with an ID above it in the same file); for `uncached`, nothing is checked unless `by` is written; `passes` and `answered` take no `by` (no rule decides a request that passes) |
 | `from <address>` | the visitor's address; default `198.51.100.7`, a documentation range. For `restrict`, `exempt`, `deny`, the lists |
-| `header <Name>:<value>` | a header the request carries (`header Origin:https://www.example.org`); the value without spaces; several allowed |
+| `ua "<User-Agent>"` | the visitor's User-Agent (`ua "Mozilla/5.0 (compatible; Googlebot/2.1)"`); default an ordinary browser's |
+| `header <Name>:<value>` | a header the request carries (`header Origin:https://www.example.org`); a value with spaces in quotes (`header Accept-Language:"de, en;q=0.8"`, `\"` for a quote inside); several allowed |
 | `with pass` | the visitor solved the check before (holds a valid pass) |
 | `times <n>` | the request sent `n` times in a row: budgets, bans. The outcome is that of the last one |
 
@@ -63,6 +64,42 @@ After the address, the outcome and the options may come in any order.
 - Examples for rules of other files name them: `expect GET /backup.zip 404 by SCAN-BACKUP`.
 - **Mistakes are errors** with file and line, as for rules: a method in lower
   case, an outcome that is no outcome, `by` an ID no rule has.
+
+## Demo groups: `# demo:` and `# try:`
+
+The demo's rules (`examples/demo/request-shield.rules`) are grouped by
+feature, so the demo page, the docs' tables and the tests come from one file:
+
+```text
+# demo: RSF02-02 blocked-paths Paths only attackers ask for
+# Scanners ask for backups and hidden files; each is refused before the
+# site runs.
+[DEMO-OLD] block **/old/**
+expect GET /old/x            404
+expect GET /oldies           answered          # a near miss
+# try: GET /old/ the page a refused visitor sees
+```
+
+- **`# demo: RSF<gg>-<nn> [<slug>] [<title>]`** opens a group: the comment
+  lines right below it explain it, every `expect` line after it belongs to
+  it, up to the next `# demo:` or the end of the file. The feature contract
+  asks each feature for a group with an effect (a refusal, the check, or
+  `uncached`) and a near miss that passes
+  ([the contract](../../tests/FeatureContractTest.php)).
+- **`# try: <METHOD> <address> <what to look at>`** is a row to look at, not
+  decided -- for what a test cannot judge (the widget, how old a pass is).
+- Outside the demo both are comments as before: any rule file may carry
+  them, nothing changes for a request. A line that only looks like a marker
+  (`# demo: remove before launch`) stays a comment -- a rule file never fails
+  on one. An `include` inside a group does not end it; a group inside a
+  `site` block belongs to that website's reading.
+- In an `expect` line a `#` inside quotes is part of the value (`ua "Bot #1"`);
+  the comment starts at a `#` outside them.
+
+`request-shield test` (and `Examples::run()`) gives each example the status
+and the headers the visitor would get: 200 and the site's own headers when it
+passes, else the shield's status and its header lines (`Cache-Control:
+no-store`, `Retry-After`, `Allow` …).
 
 ## `request-shield test`
 

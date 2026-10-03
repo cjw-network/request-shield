@@ -24,8 +24,8 @@ use CjwNetwork\RequestShield\Store\MemoryStore;
  * rules switched on (monitor as enforce) unless asked for as written; nothing
  * is written to the site's store, log or statistics.
  *
- * @phpstan-type Example array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, headers: array<string, string>, text: ?string, at: string, site: ?string}
- * @phpstan-type Result array{example: Example, about: ?string, status: string, got: string, gotRule: ?string, why: string}
+ * @phpstan-type Example array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, headers: array<string, string>, text: ?string, at: string, site: ?string, ua: ?string, demo: ?string}
+ * @phpstan-type Result array{example: Example, about: ?string, status: string, got: string, gotRule: ?string, why: string, http: int, headers: list<string>}
  */
 final class Examples
 {
@@ -139,7 +139,7 @@ final class Examples
         $https = ($parts['scheme'] ?? 'https') === 'https';
         $server = ['REQUEST_METHOD' => $x['method'], 'REQUEST_URI' => $path, 'QUERY_STRING' => $parts['query'] ?? '',
             'HTTP_HOST' => $host, 'SERVER_NAME' => $host, 'SERVER_PORT' => $https ? '443' : '80', 'REMOTE_ADDR' => $x['from'],
-            'HTTP_USER_AGENT' => self::USER_AGENT, 'HTTP_ACCEPT' => 'text/html,application/xhtml+xml,*/*;q=0.8', 'HTTP_ACCEPT_LANGUAGE' => 'en'];
+            'HTTP_USER_AGENT' => $x['ua'] ?? self::USER_AGENT, 'HTTP_ACCEPT' => 'text/html,application/xhtml+xml,*/*;q=0.8', 'HTTP_ACCEPT_LANGUAGE' => 'en'];
         if ($https) {
             $server['HTTPS'] = 'on';
         }
@@ -153,7 +153,7 @@ final class Examples
         if ($x['pass']) {
             // A pass, as the check would have issued it: the visitor solved it before.
             $cookie = (new PassCookie(\CjwNetwork\RequestShield\Challenge\Secret::resolve($s->challenge->secret, $s->storeDir), $s->challenge->bindUserAgent))
-                ->issue(IpAddress::bucket($x['from'], $s->ipv6Prefix), self::USER_AGENT, (int) $now + $s->challenge->passTtl);
+                ->issue(IpAddress::bucket($x['from'], $s->ipv6Prefix), $x['ua'] ?? self::USER_AGENT, (int) $now + $s->challenge->passTtl);
             $server['HTTP_COOKIE'] = $s->challenge->cookie . '=' . $cookie;
         }
         $shield = new Shield($s, new MemoryStore());
@@ -172,14 +172,18 @@ final class Examples
             $final = Decision::allowUncached('monitor');    // as protect(): watched, let through, never cached (--as-written)
         }
         $got = self::outcome($final);
+        // What the visitor would get: the site's own answer (200, its headers) when it passes,
+        // else the shield's status and headers -- the same lines Responder sends.
+        $http = $final->passes() ? 200 : $final->status;
+        $headers = $final->passes() ? [] : \CjwNetwork\RequestShield\Responder::headerLines($final);
         $gotRule = $final->passes() && $final->action === Decision::ALLOW ? null : $shield->explain($d, $request);
         if ($about !== null && !self::inEffect($s, $about) && !(isset($s->origins['monitor'][$about]) && !$asWritten)) {
             $why = isset($s->origins['monitor'][$about]) ? "$about is only watched (monitor) -- test without --as-written" : "$about is not in effect here (taken back or replaced)";
-            return ['example' => $x, 'about' => $x['by'] ?? $x['rule'], 'status' => 'skip', 'got' => $got, 'gotRule' => $gotRule, 'why' => $why];
+            return ['example' => $x, 'about' => $x['by'] ?? $x['rule'], 'status' => 'skip', 'got' => $got, 'gotRule' => $gotRule, 'why' => $why, 'http' => $http, 'headers' => $headers];
         }
         $ok = ($got === $x['outcome'] || ($x['outcome'] === 'answered' && ($got === 'passes' || $got === 'uncached'))) && ($about === null || $gotRule === $about);
         $why = $ok ? '' : 'expected ' . $x['outcome'] . ($about !== null ? " by $about" : '') . ', got ' . $got . ($gotRule !== null ? " by $gotRule" : '');
-        return ['example' => $x, 'about' => $x['by'] ?? $x['rule'], 'status' => $ok ? 'pass' : 'fail', 'got' => $got, 'gotRule' => $gotRule, 'why' => $why];
+        return ['example' => $x, 'about' => $x['by'] ?? $x['rule'], 'status' => $ok ? 'pass' : 'fail', 'got' => $got, 'gotRule' => $gotRule, 'why' => $why, 'http' => $http, 'headers' => $headers];
     }
 
     /** How a decision reads in an expect line: passes, uncached, check, or the status refused with. */

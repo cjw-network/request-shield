@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Demo groups and more for `expect`** (0031 step F.3): `# demo: RSF02-06
+  <slug> <title>` opens a group in a rule file -- the comment lines below
+  explain it, the examples after it belong to it -- and `# try: GET /path
+  <what to look at>` is a row that is shown, not decided; `expect … ua
+  "<User-Agent>"` sets the visitor's User-Agent, and a header value may be
+  quoted (spaces, `\"`). Each example's result carries the status and the
+  headers the visitor would get (`Responder::headerLines()`). The feature
+  contract reads the groups from the parser now.
 - **The feature contract** (0031 step F.2): `tests/FeatureContractTest.php`
   holds every feature of the docs index to its parts -- a page, tests under
   its id, an end-to-end test on the request path, a `# demo:` group with an

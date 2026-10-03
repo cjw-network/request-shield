@@ -147,12 +147,21 @@ final class RuleFile
      * The examples next to the rules (expect lines, proposal 0029): read and
      * checked with the rules, kept apart from the settings a request loads.
      *
-     * @var list<array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, headers: array<string, string>, text: ?string, at: string, site: ?string}>
+     * @var list<array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, headers: array<string, string>, text: ?string, at: string, site: ?string, ua: ?string, demo: ?string}>
      */
     private array $examples = [];
 
     /** @var array<string, true> the shipped sets read so far (shippedSet()), by name */
     private array $sets = [];
+
+    /** @var list<array{id: string, slug: string, title: string, about: list<string>, at: string}> the demo's groups (# demo: RSF02-06 <slug> <title>), in order (0031 F.3) */
+    private array $demos = [];
+
+    /** @var list<array{demo: ?string, method: string, url: string, text: string, at: string}> the rows to look at, not decided (# try: GET /path what to see) */
+    private array $tries = [];
+
+    /** @var array<string, array{index: int, about: bool}> per file, the group open in it: its examples belong to it; its first comment lines explain it (an include does not end it) */
+    private array $demoOpen = [];
 
     /** @var array<string, string> per file, the last rule with an ID: what an expect line without "by" is about */
     private array $lastRule = [];
@@ -177,7 +186,7 @@ final class RuleFile
      * @param list<string> $files paths or globs; a glob may match nothing
      * @param ?string $site the website whose "site" block is read too (its block's first name);
      *   null: the base -- the rules for every website, each site block skipped
-     * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, examples: list<array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, headers: array<string, string>, text: ?string, at: string, site: ?string}>}
+     * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, examples: list<array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, headers: array<string, string>, text: ?string, at: string, site: ?string, ua: ?string, demo: ?string}>, demos: list<array{id: string, slug: string, title: string, about: list<string>, at: string}>, tries: list<array{demo: ?string, method: string, url: string, text: string, at: string}>}
      *   config: the settings array, with 'origins' (setting => pattern or budget => "file:line"),
      *   'sites' (website name => its block's first name) and 'site';
      *   examples: the expect lines (never part of config: a request does not load them)
@@ -213,7 +222,7 @@ final class RuleFile
 
     /**
      * @param list<string> $files
-     * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, monitored: bool, examples: list<array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, headers: array<string, string>, text: ?string, at: string, site: ?string}>}
+     * @return array{config: array<string, mixed>, seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, monitored: bool, examples: list<array{method: string, url: string, outcome: string, by: ?string, rule: ?string, from: string, pass: bool, times: int, headers: array<string, string>, text: ?string, at: string, site: ?string, ua: ?string, demo: ?string}>, demos: list<array{id: string, slug: string, title: string, about: list<string>, at: string}>, tries: list<array{demo: ?string, method: string, url: string, text: string, at: string}>}
      */
     private static function reading(array $files, bool $monitoring, ?string $site = null): array
     {
@@ -281,7 +290,7 @@ final class RuleFile
                 throw new RuleFileException("{$x['at']}: expect … by {$x['by']} -- no rule has that ID");
             }
         }
-        return ['config' => $r->c, 'seen' => $r->seen, 'env' => $r->env, 'recheck' => is_int($recheck) ? $recheck : 10, 'monitored' => $r->monitored, 'examples' => $r->examples];
+        return ['config' => $r->c, 'seen' => $r->seen, 'env' => $r->env, 'recheck' => is_int($recheck) ? $recheck : 10, 'monitored' => $r->monitored, 'examples' => $r->examples, 'demos' => $r->demos, 'tries' => $r->tries];
     }
 
     /**
@@ -527,13 +536,31 @@ final class RuleFile
 
     private function line(string $line, string $at, string $file): void
     {
+        // The demo's markers (0031 F.3): "# demo: RSF02-06 <slug> <title>" opens a group -- the
+        // comment lines right below explain it, the expect lines after it belong to it, up to the
+        // next marker or the file's end; "# try: GET /path what to look at" is a row that is shown,
+        // not decided (the widget, a pass's age). A line that only looks like one is a comment, as
+        // is every marker in another website's block: a rule file never fails on a comment.
+        $skipped = $this->siteOpen !== null && $this->siteOpen['skip'];
+        if (!$skipped && preg_match('/^\s*#\s*(demo|try):(.*)$/', $line, $mk) === 1 && $this->marker($mk[1], trim($mk[2]), $at, $file)) {
+            return;
+        }
+        if (!$skipped && ($this->demoOpen[$file]['about'] ?? false)) {
+            if (preg_match('/^\s*#\s?(.*)$/', $line, $c) === 1) {
+                $this->demos[$this->demoOpen[$file]['index']]['about'][] = rtrim($c[1]);
+                return;
+            }
+            $this->demoOpen[$file]['about'] = false;
+        }
         // "#" starts a comment at the start of a line or after a space; "\#"
         // is a literal "#" (in a regex, say). A comment after a rule is its
-        // description, for people (the active rules page).
+        // description, for people (the active rules page). In an expect line
+        // a quoted value may hold one (ua "Bot #1").
         $text = null;
-        if (preg_match('/(?:^|\s)#\s*(.*)$/', $line, $m, PREG_OFFSET_CAPTURE) === 1) {
-            $text = trim($m[1][0]);
-            $line = substr($line, 0, $m[0][1]);
+        $hash = preg_match('/^\s*expect\s/i', $line) === 1 ? self::commentAt($line) : (preg_match('/(?:^|\s)#/', $line, $h, PREG_OFFSET_CAPTURE) === 1 ? $h[0][1] : null);
+        if ($hash !== null) {
+            $text = trim(substr($line, (int) strpos($line, '#', $hash) + 1));
+            $line = substr($line, 0, $hash);
         }
         $line = trim(str_replace('\\#', '#', $line));
         if ($line === '') {
@@ -576,7 +603,8 @@ final class RuleFile
             if ($id !== null) {
                 throw new RuleFileException("$at: [$id] expect -- an example has no ID; it belongs to the rule above it (or: by <ID>)");
             }
-            $this->expect(array_map(fn (string $a): string => $this->env($a, $at), $parts), $at, $file, $text);
+            // Quoted arguments (ua "Mozilla/5.0 …", header Name:"a value") stay one argument.
+            $this->expect(array_map(fn (string $a): string => $this->env($a, $at), self::words(substr($line, 6), $at)), $at, $file, $text);
             return;
         }
         // site <names> { ... }: the rules of some websites, added to the base.
@@ -1460,6 +1488,93 @@ final class RuleFile
     }
 
     /**
+     * A demo marker: "demo: RSF02-06 <slug> <title>" or "try: <METHOD> <address>
+     * <what to look at>". False when the line only looks like one: then it is a comment.
+     */
+    private function marker(string $kind, string $rest, string $at, string $file): bool
+    {
+        if ($kind === 'demo') {
+            if (preg_match('/^(RSF\d{2}-\d{2})(?:\s+([a-z0-9][a-z0-9-]*))?(?:\s+(.+))?$/', $rest, $m) !== 1) {
+                return false;
+            }
+            $this->demos[] = ['id' => $m[1], 'slug' => $m[2] ?? '', 'title' => trim($m[3] ?? ''), 'about' => [], 'at' => $at];
+            $this->demoOpen[$file] = ['index' => count($this->demos) - 1, 'about' => true];
+            return true;
+        }
+        if (preg_match('#^([A-Z]{3,10})\s+((?:/|https?://)\S*)(?:\s+(.*))?$#', $rest, $m) !== 1) {
+            return false;
+        }
+        $open = $this->demoOpen[$file] ?? null;
+        $this->tries[] = ['demo' => $open !== null ? $this->demos[$open['index']]['id'] : null, 'method' => $m[1], 'url' => $m[2], 'text' => trim($m[3] ?? ''), 'at' => $at];
+        if ($open !== null) {
+            $this->demoOpen[$file]['about'] = false;
+        }
+        return true;
+    }
+
+    /** Where an expect line's comment starts: a "#" at the start or after a space, outside quotes; null when there is none. */
+    private static function commentAt(string $line): ?int
+    {
+        $quoted = false;
+        $n = strlen($line);
+        for ($i = 0; $i < $n; $i++) {
+            $ch = $line[$i];
+            if ($quoted && $ch === '\\' && ($line[$i + 1] ?? '') === '"') {
+                $i++;
+            } elseif ($ch === '"') {
+                $quoted = !$quoted;
+            } elseif (!$quoted && $ch === '#' && ($i === 0 || $line[$i - 1] === ' ' || $line[$i - 1] === "\t") && ($i === 0 || $line[$i - 1] !== '\\')) {
+                return $i;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The arguments of a line, a quoted part one argument without its quotes
+     * ("Mozilla/5.0 (X11)", Name:"a, b"); \" is a quote inside one.
+     *
+     * @return list<string>
+     */
+    private static function words(string $line, string $at): array
+    {
+        $out = [];
+        $cur = null;
+        $quoted = false;
+        $n = strlen($line);
+        for ($i = 0; $i < $n; $i++) {
+            $ch = $line[$i];
+            if ($quoted) {
+                if ($ch === '\\' && ($line[$i + 1] ?? '') === '"') {
+                    $cur .= '"';
+                    $i++;
+                } elseif ($ch === '"') {
+                    $quoted = false;
+                } else {
+                    $cur .= $ch;
+                }
+            } elseif ($ch === '"') {
+                $quoted = true;
+                $cur ??= '';
+            } elseif ($ch === ' ' || $ch === "\t") {
+                if ($cur !== null) {
+                    $out[] = $cur;
+                    $cur = null;
+                }
+            } else {
+                $cur = ($cur ?? '') . $ch;
+            }
+        }
+        if ($quoted) {
+            throw new RuleFileException("$at: a quote is not closed");
+        }
+        if ($cur !== null) {
+            $out[] = $cur;
+        }
+        return $out;
+    }
+
+    /**
      * expect <METHOD> <address> <outcome> [by <ID>] [from <address>] [with pass] [times <n>]:
      * an example of what the rules decide (proposal 0029). Checked here like any
      * rule; decided by request-shield test, never by a request.
@@ -1468,7 +1583,7 @@ final class RuleFile
      */
     private function expect(array $args, string $at, string $file, ?string $text): void
     {
-        $usage = 'expect <METHOD> <address> passes|uncached|answered|check|<4xx> [by <ID>] [from <address>] [with pass] [times <n>] [header <Name>:<value>]...';
+        $usage = 'expect <METHOD> <address> passes|uncached|answered|check|<4xx> [by <ID>] [from <address>] [with pass] [times <n>] [ua "<User-Agent>"] [header <Name>:<value>]...';
         if (count($args) < 3) {
             throw new RuleFileException("$at: $usage");
         }
@@ -1481,7 +1596,8 @@ final class RuleFile
         }
         $x = ['method' => $method, 'url' => $url, 'outcome' => '', 'by' => null, 'rule' => $this->lastRule[$file] ?? null,
             'from' => self::EXAMPLE_FROM, 'pass' => false, 'times' => 1, 'headers' => [], 'text' => $text === '' ? null : $text, 'at' => $at,
-            'site' => $this->siteOpen !== null ? $this->siteOpen['id'] : null];
+            'site' => $this->siteOpen !== null ? $this->siteOpen['id'] : null, 'ua' => null,
+            'demo' => isset($this->demoOpen[$file]) ? $this->demos[$this->demoOpen[$file]['index']]['id'] : null];
         // The outcome and the options, in any order after the address.
         while ($args !== []) {
             $a = strtolower((string) array_shift($args));
@@ -1493,9 +1609,11 @@ final class RuleFile
                     throw new RuleFileException("$at: expect … from \"$from\" -- one address (a documentation range: 192.0.2.10, 2001:db8::1)");
                 }
                 $x['from'] = $from;
-            } elseif ($a === 'header' && isset($args[0]) && preg_match('/^([A-Za-z][A-Za-z0-9-]{0,63}):(\S*)$/', $args[0], $hm) === 1) {
+            } elseif ($a === 'header' && isset($args[0]) && preg_match('/^([A-Za-z][A-Za-z0-9-]{0,63}):(.*)$/s', $args[0], $hm) === 1) {
                 array_shift($args);
-                $x['headers'][strtolower($hm[1])] = $hm[2];     // header Origin:https://shop.example -- a value without spaces
+                $x['headers'][strtolower($hm[1])] = trim($hm[2]);   // header Origin:https://shop.example, header Accept-Language:"de, en;q=0.8"
+            } elseif ($a === 'ua' && isset($args[0])) {
+                $x['ua'] = (string) array_shift($args);            // ua "Mozilla/5.0 (compatible; Googlebot/2.1)" -- else an ordinary browser's
             } elseif ($a === 'with' && strtolower($args[0] ?? '') === 'pass') {
                 array_shift($args);
                 $x['pass'] = true;
