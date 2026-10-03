@@ -97,7 +97,7 @@ the model you trust most there, not fast mode.
 
 ### Phase D — CLI + namespace
 - [x] **D.1** `bin/request-shield` as a dispatch table + `Extension::commands()`; `stats` into the plugin. `16e7999`
-- [x] **D.2** `plugins/stats/src` → `CjwNetwork\RequestShield\Stats\`; `composer.json`/`bootstrap.php`/`phpstan.neon.dist` adjusted; `plugin … from <file>`. `(this commit; hash follows)`
+- [x] **D.2** `plugins/stats/src` → `CjwNetwork\RequestShield\Stats\`; `composer.json`/`bootstrap.php`/`phpstan.neon.dist` adjusted; `plugin … from <file>`. `b22dc35`
 - [ ] **D.3** `docs/features/plugins.md` rewritten around `Extension`; ADRs 0008/0009 accepted.
 
 ### Phase E — Single file
