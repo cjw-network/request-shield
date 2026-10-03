@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The Sink capability** (0031 step B.9): `Log::note()` hands its record --
+  every request the shield did something about -- to the live view and to
+  every plugin with `Sink` (`$s->hooks['sink']`, recorded when the rules are
+  compiled); a sink that throws is left out for that request and noted in
+  PHP's error log once a minute, the log and the other sinks still get it. The
+  live view is the first sink (`Live` implements it). Compiled settings format
+  46 ([docs](docs/features/plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)).
 - **Capabilities on plugins, the first: RuleCounts** (0031 step B.8): the
   compiler records which plugin class implements which capability into the
   compiled settings (`hooks`, by `instanceof` when the rules are compiled); the

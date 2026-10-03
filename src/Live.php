@@ -25,8 +25,18 @@ use CjwNetwork\RequestShield\Report\LogTail;
  * with the full address and only for live-keep. Nothing for a request that
  * passes.
  */
-final class Live
+final class Live implements Sink
 {
+    /** The first sink (0031 B.9): the live view hears what the log hears, when live is on. */
+    public function __construct(private Settings $settings)
+    {
+    }
+
+    public function note(Request $request, Decision $decision, ?string $rule, float $now, bool $monitor): void
+    {
+        self::push($this->settings, $request, $decision, $rule, $now, $monitor);
+    }
+
     /** Entries in the APCu ring: the newest SIZE, older ones overwritten. */
     public const SIZE = 2000;
 

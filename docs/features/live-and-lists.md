@@ -43,6 +43,8 @@ the statistics, under `dashboard-path`: `/rs/waf/live` and `/rs/waf/lists`.
 | contains | refused, banned, told to wait, checked, and what watched rules would have done | what `log-level` keeps |
 | cost per request | **~5 µs for a request that was stopped** (a counter and one entry); nothing for one that passes | the log line (already there) |
 
+The live memory is the first **sink** (0031 B.9): `Log::note()` hands every record it has to the live view and to the plugins with the `Sink` capability ([plugins](plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)); a passing request is never noted, so it pays nothing.
+
 The page asks for new rows with a cursor: in the memory the number of the last
 entry, in the log the byte where the last read ended. A reader far behind
 gets the newest rows and is told how many it skipped. The dashboard's own

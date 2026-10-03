@@ -53,9 +53,37 @@ final class Log
         if ($s->logFile !== null && self::wants($s->logLevel, $d)) {
             self::write($s, $request, $d, $rule, $now, $monitor);
         }
-        if ($s->liveEnabled) {
-            Live::push($s, $request, $d, $rule, $now, $monitor);
+        // The sinks (0031 B.9): the live view first, then the plugins with the capability
+        // ($s->hooks['sink'], recorded when the rules were compiled). One that throws is
+        // left out for this request and noted once a minute; the others still hear it.
+        foreach (self::sinks($s) as $sink) {
+            try {
+                $sink->note($request, $d, $rule, $now, $monitor);
+            } catch (\Throwable $e) {
+                Shield::failed('sink', get_class($sink) . ' failed, the record went to the others: ' . $e->getMessage());
+            }
         }
+    }
+
+    /**
+     * The sinks of these settings: Live when live is on, then the plugins
+     * with the capability -- made as the shield makes plugins (new $class($settings)).
+     *
+     * @return list<Sink>
+     */
+    private static function sinks(Settings $s): array
+    {
+        $out = $s->liveEnabled ? [new Live($s)] : [];
+        foreach ($s->hooks['sink'] ?? [] as $class) {
+            try {
+                if (class_exists($class) && is_subclass_of($class, Sink::class)) {
+                    $out[] = new $class($s);
+                }
+            } catch (\Throwable $e) {
+                Shield::failed('sink', "$class could not be made: " . $e->getMessage());
+            }
+        }
+        return $out;
     }
 
     public static function write(Settings $s, Request $request, Decision $d, ?string $rule, ?float $now = null, bool $monitor = false): void

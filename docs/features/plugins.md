@@ -210,11 +210,13 @@ plugin without it costs nothing more. The first (0031 B.8):
 | Capability | What it answers | Who asks |
 |---|---|---|
 | `RuleCounts` | `ruleCounts($days, $now)`: rule id => how often it decided; `crawlerCounts($days, $now)`: what each known crawler did | the rules and setup page (`Report\Counts`), when it is drawn -- never a request |
+| `Sink` | `note($request, $decision, $rule, $now, $monitor)`: what the log hears -- every request the shield did something about (at log-level all, every one) | `Log::note()`, where the log is written -- never a passing request. The live view is the first sink; a CMS logger or a Monolog handler are others. A sink masks addresses as the log does (`Log::mask()`) |
 
-The statistics plugin has it (`set stats on`): the rules page shows "decided
-n times" from its counters. A plugin that throws there is left out; the page
-is drawn without its numbers. The tests' `tests/support/CountingPlugin.php`
-is the smallest.
+The statistics plugin has `RuleCounts` (`set stats on`): the rules page shows
+"decided n times" from its counters. A plugin that throws in a capability is
+left out -- the page is drawn without its numbers, the record goes to the
+other sinks -- and PHP's error log hears it once a minute. The tests'
+`tests/support/CountingPlugin.php` and `SinkPlugin.php` are the smallest.
 
 ## Cost
 

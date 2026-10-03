@@ -598,7 +598,7 @@ final class Shield
     private static string|false|null $failedDir = null;
 
     /** Something failed and the request went on: noted once a minute per cause (Failure). */
-    private static function failed(string $what, string $message): void
+    public static function failed(string $what, string $message): void
     {
         Failure::note($what, $message, self::$failedDir);
     }
