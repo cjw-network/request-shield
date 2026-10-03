@@ -16,6 +16,11 @@ version 2026-09-29.1        # this rule set's own version: shown on /rules and b
 # or 404 -- but marked "allow-uncached", so made-up URLs cannot fill a cache.
 # (A CMS whose URLs change all the time keeps "cache-path any", the default,
 # and counts its cache misses per client instead: an on-demand budget.)
+# A proxy in front of the site (a documentation address): from it, X-Forwarded-For
+# names the visitor. The tests add 127.0.0.1 here, to send each example's address.
+trust       198.51.100.1
+trust       ${REQUEST_SHIELD_DEMO_TRUST:-198.51.100.1}
+
 [DEMO-CACHE]        cache-path  **/  **/index.php  **/page/*      # the front page and /page/<name> may be cached
 [DEMO-CACHE-QUERY]  cache-query page                              # only the parameter "page" may be in a cached address
 

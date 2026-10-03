@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Each demo group is its feature's end-to-end test** (0031 step F.6): `DemoTest`
+  runs every `# demo:` group on a real server under the feature's id -- each
+  `expect` row sent through the shield as a real request from the example's
+  own address (the test server trusts 127.0.0.1 as a proxy:
+  `trust ${REQUEST_SHIELD_DEMO_TRUST:-…}` in the demo's rules), its answer
+  (status, `X-RS`) held to the row, and the page's own answer too. The feature
+  contract reads the test names as the runner loaded them. Request-path
+  features without an end-to-end test: 10 → 3.
 - **The reference and the examples from one source** (0031 step F.5):
   `src/Rules/Reference.php` holds every rule and set key in words (taken from
   the rule files page's two tables, which are written from it now, plus rows

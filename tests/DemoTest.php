@@ -13,7 +13,7 @@ declare(strict_types=1);
  * with the repository as document root and no rewrite rules, as in a
  * subdirectory of a web server. The request function adds the prefix itself.
  */
-function withDemo(callable $body, string $prefix = ''): void
+function withDemo(callable $body, string $prefix = '', array $env = []): void
 {
     if (rsSingle() !== null) {
         skip('the demos show the source tree\'s integration (they require bootstrap.php, whose own search starts the shield); the single file has its case in SingleFileTest');
@@ -22,8 +22,12 @@ function withDemo(callable $body, string $prefix = ''): void
     mkdir($var, 0700, true);
     $port = freePort();
     $root = dirname(__DIR__);
-    $cmd = sprintf('REQUEST_SHIELD_DEMO_VAR=%s exec %s -S 127.0.0.1:%d %s > /dev/null 2>&1',
-        escapeshellarg($var), serverPhp(), $port,
+    $extra = '';
+    foreach ($env as $k => $v) {
+        $extra .= ' ' . $k . '=' . escapeshellarg((string) $v);
+    }
+    $cmd = sprintf('REQUEST_SHIELD_DEMO_VAR=%s%s exec %s -S 127.0.0.1:%d %s > /dev/null 2>&1',
+        escapeshellarg($var), $extra, serverPhp(), $port,
         $prefix === '' ? escapeshellarg($root . '/examples/demo/router.php') : '-t ' . escapeshellarg($root));
     $proc = proc_open($cmd, [], $pipes);
     for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
@@ -146,46 +150,110 @@ $examples = function (string $prefix): void {
         }, $prefix);
 };
 
-$groups = function (string $prefix): void {
-        if (!function_exists('proc_open')) {
-            skip('no proc_open');
+/**
+ * What a real answer says, as an expect line writes it: the status and the
+ * shield's X-RS header (the demo has debug-header on) -- passes, uncached,
+ * check, or the status it refused with; the rule; what a watched rule would do.
+ *
+ * @param array{status: int, headers: list<string>} $r
+ * @return array{0: string, 1: ?string, 2: ?string}
+ */
+function demoOutcome(array $r): array
+{
+    $xrs = null;
+    $watched = null;
+    foreach ($r['headers'] as $line) {
+        if (stripos($line, 'X-RS:') === 0) {
+            $xrs = trim(substr($line, 5));
+        } elseif (stripos($line, 'X-RS-Monitor:') === 0) {
+            $watched = trim(substr($line, 13));
         }
-        $groups = \CjwNetwork\RequestShield\Report\DemoSite::groups(dirname(__DIR__) . '/examples/demo/request-shield.rules');
-        truthy(count($groups) >= 10, 'the demo has its groups: ' . count($groups));
-        // A server per group: the demo counts every request against its pace (20 a minute).
-        $answered = 0;
-        foreach ($groups as $g) {
-            withDemo(function (callable $get) use ($g, &$answered): void {
-                $home = $get('GET', '/')['body'];
-                truthy(strpos($home, '<tbody id="g' . $g['n'] . '">') !== false && strpos($home, '<span class="feature">' . $g['id'] . '</span>') !== false, "group {$g['n']} ({$g['id']}) on the page");
-                foreach ($g['rows'] as $r) {
-                    $id = 't' . str_replace('.', '-', $r['n']);
-                    truthy(strpos($home, '<tr id="' . $id . '"') !== false, "row {$r['n']} on the page");
-                    if ($r['kind'] === 'try') {
-                        if ($r['method'] === 'GET') {
-                            truthy($get('GET', $r['url'])['status'] < 500, "try {$r['n']}: {$r['url']} opens");
-                        }
-                        continue;
-                    }
-                    $a = json_decode($get('GET', '/__answer?n=' . $r['n'])['body'], true);
-                    truthy(is_array($a) && isset($a['outcome']), "row {$r['n']}: an answer");
-                    $want = (string) $r['outcome'];
-                    $got = (string) $a['outcome'];
-                    $watched = $r['by'] !== null && ($a['watched'] ?? null) !== null && strpos((string) $a['watched'], (string) $r['by']) !== false;
-                    truthy($got === $want || ($want === 'answered' && in_array($got, ['passes', 'uncached'], true)) || $watched,
-                        "row {$r['n']} ({$r['method']} {$r['url']}): the server answers $got" . ($a['rule'] !== null ? " by {$a['rule']}" : '') . ", the rules say $want" . ($r['by'] !== null ? " by {$r['by']}" : ''));
-                    if ($r['by'] !== null && !$watched) {
-                        same($r['by'], $a['rule'], "row {$r['n']}: the rule behind it");
-                    }
-                    $answered++;
+    }
+    $action = (string) strtok((string) $xrs, ' ');
+    $rule = $xrs !== null && preg_match('/; rule=(\S+)/', $xrs, $m) === 1 ? $m[1] : null;
+    // No X-RS and a 2xx: a page the shield serves itself (the dashboard's routes) -- it was let through.
+    $outcome = $xrs === null && $r['status'] >= 200 && $r['status'] < 300 ? 'passes'
+        : (['allow' => 'passes', 'allow-uncached' => 'uncached', 'challenge' => 'check'][$action] ?? (string) $r['status']);
+    return [$outcome, $rule, $watched];
+}
+
+/**
+ * One demo group on a real server (0031 F.4/F.6): on the page; every expect
+ * row sent through the shield as a real request -- from the example's address
+ * (the test server trusts 127.0.0.1 as a proxy, X-Forwarded-For names it), its
+ * count, its headers -- and its answer (status, X-RS) as the row says; the
+ * page's own answer (/__answer) the same; every try row opens. A row "with
+ * pass" is answered by /__answer only (a pass needs a solved check).
+ *
+ * @param array{n: int, id: string, rows: list<array<string, mixed>>} $g
+ */
+function demoGroup(array $g, string $prefix): void
+{
+    if (!function_exists('proc_open')) {
+        skip('no proc_open');
+    }
+    truthy(count(array_filter($g['rows'], static fn (array $r): bool => $r['kind'] === 'expect')) > 0 || $g['rows'] !== [], "group {$g['id']} has rows");
+    $check = static function (callable $get, array $r) use ($g): void {
+        $want = (string) $r['outcome'];
+        $ok = static fn (string $got, ?string $watched): bool => $got === $want || ($want === 'answered' && in_array($got, ['passes', 'uncached'], true))
+            || ($watched !== null && $r['by'] !== null && strpos($watched, (string) $r['by']) !== false);
+        if (!$r['pass']) {
+            // The real request: path (or the full address's path and host), the example's address behind the trusted proxy.
+            $url = (string) $r['url'];
+            $headers = [];
+            foreach ((array) $r['headers'] as $k => $v) {
+                $headers[(string) $k] = (string) $v;
+            }
+            if ($url[0] !== '/') {
+                $p = parse_url($url);
+                $headers['Host'] = (string) ($p['host'] ?? 'localhost');
+                $url = ($p['path'] ?? '/') . (isset($p['query']) ? '?' . $p['query'] : '');
+            }
+            $from = (string) ($r['from'] ?? \CjwNetwork\RequestShield\Report\DemoSite::FROM);
+            $headers['X-Forwarded-For'] = (isset($headers['x-forwarded-for']) ? $headers['x-forwarded-for'] . ', ' : '') . $from;
+            unset($headers['x-forwarded-for']);
+            if ($r['ua'] !== null) {
+                $headers['User-Agent'] = (string) $r['ua'];
+            }
+            $last = null;
+            for ($i = 0; $i < (int) $r['times']; $i++) {
+                $last = $get((string) $r['method'], $url, $headers, $r['method'] === 'POST' ? 'message=demo' : '');
+            }
+            [$got, $rule, $watched] = demoOutcome((array) $last);
+            truthy($ok($got, $watched), "row {$r['n']} ({$r['method']} {$r['url']}, from $from): the shield answers $got" . ($rule !== null ? " by $rule" : '') . ", the rules say $want" . ($r['by'] !== null ? " by {$r['by']}" : ''));
+            if ($r['by'] !== null && $watched === null) {
+                same($r['by'], $rule, "row {$r['n']}: the rule behind the real answer");
+            }
+        }
+        if ((int) $r['times'] === 1) {
+            $a = json_decode($get('GET', '/__answer?n=' . $r['n'])['body'], true);
+            truthy(is_array($a) && isset($a['outcome']) && $ok((string) $a['outcome'], is_string($a['watched'] ?? null) ? $a['watched'] : null), "row {$r['n']}: the page's own answer agrees: " . json_encode($a));
+        }
+    };
+    $trust = ['REQUEST_SHIELD_DEMO_TRUST' => '127.0.0.1'];
+    withDemo(function (callable $get) use ($g, $check): void {
+        $home = $get('GET', '/')['body'];
+        truthy(strpos($home, '<tbody id="g' . $g['n'] . '">') !== false && strpos($home, '<span class="feature">' . $g['id'] . '</span>') !== false, "group {$g['n']} ({$g['id']}) on the page");
+        foreach ($g['rows'] as $r) {
+            truthy(strpos($home, '<tr id="t' . str_replace('.', '-', (string) $r['n']) . '"') !== false, "row {$r['n']} on the page");
+            if ($r['kind'] === 'try') {
+                if ($r['method'] === 'GET') {
+                    truthy($get('GET', (string) $r['url'])['status'] < 500, "try {$r['n']}: {$r['url']} opens");
                 }
-            }, $prefix);
+            } elseif ((int) $r['times'] === 1) {
+                $check($get, $r);
+            }
         }
-        truthy($answered >= 30, "rows answered on the server: $answered");
-        withDemo(function (callable $get): void {
-            same(404, $get('GET', '/__answer?n=99.9')['status'], 'a row that is not there');
-        }, $prefix);
-};
+    }, $prefix, $trust);
+    // A count gets a server of its own: the demo counts every request against its pace.
+    foreach ($g['rows'] as $r) {
+        if ($r['kind'] === 'expect' && (int) $r['times'] > 1) {
+            withDemo(static fn (callable $get) => $check($get, $r), $prefix, $trust);
+        }
+    }
+}
+
+$demoGroups = \CjwNetwork\RequestShield\Report\DemoSite::groups(dirname(__DIR__) . '/examples/demo/request-shield.rules');
 
 $forms = function (string $prefix): void {
         if (!function_exists('proc_open')) {
@@ -519,10 +587,16 @@ $customer = function (string $prefix): void {
 };
 
 $sub = '/examples/demo/index.php';
-return [
+$tests = [
     'the demo: every example link does what the page says' => fn () => $examples(''),
-    'the demo: every group of the rules is on the page, each row answered on the server as request-shield test decides it, each try row opens (0031 F.4)' => fn () => $groups(''),
-    'the demo in a subdirectory: the groups' => fn () => $groups($sub),
+    'the demo in a subdirectory: every group on the page, each row answered on the server, each try row opens (0031 F.4)' => function () use ($demoGroups, $sub): void {
+        if (getenv('TESTS_HOSTING') === 'minimal') {
+            skip('the demo tells the rules its subdirectory through putenv(), which this host disables');
+        }
+        foreach ($demoGroups as $g) {
+            demoGroup($g, $sub);
+        }
+    },
     'the demo: /challenge is always checked; solved, it opens' => fn () => $challenge(''),
     'the demo: past 20 requests a minute the check appears on any page' => fn () => $budget(''),
     'the demo: search budget, edit form, a POST elsewhere, admin and API by address' => fn () => $forms(''),
@@ -552,3 +626,19 @@ return [
     'the demo: a customer\'s menu -- a signed link opens that customer\'s statistics only, never the firewall\'s pages' => fn () => $customer(''),
     'the demo in a subdirectory: a customer\'s menu' => fn () => $customer($sub),
 ];
+// Never in silence: the demo has its groups, each with rows; an unknown row is 404.
+$tests['the demo has its groups -- at least 13, one per feature, each with rows -- and the page answers no row that is not there'] = static function () use ($demoGroups): void {
+    truthy(count($demoGroups) >= 13, 'groups: ' . count($demoGroups));
+    same(count($demoGroups), count(array_unique(array_column($demoGroups, 'id'))), 'one group per feature');
+    foreach ($demoGroups as $g) {
+        truthy($g['rows'] !== [], "{$g['id']} has rows");
+    }
+    withDemo(function (callable $get): void {
+        same(404, $get('GET', '/__answer?n=99.9')['status'], 'a row that is not there');
+    });
+};
+// Each feature's group of the demo, on a real server, under the feature's id: its end-to-end test (0031 F.6).
+foreach ($demoGroups as $g) {
+    $tests[$g['id'] . ' the demo\'s group "' . ($g['title'] !== '' ? $g['title'] : $g['id']) . '": on the page, each row answered on a real server as request-shield test decides it, each try row opens'] = static fn () => demoGroup($g, '');
+}
+return $tests;

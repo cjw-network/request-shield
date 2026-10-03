@@ -114,6 +114,8 @@ if ($isolate) {
     foreach (glob(__DIR__ . '/*Test.php') ?: [] as $f) {
         $sets[$f] = require $f;
     }
+    // The loaded tests by file, names as they run (some are made at load time) -- for the feature contract.
+    $GLOBALS['RS_TEST_SETS'] = $sets;
     foreach ($files as $file) {
         $tests[$file] = $sets[$file] ?? $sets[realpath($file) ?: $file] ?? [];
     }

@@ -25,9 +25,9 @@ const FEATURE_GAPS = [
     'page' => ['RSF02-02', 'RSF02-06'],
     // No "# demo:" group with an effect and a near miss yet (the demo's groups came with F.4; F.6 adds these).
     'demo' => ['RSF01-01', 'RSF01-02', 'RSF01-03', 'RSF01-04', 'RSF02-04', 'RSF02-06', 'RSF05-01', 'RSF05-04', 'RSF05-05'],
-    // On the request path, but no test of the id sits in a file that starts a server (many are
-    // exercised by another feature's end-to-end test, not yet under their own id).
-    'e2e' => ['RSF01-01', 'RSF01-04', 'RSF02-02', 'RSF02-03', 'RSF02-04', 'RSF02-05', 'RSF03-01', 'RSF03-03', 'RSF03-04', 'RSF04-01'],
+    // On the request path, but no test of the id sits in a file that starts a server -- they get
+    // one with their demo group (DemoTest runs each group on a server under its id).
+    'e2e' => ['RSF01-01', 'RSF01-04', 'RSF02-04'],
 ];
 
 /**
@@ -55,10 +55,21 @@ function contractFeatures(): array
 function contractTests(): array
 {
     $out = [];
+    // The names as the runner loaded them (a file may make some at load time), else as written.
+    $sets = is_array($GLOBALS['RS_TEST_SETS'] ?? null) ? $GLOBALS['RS_TEST_SETS'] : [];
     foreach (glob(__DIR__ . '/*Test.php') ?: [] as $f) {
         $text = (string) file_get_contents($f);
         $server = strpos($text, '-S 127.0.0.1') !== false;
-        preg_match_all("/^ *'(RSF\\d{2}-\\d{2}) /m", $text, $m);
+        if (isset($sets[$f]) && is_array($sets[$f])) {
+            $m = [[], []];
+            foreach (array_keys($sets[$f]) as $name) {
+                if (preg_match('/^(RSF\d{2}-\d{2}) /', (string) $name, $n) === 1) {
+                    $m[1][] = $n[1];
+                }
+            }
+        } else {
+            preg_match_all("/^ *'(RSF\\d{2}-\\d{2}) /m", $text, $m);
+        }
         foreach ($m[1] as $id) {
             $out[$id]['tests'] = ($out[$id]['tests'] ?? 0) + 1;
             $out[$id]['e2e'] = ($out[$id]['e2e'] ?? false) || $server;
