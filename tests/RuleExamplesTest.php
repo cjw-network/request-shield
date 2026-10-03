@@ -34,6 +34,14 @@ function examplesOf(string $text, bool $asWritten = false, ?string $only = null,
 }
 
 return [
+    'RSF05-04 an example of a deny line is decided -- also the 101st, past the list the pages show (0031 F.6)' => function (): void {
+        $lines = '';
+        for ($i = 1; $i <= 101; $i++) {
+            $lines .= "[S-D$i] deny 203.0.113." . $i . "\n";
+        }
+        $run = examplesOf($lines . "expect GET / from 203.0.113.101 403 by S-D101\nexpect GET / from 203.0.113.1 403 by S-D1\nexpect GET / from 203.0.113.200 answered\n");
+        same(['pass site.rules:103', 'pass site.rules:104', 'pass site.rules:105'], $run['lines']);
+    },
     'RSF05-04 demo markers: # demo: opens a group -- the comment lines below explain it, its examples carry its id; # try: rows are kept, not decided (0031 F.3)' => function (): void {
         $dir = ruleDir(['site.rules' => "# demo: RSF02-02 blocked-paths Paths only attackers ask for\n# A scanner asks for backups.\n#   Every one is 404.\n\n"
             . "[S-OLD] block /old/**\nexpect GET /old/x 404\n# not part of the explanation\nexpect GET /oldies answered\n"

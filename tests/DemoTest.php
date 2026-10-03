@@ -194,8 +194,14 @@ function demoGroup(array $g, string $prefix): void
         skip('no proc_open');
     }
     truthy(count(array_filter($g['rows'], static fn (array $r): bool => $r['kind'] === 'expect')) > 0 || $g['rows'] !== [], "group {$g['id']} has rows");
-    $check = static function (callable $get, array $r) use ($g): void {
+    // The rules the demo only watches (monitor): request-shield test decides them switched on, the
+    // live demo lets the request through and logs what the rule would have done.
+    static $demo = null;
+    $demo ??= \CjwNetwork\RequestShield\Rules\RuleFile::read([dirname(__DIR__) . '/examples/demo/request-shield.rules'])['config'];
+    $watchedIds = array_keys((array) ($demo['origins']['monitor'] ?? []));
+    $check = static function (callable $get, array $r) use ($g, $watchedIds, $demo): void {
         $want = (string) $r['outcome'];
+        $isWatched = $r['by'] !== null && in_array($r['by'], $watchedIds, true);
         $ok = static fn (string $got, ?string $watched): bool => $got === $want || ($want === 'answered' && in_array($got, ['passes', 'uncached'], true))
             || ($watched !== null && $r['by'] !== null && strpos($watched, (string) $r['by']) !== false);
         if (!$r['pass']) {
@@ -221,9 +227,22 @@ function demoGroup(array $g, string $prefix): void
                 $last = $get((string) $r['method'], $url, $headers, $r['method'] === 'POST' ? 'message=demo' : '');
             }
             [$got, $rule, $watched] = demoOutcome((array) $last);
-            truthy($ok($got, $watched), "row {$r['n']} ({$r['method']} {$r['url']}, from $from): the shield answers $got" . ($rule !== null ? " by $rule" : '') . ", the rules say $want" . ($r['by'] !== null ? " by {$r['by']}" : ''));
-            if ($r['by'] !== null && $watched === null) {
-                same($r['by'], $rule, "row {$r['n']}: the rule behind the real answer");
+            if ($isWatched) {
+                // Watched: the real answer is what the rules decide as written (the watched rule
+                // lets it through), and the log says, for this very request, what it would have done.
+                $x = ['method' => (string) $r['method'], 'url' => (string) $r['url'], 'outcome' => $want, 'by' => null, 'rule' => null, 'from' => $from, 'pass' => false,
+                    'times' => (int) $r['times'], 'headers' => (array) $r['headers'], 'text' => null, 'at' => (string) $r['at'], 'site' => null, 'ua' => $r['ua'], 'demo' => null];
+                $written = \CjwNetwork\RequestShield\Rules\Examples::one(\CjwNetwork\RequestShield\Settings::from($demo), $x);
+                same([$written['got'], $written['gotRule']], [$got, $rule], "row {$r['n']}: {$r['by']} is only watched in the demo -- the real answer is the rules' as written");
+                $masked = \CjwNetwork\RequestShield\Log::mask($from);
+                truthy(preg_match('#' . preg_quote($masked, '#') . ' monitor-[a-z]+ \d+ &quot;[^&]*&quot; rule=' . preg_quote((string) $r['by'], '#') . ' &quot;' . preg_quote((string) $r['method'], '#') . ' [^ ]*'
+                    . preg_quote(strtok((string) $r['url'], '?') ?: '/', '#') . '#', $get('GET', '/')['body']) === 1,
+                    "row {$r['n']}: the log on the page says what {$r['by']} would have done, for this request ($masked, {$r['url']})");
+            } else {
+                truthy($ok($got, $watched), "row {$r['n']} ({$r['method']} {$r['url']}, from $from): the shield answers $got" . ($rule !== null ? " by $rule" : '') . ", the rules say $want" . ($r['by'] !== null ? " by {$r['by']}" : ''));
+                if ($r['by'] !== null && $watched === null) {
+                    same($r['by'], $rule, "row {$r['n']}: the rule behind the real answer");
+                }
             }
         }
         if ((int) $r['times'] === 1) {

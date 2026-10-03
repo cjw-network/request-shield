@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The demo shows the deny list and bans** (0031 step F.6, RSF01-02): an
+  address kept out (`[DEMO-DENY] deny 203.0.113.66`) next to its neighbour,
+  and a scanner banned at its sixth refusal (watched in the demo, decided
+  switched on by `test`). `DemoTest` proves a watched rule by the log line on
+  the page, not by the answer.
 - **The demo shows trusted proxies** (0031 step F.6, RSF01-01): a group with
   the admin area behind the proxy `198.51.100.1` -- through it the visitor's
   address decides, the header from anyone else is not believed. The page's
@@ -680,6 +685,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   demo has them at `/rs/…`, restricted to this machine.
 
 ### Fixed
+- **`request-shield test` skipped an example of a `deny` line** as "not in
+  effect here" -- a deny line is in the list, not in the origins; it is in
+  effect now (0031 step F.6).
 - **An example's path that starts with `//`** (`expect GET //admin/ 403`) was
   read as an address with the host `admin` and the path `/`, and passed; it
   is the path `//admin/` now, as a browser sends it (0031 step F.4).

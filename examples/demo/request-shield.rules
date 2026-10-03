@@ -105,6 +105,7 @@ set         live on
 
 # Automatic bans -- watched only here (monitor): the log says whom they would
 # have banned, nobody is (a demo that bans this machine would be no demo).
+[DEMO-DENY]         deny 203.0.113.66                             # an address the site keeps out (a documentation address)
 [DEMO-SCAN]         monitor ban after 5 refusals in 5m for 10m    # a scanner: five refusals for what only attackers ask for
 set         stats-depth 4                                          # sections to the fourth folder: the demo lives under /qbixserver/request-shield/examples/demo/
 set         stats-hosts localhost84 127.0.0.1                     # statistics per website: these two names; any other Host counts as "other hosts"
@@ -151,6 +152,16 @@ set         debug-header on
 expect GET /admin/      from 198.51.100.1 header X-Forwarded-For:192.0.2.10 answered          # Through the trusted proxy, a visitor from the office: the visitor's address decides
 expect GET /admin/      from 198.51.100.1 header X-Forwarded-For:203.0.113.9 403 by DEMO-ADMIN # the same proxy, a visitor from elsewhere
 expect GET /admin/      from 203.0.113.50 header X-Forwarded-For:192.0.2.10 403 by DEMO-ADMIN # The header from anyone else: not believed
+
+# demo: RSF01-02 ip-lists Addresses kept out, and bans
+# An address on the deny list is refused before anything else. A scanner that
+# piles up refusals is banned for a while -- in the demo the ban is only
+# watched (monitor), so the log says what would happen; test decides it on.
+expect GET /            from 203.0.113.66 403 by DEMO-DENY               # An address on the deny list
+expect GET /            from 203.0.113.67 answered                       # its neighbour
+expect GET /.env        from 203.0.113.70 times 6 429 by DEMO-SCAN       # A scanner, the sixth refusal in five minutes: banned
+expect GET /.env        from 203.0.113.71 times 5 404 by SCAN-HIDDEN     # the fifth: still only refused
+# try: GET /rs/waf/lists The lists: keep an address out or let it in, with a comment of your own
 
 # demo: RSF04-01 cacheable-definition What a cache may keep
 # Every page passes; only some may be kept by a cache. Unknown paths and

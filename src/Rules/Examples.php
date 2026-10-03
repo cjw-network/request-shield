@@ -231,6 +231,11 @@ final class Examples
                 return true;
             }
         }
+        // A deny line: in the list, not in the origins -- every one of them in the table's
+        // names ($s->deny holds only the first ones, for the pages).
+        if (strpos("\n" . ($s->denyTable['ids'] ?? ''), "\n" . $id . "\n") !== false) {
+            return true;
+        }
         foreach ($s->origins as $section => $map) {
             if (in_array($section, ['at', 'rev', 'text', 'monitor', 'area', 'warnings'], true)) {
                 continue;

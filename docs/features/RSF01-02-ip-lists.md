@@ -204,3 +204,21 @@ single addresses spread over the internet:
   entry with a comment, extend, remove, the active bans with "lift", "keep out
   for good?" after the third ban in a day. `set ban-keep file` lets bans
   survive a restart of APCu.
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF01-02 · Addresses kept out, and bans**
+
+An address on the deny list is refused before anything else. A scanner that piles up refusals is banned for a while -- in the demo the ban is only watched (monitor), so the log says what would happen; test decides it on.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/` | no access (403) · rule DEMO-DENY — from 203.0.113.66 | An address on the deny list |
+| `/` | the site answers it — from 203.0.113.67 | its neighbour |
+| `/.env` | wait (429) · rule DEMO-SCAN — from 203.0.113.70, 6 times in a row | A scanner, the sixth refusal in five minutes: banned |
+| `/.env` | "not found" (404) — the site never sees it · rule SCAN-HIDDEN — from 203.0.113.71, 5 times in a row | the fifth: still only refused |
+| `/rs/waf/lists` | look at it | The lists: keep an address out or let it in, with a comment of your own |
+<!-- /examples -->
