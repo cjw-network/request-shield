@@ -74,7 +74,7 @@ the model you trust most there, not fast mode.
 
 ### Phase A2 — Bytes
 - [x] **A2.1** Headers `X-Request-Shield*` → `X-RS*` (`X-RS`, `X-RS-Monitor`, `X-RS-Check`, `X-RS-Access`) in code, tests, demos, docs; internal headers removed before output (test). `f7873a2`
-- [x] **A2.2** Cookie names `rsp/rss/rsd`; pass cookie v2 (`2.<expires base36>.<tag b64url 11>.<mac b64url 22>`), `v1` removed — `ChallengeTest`/`ChallengeJsTest` adjusted. `(this commit; hash follows)`
+- [x] **A2.2** Cookie names `rsp/rss/rsd`; pass cookie v2 (`2.<expires base36>.<tag b64url 11>.<mac b64url 22>`), `v1` removed — `ChallengeTest`/`ChallengeJsTest` adjusted. `30a6734`
 - [ ] **A2.3** `tests/WireBytesTest.php` (cookie ≤ 48 B, no `X-RS*` on a pass without debug, header-block limit, challenge page gzip limit); bytes in the bench; a bytes line in `browser-challenge.md`.
 
 ### Phase B — Decoupling
