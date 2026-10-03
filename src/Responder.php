@@ -16,12 +16,15 @@ namespace CjwNetwork\RequestShield;
  */
 class Responder
 {
-    /** @param array<string, string> $texts in the visitor's language (Texts::all()) */
-    public function send(Decision $decision, Request $request, bool $debugHeader = false, ?string $page = null, ?string $rule = null, array $texts = [], ?string $home = null): void
+    /**
+     * @param array<string, string> $texts in the visitor's language (Texts::all())
+     * @param (callable(string, array<string, mixed>): ?string)|null $pages the Pages hook (PageHook::asker()): the site's own refusal page, or null for the shield's
+     */
+    public function send(Decision $decision, Request $request, bool $debugHeader = false, ?string $page = null, ?string $rule = null, array $texts = [], ?string $home = null, ?callable $pages = null): void
     {
         $this->headers($decision, $debugHeader, $rule);
         if ($request->method !== 'HEAD') {
-            echo $this->body($decision, $page, $texts, $home);
+            echo $this->body($decision, $page, $texts, $home, $pages, $request);
         }
     }
 
@@ -73,16 +76,25 @@ class Responder
     }
 
     /**
-     * The page: the challenge page when there is one, else a status page.
+     * The page: the one given (the check page), the site's own (the Pages hook, 0031 B.10),
+     * else the shield's small one.
      *
      * @param array<string, string> $texts
+     * @param (callable(string, array<string, mixed>): ?string)|null $pages
      */
-    public function body(Decision $decision, ?string $page = null, array $texts = [], ?string $home = null): string
+    public function body(Decision $decision, ?string $page = null, array $texts = [], ?string $home = null, ?callable $pages = null, ?Request $request = null): string
     {
         if ($page !== null) {
             return $page;
         }
         $texts += Texts::all('en');
+        if ($pages !== null) {
+            $own = $pages(Pages::ERROR, ['status' => $decision->status, 'decision' => $decision, 'reason' => $decision->reason, 'retryAfter' => $decision->retryAfter,
+                'texts' => $texts, 'lang' => $texts['lang'] ?? 'en', 'home' => $home, 'request' => $request]);
+            if ($own !== null) {
+                return $own;
+            }
+        }
         $text = Texts::status($decision->status, $texts);
         $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $h = '<!doctype html><html lang="' . $e($texts['lang'] ?? 'en') . '"><meta charset="utf-8"><title>' . $decision->status . ' ' . $e($text) . '</title><h1>' . $e($text) . '</h1>';

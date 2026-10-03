@@ -34,6 +34,8 @@ final class Gate
         private ?Crawlers $crawlers = null,
         private int $ipv6Prefix = 64,
         private ?Store $store = null,
+        /** @var (callable(string, array<string, mixed>): ?string)|null the Pages hook (PageHook::asker()): the site's own check page, or null for the shield's */
+        private $pages = null,
     ) {
     }
 
@@ -138,7 +140,10 @@ final class Gate
         if ($spent && $resend === null) {
             $texts['text'] = $texts['spent'];
         }
-        $page = ChallengePage::render($challenge, $solutionName, $secure, $texts, $resend, $c->home, $c->logo);
+        // The site's own check page (the Pages hook, 0031 B.10), else the shield's.
+        $page = $this->pages !== null ? ($this->pages)(\CjwNetwork\RequestShield\Pages::CHALLENGE, ['challenge' => $challenge, 'field' => $solutionName, 'secure' => $secure, 'texts' => $texts,
+            'lang' => $texts['lang'] ?? 'en', 'resend' => $resend, 'home' => $c->home, 'logo' => $c->logo, 'status' => $challenged->status]) : null;
+        $page ??= ChallengePage::render($challenge, $solutionName, $secure, $texts, $resend, $c->home, $c->logo);
         return ['decision' => $challenged, 'cookies' => $cookies, 'page' => $page, 'json' => null];
     }
 

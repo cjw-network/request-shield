@@ -28,6 +28,9 @@ it expires (the hard `limit` still applies).
 - **Stateless:** challenge and pass cookie are signed (HMAC) with `secret`;
   the pass cookie is bound to the client bucket and (by default) its
   User-Agent. Solutions are single-use and expire (`solutionTtl`).
+- **The site's own check page:** a plugin with the `Pages` capability draws it
+  (`challenge`: it gets the task, the solution field's name, the texts, the form
+  to send again, home and logo; [plugins](plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)) -- headers and cookies stay the shield's.
 - **Small on the wire:** the pass cookie is `rsp=2.<expires base36>.<tag>.<mac>`
   (43 bytes of value, a 64-bit client tag and a 128-bit MAC, base64url); the
   browser sends it with every request while the pass lasts. The solution

@@ -87,7 +87,7 @@ the model you trust most there, not fast mode.
 - [x] **B.7** `Access` generalised: `dashboard-access`/`dashboard-session`, cookie `rsd`, opaque principal; group mapping into the stats plugin; CLI `access-token`. `fb447fa`
 - [x] **B.8** `RuleCounts` capability; `RulesPage`/`SetupPage` without `StatsReport`. `e5b63a9`
 - [x] **B.9** `Sink` hook in `Log::note()`; `Live` as the first sink. `8b7825d`
-- [ ] **B.10** `Pages` hook in `Responder::body()`/`Gate` (kinds `error|challenge|access-login`).
+- [x] **B.10** `Pages` hook in `Responder::body()`/`Gate` (kinds `error|challenge|access-login`). `(this commit; hash follows)`
 
 ### Phase C — Rule chain
 - [ ] **C.1** `Step` + `Shield::chain()`; `Inspector::trace()` iterates `chain()`.
@@ -137,10 +137,11 @@ the model you trust most there, not fast mode.
 
 ## Status
 
-- **Last step done:** B.9
-- **Next step:** B.10
+- **Last step done:** B.10 (phase B complete)
+- **Next step:** C.1
 - **Open owner questions:** see the proposal's last section.
 - **Deviations from the plan:** none open. (B.3 kept `stats-group`, `stats-access`, `stats-session`, `stats-path` in the core for a while; B.5 moved `stats-path`, B.7 the rest -- as the proposal's B.3 row says.)
+- **Finding from B.10:** the hook is a callable where the class has no settings (`PageHook::asker()` into `Gate` and `Responder`), `PageHook::ask()` where it has (`Access`); the first plugin that answers wins, null means the shield's page. The check page's context is exactly `ChallengePage::render()`'s inputs, so a plugin can wrap the shield's page. Three hook kinds are recorded now (`ruleCounts`, `sink`, `pages`); `RuleProvider` and `Handler` come with phase C. Reviewed with the code-review skill, no workflow.
 - **Finding from B.9:** `Shield::failed()` is public now (the log reports a failing sink through the same once-a-minute throttle); the throttle keys on the message, so a test that asserts the error-log line must make its message unique per run (SinkPlugin puts the store directory into it) -- the same trap PluginTest has when the suite runs twice within a minute. `Live` is a `Sink` instance over its static `push()`; `Log::sinks()` makes the plugin sinks with `new $class($settings)` per noted request (refusals and flags only). Reviewed with the code-review skill, no workflow.
 - **Finding from B.8:** `$s->hooks` is filled for the first time: `Settings::compiledExt()` walks the plugin classes and records each interface of `Settings::HOOKS` (`ruleCounts` => `RuleCounts`) by `instanceof`; a class that is not loadable is skipped (check warns about it as before). `Report\Counts` is the only reader; the statistics page lost its `rules` view (the core route serves it, the tab stays), so `StatsPage::viewFor('/rs/waf/rules')` is null now (two tests adapted). The rules page carries a small stylesheet of its own in the core frame. Reviewed with the code-review skill, no workflow.
 - **Finding from B.7:** the principal is opaque: `Access::fromLink()` accepts any signed id (letters, digits, `-`), the core keeps no group table; `StatsExtension::siteFor()` replaces `Access::site()`, `StatsExtension::groupId()` wraps `Settings::principal()`. A `dashboard-access` line for an id no `stats-group` has compiles and `StatsExtension::check()` warns (AccessTest adapted: it used to be refused). `Vocabulary::word()` gained `serverWide` (stats-group is refused inside a site block as before). Reviewed with the code-review skill, no workflow.

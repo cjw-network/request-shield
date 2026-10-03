@@ -211,6 +211,7 @@ plugin without it costs nothing more. The first (0031 B.8):
 |---|---|---|
 | `RuleCounts` | `ruleCounts($days, $now)`: rule id => how often it decided; `crawlerCounts($days, $now)`: what each known crawler did | the rules and setup page (`Report\Counts`), when it is drawn -- never a request |
 | `Sink` | `note($request, $decision, $rule, $now, $monitor)`: what the log hears -- every request the shield did something about (at log-level all, every one) | `Log::note()`, where the log is written -- never a passing request. The live view is the first sink; a CMS logger or a Monolog handler are others. A sink masks addresses as the log does (`Log::mask()`) |
+| `Pages` | `page($kind, $ctx)`: the whole document for a page the shield answers with itself -- `error` (the refusal: status, decision, texts, lang, home, request), `challenge` (the browser check: the task, the solution field's name, texts, resend, home, logo) or `access-login` (the dashboard's form: message, action, texts) -- or null for the shield's own | `Responder`, the check's `Gate`, `Access::gate()`: only when the shield answers itself, never a passing request. The headers stay the shield's; the plugin escapes what it embeds. Proposal 0030's quiet error page is its first consumer (0031 G.1) |
 
 The statistics plugin has `RuleCounts` (`set stats on`): the rules page shows
 "decided n times" from its counters. A plugin that throws in a capability is

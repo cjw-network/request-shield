@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The Pages capability** (0031 step B.10): a plugin draws the pages the
+  shield answers with itself -- the refusal page (`error`), the browser check
+  (`challenge`) and the dashboard's login form (`access-login`) -- in the
+  site's look; null or a failure means the shield's own page (a failure is
+  noted once a minute). Headers and cookies stay the shield's; asked only when
+  the shield answers itself, never for a passing request. Compiled settings
+  format 47. With this, phase B of 0031 (decoupling) is complete
+  ([docs](docs/features/plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)).
 - **The Sink capability** (0031 step B.9): `Log::note()` hands its record --
   every request the shield did something about -- to the live view and to
   every plugin with `Sink` (`$s->hooks['sink']`, recorded when the rules are

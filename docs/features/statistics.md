@@ -360,6 +360,9 @@ set dashboard-session 8h                                      # how long a login
   Every page: `X-Robots-Tag: noindex`, `Cache-Control: private, no-store`,
   `Referrer-Policy: no-referrer`, `frame-ancestors 'self'`. A site's
   `restrict /rs/** to …` still applies first.
+- **The form in the site's look:** a plugin with the `Pages` capability draws
+  the login form (`access-login`), the shield keeps the headers and the cookie
+  ([plugins](plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)).
 - **Without `dashboard-access` lines nothing is asked:** the site's own rules
   decide, as before.
 - **The site's administrator:** `Access::gate(…, ['admin' => true])` when the

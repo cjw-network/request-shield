@@ -317,7 +317,7 @@ final class Shield
         if (!$decision->passes()) {
             $c = $s->challenge;
             (new Responder())->send($decision, $request, $s->debugHeader, $settled['page'], $rule,
-                Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts), $c->home);
+                Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts), $c->home, PageHook::asker($s));
             exit;
         }
         // The dashboard's own pages (0031 B.6): a route is answered here, before the
@@ -1088,7 +1088,7 @@ final class Shield
         $texts = Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts);
         $responder = new Responder();
         $responder->headers($d, $s->debugHeader, $rule);
-        $body = $request->method === 'HEAD' ? '' : $responder->body($d, $page, $texts, $c->home);
+        $body = $request->method === 'HEAD' ? '' : $responder->body($d, $page, $texts, $c->home, PageHook::asker($s), $request);
         if ($echo) {
             echo $body;
         }
@@ -1295,7 +1295,8 @@ final class Shield
     {
         $c = $this->settings->challenge;
         return new Gate($c, Secret::resolve($c->secret, $this->settings->storeDir),
-            $this->settings->crawlers === [] ? null : $this->crawlers(), $this->settings->ipv6Prefix, $this->store);
+            $this->settings->crawlers === [] ? null : $this->crawlers(), $this->settings->ipv6Prefix, $this->store,
+            PageHook::asker($this->settings));
     }
 
     private ?Crawlers $crawlers = null;

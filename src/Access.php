@@ -132,7 +132,7 @@ final class Access
             $store->hit($bucket, 60, (float) $now);
             Log::note($s, $request, Decision::reject(401, 'access'), $why, (float) $now);
         };
-        $page = static fn (int $status, string $message, string ...$more): array => self::answer(null, $status, [...$headers, ...array_values($more)], self::page($s, $lang, $message, $here, $o));
+        $page = static fn (int $status, string $message, string ...$more): array => self::answer(null, $status, [...$headers, ...array_values($more)], self::page($s, $lang, $message, $here, ['status' => $status] + $o));
 
         if (isset($get['rs-logout'])) {
             return $page(200, $t['out'], self::cookieHeader($s, '', 1, $request));
@@ -308,7 +308,10 @@ final class Access
         $body = '<form class="card" method="post" action="' . $e($action) . '" style="max-width:520px">'
             . '<p>' . $e($message) . '</p><label>' . $e($t['token']) . '<br><input type="password" name="rs-token" autocomplete="current-password" required style="width:100%"></label>'
             . '<p><button class="primary">' . $e($t['go']) . '</button></p></form>';
-        return Frame::page(is_string($o['title'] ?? null) ? $o['title'] : $t['title'], $lang, $body, $o);
+        $title = is_string($o['title'] ?? null) ? $o['title'] : $t['title'];
+        // The site's own login form (the Pages hook, 0031 B.10), else the shield's.
+        return PageHook::ask($s, Pages::ACCESS_LOGIN, ['status' => is_int($o['status'] ?? null) ? $o['status'] : 401, 'message' => $message, 'action' => $action, 'lang' => $lang, 'texts' => $t,
+            'home' => $o['home'] ?? null, 'homeLabel' => $o['homeLabel'] ?? null, 'title' => $title]) ?? Frame::page($title, $lang, $body, $o);
     }
 
     /** A sign-out link for the pages: the current address with rs-logout. */
