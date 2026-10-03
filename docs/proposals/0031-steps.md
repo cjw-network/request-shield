@@ -83,7 +83,7 @@ the model you trust most there, not fast mode.
 - [x] **B.2** `Extension` interface + `Rules\Vocabulary` (word/set/offer); `RuleFile` asks the registry before the "unknown" throw; test extension `rs-test` with `set fail-at <stage>`. `1c5c4a6`
 - [x] **B.3** Stats vocabulary out of `RuleFile`/`Settings`; `StatsExtension` registers it; the plugin reads `ext.stats.*` — stats tests unchanged and green. `6d8ffaf`
 - [x] **B.4** `Shield.php:506` removed; `StatsExtension::compile()` appends `StatsPlugin`; the `check` warning moves into `Extension::check()`. `6d8ffaf`
-- [x] **B.5** Routes registry; `dashboardOnly()` without `Frame`; `Frame::links/isPage/pageFor/TABS` from `$s->routes`; stats declares its pages. `(this commit; hash follows)`
+- [x] **B.5** Routes registry; `dashboardOnly()` without `Frame`; `Frame::links/isPage/pageFor/TABS` from `$s->routes`; stats declares its pages. `f244b04`
 - [ ] **B.6** The shield serves routes under `dashboard-path` (`Handler`, behind `Access::gate()`, `no-store`, `noindex`, CSRF); the demo wiring goes; `check` warns on a route without `restrict`/`dashboard-access`.
 - [ ] **B.7** `Access` generalised: `dashboard-access`/`dashboard-session`, cookie `rsd`, opaque principal; group mapping into the stats plugin; CLI `access-token`.
 - [ ] **B.8** `RuleCounts` capability; `RulesPage`/`SetupPage` without `StatsReport`.
