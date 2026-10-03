@@ -4,4 +4,5 @@ parameters:
     paths:
         - src
         - plugins/stats/src
+        - tests/support
         - bootstrap.php

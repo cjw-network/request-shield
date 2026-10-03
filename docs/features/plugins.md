@@ -99,6 +99,78 @@ final class RefusalAlert implements Plugin
 }
 ```
 
+## Extensions: words and settings of their own
+
+A plugin runs per request and reads. An **extension** speaks at compile time:
+it adds words and `set` keys to the rule file, checks them when the rules are
+compiled, and what it checked lands in the compiled settings, in a slot of
+its own (`$settings->ext[<id>]`); the core never reads that slot. A request
+pays nothing for an extension (ADR 0008). A class may be both -- the
+statistics will be (0031 B.3).
+
+```php
+use CjwNetwork\RequestShield\{Extension, Settings};
+use CjwNetwork\RequestShield\Rules\{RuleFileException, Vocabulary};
+
+final class AlertsExtension implements Extension
+{
+    public static function id(): string { return 'alerts'; }          // ext.alerts
+
+    public static function vocabulary(Vocabulary $v): void
+    {
+        // set alerts-after 50: typed like the core's keys (bool, int, seconds, string, words);
+        // lands in ext.alerts.after (the extension's own prefix is dropped, the rest camelCased).
+        $v->set('alerts-after', 'int', 'refusals per minute before a message');
+        // alert-to ops@example.org: a word of its own; the parser hands it the line's
+        // words, the extension's values so far, the line's place and the rule's id.
+        $v->word('alert-to', static function (array $args, array $values, string $at, string $rid): array {
+            if (count($args) !== 1 || strpos($args[0], '@') === false) {
+                throw new RuleFileException("$at: alert-to <address>");
+            }
+            $values['to'][] = $args[0];
+            return $values;
+        }, 'alert-to <address>: who hears about it');
+    }
+
+    /** Checks the slot with the whole base settings in hand; returns what the plugin reads. */
+    public static function compile(array $raw, Settings $base): array
+    {
+        if (($raw['to'] ?? []) === []) {
+            throw Settings::wrong('ext.alerts.to', 'at least one alert-to address');
+        }
+        return ['after' => $raw['after'] ?? 50, 'to' => $raw['to']];
+    }
+
+    public static function routes(): array { return []; }       // pages under dashboard-path (0031 B.5)
+    public static function commands(): array { return []; }     // command-line commands (0031 D.1)
+    public static function check(Settings $s): array { return []; }   // warnings for `check` (0031 B.4)
+}
+```
+
+```text
+plugin Acme\Shield\AlertsExtension      # from here on its words are known
+set alerts-after 20
+alert-to ops@example.org
+```
+
+- **Offered, then known.** `plugin <class>` offers an extension for the rest
+  of the reading; the shipped ones the bootstrap offers (`Vocabulary::offer()`),
+  so `set stats on` needs no `plugin` line. An extension's word before its
+  `plugin` line is an unknown rule.
+- **Its own slot only.** Words and keys write into `ext.<id>`; a word or key
+  the core has cannot be taken (the registry refuses it); two extensions
+  cannot share an id, a word or a key.
+- **Wrong at the line, or wrong at compile.** A bad value for a key is a
+  `RuleFileException` naming the line (the key's type, or the extension's own
+  check); a bad combination is an `InvalidArgumentException` from `compile()`
+  naming the setting (`ext.alerts.to`) -- and on the request path the last
+  good compiled settings stay in force, as for every mistake.
+- **In a site block** an extension's `set` and words are the website's: its
+  slot is compiled for that website, with the base's values and its own.
+- The smallest extension is the tests': `tests/support/RsTestExtension.php`
+  (`set fail-at <stage>`, `rs-test-mark`), used to make the shield fail on
+  purpose where a test wants it.
+
 ## Cost
 
 None without plugins. With plugins, one call to each per request; the

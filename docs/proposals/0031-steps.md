@@ -79,7 +79,7 @@ the model you trust most there, not fast mode.
 
 ### Phase B — Decoupling
 - [x] **B.1** `Settings::$ext/$hooks/$routes` as the last constructor parameters, `FORMAT` bump, round-trip test. `9c7bc27`
-- [ ] **B.2** `Extension` interface + `Rules\Vocabulary` (word/set/offer); `RuleFile` asks the registry before the "unknown" throw; test extension `rs-test` with `set fail-at <stage>`.
+- [x] **B.2** `Extension` interface + `Rules\Vocabulary` (word/set/offer); `RuleFile` asks the registry before the "unknown" throw; test extension `rs-test` with `set fail-at <stage>`. `(this commit; hash follows)`
 - [ ] **B.3** Stats vocabulary out of `RuleFile`/`Settings`; `StatsExtension` registers it; the plugin reads `ext.stats.*` — stats tests unchanged and green.
 - [ ] **B.4** `Shield.php:506` removed; `StatsExtension::compile()` appends `StatsPlugin`; the `check` warning moves into `Extension::check()`.
 - [ ] **B.5** Routes registry; `dashboardOnly()` without `Frame`; `Frame::links/isPage/pageFor/TABS` from `$s->routes`; stats declares its pages.
@@ -137,14 +137,15 @@ the model you trust most there, not fast mode.
 
 ## Status
 
-- **Last step done:** B.1
-- **Next step:** B.2
+- **Last step done:** B.2
+- **Next step:** B.3
 - **Open owner questions:** see the proposal's last section.
 - **Deviations from the plan:** none.
 - **Review:** `pr-review-toolkit` is not installed on the machine that wrote phase 0 and A.1–A.2; the fallback (code-review skill, sonnet, low) was used — for phase 0 (documents only) once over the whole phase, for the code steps once per step. A2.1 likewise (not installed on that machine either; the skill runs as a fork, so on the session's model, not sonnet -- no findings).
 - **Static analysis on this machine:** PHPStan runs; `composer taint` (Psalm 6) crashes with `Class "Composer\InstalledVersions" not found` because the local Composer is 1.10 (its autoloader lacks the class). CI runs it (`static-analysis.yml`); on a machine with Composer ≥ 2 run `composer install` and `composer taint` before pushing code steps.
 - **Finding from A.1:** the bench command in `AGENTS.md` needs `-d opcache.file_update_protection=0`, otherwise the "setup" lines show milliseconds for freshly compiled settings (fixed in AGENTS.md).
-- **Finding from B.1:** the three slots are filled from the raw settings array for now (`ext`, `hooks`, `routes` keys, shape-checked), so they can be tested and round-tripped before an `Extension` exists; B.2 makes `Extension::compile()` and the compiler's `instanceof` the only writers.
+- **Finding from B.2:** the registry is per process (`Vocabulary::offer()`), so a `plugin <class>` line offers the extension for every later reading in that process too -- harmless (its words only ever write into its own slot), and the tests call `Vocabulary::forget()`. `Extension::compile()` runs per `Settings::from()`, so a site block gets its own compiled slot. A `set` key's value is typed by the parser (the core's `typed()`), an extension adds a check per key; the shape of a whole slot is `compile()`'s. The `stats` set key is the one core key with logic of its own -- it stays in `set()` until B.3 moves it into the stats extension.
+- **Finding from B.1:** the three slots are filled from the raw settings array for now (`ext`, `hooks`, `routes` keys, shape-checked), so they can be tested and round-tripped before an `Extension` exists; B.2 made `Extension::compile()` the writer of `ext`; `hooks` is recorded by `instanceof` in the steps that add a hook (B.9, B.10, C.3, C.4), `routes` in B.5.
 - **Finding from A2.3:** the "red without the change" for a limits-only test is the limits themselves: with every limit set to 1 the test prints the measured sizes (that is how the numbers were taken); the gzip limit (4096) has 31 bytes of room until E.2 minifies the page -- a text change on the page may need the number raised, on purpose.
 - **Finding from A2.2:** `ChallengeJsTest` needed no change: the page script takes the cookie name from the page (`RS.cookie`). The demo page reads the pass cookie's expiry itself (base36 now); nothing else outside the shield parses it.
 - **Finding from A2.1:** `X-RS-Access` exists only in proposal 0027 (renamed there and in its SVG); the code header comes with B.7. Not in the plan's table: the 429 JSON answer for API clients carries `Request-Shield-Challenge` and takes `Request-Shield-Solution` (no `X-`, rare, only on a refusal) -- left as they are; an owner decision whether A2.3 shortens them too (`RS-Challenge`/`RS-Solution`).

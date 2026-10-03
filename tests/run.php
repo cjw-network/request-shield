@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/../bootstrap.php';
 require __DIR__ . '/helpers.php';
+require __DIR__ . '/support/RsTestExtension.php';   // the test extension (0031 B.2); an E2E server loads it from its prepend file
 
 final class TestFailure extends RuntimeException
 {

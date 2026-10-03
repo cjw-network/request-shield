@@ -11,6 +11,8 @@ declare(strict_types=1);
 namespace CjwNetwork\RequestShield\Rules;
 
 use CjwNetwork\RequestShield\Config;
+use CjwNetwork\RequestShield\Extension;
+use CjwNetwork\RequestShield\Plugin;
 use CjwNetwork\RequestShield\Texts;
 
 /**
@@ -715,10 +717,19 @@ final class RuleFile
                 if (count($args) !== 1 || !preg_match('/^\\\\?[A-Za-z_][A-Za-z0-9_]*(\\\\[A-Za-z_][A-Za-z0-9_]*)*$/', $args[0])) {
                     throw new RuleFileException("$at: plugin takes one class name, such as Vendor\\Package\\MyPlugin");
                 }
+                $class = ltrim($args[0], '\\');
+                if (class_exists($class) && is_subclass_of($class, Extension::class)) {
+                    // An extension: its words and settings are known from here on
+                    // (ADR 0008). It runs per request only if it is a Plugin too.
+                    Vocabulary::offer($class);
+                    if (!is_subclass_of($class, Plugin::class)) {
+                        return;
+                    }
+                }
                 $list = (array) $this->get('plugins');
-                $list[] = ltrim($args[0], '\\');
+                $list[] = $class;
                 $this->put('plugins', $list);
-                $this->origins['plugins'][ltrim($args[0], '\\')] = $this->rid;
+                $this->origins['plugins'][$class] = $this->rid;
                 return;
             case 'allow':
                 $this->allow($args, $at);
@@ -876,8 +887,36 @@ final class RuleFile
                 }
                 return;
         }
-        throw new RuleFileException("$at: unknown rule \"$keyword\"" . self::suggest($keyword,
-            ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'stats-skip', 'stats-group', 'stats-access', 'api-path', 'post-origin', 'backend', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include']));
+        // An extension's word (ADR 0008): it gets the line's words, its values so
+        // far and the rule's id, and returns its values -- ext.<id> only.
+        $word = Vocabulary::wordFor($keyword);
+        if ($word !== null) {
+            $values = $this->get('ext.' . $word['id']);
+            $this->put('ext.' . $word['id'], ($word['parse'])($args, is_array($values) ? $values : [], $at, $this->rid));
+            return;
+        }
+        throw new RuleFileException("$at: unknown rule \"$keyword\"" . self::suggest($keyword, array_merge(self::coreWords(), Vocabulary::known()['words'])));
+    }
+
+    /**
+     * The core's rule keywords (the extensions cannot take them).
+     *
+     * @return list<string>
+     */
+    public static function coreWords(): array
+    {
+        return ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'stats-skip', 'stats-group', 'stats-access', 'api-path', 'post-origin', 'backend', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include',
+            'match', 'monitor', 'expect', 'ids', 'version', 'replace'];
+    }
+
+    /**
+     * The core's set keys (the extensions cannot take them).
+     *
+     * @return list<string>
+     */
+    public static function coreSettings(): array
+    {
+        return array_keys(self::SET);
     }
 
     /**
@@ -2056,10 +2095,51 @@ final class RuleFile
             return;
         }
         if (!isset(self::SET[$key])) {
-            throw new RuleFileException("$at: unknown setting \"$key\"" . self::suggest($key, array_merge(array_keys(self::SET), ['text.title'])));
+            // An extension's setting (ADR 0008): typed like the core's, checked by
+            // the extension, kept in ext.<id>.<name>.
+            $def = Vocabulary::settingFor($key);
+            if ($def !== null) {
+                $v = $this->typed($key, $def['type'], $value, $at, $file);
+                if ($def['check'] !== null) {
+                    $v = ($def['check'])($v, $at);
+                }
+                $this->put('ext.' . $def['id'] . '.' . $def['name'], $v);
+                return;
+            }
+            throw new RuleFileException("$at: unknown setting \"$key\"" . self::suggest($key, array_merge(array_keys(self::SET), ['text.title'], Vocabulary::known()['settings'])));
         }
         [$path, $type] = self::SET[$key];
+        if ($type === 'stats') {
+            // on, off, or the parts: set stats requests crawlers
+            $words = preg_split('/\s+/', strtolower($value)) ?: [];
+            if ($words === ['on'] || $words === ['off']) {
+                $this->put('stats.enabled', $words === ['on']);
+                return;
+            }
+            foreach ($words as $w) {
+                if (!in_array($w, \CjwNetwork\RequestShield\Settings::STATS_PARTS, true)) {
+                    throw new RuleFileException("$at: stats is on, off or what to count: " . implode(', ', \CjwNetwork\RequestShield\Settings::STATS_PARTS) . " -- not \"$w\"");
+                }
+            }
+            $this->put('stats.enabled', true);
+            $this->put('stats.parts', $words);
+            return;
+        }
+        $this->put($path, $this->typed($key, $type, $value, $at, $file));
+    }
+
+    /**
+     * A set value of the given type, checked; a wrong one names the line.
+     * The core's keys and the extensions' (Vocabulary::TYPES) share it.
+     *
+     * @return mixed
+     */
+    private function typed(string $key, string $type, string $value, string $at, string $file)
+    {
         switch ($type) {
+            case 'words':
+                $v = preg_split('/\s+/', $value) ?: [];
+                break;
             case 'bool':
                 $v = ['on' => true, 'yes' => true, 'true' => true, 'off' => false, 'no' => false, 'false' => false][strtolower($value)] ?? null;
                 if ($v === null) {
@@ -2117,21 +2197,6 @@ final class RuleFile
                 }
                 $v = (int) $m[1] * ['' => 1, 'k' => 1024, 'm' => 1048576, 'g' => 1073741824][strtolower($m[2] ?? '')];
                 break;
-            case 'stats':
-                // on, off, or the parts: set stats requests crawlers
-                $words = preg_split('/\s+/', strtolower($value)) ?: [];
-                if ($words === ['on'] || $words === ['off']) {
-                    $this->put('stats.enabled', $words === ['on']);
-                    return;
-                }
-                foreach ($words as $w) {
-                    if (!in_array($w, \CjwNetwork\RequestShield\Settings::STATS_PARTS, true)) {
-                        throw new RuleFileException("$at: stats is on, off or what to count: " . implode(', ', \CjwNetwork\RequestShield\Settings::STATS_PARTS) . " -- not \"$w\"");
-                    }
-                }
-                $this->put('stats.enabled', true);
-                $this->put('stats.parts', $words);
-                return;
             case 'hostnames':
                 // Website names (*.domain: one label), or "host" (the host rule's), "sites" (the site blocks').
                 $v = [];
@@ -2177,7 +2242,7 @@ final class RuleFile
             default:
                 $v = $value;
         }
-        $this->put($path, $v);
+        return $v;
     }
 
     /**

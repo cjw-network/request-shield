@@ -297,7 +297,7 @@ final class Settings
             }
         }
 
-        return new self(
+        return self::compiledExt(new self(
             self::strings($c, 'trustedProxies'),
             self::bool($c, 'stripUntrustedForwarded'),
             array_map(static fn (string $m): string => strtoupper($m), self::strings($c, 'methods')),
@@ -345,7 +345,31 @@ final class Settings
             ...self::statsAccess($c),
             ...[self::postOrigin($c), self::patternList($c['backend'] ?? [], 'backend')],
             ...[self::ext($c), self::hooks($c), self::routes($c)],
-        );
+        ));
+    }
+
+    /**
+     * The extensions check what the rules wrote into their slot, with the
+     * whole base settings in hand (Extension::compile(), ADR 0008): an id no
+     * offered extension owns keeps its values as they are -- nothing reads
+     * them. A wrong value is an InvalidArgumentException like any other
+     * setting's: on the request path the last good compiled settings stay.
+     */
+    private static function compiledExt(self $s): self
+    {
+        $checked = $s->ext;
+        foreach ($s->ext as $id => $raw) {
+            $class = \CjwNetwork\RequestShield\Rules\Vocabulary::extension($id);
+            if ($class !== null) {
+                $checked[$id] = $class::compile($raw, $s);
+            }
+        }
+        if ($checked === $s->ext) {
+            return $s;
+        }
+        $e = $s->export();
+        $e['ext'] = $checked;
+        return self::import($e);
     }
 
     /**

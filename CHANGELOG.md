@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Extensions: words and settings of their own** (0031 step B.2, ADR 0008):
+  a class implementing `Extension` registers rule words and `set` keys with
+  `Rules\Vocabulary` (`word()`, `set()`, typed like the core's); the parser
+  asks the registry before it calls a word or key unknown, writes into the
+  extension's slot `ext.<id>` only, and `Extension::compile()` checks the
+  slot with the base settings in hand when the rules are compiled. Offered
+  by `plugin <class>` (from that line on) or by the bootstrap for the shipped
+  ones; a request pays nothing. `tests/support/RsTestExtension.php` is the
+  smallest one (`set fail-at <stage>` for the fail-safe tests)
+  ([docs](docs/features/plugins.md#extensions-words-and-settings-of-their-own)).
 - **Settings carry the extensions' slots** (0031 step B.1): `ext` (extension
   id => its checked settings), `hooks` (capability => the plugins that have
   it) and `routes` (the pages under `dashboard-path`) are the last constructor
