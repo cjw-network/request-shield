@@ -24,10 +24,18 @@ things come first: **it must be right, and it must be fast.**
 4. **Static analysis stays clean.** `composer install`, then
    `composer phpstan` (level max) and `composer taint` (Psalm taint analysis).
 5. **No runtime dependencies.** Development tools go in `require-dev`.
-6. **Document it.** A feature gets `docs/features/<name>.md` (what it does, use
+6. **Document it.** A feature has an id `RSF<gg>-<nn>` and all its parts under it
+   (`tests/FeatureContractTest.php` holds them together): its page
+   `docs/features/RSF<gg>-<nn>-<name>.md` (what it does, use
    cases, configuration, cost, limits); a planned one a proposal in
    `docs/proposals/`; a design decision an ADR in `docs/adr/`; every change a
    line in `CHANGELOG.md` under *Unreleased* — in the same pull request.
+   Its tests' names begin with the id, a request-path feature (groups 01 to
+   04) has an end-to-end test, the demo's rules have a `# demo: RSF<gg>-<nn>`
+   group with an effect (a refusal, the check, or "not for a cache") and a
+   near miss that passes (or the reason why not in
+   `examples/demo/.demo-exempt`), and its rule words are mapped in
+   `Vocabulary::FEATURES`.
 7. **The single file.** `php build/single-file.php` turns `src/` into one
    file ([the single file](docs/features/RSF05-07-single-file.md)); `tests/SingleFileTest.php`
    builds it and puts a request through it. The whole suite runs against the

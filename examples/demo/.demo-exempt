@@ -1,0 +1,6 @@
+# Features without a "# demo:" group in request-shield.rules, each with the
+# reason (0031 F.2; tests/FeatureContractTest.php reads this file). A feature
+# whose effect a visitor of the demo can see does not belong here.
+RSF05-02  settings: every line of the demo's rules is one; a group of its own would show nothing new
+RSF05-07  the single file: how the shield is installed, not what it decides
+RSF06-04  plugins and extensions: PHP classes, not rule lines (the demo's statistics are one)

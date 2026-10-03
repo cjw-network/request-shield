@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The feature contract** (0031 step F.2): `tests/FeatureContractTest.php`
+  holds every feature of the docs index to its parts -- a page, tests under
+  its id, an end-to-end test on the request path, a `# demo:` group with an
+  effect and a near miss (or a reason in `examples/demo/.demo-exempt`) -- and
+  every rule word and set key to its feature (`Vocabulary::FEATURES`); the
+  other way, every id a test, a demo group or a list names must be a feature.
+  What is missing today is a list in the test that only shrinks (step F.6
+  empties it): two features without a page, 22 without a demo group, 10
+  without an end-to-end test under their id.
 - **Feature ids** (0031 step F.1): every feature page's title begins with
   its id `RSF<gg>-<nn>` (`# RSF02-03 Access rules …`) and its file is named
   by it (`docs/features/RSF02-03-access-rules.md`), `docs/README.md` lists

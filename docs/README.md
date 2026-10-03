@@ -24,19 +24,19 @@
   | RSF03-03 | How often | [the check inside the form](features/RSF03-03-browser-check-in-the-form.md) |
   | RSF03-04 | How often | [the site asks for the check](features/RSF03-04-app-challenges.md) |
   | RSF04-01 | What a cache may keep | [cacheable definition](features/RSF04-01-cacheable-definition.md) |
-  | RSF04-02 | What a cache may keep | cache keys without tracking (proposal 0020) |
+  | RSF04-02 | What a cache may keep | planned: cache keys without tracking (proposal 0020) |
   | RSF05-01 | Operating | [rule files](features/RSF05-01-rule-files.md) |
   | RSF05-02 | Operating | [settings](features/RSF05-02-settings.md) |
   | RSF05-03 | Operating | [modes: monitor and strict](features/RSF05-03-modes.md) |
   | RSF05-04 | Operating | [examples next to the rules (`expect`, `request-shield test`)](features/RSF05-04-rule-examples.md) |
   | RSF05-05 | Operating | [log and rule IDs](features/RSF05-05-log-and-rule-ids.md) |
-  | RSF05-06 | Operating | error pages (proposal 0030) |
+  | RSF05-06 | Operating | planned: error pages (proposal 0030) |
   | RSF05-07 | Operating | [the single file](features/RSF05-07-single-file.md) |
   | RSF06-01 | Watching & connecting | [active rules page](features/RSF06-01-active-rules-page.md) |
   | RSF06-02 | Watching & connecting | [the live view and the lists in the dashboard](features/RSF06-02-live-and-lists.md) |
   | RSF06-03 | Watching & connecting | [statistics](features/RSF06-03-statistics.md) |
   | RSF06-04 | Watching & connecting | [plugins](features/RSF06-04-plugins.md) |
-  | RSF06-05 | Watching & connecting | API (plugin, planned) |
+  | RSF06-05 | Watching & connecting | planned: the API (a plugin, 0031 step G.0) |
 - **Privacy** — what the shield processes about visitors, feature by feature,
   and the GDPR: [privacy and the GDPR](privacy.md)
 - **For AI agents** — [llms.txt](../llms.txt) is the entry;
