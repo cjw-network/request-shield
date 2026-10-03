@@ -87,7 +87,7 @@ the model you trust most there, not fast mode.
 - [x] **B.7** `Access` generalised: `dashboard-access`/`dashboard-session`, cookie `rsd`, opaque principal; group mapping into the stats plugin; CLI `access-token`. `fb447fa`
 - [x] **B.8** `RuleCounts` capability; `RulesPage`/`SetupPage` without `StatsReport`. `e5b63a9`
 - [x] **B.9** `Sink` hook in `Log::note()`; `Live` as the first sink. `8b7825d`
-- [x] **B.10** `Pages` hook in `Responder::body()`/`Gate` (kinds `error|challenge|access-login`). `(this commit; hash follows)`
+- [x] **B.10** `Pages` hook in `Responder::body()`/`Gate` (kinds `error|challenge|access-login`). `b637558`
 
 ### Phase C — Rule chain
 - [ ] **C.1** `Step` + `Shield::chain()`; `Inspector::trace()` iterates `chain()`.
