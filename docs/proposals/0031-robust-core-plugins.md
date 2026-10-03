@@ -116,7 +116,8 @@ aliases, no transition periods. The SemVer policy below starts with v1.0.0.
 - **Single-file readiness.** CSS, JS and the logo are heredoc constants. What
   blocks one file: `__DIR__`-relative reads of `rules/` (`Settings::RULES_DIR`,
   `Settings.php:392`, `RuleFile::shipped()`, `RuleFile.php:345/411/2240`,
-  `Feeds.php:55`, `bin:625`); `bootstrap.php` falls back to
+  `Feeds.php:55`, `bin:625`) -- since E.1 all through `Rules\Shipped`
+  (deviations from the sketch in [0002](0002-single-file-build.md#the-data-rulesshipped)); `bootstrap.php` falls back to
   `config/request-shield.php` only, not `.rules` (the README story is wrong:
   four steps, not three). No version literal, no `version` command.
 - **Cache.** "Cacheable" is yes/no (`ALLOW` vs `ALLOW_UNCACHED` + reason). No

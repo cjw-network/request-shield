@@ -388,7 +388,7 @@ final class Settings
     /**
      * The known crawlers with the site's policies, their expression and IDs,
      * crawler-verify and the policies as written. The shipped list comes
-     * ready (rules/crawlers.php): settings from a PHP array only apply the
+     * ready (Shipped::crawlers()): settings from a PHP array only apply the
      * site's policies to it.
      *
      * @param array<mixed> $c
@@ -399,8 +399,7 @@ final class Settings
         $policies = self::crawlerPolicy($c);
         $engines = is_array($c['challenge'] ?? null) ? ($c['challenge']['searchEngines'] ?? true) : true;
         if ($engines === true && ($c['crawlers'] ?? null) === null) {
-            /** @var array{crawlers: array<string, array{kind: string, ua: string, dns: list<string>, ranges: list<string>, lists: array<string, array<string, ?string>>, policy: string, nets: array<string, list<array{0: string, 1: int}>>}>, index: string, ids: list<string>} $ready */
-            $ready = require dirname(__DIR__) . '/rules/crawlers.php';
+            $ready = Rules\Shipped::crawlers();
             $crawlers = $ready['crawlers'];
             foreach ($policies as $key => $policy) {
                 if (!in_array($policy, Rules\RuleFile::POLICIES, true) || (!isset($crawlers[$key]) && !in_array($key, Rules\RuleFile::KINDS, true))) {
@@ -1265,9 +1264,6 @@ final class Settings
     private const FORMAT = 51;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats; 43: routes compiled, stats path in ext.stats; 44: dashboardAccess, dashboardSession (stats-group in ext.stats); 45: hooks recorded; 46: the sink hook; 47: the pages hook; 48: the ruleProvider hook; 49: the handler hook; 50: pluginFiles; 51: routeBases
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
-
-    /** The shipped rules and lists (rules/): for plugins, which may live elsewhere. */
-    public const RULES_DIR = __DIR__ . '/../rules';
 
     /**
      * The settings of a file, checked only when it changed. A ".rules" file

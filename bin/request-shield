@@ -64,6 +64,7 @@ use CjwNetwork\RequestShield\Stats\Report\StatsReport;
 use CjwNetwork\RequestShield\Rules\CrawlerLists;
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Rules\RuleFileException;
+use CjwNetwork\RequestShield\Rules\Shipped;
 use CjwNetwork\RequestShield\Settings;
 
 $args = array_slice($argv, 1);
@@ -138,9 +139,9 @@ if ($command === 'version' || $command === '--version') {
     echo 'request-shield ' . $v . ' (' . \CjwNetwork\RequestShield\Shield::BUILD . ")\n";
     echo 'PHP ' . PHP_VERSION . ', APCu ' . ($apcu ? 'available' : 'not available' . (PHP_SAPI === 'cli' ? ' here (apc.enable_cli=1 switches it on for the CLI)' : '')) . "\n";
     $shipped = [];
-    foreach (glob(dirname(__DIR__) . '/rules/*.rules') ?: [] as $set) {
-        if (preg_match('/^version[ \t]+(\S+)/m', (string) file_get_contents($set), $m) === 1) {
-            $shipped[] = '@' . basename($set, '.rules') . ' ' . $m[1];
+    foreach (Shipped::sets() as $set) {
+        if (preg_match('/^version[ \t]+(\S+)/m', (string) Shipped::rules($set), $m) === 1) {
+            $shipped[] = '@' . $set . ' ' . $m[1];
         }
     }
     echo 'shipped rule sets: ' . ($shipped !== [] ? implode(' · ', $shipped) : 'none') . "\n";
@@ -613,8 +614,7 @@ if ($command === 'check' || $command === 'reload') {
             $warnings++;
         }
     }
-    $shipped = dirname(__DIR__) . '/rules/';
-    $files = count(array_filter(array_keys($read['seen']), static fn (string $f): bool => substr($f, -6) === '.rules' && strncmp((string) realpath($f), $shipped, strlen($shipped)) !== 0));
+    $files = count(array_filter(array_keys($read['seen']), static fn (string $f): bool => substr($f, -6) === '.rules' && !Shipped::isShipped($f)));
     $attacks = 0;
     foreach ($settings->contentRules as $r) {
         $attacks += count($r['patterns']);

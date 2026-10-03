@@ -57,34 +57,60 @@ A fourth, optional line: `php /var/www/request-shield.php check /var/www/request
 
 ### The data: `Rules\Shipped`
 
-Today six places read `rules/` relative to `__DIR__` (`Settings::RULES_DIR`,
-`Settings.php:392`, `RuleFile::shipped()`, `RuleFile.php:345/411/2240`,
-`Feeds.php:55`, `bin:625`). All of them call one class instead:
+Six places read `rules/` relative to `__DIR__` before 0031 E.1
+(`Settings::RULES_DIR`, the shipped crawlers in `Settings`,
+`RuleFile::shipped()`, the crawler lists and the "built-in" names in
+`RuleFile`, the feed catalog in `Feeds`, `version` and `check` in the CLI).
+Since E.1 all of them call one class, `src/Rules/Shipped.php`:
 
 ```php
 final class Shipped
 {
-    public const VERSION = '…';            // from the tag; 'dev' in the repository
-    public const BUILD = '…';              // tag + short commit; no timestamp (reproducible)
-    public const PUBKEY = '…';             // the release key (minisign / Ed25519), for verify and self-update
     /** @var array<string, string> name => contents of rules/<name>.rules */
     public const RULES = [];               // empty in the repository: then read from rules/
     public const FEEDS = '';               // feeds.json
     /** @var array<string, string> name => JSON */
     public const CRAWLER_LISTS = [];
 
-    public static function rules(string $name): ?string;      // '@scanners' → contents
+    public static function embedded(): bool;                   // RULES filled: the single file
+    public static function rules(string $name): ?string;       // 'scanners' or '@scanners' → contents
+    public static function rulesFile(string $name): ?string;   // what to watch: rules/<name>.rules, or this file
+    public static function sets(): array;                      // the names, for `version`
     public static function feeds(): string;
     public static function crawlerList(string $name): ?string;
-    public static function isShipped(string $path): bool;     // for `check`: "a shipped set, not a site file"
+    public static function crawlerListFile(string $name): ?string;
+    public static function crawlers(): array;                  // rules/crawlers.php, or built from the set and lists
+    public static function isShipped(string $path): bool;      // for `check`: "a shipped set, not a site file"
+    public static function label(string $path): ?string;       // "built-in scanners.rules"
 }
 ```
 
-In the repository the constants are empty and the methods read `rules/`; the
-build replaces the class body with the embedded data as nowdoc heredocs
-(`<<<'RS'`), so no escaping can go wrong. Shipped sets are version-pinned
-content: the compiled settings record them with `[0, strlen]` instead of
-`[mtime, size]`, so no `stat()` is spent on them.
+In the repository the constants are empty and the methods read `rules/`
+(one private `dir()`); the build fills the three constants with nowdoc
+heredocs (`<<<'RS'`), so no escaping can go wrong, and `dir()` is never
+called. `tests/ShippedTest.php` does exactly that to a copy of the class and
+compiles the same rules to the same settings without `rules/`.
+
+**Deviations in E.1 (from the sketch this section had):**
+
+- **What is watched.** The sketch recorded an embedded set as `[0, strlen]`
+  in the compiled settings' `seen`, to spend no `stat()`. But `fresh()` stats
+  every key, so a key that is no file would rebuild the settings on every
+  request, and a `self-update` would never be noticed. Instead an embedded
+  set is watched through the file that holds it (`rulesFile()` returns
+  `__FILE__`): one key for all sets and lists, the single file's own mtime --
+  an update rebuilds the settings, and without APCu `fresh()` stats the main
+  rule file only, as before.
+- **A shipped crawler list is `@<name>`** where a path stood
+  (`RuleFile::crawlerListFiles()`, `CrawlerLists::read()`/`update()`), so it
+  needs no file.
+- **`rules/crawlers.php` is not embedded** (as planned); where it is absent,
+  `Shipped::crawlers()` builds the same array from the embedded set and lists
+  (`RuleFile::shippedReady()`), once per process. That costs a compile per
+  request only for `Shield::protect(array)` without a `crawlers` key in the
+  single file -- the file documents `protectFile()`.
+- **`VERSION`, `BUILD`** stay on `Shield` (`Shield::VERSION`, `Shield::BUILD`
+  exist since the `version` command); **`PUBKEY`** comes with E.5.
 
 ### The build: `build/single-file.php`
 

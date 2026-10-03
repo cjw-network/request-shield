@@ -28,13 +28,16 @@ final class CrawlerLists
 
     /**
      * The shipped list, or the one in store-dir when it is at least as new.
+     * $shipped is "@<name>" for a list the library ships (Shipped::crawlerList()),
+     * else a path; "files" are what to watch.
      *
      * @return array{prefixes: list<string>, source: ?string, created: ?string, fetched: ?string, from: string, files: list<string>}
      */
     public static function read(string $shipped, ?string $stored): array
     {
-        $files = [$shipped];
-        $s = self::parse((string) @file_get_contents($shipped));
+        $watch = strncmp($shipped, '@', 1) === 0 ? Shipped::crawlerListFile(substr($shipped, 1)) : $shipped;
+        $files = $watch === null ? [] : [$watch];
+        $s = self::parse(self::contents($shipped));
         if ($s === null) {
             throw new RuleFileException("request-shield: the address list $shipped cannot be read (JSON with \"prefixes\")");
         }
@@ -48,6 +51,12 @@ final class CrawlerLists
             }
         }
         return ['prefixes' => $s['prefixes'], 'source' => $s['source'], 'created' => $s['created'], 'fetched' => $s['fetched'], 'from' => $from, 'files' => $files];
+    }
+
+    /** A list's JSON: "@<name>" the shipped one, else a file's; '' when there is none. */
+    private static function contents(string $source): string
+    {
+        return strncmp($source, '@', 1) === 0 ? (string) Shipped::crawlerList(substr($source, 1)) : (string) @file_get_contents($source);
     }
 
     /**
@@ -95,7 +104,7 @@ final class CrawlerLists
      * checked: valid JSON with valid prefixes, and not less than half of what
      * was there (unless $force). Nothing is written for a list that fails.
      *
-     * @param array<string, string> $lists name => the file it is read from now (its "source" says where to fetch it)
+     * @param array<string, string> $lists name => the file it is read from now, "@<name>" for the shipped one (its "source" says where to fetch it)
      * @param (callable(string): (string|false))|null $fetch the body of an https address; default: Http::get() with a timeout
      * @return array<string, string> name => what happened, in words
      */
@@ -111,7 +120,7 @@ final class CrawlerLists
         }
         $report = [];
         foreach ($lists as $name => $current) {
-            $old = self::parse((string) @file_get_contents($current));
+            $old = self::parse(self::contents($current));
             $source = $old['source'] ?? null;
             if ($source === null || strncmp($source, 'https://', 8) !== 0) {
                 $report[$name] = 'skipped: no https source in ' . basename($current);
@@ -129,7 +138,7 @@ final class CrawlerLists
                 continue;
             }
             $file = "$dir/$name.json";
-            if ($old !== null && $old['prefixes'] === $new['prefixes'] && $old['created'] === $new['created'] && realpath($current) === realpath($file)) {
+            if ($old !== null && $old['prefixes'] === $new['prefixes'] && $old['created'] === $new['created'] && strncmp($current, '@', 1) !== 0 && realpath($current) === realpath($file)) {
                 // Nothing new: the file stays as it is (a diff shows only real changes).
                 $report[$name] = 'unchanged: ' . count($new['prefixes']) . ' entries' . ($new['created'] !== null ? ', created ' . $new['created'] : '');
                 continue;

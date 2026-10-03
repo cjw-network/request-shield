@@ -265,7 +265,8 @@ return [
             same(['192.0.2.0/24'], $s->crawlers['CRAWL-CLAUDEBOT']['ranges'], 'the updated list');
             same('updated', $s->crawlers['CRAWL-CLAUDEBOT']['lists']['anthropic']['from']);
             truthy(isset($read['seen']["$store/crawlers/anthropic.json"]) && isset($read['seen']["$store/crawlers"]), 'watched: a new update recompiles the rules');
-            same(['anthropic' => dirname(__DIR__) . '/rules/crawlers/anthropic.json'], array_intersect_key(RuleFile::crawlerListFiles($read['config']), ['anthropic' => 1]), 'what crawlers update fetches');
+            same(['anthropic' => '@anthropic'], array_intersect_key(RuleFile::crawlerListFiles($read['config']), ['anthropic' => 1]), 'what crawlers update fetches: the shipped list by name (Shipped::crawlerList())');
+            truthy(isset($read['seen'][dirname(__DIR__) . '/rules/crawlers/anthropic.json']), 'the shipped list watched as before');
         } finally {
             exec('rm -rf ' . escapeshellarg($site));
         }

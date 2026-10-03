@@ -151,18 +151,14 @@ final class RuleFile
      */
     private array $examples = [];
 
+    /** @var array<string, true> the shipped sets read so far (shippedSet()), by name */
+    private array $sets = [];
+
     /** @var array<string, string> per file, the last rule with an ID: what an expect line without "by" is about */
     private array $lastRule = [];
 
     /** The address an example comes from when it names none: a documentation range, never a real visitor. */
     public const EXAMPLE_FROM = '198.51.100.7';
-
-    /** The shipped rule files: rules/<name>.rules ("@scanners", "@wordpress"). */
-    public static function shipped(string $name): ?string
-    {
-        $file = dirname(__DIR__, 2) . '/rules/' . $name . '.rules';
-        return preg_match('/^[a-z0-9-]+$/', $name) && is_file($file) ? $file : null;
-    }
 
     private function __construct()
     {
@@ -227,8 +223,8 @@ final class RuleFile
         // Origins are named relative to the main file's directory (the last one).
         $main = $files === [] ? false : realpath(dirname($files[count($files) - 1]));
         $r->base = $main === false ? '' : $main . '/';
-        $r->file((string) self::shipped('scanners'), null, null);
-        $r->file((string) self::shipped('crawlers'), null, null);
+        $r->shippedSet('scanners', null);
+        $r->shippedSet('crawlers', null);
         foreach ($files as $file) {
             $r->source($file, null, null);
         }
@@ -298,7 +294,7 @@ final class RuleFile
     {
         $r = new self();
         $r->c['storeDir'] = null;
-        $r->file((string) self::shipped('crawlers'), null, null);
+        $r->shippedSet('crawlers', null);
         $r->resolveLists();
         $crawlers = $r->crawlers();
         foreach ($crawlers as $id => $x) {
@@ -308,27 +304,41 @@ final class RuleFile
     }
 
     /**
-     * The contents rules/crawlers.php must have: the shipped crawlers ready
-     * for Settings (policy allow, the address lookup, the expression).
+     * The shipped crawlers ready for Settings (policy allow, the address
+     * lookup, the expression) and their descriptions -- what rules/crawlers.php
+     * holds, and what Shipped::crawlers() builds where that file is not
+     * shipped (the single file).
+     *
+     * @return array{crawlers: array<string, array{kind: string, ua: string, dns: list<string>, ranges: list<string>, lists: array<string, array<string, ?string>>, policy: string, nets: array<string, list<array{0: string, 1: int}>>}>, index: string, ids: list<string>, names: array<string, string>}
      */
-    public static function shippedCrawlersPhp(): string
+    public static function shippedReady(): array
     {
-        $crawlers = self::shippedCrawlers();
-        foreach ($crawlers as $id => $x) {
-            $crawlers[$id]['policy'] = 'allow';
+        $crawlers = [];
+        foreach (self::shippedCrawlers() as $id => $x) {
+            /** @var array<string, array<string, ?string>> $lists */
+            $lists = $x['lists'];
+            $crawlers[$id] = ['kind' => $x['kind'], 'ua' => $x['ua'], 'dns' => $x['dns'], 'lists' => $lists, 'ranges' => $x['ranges'], 'nets' => $x['nets'], 'policy' => 'allow'];
         }
         [$index, $ids] = \CjwNetwork\RequestShield\Settings::crawlerIndex($crawlers);
         // The descriptions, for reports of settings from a PHP array (which have no origins).
         $r = new self();
-        $r->file((string) self::shipped('crawlers'), null, null);
+        $r->shippedSet('crawlers', null);
+        /** @var array<string, string> $names */
         $names = array_intersect_key($r->origins['text'] ?? [], $crawlers);
+        return ['crawlers' => $crawlers, 'index' => $index, 'ids' => $ids, 'names' => $names];
+    }
+
+    /** The contents rules/crawlers.php must have: shippedReady() as PHP. */
+    public static function shippedCrawlersPhp(): string
+    {
         return "<?php\n// Generated from rules/crawlers.rules and rules/crawlers/*.json by bin/update-crawler-lists -- do not edit.\n"
-            . 'return ' . var_export(['crawlers' => $crawlers, 'index' => $index, 'ids' => $ids, 'names' => $names], true) . ";\n";
+            . 'return ' . var_export(self::shippedReady(), true) . ";\n";
     }
 
     /**
-     * The address lists the crawlers of these rules read, name => file (for
-     * "crawlers update").
+     * The address lists the crawlers of these rules read, name => where (for
+     * "crawlers update"): "@<name>" for a shipped list (Shipped::crawlerList()),
+     * a path for a site's own.
      *
      * @param array<string, mixed> $config what read() returned as config
      * @return array<string, string>
@@ -339,7 +349,7 @@ final class RuleFile
         foreach ((array) ($config['crawlers'] ?? []) as $x) {
             foreach (is_array($x) ? (array) ($x['lists'] ?? []) : [] as $name => $about) {
                 if (strpos((string) $name, '/') === false) {
-                    $out[(string) $name] = dirname(__DIR__, 2) . "/rules/crawlers/$name.json";
+                    $out[(string) $name] = '@' . $name;
                 }
             }
         }
@@ -404,10 +414,43 @@ final class RuleFile
             throw new RuleFileException(($where ?? 'request-shield') . ": cannot read the rule file $file");
         }
         $this->seen[$file] = $stat;
+        $name = Shipped::label($real)
+            ?? ($this->base !== '' && strncmp($real, $this->base, strlen($this->base)) === 0 ? substr($real, strlen($this->base)) : $real);
+        $this->text($text, $name, $file, $real);
+    }
+
+    /**
+     * A shipped rule set by name (Shipped::rules()), once per reading: the
+     * file that holds it is watched (rules/<name>.rules, or the single file),
+     * its lines are named "built-in <name>.rules:<line>".
+     */
+    private function shippedSet(string $name, ?string $where): void
+    {
+        if (isset($this->sets[$name])) {
+            return;
+        }
+        // Recorded before it is read, as file() does.
+        $from = Shipped::rulesFile($name);
+        $stat = $from === null ? null : self::stat($from);
+        $text = Shipped::rules($name);
+        if ($from === null || $stat === null || $text === null) {
+            throw new RuleFileException(($where ?? 'request-shield') . ": cannot read the shipped rule set @$name");
+        }
+        $this->sets[$name] = true;
+        $this->seen[$from] = $stat;
+        // The key the lines are read under: the file in rules/, or "@<name>" when
+        // embedded (several sets live in one file then; each has its own version).
+        $this->text($text, "built-in $name.rules", Shipped::embedded() ? "@$name" : $from, Shipped::embedded() ? "@$name" : (string) realpath($from));
+    }
+
+    /**
+     * The lines of a rule file, named $name; $file is the key its blocks,
+     * namespace and version are kept under (and the base of its includes),
+     * $real what an include of itself is recognised by.
+     */
+    private function text(string $text, string $name, string $file, string $real): void
+    {
         $this->stack[] = $real;
-        $shipped = dirname(__DIR__, 2) . '/rules/';
-        $name = strncmp($real, $shipped, strlen($shipped)) === 0 ? 'built-in ' . substr($real, strlen($shipped))
-            : ($this->base !== '' && strncmp($real, $this->base, strlen($this->base)) === 0 ? substr($real, strlen($this->base)) : $real);
         foreach (preg_split('/\r\n|\n|\r/', $text) ?: [] as $i => $line) {
             $this->line($line, "$name:" . ($i + 1), $file);
         }
@@ -882,13 +925,10 @@ final class RuleFile
                 }
                 foreach ($args as $path) {
                     if ($path[0] === '@') {
-                        $shipped = self::shipped(substr($path, 1));
-                        if ($shipped === null) {
+                        if (Shipped::rulesFile(substr($path, 1)) === null) {
                             throw new RuleFileException("$at: unknown set \"$path\" (there are @" . implode(', @', self::SETS) . ')');
                         }
-                        if (!isset($this->seen[$shipped])) {
-                            $this->file($shipped, null, $at);
-                        }
+                        $this->shippedSet(substr($path, 1), $at);
                         continue;
                     }
                     $absolute = $path[0] === '/';
@@ -1673,18 +1713,18 @@ final class RuleFile
             }
             return $out;
         }
-        $file = self::shipped(substr($ref, 1));
-        if ($file === null) {
+        $set = substr($ref, 1);
+        if (Shipped::rulesFile($set) === null) {
             throw new RuleFileException("$at: unknown set \"$ref\" (there are @" . implode(', @', self::SETS) . ')');
         }
-        $real = (string) realpath($file);
-        if (!isset($this->seen[$file])) {
+        if (!isset($this->sets[$set])) {
             $saved = $this->rid;
-            $this->file($file, null, $at);
+            $this->shippedSet($set, $at);
             $this->rid = $saved;
         }
+        $label = "built-in $set.rules:";
         foreach (($this->origins['blockedPaths'] ?? []) + ($this->origins['contentRules'] ?? []) as $p => $origin) {
-            if (strncmp((string) ($this->origins['at'][$origin] ?? ''), 'built-in ' . basename($real) . ':', strlen(basename($real)) + 10) === 0) {
+            if (strncmp((string) ($this->origins['at'][$origin] ?? ''), $label, strlen($label)) === 0) {
                 $out[$p] = $origin;
             }
         }
@@ -2269,8 +2309,8 @@ final class RuleFile
             } elseif ($part === 'ranges' && preg_match('/^[a-z0-9._-]+$|\//', $a)) {
                 // A shipped list's name (rules/crawlers/<name>.json), or a file of the site's own (….json).
                 $own = strpos($a, '/') !== false || substr($a, -5) === '.json';
-                $path = !$own ? dirname(__DIR__, 2) . "/rules/crawlers/$a.json" : ($a[0] === '/' ? $a : dirname($file) . '/' . $a);
-                if (!is_file($path)) {
+                $path = !$own ? '@' . $a : ($a[0] === '/' ? $a : dirname($file) . '/' . $a);
+                if (!$own ? Shipped::crawlerList($a) === null : !is_file($path)) {
                     throw new RuleFileException("$at: no address list \"$a\" (" . (!$own ? 'rules/crawlers/' . $a . '.json' : $path) . ')');
                 }
                 $lists[$own ? $path : $a] = $path;

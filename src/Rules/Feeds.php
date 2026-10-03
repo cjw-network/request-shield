@@ -52,7 +52,7 @@ final class Feeds
     public static function catalog(): array
     {
         if (self::$catalog === null) {
-            $json = json_decode((string) @file_get_contents(dirname(__DIR__, 2) . '/rules/feeds.json'), true);
+            $json = json_decode(Shipped::feeds(), true);
             self::$catalog = [];
             $str = static fn ($v, string $or = ''): string => is_string($v) ? $v : $or;
             foreach ((array) (is_array($json) ? ($json['feeds'] ?? []) : []) as $name => $f) {

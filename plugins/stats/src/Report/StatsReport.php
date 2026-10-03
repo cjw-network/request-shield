@@ -536,16 +536,14 @@ final class StatsReport
     }
 
     /**
-     * The shipped crawlers' descriptions (rules/crawlers.php), for settings
+     * The shipped crawlers' descriptions (Shipped::crawlers()), for settings
      * that have none of their own.
      *
      * @return array<string, string>
      */
     private static function names(): array
     {
-        $ready = require Settings::RULES_DIR . '/crawlers.php';
-        /** @var array<string, string> */
-        return is_array($ready) && is_array($ready['names'] ?? null) ? $ready['names'] : [];
+        return \CjwNetwork\RequestShield\Rules\Shipped::crawlers()['names'];
     }
 
     /**

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`Rules\Shipped`, the one reader of `rules/`** (0031 step E.1): the
+  shipped rule sets, the feed catalog, the crawlers' address lists and the
+  ready crawlers are read through one class, so the single-file build (E.2)
+  can embed them -- with its constants filled nothing reads `rules/`, and the
+  file that holds the data is watched instead (an update rebuilds the
+  settings). `Settings::RULES_DIR` and `RuleFile::shipped()` are gone (a
+  plugin calls `Shipped::crawlers()`, `Shipped::rules()` …); a shipped
+  address list is named `@<name>` where a path stood
+  (`RuleFile::crawlerListFiles()`, `CrawlerLists::read()`/`update()`).
+  `RuleFile::shippedReady()` is what `rules/crawlers.php` holds, as an array.
 - **The plugins guide rewritten around extensions** (0031 step D.3):
   `docs/features/plugins.md` explains the two interfaces (`Extension` at
   compile time, `Plugin` per request), the capabilities, `plugin … from`, the
