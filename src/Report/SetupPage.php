@@ -288,7 +288,7 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
                 'k.parts' => $list($so['parts']),
                 'k.depth' => (string) $so['depth'],
                 'k.sites' => $so['hosts'] === [] ? $t['k.oneStats'] : $list($so['hosts']),
-                'k.groups' => $s->statsGroups === [] ? $t['d.none'] : implode('; ', array_map(static fn (array $g): string => $g['name'] . ': ' . implode(', ', $g['sites']), $s->statsGroups)),
+                'k.groups' => $so['groups'] === [] ? $t['d.none'] : implode('; ', array_map(static fn (array $g): string => $g['name'] . ': ' . implode(', ', $g['sites']), $so['groups'])),
                 'k.skip' => $so['skip'] === [] ? $t['d.none'] : implode(', ', array_map(static fn (string $p): string => Describe::pattern($s, $p), $so['skip'])),
                 'k.flush' => $so['flush'] > 0 ? $so['flush'] . ' ' . $t['k.seconds'] : $t['k.onlyHourly'],
                 'k.hours' => $so['hours'] . ' ' . $t['k.days1'],
@@ -326,7 +326,7 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
      * (ext.stats, StatsExtension::compile()), or off without the extension.
      * Until 0031 B.8, when the plugin shows its own settings.
      *
-     * @return array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, hosts: list<string>, skip: list<string>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}}
+     * @return array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, hosts: list<string>, skip: list<string>, groups: array<string, array{name: string, sites: list<string>, rule: string}>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}}
      */
     private static function stats(Settings $s): array
     {
@@ -334,8 +334,16 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
         $log = is_array($o['crawlerLog'] ?? null) ? $o['crawlerLog'] : [];
         $strings = static fn ($v): array => array_values(array_filter(is_array($v) ? $v : [], 'is_string'));
         $int = static fn ($v, int $default): int => is_int($v) ? $v : $default;
+        /** @var array<string, array{name: string, sites: list<string>, rule: string}> $groups */
+        $groups = [];
+        foreach (is_array($o['groups'] ?? null) ? $o['groups'] : [] as $id => $g) {
+            if (is_array($g) && is_string($g['name'] ?? null)) {
+                $groups[(string) $id] = ['name' => $g['name'], 'sites' => $strings($g['sites'] ?? []), 'rule' => is_string($g['rule'] ?? null) ? $g['rule'] : ''];
+            }
+        }
         return ['enabled' => ($o['enabled'] ?? false) === true, 'parts' => $strings($o['parts'] ?? []), 'hours' => $int($o['hours'] ?? null, 7), 'days' => $int($o['days'] ?? null, 400),
             'months' => $int($o['months'] ?? null, 0), 'flush' => $int($o['flush'] ?? null, 60), 'depth' => $int($o['depth'] ?? null, 2), 'hosts' => $strings($o['hosts'] ?? []), 'skip' => $strings($o['skip'] ?? []),
+            'groups' => $groups,
             'crawlerLog' => ['dir' => is_string($log['dir'] ?? null) ? $log['dir'] : null, 'kinds' => $strings($log['kinds'] ?? []), 'days' => $int($log['days'] ?? null, 30), 'query' => ($log['query'] ?? true) !== false]];
     }
 

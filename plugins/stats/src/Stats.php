@@ -178,7 +178,7 @@ final class Stats
     /** Whether $site names something to read: a website of stats-hosts, OTHER, or group:<id>. */
     public static function known(Settings $s, string $site): bool
     {
-        return $site === self::OTHER || in_array($site, StatsExtension::of($s)['hosts'], true) || (strncmp($site, 'group:', 6) === 0 && isset($s->statsGroups[substr($site, 6)]));
+        return $site === self::OTHER || in_array($site, StatsExtension::of($s)['hosts'], true) || (strncmp($site, 'group:', 6) === 0 && isset(StatsExtension::of($s)['groups'][substr($site, 6)]));
     }
 
     /**
@@ -196,7 +196,7 @@ final class Stats
         }
         if ($site !== null && strncmp($site, 'group:', 6) === 0) {
             // A group: its websites, added up.
-            return array_map(static fn (string $name): self => self::of($s, $name), $s->statsGroups[substr($site, 6)]['sites'] ?? []);
+            return array_map(static fn (string $name): self => self::of($s, $name), StatsExtension::of($s)['groups'][substr($site, 6)]['sites'] ?? []);
         }
         if ($site !== null) {
             return [self::of($s, $site)];

@@ -127,8 +127,8 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         if ($who !== '*' && in_array($view, ['rules', 'all'], true)) {
             $view = 'site';
         }
-        if ($who !== '*' && isset($s->statsGroups[$who])) {
-            $t['tabSites'] = $s->statsGroups[$who]['name'];     // a customer's tab: its group, not "all websites"
+        if ($who !== '*' && isset(StatsExtension::of($s)['groups'][$who])) {
+            $t['tabSites'] = StatsExtension::of($s)['groups'][$who]['name'];     // a customer's tab: its group, not "all websites"
         }
         if ($view === 'sites' && StatsExtension::of($s)['hosts'] === []) {
             $view = 'all';                  // no websites to compare: the overview
@@ -140,7 +140,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         // stats-hosts: one website's numbers, or all added up (no "site").
         $site = is_string($o['site'] ?? null) && \CjwNetwork\RequestShield\Stats::known($s, $o['site']) ? $o['site'] : null;
         if ($who !== '*') {
-            $site = \CjwNetwork\RequestShield\Access::site($s, $who, $site);
+            $site = StatsExtension::siteFor($s, $who, $site);
         }
         // What every link carries along besides the period and the language.
         $extra = $range + ($site !== null ? ['site' => $site] : []) + ($crawler !== null ? ['crawler' => $crawler] : []) + ($path !== null ? ['path' => $path] : []) + ($sort !== $sortDefault ? ['sort' => $sort] : []);
@@ -233,7 +233,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
             $opts = $option('', $t['allSites']);
             $grouped = [];
             // A section per group (stats-group): the whole group, then each of its websites.
-            foreach ($who === '*' ? $s->statsGroups : array_intersect_key($s->statsGroups, [$who => 1]) as $id => $g) {
+            foreach ($who === '*' ? StatsExtension::of($s)['groups'] : array_intersect_key(StatsExtension::of($s)['groups'], [$who => 1]) as $id => $g) {
                 $opts .= '<optgroup label="' . $e($g['name']) . '">' . $option('group:' . $id, count($g['sites']) === 1 ? sprintf($t['groupOne'], $g['name']) : sprintf($t['groupAll'], $g['name'], count($g['sites'])));
                 foreach ($g['sites'] as $name) {
                     $opts .= $option($name, $name);
@@ -243,11 +243,11 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
             }
             $rest = $who !== '*' ? [] : array_values(array_filter(StatsExtension::of($s)['hosts'], static fn (string $n): bool => !isset($grouped[$n])));
             if ($rest !== []) {
-                $opts .= $s->statsGroups !== [] ? '<optgroup label="' . $e($t['ungrouped']) . '">' : '';
+                $opts .= StatsExtension::of($s)['groups'] !== [] ? '<optgroup label="' . $e($t['ungrouped']) . '">' : '';
                 foreach ($rest as $name) {
                     $opts .= $option($name, $name);
                 }
-                $opts .= $s->statsGroups !== [] ? '</optgroup>' : '';
+                $opts .= StatsExtension::of($s)['groups'] !== [] ? '</optgroup>' : '';
             }
             if ($who === '*') {
                 $opts .= $option(\CjwNetwork\RequestShield\Stats::OTHER, $t['otherHosts']);
@@ -499,7 +499,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         uasort($groups, $views);
         $grouped = [];
         foreach ($groups as $id => $g) {
-            $def = $s->statsGroups[$id];
+            $def = StatsExtension::of($s)['groups'][$id];
             $h .= self::sitesRow($def['name'], $g, $href('group:' . $id), 'sgroup', count($def['sites']) === 1 ? $t['oneSite'] : sprintf($t['nSites'], count($def['sites'])), ...$ctx);
             $members = array_intersect_key($x['sites'], array_flip($def['sites']));
             uasort($members, $views);
@@ -567,8 +567,8 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         if ($site === \CjwNetwork\RequestShield\Stats::OTHER) {
             return $t['otherHosts'];
         }
-        if (strncmp($site, 'group:', 6) === 0 && isset($s->statsGroups[substr($site, 6)])) {
-            $g = $s->statsGroups[substr($site, 6)];
+        if (strncmp($site, 'group:', 6) === 0 && isset(StatsExtension::of($s)['groups'][substr($site, 6)])) {
+            $g = StatsExtension::of($s)['groups'][substr($site, 6)];
             return (count($g['sites']) === 1 ? sprintf($t['groupOne'], $g['name']) : sprintf($t['groupAll'], $g['name'], count($g['sites']))) . ': ' . implode(', ', $g['sites']);
         }
         return $site;
@@ -991,7 +991,7 @@ CSS;
         $from = is_string($get['from'] ?? null) ? $get['from'] : '';
         $to = is_string($get['to'] ?? null) ? $get['to'] : '';
         if (($get['format'] ?? '') === 'json') {
-            $site = \CjwNetwork\RequestShield\Access::site($s, $who, $askedSite);
+            $site = StatsExtension::siteFor($s, $who, $askedSite);
             $o = ['by' => $by === null || $by === 'hour' ? 'day' : $by] + ($only !== null ? ['crawler' => $only] : [])
                 + ($path !== null ? ['path' => preg_match('#^[a-z0-9*+()][a-z0-9.*+()-]*/#i', $path) === 1 ? $path : '/' . ltrim($path, '/')] : [])
                 + (isset($get['sort']) && is_string($get['sort']) ? ['sort' => $get['sort']] : []) + ($site !== null ? ['site' => $site] : [])

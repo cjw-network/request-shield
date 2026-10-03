@@ -9,6 +9,7 @@ use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Rules\RuleFileException;
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Stats;
+use CjwNetwork\RequestShield\StatsExtension;
 use CjwNetwork\RequestShield\Store\MemoryStore;
 
 /** Who may read the statistics (proposal 0023, phase 4). */
@@ -27,8 +28,8 @@ function accessSettings(string $dir, string $more = ''): Settings
 {
     file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset secret " . str_repeat('s', 40) . "\nset stats on\n"
         . "stats-group \"Customer A\" a.de b.de\nstats-group \"Customer B\" c.de\n"
-        . 'stats-access * sha256:' . hash('sha256', ACCESS_ADMIN) . "\n"
-        . '[ACC-A] stats-access "Customer A" sha256:' . hash('sha256', ACCESS_A) . "\n" . $more);
+        . 'dashboard-access * sha256:' . hash('sha256', ACCESS_ADMIN) . "\n"
+        . '[ACC-A] dashboard-access "Customer A" sha256:' . hash('sha256', ACCESS_A) . "\n" . $more);
     return Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
 }
 
@@ -53,22 +54,27 @@ function accessCookie(array $g): string
 }
 
 return [
-    'stats-access: * or a group, by a token\'s hash; until; mistakes named -- the rule file never holds a token' => function (): void {
+    'dashboard-access: * or a group, by a token\'s hash; until; mistakes named -- the rule file never holds a token' => function (): void {
         $dir = accessDir();
         try {
-            $s = accessSettings($dir, '[ACC-OLD] stats-access "Customer B" sha256:' . str_repeat('a', 64) . " until 2020-01-01\n"
-                . '[ACC-B] stats-access "Customer B" sha256:' . str_repeat('b', 64) . ' until ' . date('Y-m-d', time() + 86400) . "\n");
-            same(['*', 'customer-a', 'customer-b'], array_column($s->statsAccess, 'who'), 'the ended one left out');
-            same(28800, $s->statsSession, 'a login lasts 8 hours');
+            $s = accessSettings($dir, '[ACC-OLD] dashboard-access "Customer B" sha256:' . str_repeat('a', 64) . " until 2020-01-01\n"
+                . '[ACC-B] dashboard-access "Customer B" sha256:' . str_repeat('b', 64) . ' until ' . date('Y-m-d', time() + 86400) . "\n");
+            same(['*', 'customer-a', 'customer-b'], array_column($s->dashboardAccess, 'who'), 'the ended one left out');
+            same(28800, $s->dashboardSession, 'a login lasts 8 hours');
             truthy($s->listsUntil > time() && $s->listsUntil <= time() + 86400 * 2, 'built again when the next one ends');
             same(['*', 'customer-a', null], [Access::whoseToken($s, ACCESS_ADMIN), Access::whoseToken($s, ACCESS_A), Access::whoseToken($s, 'guess')]);
             [$token, $hash] = Access::token();
             truthy(preg_match('/^[A-Za-z0-9_-]{43}$/', $token) === 1 && $hash === hash('sha256', $token), 'a token: 32 random bytes, its SHA-256');
-            same(3600, accessSettings($dir, "set stats-session 1h\n")->statsSession);
-            foreach (['stats-access "Nobody" sha256:' . str_repeat('c', 64) . "\n" => 'there is no group',
-                "stats-access * sha256:abc\n" => 'stats-access "<group>"|*',
-                "stats-access * " . ACCESS_ADMIN . "\n" => 'stats-access "<group>"|*',
-                "site a.de {\n  stats-access * sha256:" . str_repeat('d', 64) . "\n}\n" => 'is about the server'] as $text => $says) {
+            same(3600, accessSettings($dir, "set dashboard-session 1h\n")->dashboardSession);
+            // A principal no stats-group knows: the line holds (the principal is opaque to the shield), the statistics' check warns.
+            file_put_contents("$dir/nobody.rules", "set store-dir $dir/store\nstats-group X a.de\n[A-NOBODY] dashboard-access \"Nobody\" sha256:" . str_repeat('c', 64) . "\n");
+            $nobody = Settings::from(RuleFile::read(["$dir/nobody.rules"])['config']);
+            same('nobody', $nobody->dashboardAccess[0]['who'] ?? null, 'accepted, as the principal id');
+            truthy(count(array_filter(StatsExtension::check($nobody), static fn (string $w): bool => strpos($w, 'A-NOBODY: dashboard-access "nobody" -- no stats-group has that id (x)') === 0)) === 1,
+                'check names it: ' . implode(' | ', StatsExtension::check($nobody)));
+            foreach (["dashboard-access * sha256:abc\n" => 'dashboard-access "<principal>"|*',
+                "dashboard-access * " . ACCESS_ADMIN . "\n" => 'dashboard-access "<principal>"|*',
+                "site a.de {\n  dashboard-access * sha256:" . str_repeat('d', 64) . "\n}\n" => 'is about the server'] as $text => $says) {
                 try {
                     file_put_contents("$dir/bad.rules", "set store-dir $dir/store\nstats-group X a.de\n" . $text);
                     Settings::from(RuleFile::read(["$dir/bad.rules"], strpos($text, 'site ') === 0 ? 'a.de' : null)['config']);
@@ -88,7 +94,7 @@ return [
             $store = new MemoryStore();
             $o = ['store' => $store, 'lang' => 'en', 'now' => 1790800000];
             same(['*', 200, null], array_values(array_intersect_key(Access::gate(Settings::from(['storeDir' => $dir . '/store']), accessReq(), [], [], ['store' => $store]), ['who' => 1, 'status' => 1, 'body' => 1])),
-                'without stats-access: nothing asked (the site\'s own rules decide)');
+                'without dashboard-access: nothing asked (the site\'s own rules decide)');
             $g = Access::gate($s, accessReq(), [], [], $o);
             same([null, 401], [$g['who'], $g['status']], 'nobody: the form');
             truthy(strpos((string) $g['body'], 'name="rs-token"') !== false && strpos((string) $g['body'], 'type="password"') !== false, 'a field for the token');
@@ -109,7 +115,7 @@ return [
             $tampered = (string) preg_replace('/^customer-a/', 'customer-b', $cookie);
             same(null, Access::gate($s, accessReq('/', ['Cookie' => "rsd=$tampered"]), [], [], $o)['who'], 'another group in it: the signature does not fit');
             same(null, Access::fromCookie($s, $cookie, 1790800000 + 28801), 'after 8 hours: ended');
-            $rotated = accessSettings($dir, '[ACC-A2] stats-access "Customer A" sha256:' . hash('sha256', 'a-new-token-for-a') . "\n");
+            $rotated = accessSettings($dir, '[ACC-A2] dashboard-access "Customer A" sha256:' . hash('sha256', 'a-new-token-for-a') . "\n");
             same(null, Access::fromCookie($rotated, $cookie, 1790800001), 'a token added or removed for the group: its sessions end');
             same('customer-a', Access::fromCookie(accessSettings($dir), $cookie, 1790800001), 'the same tokens: still in');
             $g = Access::gate($s, accessReq('/rs/stats/visitors?rs-logout=1', ['Cookie' => "rsd=$cookie"]), ['rs-logout' => '1'], [], $o);
@@ -142,7 +148,8 @@ return [
             same(null, Access::fromLink($s, ['rs-exp' => (string) ($now + 7200)] + $get, $now), 'an end too far away (a link made by hand)');
             same(null, Access::fromLink($s, ['rs-g' => 'customer-b'] + $get, $now), 'another group: the signature does not fit');
             parse_str(Access::link($s, 'Nobody', 600, $now), $none);
-            same(null, Access::fromLink($s, $none, $now), 'a group that is not there');
+            same('nobody', Access::fromLink($s, $none, $now), 'a principal without a group: the link holds (the principal is opaque to the shield)');
+            same('group:nobody', StatsExtension::siteFor($s, 'nobody', 'a.de'), 'and the statistics show it nothing of anyone: its own, empty group');
             parse_str(Access::link($s, '*', 600, $now), $admin);
             same('*', Access::fromLink($s, $admin, $now), 'the admin, too');
             for ($i = 0; $i < Access::TRIES; $i++) {
@@ -178,9 +185,9 @@ return [
                     Stats::of($s, $site)->count(['a:allow', 'pg:people|/p', 'r:SECRET-RULE'], 1790800000.0);
                 }
             }
-            same(['group:customer-a', 'a.de', 'group:customer-a', 'group:customer-a'], [Access::site($s, 'customer-a', null), Access::site($s, 'customer-a', 'a.de'),
-                Access::site($s, 'customer-a', 'c.de'), Access::site($s, 'customer-a', 'group:customer-b')], 'only its group or one of its websites');
-            same('c.de', Access::site($s, '*', 'c.de'), 'the admin: anything');
+            same(['group:customer-a', 'a.de', 'group:customer-a', 'group:customer-a'], [StatsExtension::siteFor($s, 'customer-a', null), StatsExtension::siteFor($s, 'customer-a', 'a.de'),
+                StatsExtension::siteFor($s, 'customer-a', 'c.de'), StatsExtension::siteFor($s, 'customer-a', 'group:customer-b')], 'only its group or one of its websites');
+            same('c.de', StatsExtension::siteFor($s, '*', 'c.de'), 'the admin: anything');
             $links = StatsPage::links($s);
             same(['sites', 'site', 'shield'], array_keys(Access::links($s, 'customer-a', $links + ['live' => '/rs/waf/live', 'lists' => '/rs/waf/lists'])), 'its tabs');
             $o = ['links' => Access::links($s, 'customer-a', $links), 'lang' => 'en', 'now' => 1790800000, 'who' => 'customer-a'];

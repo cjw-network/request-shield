@@ -66,7 +66,7 @@ $request = Request::fromServer($_SERVER);
 $shield = Shield::active();
 $method = (string) ($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
-// Who reads the dashboard (stats-access in the rules): a customer by its cookie
+// Who reads the dashboard (dashboard-access in the rules): a customer by its cookie
 
 // The pages behind the examples. Everything that gets here was let through.
 $content = null;
@@ -156,7 +156,7 @@ if ($path === '/search') {
         . '<h2 style="margin-top:0">Your statistics</h2><p><a href="' . $e($link) . '">Open the statistics of your websites →</a></p>'
         . '<p class="note">The link is made on the panel\'s server with <code>Access::link($settings, \'Customer A\', 600)</code>: no token in it, valid ten minutes, '
         . 'and it opens Customer A\'s websites only (here: localhost84) — never Customer B\'s, never the rules or the live view. Opened, it signs the browser in for eight hours.</p>'
-        . '<h3>Or sign in with a token</h3><p>The demo\'s token for Customer A (a demo only — a real one is printed once by <code>bin/request-shield token</code>):<br><code>demo-customer-a-5b8e2d1f7c4a9e06b3d1f8a2c7e5</code></p>'
+        . '<h3>Or sign in with a token</h3><p>The demo\'s token for Customer A (a demo only — a real one is printed once by <code>bin/request-shield access-token</code>):<br><code>demo-customer-a-5b8e2d1f7c4a9e06b3d1f8a2c7e5</code></p>'
         . '<p><a href="' . $e($url($stats['site']) . '?rs-login=1') . '">The login form</a> · <a href="' . $e($url($stats['site']) . '?rs-logout=1') . '">Sign out</a> (back to the admin\'s view on this machine)</p>'
         . '</section></main></body></html>';
     exit;

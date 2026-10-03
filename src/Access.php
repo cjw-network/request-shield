@@ -16,20 +16,20 @@ use CjwNetwork\RequestShield\Store\Store;
 
 /**
  * Who may read the statistics (proposal 0023, phase 4): the admin ('*')
- * everything, a customer only its group (stats-group). Three ways in:
+ * everything, a principal (a customer) only what the pages let it see. Three ways in:
  *
  *  - a token, once, by the login form: a signed session cookie for
- *    stats-session (8 hours); the token never in an address;
+ *    dashboard-session (8 hours); the token never in an address;
  *  - a signed link the customer's own hosting panel or CMS makes on its
  *    server (Access::link(), 10 minutes, at most an hour): opened, it sets the
  *    cookie and redirects to the address without the signature;
  *  - Authorization: Bearer <token>, for the JSON.
  *
- * Only tokens' SHA-256 hashes are in the rule file (stats-access); a token is
+ * Only tokens' SHA-256 hashes are in the rule file (dashboard-access); a token is
  * 32 random bytes, so a fast hash is enough (a slow one is for passwords
  * people choose). Wrong tokens and signatures count against a budget of their
  * own (10 a minute per address, then 429) and are logged without the token.
- * Without stats-access lines nothing is asked: the site's own rules (restrict)
+ * Without dashboard-access lines nothing is asked: the site's own rules (restrict)
  * decide, as before.
  */
 final class Access
@@ -57,10 +57,10 @@ final class Access
         ],
     ];
 
-    /** Whether the statistics ask who is reading (stats-access lines are there). */
+    /** Whether the dashboard asks who is reading (dashboard-access lines are there). */
     public static function enabled(Settings $s): bool
     {
-        return $s->statsAccess !== [];
+        return $s->dashboardAccess !== [];
     }
 
     /**
@@ -74,7 +74,7 @@ final class Access
         return [$token, hash('sha256', $token)];
     }
 
-    /** Whose a token is ('*' or a group's ID), or null. */
+    /** Whose a token is ('*' or a principal's id), or null. */
     public static function whoseToken(Settings $s, string $token): ?string
     {
         if ($token === '' || strlen($token) > 200) {
@@ -82,7 +82,7 @@ final class Access
         }
         $hash = hash('sha256', $token);
         $who = null;
-        foreach ($s->statsAccess as $a) {
+        foreach ($s->dashboardAccess as $a) {
             if (hash_equals($a['hash'], $hash)) {
                 $who = $a['who'];                      // no early return: every line compared
             }
@@ -91,24 +91,25 @@ final class Access
     }
 
     /**
-     * A signed link's query for a group (or '*'), made on the customer's
+     * A signed link's query for a principal (or '*'), made on the customer's
      * panel or CMS with the shared secret -- no token in it, valid $ttl
-     * seconds (at most an hour).
+     * seconds (at most an hour). The principal is opaque to the shield: what
+     * it may see is the pages' business (the statistics: its group's websites).
      */
-    public static function link(Settings $s, string $group, int $ttl = 600, ?int $now = null): string
+    public static function link(Settings $s, string $principal, int $ttl = 600, ?int $now = null): string
     {
-        $who = $group === '*' ? '*' : Settings::groupId($group);
+        $who = $principal === '*' ? '*' : Settings::principal($principal);
         $exp = ($now ?? time()) + max(1, min(self::LINK_MAX, $ttl));
         return http_build_query(['rs-g' => $who, 'rs-exp' => $exp, 'rs-sig' => self::sign($s, "link|$who|$exp")]);
     }
 
     /**
-     * The answer to a request for the statistics: who reads ('*', a group's
-     * ID), or a page to send instead (the login form, a redirect, 429).
+     * The answer to a request for a dashboard page: who reads ('*', a
+     * principal's id), or a page to send instead (the login form, a redirect, 429).
      *
      * @param array<mixed> $get $_GET
      * @param array<mixed> $post $_POST
-     * @param array<string, mixed> $o store, now, lang, accept, action (the page's address), home, homeLabel, always (ask even without stats-access lines),
+     * @param array<string, mixed> $o store, now, lang, accept, action (the page's address), home, homeLabel, always (ask even without dashboard-access lines),
      *                                admin (the site's own login says this reader is the admin -- a CMS's signed-in administrator; a customer's
      *                                cookie or link still wins, and ?rs-login=1 shows the form)
      * @return array{who: ?string, status: int, headers: list<string>, body: ?string}
@@ -143,10 +144,10 @@ final class Access
             }
             $who = self::fromLink($s, $get, $now);
             if ($who === null) {
-                $wrong('stats-access link');
+                $wrong('dashboard-access link');
                 return $page(403, $t['link']);
             }
-            return self::answer(null, 303, [...$headers, ...[self::cookieHeader($s, $who, $now + $s->statsSession, $request), 'Location: ' . $here]], null);
+            return self::answer(null, 303, [...$headers, ...[self::cookieHeader($s, $who, $now + $s->dashboardSession, $request), 'Location: ' . $here]], null);
         }
         // The login form: a token, by POST, from this very page.
         if (isset($post['rs-token'])) {
@@ -159,10 +160,10 @@ final class Access
             }
             $who = self::whoseToken($s, is_string($post['rs-token']) ? trim($post['rs-token']) : '');
             if ($who === null) {
-                $wrong('stats-access token');
+                $wrong('dashboard-access token');
                 return $page(401, $t['wrong']);
             }
-            return self::answer(null, 303, [...$headers, ...[self::cookieHeader($s, $who, $now + $s->statsSession, $request), 'Location: ' . $here]], null);
+            return self::answer(null, 303, [...$headers, ...[self::cookieHeader($s, $who, $now + $s->dashboardSession, $request), 'Location: ' . $here]], null);
         }
         // A program: Authorization: Bearer <token>.
         $auth = (string) $request->header('authorization');
@@ -172,7 +173,7 @@ final class Access
             }
             $who = self::whoseToken($s, trim(substr($auth, 7)));
             if ($who === null) {
-                $wrong('stats-access bearer');
+                $wrong('dashboard-access bearer');
                 return self::answer(null, 401, $headers, null);
             }
             return self::answer($who, 200, $headers, null);
@@ -220,23 +221,10 @@ final class Access
         $exp = is_string($get['rs-exp'] ?? null) && ctype_digit($get['rs-exp']) ? (int) $get['rs-exp'] : 0;
         $sig = is_string($get['rs-sig'] ?? null) ? $get['rs-sig'] : '';
         $now ??= time();
-        if (($who !== '*' && !isset($s->statsGroups[$who])) || $exp < $now || $exp > $now + self::LINK_MAX || !hash_equals(self::sign($s, "link|$who|$exp"), $sig)) {
+        if (($who !== '*' && preg_match('/^[a-z0-9][a-z0-9-]{0,60}$/', $who) !== 1) || $exp < $now || $exp > $now + self::LINK_MAX || !hash_equals(self::sign($s, "link|$who|$exp"), $sig)) {
             return null;
         }
         return $who;
-    }
-
-    /**
-     * What a reader may see: the website switch's choice for a group (its own
-     * group, or one of its websites; else the whole group), null for the admin.
-     */
-    public static function site(Settings $s, string $who, ?string $asked): ?string
-    {
-        if ($who === '*') {
-            return $asked;
-        }
-        $sites = $s->statsGroups[$who]['sites'] ?? [];
-        return $asked !== null && ($asked === 'group:' . $who || in_array($asked, $sites, true)) ? $asked : 'group:' . $who;
     }
 
     /**
@@ -284,7 +272,7 @@ final class Access
     private static function generation(Settings $s, string $who): string
     {
         $hashes = [];
-        foreach ($s->statsAccess as $a) {
+        foreach ($s->dashboardAccess as $a) {
             if ($a['who'] === $who) {
                 $hashes[] = $a['hash'];
             }

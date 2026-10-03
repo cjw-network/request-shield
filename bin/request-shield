@@ -12,7 +12,7 @@
  *   php bin/request-shield trace  site.rules "GET https://www.example.org/wp-login.php" [--ip=<address>] [--ua=<User-Agent>]
  *   php bin/request-shield test   site.rules [--source=<glob>]... [--only=<ID>] [--as-written] [--junit=<file>]
  *   php bin/request-shield crawlers site.rules [update] [--force]
- *   php bin/request-shield token site.rules "<group>"|'*'
+ *   php bin/request-shield access-token site.rules "<principal>"|'*'
  *   php bin/request-shield feeds site.rules [list|update|export] [--force] [--format=plain|nginx|nftables|ipset] [--write=<file>]
  *   php bin/request-shield stats site.rules [--days=7 | --from=2026-01-01 --to=2026-09-30] [--by=day|week|month|year] [--crawler=<ID>] [--path=/news/] [--sort=views|blocked|refused|checked|throttled] [--site=<website>|other | --group=<group>] [--json]
  *   php bin/request-shield version [site.rules]
@@ -37,8 +37,8 @@
  *         lists into store-dir (cron, a deploy -- or where there is internet,
  *         copying store-dir/crawlers/ into a DMZ); the servers read them on their
  *         next check. A list that shrank to less than half is kept unless --force.
- * token:  a new access token for the statistics (proposal 0023): printed once,
- *         with the stats-access line to paste -- only its hash goes into the
+ * access-token: a new token for the dashboard (proposal 0023): printed once,
+ *         with the dashboard-access line to paste -- only its hash goes into the
  *         rule file. "*" for everything, a group's name for its websites only.
  * feeds:  the public blocklists the rules name (feed …): how many entries, how
  *         old. "update" fetches those that are due (cron, e.g. hourly; each at
@@ -93,7 +93,7 @@ foreach ($args as $a) {
     } elseif (strncmp($a, '--site=', 7) === 0) {
         $period['site'] = strtolower(substr($a, 7));
     } elseif (strncmp($a, '--group=', 8) === 0) {
-        $period['site'] = 'group:' . \CjwNetwork\RequestShield\Settings::groupId(substr($a, 8));
+        $period['site'] = 'group:' . \CjwNetwork\RequestShield\Settings::principal(substr($a, 8));
     } elseif (strncmp($a, '--crawler=', 10) === 0) {
         $period['crawler'] = substr($a, 10);
     } elseif (strncmp($a, '--path=', 7) === 0) {
@@ -173,8 +173,8 @@ if ($command === 'version' || $command === '--version') {
     exit(0);
 }
 
-if (!in_array($command, ['check', 'show', 'reload', 'trace', 'test', 'crawlers', 'feeds', 'stats', 'token', 'deny', 'allow', 'unlist', 'lists'], true) || $file === null
-    || ($command === 'token' && $what === null)
+if (!in_array($command, ['check', 'show', 'reload', 'trace', 'test', 'crawlers', 'feeds', 'stats', 'access-token', 'deny', 'allow', 'unlist', 'lists'], true) || $file === null
+    || ($command === 'access-token' && $what === null)
     || ($command === 'feeds' && $what !== null && !in_array($what, ['list', 'update', 'export'], true))
     || (in_array($command, ['trace', 'deny', 'allow', 'unlist'], true) && $what === null)
     || ($command === 'crawlers' && $what !== null && $what !== 'update')) {
@@ -182,7 +182,7 @@ if (!in_array($command, ['check', 'show', 'reload', 'trace', 'test', 'crawlers',
         . "       request-shield trace <main.rules> \"GET https://www.example.org/path\" [--ip=<address>] [--ua=<User-Agent>] [--source=<glob>]...\n"
         . "       request-shield test <main.rules> [--source=<glob>]... [--only=<ID>] [--as-written] [--junit=<file>]\n"
         . "       request-shield crawlers <main.rules> [update] [--force]\n"
-        . "       request-shield token <main.rules> \"<group>\"|'*'\n"
+        . "       request-shield access-token <main.rules> \"<principal>\"|'*'\n"
         . "       request-shield feeds <main.rules> [list|update|export] [--force] [--format=plain|nginx|nftables|ipset] [--write=<file>]\n"
         . "       request-shield stats <main.rules> [--days=7 | --from=YYYY-MM-DD --to=YYYY-MM-DD] [--by=day|week|month|year] [--crawler=<ID>] [--path=/news/] [--sort=views|blocked|refused|checked|throttled] [--site=<website>|other | --group=<group>] [--json]\n"
         . "       request-shield deny|allow <main.rules> <address|range> [--for=7d | --until=2026-10-07[T15:30]] [--reason=\"…\"] [--force]\n"
@@ -268,18 +268,25 @@ try {
     exit(1);
 }
 
-if ($command === 'token') {
-    // A token for the statistics: shown once; the rule file keeps its hash.
+if ($command === 'access-token') {
+    // A token for the dashboard: shown once; the rule file keeps its hash. The
+    // principal is an opaque id to the shield ("Customer A" -> customer-a); the
+    // statistics map it to a group's websites (stats-group).
     $who = (string) $what;
-    if ($who !== '*' && !isset($settings->statsGroups[\CjwNetwork\RequestShield\Settings::groupId($who)])) {
-        fwrite(STDERR, "request-shield: no group \"$who\" (stats-group …" . ($settings->statsGroups === [] ? '' : ': ' . implode(', ', array_column($settings->statsGroups, 'name'))) . ") -- or '*' for everything\n");
+    $id = $who === '*' ? '*' : \CjwNetwork\RequestShield\Settings::principal($who);
+    if ($id === '') {
+        fwrite(STDERR, "request-shield: a principal is a name of letters and digits (\"Customer A\"), or '*' for everything\n");
         exit(2);
     }
+    $groups = class_exists(\CjwNetwork\RequestShield\StatsExtension::class) ? \CjwNetwork\RequestShield\StatsExtension::of($settings)['groups'] : [];
+    if ($id !== '*' && $groups !== [] && !isset($groups[$id])) {
+        fwrite(STDERR, "warning: no stats-group named \"$who\" (" . implode(', ', array_column($groups, 'name')) . ") -- the token opens the dashboard, but no statistics\n");
+    }
     [$token, $hash] = \CjwNetwork\RequestShield\Access::token();
-    $name = $who === '*' ? '*' : '"' . $settings->statsGroups[\CjwNetwork\RequestShield\Settings::groupId($who)]['name'] . '"';
+    $name = $id === '*' ? '*' : (isset($groups[$id]) ? '"' . $groups[$id]['name'] . '"' : $id);
     echo "the token (give it to whoever reads; it is not kept anywhere):\n\n    $token\n\n";
-    echo "the line for the rule file (only the hash):\n\n    stats-access $name sha256:$hash\n\n";
-    echo "then: request-shield reload $file -- the token opens " . ($who === '*' ? 'everything' : "the statistics of $name only") . "\n";
+    echo "the line for the rule file (only the hash):\n\n    dashboard-access $name sha256:$hash\n\n";
+    echo "then: request-shield reload $file -- the token opens " . ($id === '*' ? 'everything' : "the pages of $name only") . "\n";
     exit(0);
 }
 
@@ -455,7 +462,7 @@ if ($command === 'stats') {
     }
     if (isset($period['site']) && $period['site'] !== 'other' && !\CjwNetwork\RequestShield\Stats::known($settings, $period['site'])) {
         fwrite(STDERR, $so['hosts'] === [] ? "no statistics per website: set stats-hosts (or stats-group) in the rule file\n"
-            : (strncmp($period['site'], 'group:', 6) === 0 ? 'no group ' . substr($period['site'], 6) . ' (' . implode(', ', array_keys($settings->statsGroups)) . ")\n"
+            : (strncmp($period['site'], 'group:', 6) === 0 ? 'no group ' . substr($period['site'], 6) . ' (' . implode(', ', array_keys($so['groups'])) . ")\n"
             : "no website {$period['site']} in stats-hosts (" . implode(', ', $so['hosts']) . ", other)\n"));
         exit(2);
     }
@@ -678,7 +685,7 @@ if ($command === 'check' || $command === 'reload') {
     $open = \CjwNetwork\RequestShield\Dashboard::unguarded($settings);
     if ($open !== []) {
         fwrite(STDERR, "warning: the dashboard's pages are open to everyone (" . implode(', ', array_slice($open, 0, 3)) . (count($open) > 3 ? ', …' : '')
-            . ") -- add a rule such as \"restrict {$settings->dashboardPath}/** to <your addresses>\", or a login (stats-access)\n");
+            . ") -- add a rule such as \"restrict {$settings->dashboardPath}/** to <your addresses>\", or a login (dashboard-access)\n");
         $warnings++;
     }
     // The extensions' own warnings about the compiled settings (Extension::check(), 0031 B.4).

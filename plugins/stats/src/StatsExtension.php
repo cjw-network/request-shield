@@ -24,9 +24,7 @@ use CjwNetwork\RequestShield\Rules\Vocabulary;
  *
  * Its pages (routes(), 0031 B.5) live below `set stats-path` (default
  * <dashboard-path>/stats): the registry in the compiled settings knows them,
- * the frame's tabs and the pace's exemption follow. What stays in the core
- * until 0031 B.7: stats-group, stats-access and stats-session -- Access reads
- * them, and the core never reads an extension's slot.
+ * the frame's tabs and the pace's exemption follow.
  */
 final class StatsExtension implements Extension
 {
@@ -42,11 +40,11 @@ final class StatsExtension implements Extension
      * The compiled slot: every key there, the statistics off. What a reader
      * sees when the extension did not compile (no slot at all).
      *
-     * @return array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, path: string, hosts: list<string>, skip: list<string>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}}
+     * @return array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, path: string, hosts: list<string>, skip: list<string>, groups: array<string, array{name: string, sites: list<string>, rule: string}>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}}
      */
     public static function defaults(): array
     {
-        return ['enabled' => false, 'parts' => self::PARTS, 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 60, 'depth' => 2, 'path' => '/rs/stats', 'hosts' => [], 'skip' => [],
+        return ['enabled' => false, 'parts' => self::PARTS, 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 60, 'depth' => 2, 'path' => '/rs/stats', 'hosts' => [], 'skip' => [], 'groups' => [],
             'crawlerLog' => ['dir' => null, 'kinds' => [], 'days' => 30, 'query' => true]];
     }
 
@@ -54,11 +52,11 @@ final class StatsExtension implements Extension
      * The statistics' settings of $s: its compiled slot, or the defaults when
      * there is none -- a reader never sees a missing key.
      *
-     * @return array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, path: string, hosts: list<string>, skip: list<string>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}}
+     * @return array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, path: string, hosts: list<string>, skip: list<string>, groups: array<string, array{name: string, sites: list<string>, rule: string}>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}}
      */
     public static function of(Settings $s): array
     {
-        /** @var array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, path: string, hosts: list<string>, skip: list<string>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}} */
+        /** @var array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, path: string, hosts: list<string>, skip: list<string>, groups: array<string, array{name: string, sites: list<string>, rule: string}>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}} */
         return $s->ext['stats'] ?? self::defaults();
     }
 
@@ -98,6 +96,31 @@ final class StatsExtension implements Extension
         $v->set('crawler-log-days', 'int', 'days a crawler\'s log is kept', null, 'crawlerLog.days');
         $v->set('crawler-log-query', 'bool', 'whether the crawler logs keep the query string', null, 'crawlerLog.query');
         // stats-skip <paths>: not in the statistics when they pass (a map proxy's tiles); protected all the same.
+        // stats-group "<name>" <websites>: a customer's websites, read together and each on its own;
+        // the group's id (customer-a) is the principal dashboard-access names.
+        $v->word('stats-group', static function (array $args, array $values, string $at, string $rid): array {
+            $usage = 'stats-group "<name>" <websites> (stats-group "Customer A" a.de www.a.de)';
+            $line = implode(' ', $args);
+            if (preg_match('/^(?:"([^"]{1,60})"|([^"\s]{1,60}))\s+(\S.*)$/', trim($line), $m) !== 1) {
+                throw new RuleFileException("$at: $usage");
+            }
+            $name = trim($m[1] !== '' ? $m[1] : $m[2]);
+            $sites = [];
+            foreach (preg_split('/\s+/', strtolower(trim($m[3]))) ?: [] as $site) {
+                $site = rtrim($site, '.');
+                if (preg_match('/^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/', $site) !== 1) {
+                    throw new RuleFileException("$at: stats-group takes website names (www.example.org, *.example.org) after its name, not \"$site\"");
+                }
+                $sites[] = $site;
+            }
+            if ($name === '' || $sites === []) {
+                throw new RuleFileException("$at: $usage");
+            }
+            $groups = is_array($values['groups'] ?? null) ? $values['groups'] : [];
+            $groups[] = ['name' => $name, 'sites' => array_values(array_unique($sites)), 'rule' => $rid];
+            $values['groups'] = $groups;
+            return $values;
+        }, 'stats-group "<name>" <websites>: a customer\'s websites, read together and each on its own', serverWide: true);
         $v->word('stats-skip', static function (array $args, array $values, string $at, string $rid): array {
             if ($args === []) {
                 throw new RuleFileException("$at: stats-skip needs at least one value");
@@ -179,6 +202,7 @@ final class StatsExtension implements Extension
             'path' => self::path($raw, $base),
             'hosts' => self::hosts($raw, $base),
             'skip' => $skip,
+            'groups' => self::groups($raw),
             'crawlerLog' => ['dir' => $dir, 'kinds' => $kinds, 'days' => max(1, Settings::int($log, 'days', 'ext.stats.crawlerLog.days', 30)),
                 'query' => Settings::bool($log, 'query', 'ext.stats.crawlerLog.query', true)],
         ];
@@ -204,6 +228,49 @@ final class StatsExtension implements Extension
     }
 
     /**
+     * The groups (stats-group): id (customer-a) => its name, its websites, the
+     * rule -- the principal dashboard-access names is the id.
+     *
+     * @param array<string, mixed> $raw
+     * @return array<string, array{name: string, sites: list<string>, rule: string}>
+     */
+    private static function groups(array $raw): array
+    {
+        $out = [];
+        foreach ((array) ($raw['groups'] ?? []) as $i => $g) {
+            if (!is_array($g) || !is_string($g['name'] ?? null) || !is_array($g['sites'] ?? null) || $g['sites'] === []) {
+                throw Settings::wrong("ext.stats.groups[$i]", "['name' => a name, 'sites' => [websites]]");
+            }
+            $id = Settings::principal($g['name']);
+            if ($id === '' || isset($out[$id])) {
+                throw Settings::wrong("ext.stats.groups[$i]", "a name of its own -- \"{$g['name']}\" is " . ($id === '' ? 'empty' : 'used twice (or names the same as another: ' . $id . ')'));
+            }
+            $sites = [];
+            foreach ($g['sites'] as $site) {
+                if (is_string($site) && $site !== '') {
+                    $sites[] = rtrim(strtolower($site), '.');
+                }
+            }
+            $out[$id] = ['name' => $g['name'], 'sites' => $sites, 'rule' => is_string($g['rule'] ?? null) ? $g['rule'] : "ext.stats.groups[$i]"];
+        }
+        return $out;
+    }
+
+    /**
+     * What a reader may see: the website switch's choice for a principal (its
+     * own group, or one of the group's websites; else the whole group), null
+     * for the administrator ('*'). A principal without a group sees nothing.
+     */
+    public static function siteFor(Settings $s, string $who, ?string $asked): ?string
+    {
+        if ($who === '*') {
+            return $asked;
+        }
+        $sites = self::of($s)['groups'][$who]['sites'] ?? [];
+        return $asked !== null && ($asked === 'group:' . $who || in_array($asked, $sites, true)) ? $asked : 'group:' . $who;
+    }
+
+    /**
      * The websites with statistics of their own: the names given, "host" for
      * the host rule's, "sites" for the site blocks' (not "default") -- and a
      * group's websites (stats-group), counted apart too without naming them twice.
@@ -215,7 +282,7 @@ final class StatsExtension implements Extension
     {
         $out = [];
         $named = (array) ($raw['hosts'] ?? []);
-        foreach ($base->statsGroups as $g) {
+        foreach (self::groups($raw) as $g) {
             foreach ($g['sites'] as $site) {
                 $named[] = $site;
             }
@@ -274,9 +341,17 @@ final class StatsExtension implements Extension
     public static function check(Settings $s): array
     {
         $o = self::of($s);
+        $warnings = [];
         if (($o['enabled'] || $o['crawlerLog']['dir'] !== null) && !class_exists(StatsPlugin::class)) {
-            return ['set stats (or crawler-log) is on, but the statistics plugin is not installed (plugins/stats) -- nothing is counted'];
+            $warnings[] = 'set stats (or crawler-log) is on, but the statistics plugin is not installed (plugins/stats) -- nothing is counted';
         }
-        return [];
+        // A principal the dashboard lets in, but no group of that id: it sees no statistics.
+        foreach ($s->dashboardAccess as $a) {
+            if ($a['who'] !== '*' && !isset($o['groups'][$a['who']])) {
+                $warnings[] = "{$a['rule']}: dashboard-access \"{$a['who']}\" -- no stats-group has that id" . ($o['groups'] === [] ? '' : ' (' . implode(', ', array_keys($o['groups'])) . ')')
+                    . '; the token opens the dashboard, but shows no statistics';
+            }
+        }
+        return $warnings;
     }
 }

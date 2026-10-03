@@ -18,7 +18,7 @@ namespace CjwNetwork\RequestShield;
  *
  * Who may open a page: a `restrict` rule covering it (the address already
  * passed it when we get here: that is the administrator), or a login the
- * gate knows (stats-access; dashboard-access from 0031 B.7). A route with
+ * gate knows (dashboard-access). A route with
  * neither is refused -- `check` warns about it.
  *
  * In a build without the pages (the mini file has no src/Report), a route
@@ -95,8 +95,8 @@ final class Dashboard
         $own = Access::headers($s);
         if (!$admin && !Access::enabled($s)) {
             // Nobody guards this page: refused, and check says what to do.
-            return Response::html(403, self::plain($request, $lang, 'This page is not set up: a restrict rule for ' . $s->dashboardPath . '/** or a login (stats-access) is needed.',
-                'Diese Seite ist nicht eingerichtet: eine restrict-Regel für ' . $s->dashboardPath . '/** oder ein Login (stats-access) fehlt.'), $own);
+            return Response::html(403, self::plain($request, $lang, 'This page is not set up: a restrict rule for ' . $s->dashboardPath . '/** or a login (dashboard-access) is needed.',
+                'Diese Seite ist nicht eingerichtet: eine restrict-Regel für ' . $s->dashboardPath . '/** oder ein Login (dashboard-access) fehlt.'), $own);
         }
         $gate = Access::gate($s, $request, $get, $post, ['admin' => $admin, 'lang' => $lang, 'home' => $home, 'homeLabel' => $homeLabel]);
         if ($gate['who'] === null) {

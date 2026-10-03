@@ -74,7 +74,7 @@ final class RuleFile
         'crawler-verify' => ['crawlerVerify', 'verify'],
         'log' => ['log.file', 'path'],
         'dashboard-path' => ['dashboardPath', 'string'],
-        'stats-session' => ['stats.session', 'seconds'],
+        'dashboard-session' => ['dashboardSession', 'seconds'],
         'log-level' => ['log.level', 'loglevel'],
         'live' => ['live.enabled', 'bool'],
         'live-keep' => ['live.keep', 'seconds'],
@@ -138,7 +138,7 @@ final class RuleFile
     private bool $sawSite = false;
 
     /** "set" keys that are about the server, not a website: not inside a site block. */
-    private const SERVER_WIDE = ['store', 'store-dir', 'secret', 'recheck', 'dns-lookups', 'ipv6-prefix', 'site-from', 'lists-dir', 'ban-growth', 'ban-max', 'live', 'live-keep', 'ban-keep', 'feeds-max-age', 'stats-session'];
+    private const SERVER_WIDE = ['store', 'store-dir', 'secret', 'recheck', 'dns-lookups', 'ipv6-prefix', 'site-from', 'lists-dir', 'ban-growth', 'ban-max', 'live', 'live-keep', 'ban-keep', 'feeds-max-age', 'dashboard-session'];
 
     /** Reading a list file (allow.rules, deny.rules in lists-dir): only list lines there. */
     private bool $listing = false;
@@ -556,7 +556,7 @@ final class RuleFile
                 || (Vocabulary::settingFor(strtolower($parts[0] ?? ''))['serverWide'] ?? false))))) {
             throw new RuleFileException("$at: " . ($keyword === 'trust' ? 'trust' : 'set ' . strtolower($parts[0] ?? '')) . ' is about the server, not a website -- put it above the site blocks');
         }
-        if ($this->siteOpen !== null && ($keyword === 'stats-group' || $keyword === 'stats-access')) {
+        if ($this->siteOpen !== null && ($keyword === 'dashboard-access' || (Vocabulary::wordFor($keyword)['serverWide'] ?? false))) {
             throw new RuleFileException("$at: $keyword is about the server, not a website -- put it above the site blocks");
         }
         if ($this->siteOpen !== null && ($keyword === 'feed' || ($keyword === 'monitor' && strtolower($parts[0] ?? '') === 'feed'))) {
@@ -600,7 +600,7 @@ final class RuleFile
             return;
         }
         $inBlock = $this->blocks !== [] && end($this->blocks)['file'] === $file;
-        if ($inBlock && ($keyword === 'stats-group' || $keyword === 'stats-access')) {
+        if ($inBlock && $keyword === 'dashboard-access') {
             throw new RuleFileException("$at: $keyword does not go inside a match block");
         }
         if ($inBlock && $keyword === 'feed') {
@@ -802,11 +802,8 @@ final class RuleFile
             case 'challenge-exempt':
                 $this->patterns('challenge.exemptPaths', $args, $at, false);
                 return;
-            case 'stats-group':
-                $this->statsGroup($line, $at);
-                return;
-            case 'stats-access':
-                $this->statsAccess($line, $at);
+            case 'dashboard-access':
+                $this->dashboardAccess($line, $at);
                 return;
             case 'api-path':
                 $this->patterns('challenge.apiPaths', $args, $at, false);
@@ -900,7 +897,7 @@ final class RuleFile
      */
     public static function coreWords(): array
     {
-        return ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'stats-group', 'stats-access', 'api-path', 'post-origin', 'backend', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include',
+        return ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'dashboard-access', 'api-path', 'post-origin', 'backend', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include',
             'match', 'monitor', 'expect', 'ids', 'version', 'replace'];
     }
 
@@ -1101,61 +1098,22 @@ final class RuleFile
     }
 
     /**
-     * stats-group "<name>" <websites>: websites of one customer, read
-     * together (their statistics added up). The name in quotes when it has
-     * spaces; the websites as for stats-hosts (names, *.domain).
+     * dashboard-access <principal>|* sha256:<hash> [until <day>]: who may open
+     * the dashboard's pages -- * (everything) or a principal, an opaque id
+     * for the pages (a customer's group in the statistics; its name in
+     * quotes when it has spaces). Only the token's hash is written here
+     * (bin/request-shield access-token "<principal>").
      */
-    private function statsGroup(string $line, string $at): void
+    private function dashboardAccess(string $line, string $at): void
     {
-        $usage = 'stats-group "<name>" <websites> (stats-group "Customer A" a.de www.a.de)';
-        if (preg_match('/^\S+\s+(?:"([^"]{1,60})"|([^"\s]{1,60}))\s+(\S.*)$/', trim($line), $m) !== 1) {
-            throw new RuleFileException("$at: $usage");
-        }
-        $name = trim($m[1] !== '' ? $m[1] : $m[2]);
-        $sites = [];
-        foreach (preg_split('/\s+/', strtolower(trim($m[3]))) ?: [] as $site) {
-            $site = rtrim($site, '.');
-            if (preg_match('/^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/', $site) !== 1) {
-                throw new RuleFileException("$at: stats-group takes website names (www.example.org, *.example.org) after its name, not \"$site\"");
-            }
-            $sites[] = $site;
-        }
-        if ($name === '' || $sites === []) {
-            throw new RuleFileException("$at: $usage");
-        }
-        $stats = &$this->c['stats'];
-        if (!is_array($stats)) {
-            $stats = [];
-        }
-        $groups = &$stats['groups'];
-        if (!is_array($groups)) {
-            $groups = [];
-        }
-        $groups[] = ['name' => $name, 'sites' => array_values(array_unique($sites)), 'rule' => $this->rid];
-    }
-
-    /**
-     * stats-access <group|*> sha256:<hash> [until <day>]: who may read the
-     * statistics -- a group (its name, in quotes when it has spaces) or *
-     * (everything). Only the token's hash is written here
-     * (bin/request-shield token "<group>").
-     */
-    private function statsAccess(string $line, string $at): void
-    {
-        $usage = 'stats-access "<group>"|* sha256:<64 hex> [until <day>] (bin/request-shield token "<group>" prints both)';
+        $usage = 'dashboard-access "<principal>"|* sha256:<64 hex> [until <day>] (bin/request-shield access-token "<principal>" prints both)';
         if (preg_match('/^\S+\s+(?:"([^"]{1,60})"|(\S{1,60}))\s+sha256:([0-9a-f]{64})(?:\s+until\s+(\S+))?\s*$/', trim($line), $m) !== 1) {
             throw new RuleFileException("$at: $usage");
         }
         $who = trim($m[1] !== '' ? $m[1] : $m[2]);
-        $stats = &$this->c['stats'];
-        if (!is_array($stats)) {
-            $stats = [];
-        }
-        $list = &$stats['access'];
-        if (!is_array($list)) {
-            $list = [];
-        }
+        $list = (array) $this->get('dashboardAccess');
         $list[] = ['who' => $who, 'hash' => $m[3], 'until' => isset($m[4]) ? self::until($m[4], $at) : null, 'rule' => $this->rid];
+        $this->put('dashboardAccess', $list);
     }
 
     /**

@@ -104,10 +104,10 @@ set         stats-depth 4                                          # sections to
 set         stats-hosts localhost84 127.0.0.1                     # statistics per website: these two names; any other Host counts as "other hosts"
 stats-group "Customer A" localhost84                           # websites per customer: read together, and each on its own
 stats-group "Customer B" 127.0.0.1
-# Who may read the statistics: only the tokens' hashes (bin/request-shield token "Customer A").
+# Who may read the dashboard: only the tokens' hashes (bin/request-shield access-token "Customer A").
 # Demo tokens, printed on /customer-menu (a demo only): this machine is the admin anyway.
-[DEMO-ADMIN-READ]  stats-access *            sha256:9ff78c7acc39ebe339d300fe2232236d77a34e8a67873660cfb4c7b91a07b926
-[DEMO-CUSTOMER-A]  stats-access "Customer A" sha256:da431e0d8f3f77f08110271b900c7ffa3f3fcb385a67a40637494364155cd54d
+[DEMO-ADMIN-READ]  dashboard-access *            sha256:9ff78c7acc39ebe339d300fe2232236d77a34e8a67873660cfb4c7b91a07b926
+[DEMO-CUSTOMER-A]  dashboard-access "Customer A" sha256:da431e0d8f3f77f08110271b900c7ffa3f3fcb385a67a40637494364155cd54d
 
 # Counters, the generated secret and the log: outside the document root,
 # never in a directory a web server might hand out (the tests set the variable).

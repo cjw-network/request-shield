@@ -148,7 +148,7 @@ return [
         try {
             $s = sitesStatsSettings($dir, "set stats-hosts c.de\n[G-A] stats-group \"Customer A\" a.de www.a.de b.de   # the agency's customer\nstats-group Reseller b.de c.de\n");
             same(['customer-a' => ['name' => 'Customer A', 'sites' => ['a.de', 'www.a.de', 'b.de'], 'rule' => 'G-A'], 'reseller' => ['name' => 'Reseller', 'sites' => ['b.de', 'c.de'], 'rule' => 'site.rules:6']],
-                $s->statsGroups, 'an ID for addresses; a website in two groups');
+                $s->ext['stats']['groups'], 'an ID for addresses; a website in two groups');
             same(['c.de', 'a.de', 'www.a.de', 'b.de'], $s->ext['stats']['hosts'], 'a group\'s websites are counted apart too');
             foreach (['a.de', 'www.a.de', 'b.de', 'b.de', 'c.de', 'x.example'] as $host) {
                 sitesCount(new Shield($s, new MemoryStore()), $host);

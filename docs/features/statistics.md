@@ -218,8 +218,9 @@ nested inside:
 What is not given keeps its default; `'path'` (where the pages live, `set
 stats-path`) defaults to `<dashboardPath>/stats` when it is not given. The
 extension declares its pages below it (`StatsExtension::routes()`), so the
-dashboard's tabs and links follow the setting. `stats-group`, `stats-access`
-and `stats-session` are the core's for now (`'stats' => ['groups' => …,
+dashboard's tabs and links follow the setting. `stats-group` is the
+statistics' word too (`'ext' => ['stats' => ['groups' => …]]`); who may open the
+dashboard is the core's `dashboard-access`/`dashboard-session` (`'dashboardAccess'`,
 'access' => …, 'session' => …]`), until 0031 step B.7 moves them.
 
 ## Where the numbers live — and that they survive a restart
@@ -315,13 +316,19 @@ phase 4): the admin sees everything, a customer only its group.
 
 ```text
 stats-group "Customer A" a.de www.a.de
-stats-access *            sha256:3b4c…                        # the admin: everything
-stats-access "Customer A" sha256:9f2c… until 2027-12-31       # the agency
-stats-access "Customer A" sha256:71aa…                        # the customer's own
-set stats-session 8h                                          # how long a login lasts
+dashboard-access *            sha256:3b4c…                    # the admin: everything
+dashboard-access "Customer A" sha256:9f2c… until 2027-12-31   # the agency
+dashboard-access "Customer A" sha256:71aa…                    # the customer's own
+set dashboard-session 8h                                      # how long a login lasts
 ```
 
-- **A token** is 32 random bytes: `bin/request-shield token site.rules "Customer A"`
+- **The principal is opaque to the shield** (0031 B.7): `dashboard-access`
+  names who may open the dashboard -- `*` or an id (`"Customer A"` →
+  `customer-a`); what that reader may see is the pages' business. The
+  statistics map the id to a `stats-group` of the same name: its websites,
+  nothing else; a principal without a group opens the dashboard and sees no
+  statistics (`check` warns about it).
+- **A token** is 32 random bytes: `bin/request-shield access-token site.rules "Customer A"`
   prints it once, and the line to paste. **The rule file holds only its SHA-256.**
   Someone who reads the rules cannot get in. Several tokens per group (one for
   the agency, one for the customer); each may end (`until`); withdrawn by
@@ -334,7 +341,7 @@ set stats-session 8h                                          # how long a login
 - **Three ways in:**
   1. **The form:** the token by POST (only from the page itself, `Origin`
      checked), then a signed session cookie (`rsd`, HttpOnly,
-     SameSite=Lax, Secure on HTTPS) for `stats-session`. The token never
+     SameSite=Lax, Secure on HTTPS) for `dashboard-session`. The token never
      appears in an address. `?rs-logout=1` signs out.
   2. **A signed link from the customer's own menu** (a hosting panel, the
      customer's CMS), made on that server with the shield's secret:
@@ -353,7 +360,7 @@ set stats-session 8h                                          # how long a login
   Every page: `X-Robots-Tag: noindex`, `Cache-Control: private, no-store`,
   `Referrer-Policy: no-referrer`, `frame-ancestors 'self'`. A site's
   `restrict /rs/** to …` still applies first.
-- **Without `stats-access` lines nothing is asked:** the site's own rules
+- **Without `dashboard-access` lines nothing is asked:** the site's own rules
   decide, as before.
 - **The site's administrator:** `Access::gate(…, ['admin' => true])` when the
   site knows it is the administrator (an address of the office, its own login):
@@ -368,7 +375,7 @@ open (`Access::links()`). The site's own administrator is whoever passes the
 own backend can still call `StatsPage::render()` with `'who'` from a gate of
 its own, as the demo's `/customer-menu` makes a signed link with `Access::link()`.
 
-For the JSON (`?format=json`): the shield passes `Access::site($settings, $who, $_GET['site'] ?? null)` to
+For the JSON (`?format=json`): the statistics pass `StatsExtension::siteFor($settings, $who, $_GET['site'] ?? null)` to
 `StatsReport::build()` -- a customer sees its group's websites, whatever it asks for.
 
 ## What is counted how

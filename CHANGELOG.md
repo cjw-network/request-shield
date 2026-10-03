@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Who may open the dashboard is the core's, who sees what is the pages'**
+  (0031 step B.7): `dashboard-access "<principal>"|* sha256:<hash> [until
+  <day>]` and `set dashboard-session` replace `stats-access` and
+  `stats-session`; the principal is an opaque id to the shield (`"Customer A"`
+  → `customer-a`, a signed link or a token for any id holds), and the
+  statistics map it to the `stats-group` of the same name -- `stats-group` is
+  the statistics extension's word now (`ext.stats.groups`), a principal
+  without a group sees no statistics and `check` says so. The CLI command is
+  `access-token` (was `token`). Compiled settings format 44
+  ([docs](docs/features/statistics.md#who-sees-what-tokens-a-login-signed-links)).
 - **The shield serves the dashboard's pages itself** (0031 step B.6): a
   request for a route below `dashboard-path` (`/rs/waf/live`, `/rs/stats/…`,
   an extension's own) is answered before the application -- behind

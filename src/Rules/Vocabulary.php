@@ -36,13 +36,13 @@ final class Vocabulary
     /** The shipped extensions (REQUEST_SHIELD_EXTENSIONS) are offered: on the first lookup, or forgotten with the rest. */
     private static bool $shipped = false;
 
-    /** @var array<string, array{id: string, parse: callable, help: string, paths: bool}>|null keyword => its owner; null: indexed on the next lookup */
+    /** @var array<string, array{id: string, parse: callable, help: string, paths: bool, serverWide: bool}>|null keyword => its owner; null: indexed on the next lookup */
     private static ?array $words = null;
 
     /** @var array<string, array{id: string, name: string, type: string, check: ?callable, help: string, serverWide: bool, many: bool}>|null set key => its owner */
     private static ?array $settings = null;
 
-    /** @var array<string, array{id: string, parse: callable, help: string, paths: bool}> */
+    /** @var array<string, array{id: string, parse: callable, help: string, paths: bool, serverWide: bool}> */
     private array $myWords = [];
 
     /** @var array<string, array{id: string, name: string, type: string, check: ?callable, help: string, serverWide: bool, many: bool}> */
@@ -128,7 +128,7 @@ final class Vocabulary
     /**
      * Who owns a rule keyword the core does not have.
      *
-     * @return array{id: string, parse: callable, help: string, paths: bool}|null
+     * @return array{id: string, parse: callable, help: string, paths: bool, serverWide: bool}|null
      */
     public static function wordFor(string $keyword): ?array
     {
@@ -203,7 +203,7 @@ final class Vocabulary
      *
      * @param callable(list<string>, array<string, mixed>, string, string): array<string, mixed> $parse
      */
-    public function word(string $keyword, callable $parse, string $help = '', bool $paths = false): void
+    public function word(string $keyword, callable $parse, string $help = '', bool $paths = false, bool $serverWide = false): void
     {
         if (!preg_match('/^[a-z][a-z0-9-]{1,31}$/', $keyword)) {
             throw new \InvalidArgumentException("request-shield: extension {$this->id}: a word is letters, digits and \"-\", not \"$keyword\"");
@@ -214,7 +214,7 @@ final class Vocabulary
         if (isset($this->myWords[$keyword])) {
             throw new \InvalidArgumentException("request-shield: extension {$this->id}: the word $keyword is registered twice");
         }
-        $this->myWords[$keyword] = ['id' => $this->id, 'parse' => $parse, 'help' => $help, 'paths' => $paths];
+        $this->myWords[$keyword] = ['id' => $this->id, 'parse' => $parse, 'help' => $help, 'paths' => $paths, 'serverWide' => $serverWide];
     }
 
     /**

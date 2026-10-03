@@ -171,12 +171,10 @@ final class Settings
         public array $feedWeights = [],
         /** @readonly a fetched list older than this is no longer used, in seconds */
         public int $feedsMaxAge = 259200,
-        /** @var array<string, array{name: string, sites: list<string>, rule: string}> @readonly stats-group: id (customer-a) => its name, its websites */
-        public array $statsGroups = [],
-        /** @var list<array{who: string, hash: string, until: ?int, rule: string}> @readonly stats-access: who ('*' or a group's ID) by a token's SHA-256, in force */
-        public array $statsAccess = [],
-        /** @readonly how long a login to the statistics lasts, in seconds (set stats-session; 8 hours) */
-        public int $statsSession = 28800,
+        /** @var list<array{who: string, hash: string, until: ?int, rule: string}> @readonly dashboard-access: who may open the dashboard's pages -- '*' (everything) or an opaque principal (customer-a; what it may see is the pages' business) -- by a token's SHA-256, in force */
+        public array $dashboardAccess = [],
+        /** @readonly how long a login to the dashboard lasts, in seconds (set dashboard-session; 8 hours) */
+        public int $dashboardSession = 28800,
         /** @var array{missing: string, except: list<string>}|null @readonly post-origin same: forms only from the website's own pages; null: off */
         public ?array $postOrigin = null,
         /** @var list<string> @readonly the editors' area (backend <paths>): its forms counted apart, per area; as patterns */
@@ -312,8 +310,7 @@ final class Settings
             ...self::withFeeds(self::lists($c, $budgets), $feeds = self::feeds($c), self::accessNext($c)),
             ...self::live($c),
             ...array_slice($feeds, 0, 5),
-            ...[self::statsGroups($c)],
-            ...self::statsAccess($c),
+            ...self::dashboardAccess($c),
             ...[self::postOrigin($c), self::patternList($c['backend'] ?? [], 'backend')],
             ...[self::ext($c), self::hooks($c), self::routes($c)],
         ));
@@ -623,41 +620,6 @@ final class Settings
     }
 
     /**
-     * The groups of websites (stats-group): an ID made from the name
-     * ("Customer A" -> customer-a), unique; the websites as given.
-     *
-     * @param array<mixed> $c
-     * @return array<string, array{name: string, sites: list<string>, rule: string}>
-     */
-    private static function statsGroups(array $c): array
-    {
-        $out = [];
-        foreach ((array) (is_array($c['stats'] ?? null) ? ($c['stats']['groups'] ?? []) : []) as $i => $g) {
-            if (!is_array($g) || !is_string($g['name'] ?? null) || !is_array($g['sites'] ?? null) || $g['sites'] === []) {
-                throw self::wrong("stats.groups[$i]", "['name' => a name, 'sites' => [websites]]");
-            }
-            $id = self::groupId($g['name']);
-            if ($id === '' || isset($out[$id])) {
-                throw self::wrong("stats.groups[$i]", "a name of its own -- \"{$g['name']}\" is " . ($id === '' ? 'empty' : 'used twice (or names the same as another: ' . $id . ')'));
-            }
-            $sites = [];
-            foreach ($g['sites'] as $site) {
-                if (is_string($site) && $site !== '') {
-                    $sites[] = rtrim(strtolower($site), '.');
-                }
-            }
-            $out[$id] = ['name' => $g['name'], 'sites' => $sites, 'rule' => is_string($g['rule'] ?? null) ? $g['rule'] : "stats.groups[$i]"];
-        }
-        return $out;
-    }
-
-    /** A group's ID for addresses: "Customer A" -> customer-a. */
-    public static function groupId(string $name): string
-    {
-        return trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($name)), '-');
-    }
-
-    /**
      * post-origin same: what to do without Origin and Referer, and the paths it never applies to.
      *
      * @param array<mixed> $c
@@ -718,14 +680,14 @@ final class Settings
     }
 
     /**
-     * When the next stats-access entry ends: the settings are built again then.
+     * When the next dashboard-access entry ends: the settings are built again then.
      *
      * @param array<mixed> $c
      */
     private static function accessNext(array $c): int
     {
         $next = 0;
-        foreach ((array) (is_array($c['stats'] ?? null) ? ($c['stats']['access'] ?? []) : []) as $a) {
+        foreach ((array) ($c['dashboardAccess'] ?? []) as $a) {
             $until = is_array($a) && is_int($a['until'] ?? null) ? $a['until'] : 0;
             if ($until > time() && ($next === 0 || $until < $next)) {
                 $next = $until;
@@ -900,37 +862,43 @@ final class Settings
 
     /** @param array<mixed> $c */
     /**
-     * Who may read the statistics: '*' or a group of stats-group, by a
-     * token's SHA-256 (the entries whose "until" passed are left out); and
-     * how long a login lasts (1 minute to 30 days).
+     * dashboard-access: who may open the dashboard's pages, by a token's hash --
+     * '*' (everything) or an opaque principal (customer-a): what a principal
+     * may see is the pages' business (the statistics map it to a group's
+     * websites), the core only knows the id. Ended lines are left out.
+     * Plus dashboard-session, the login's lifetime.
      *
      * @param array<mixed> $c
      * @return array{0: list<array{who: string, hash: string, until: ?int, rule: string}>, 1: int}
      */
-    private static function statsAccess(array $c): array
+    private static function dashboardAccess(array $c): array
     {
-        $stats = is_array($c['stats'] ?? null) ? $c['stats'] : [];
-        $groups = self::statsGroups($c);
         $out = [];
-        foreach ((array) ($stats['access'] ?? []) as $i => $a) {
+        foreach ((array) ($c['dashboardAccess'] ?? []) as $i => $a) {
             if (!is_array($a) || !is_string($a['who'] ?? null) || !is_string($a['hash'] ?? null) || preg_match('/^[0-9a-f]{64}$/', $a['hash']) !== 1) {
-                throw self::wrong("stats.access[$i]", "['who' => '*' or a group, 'hash' => the token's SHA-256 in hex]");
+                throw self::wrong("dashboardAccess[$i]", "['who' => '*' or a principal, 'hash' => the token's SHA-256 in hex]");
             }
-            $who = $a['who'] === '*' ? '*' : self::groupId($a['who']);
-            if ($who !== '*' && !isset($groups[$who])) {
-                throw self::wrong("stats.access[$i]", "* or a group of stats-group -- there is no group \"{$a['who']}\"");
+            $who = $a['who'] === '*' ? '*' : self::principal($a['who']);
+            if ($who === '') {
+                throw self::wrong("dashboardAccess[$i]", "* or a principal of letters and digits -- not \"{$a['who']}\"");
             }
             $until = is_int($a['until'] ?? null) ? $a['until'] : null;
             if ($until !== null && $until <= time()) {
                 continue;                               // ended: left out
             }
-            $out[] = ['who' => $who, 'hash' => $a['hash'], 'until' => $until, 'rule' => is_string($a['rule'] ?? null) ? $a['rule'] : "stats.access[$i]"];
+            $out[] = ['who' => $who, 'hash' => $a['hash'], 'until' => $until, 'rule' => is_string($a['rule'] ?? null) ? $a['rule'] : "dashboardAccess[$i]"];
         }
-        $session = $stats['session'] ?? 28800;
+        $session = $c['dashboardSession'] ?? 28800;
         if (!is_int($session) || $session < 60 || $session > 2592000) {
-            throw self::wrong('stats.session', 'seconds from 60 to 2592000 (30 days)');
+            throw self::wrong('dashboardSession', 'seconds from 60 to 2592000 (30 days)');
         }
         return [$out, $session];
+    }
+
+    /** A principal's id, as the dashboard and its links name it: "Customer A" -> customer-a. */
+    public static function principal(string $name): string
+    {
+        return trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($name)), '-');
     }
 
     /** @param array<mixed> $c */
@@ -1234,7 +1202,7 @@ final class Settings
     public const DENY_SHOWN = 100;
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 43;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats; 43: routes compiled, stats path in ext.stats
+    private const FORMAT = 44;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats; 43: routes compiled, stats path in ext.stats; 44: dashboardAccess, dashboardSession (stats-group in ext.stats)
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

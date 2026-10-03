@@ -31,7 +31,7 @@ return [
         same(StatsExtension::class, Vocabulary::extension('stats'), 'the bootstrap names it, the registry offers it on the first lookup');
         $s = statsExtSettings("set stats requests pages\nset stats-flush 30s\nset stats-hosts a.example\nstats-skip /x/**\nmatch /app/** {\n  stats-skip\n}\n");
         $skip = ['#^/x(?:/.*)?$#', '#^/app(?:/.*)?$#'];
-        same(['enabled' => true, 'parts' => ['requests', 'pages'], 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 30, 'depth' => 2, 'path' => '/rs/stats', 'hosts' => ['a.example'], 'skip' => $skip,
+        same(['enabled' => true, 'parts' => ['requests', 'pages'], 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 30, 'depth' => 2, 'path' => '/rs/stats', 'hosts' => ['a.example'], 'skip' => $skip, 'groups' => [],
             'crawlerLog' => ['dir' => null, 'kinds' => [], 'days' => 30, 'query' => true]], $s->ext['stats'] ?? null, 'the exact shape, every key present');
         same($s->ext['stats'] ?? null, StatsExtension::of($s), 'of(): the slot');
         same([StatsPlugin::class], $s->plugins, 'the plugin, added at compile time');

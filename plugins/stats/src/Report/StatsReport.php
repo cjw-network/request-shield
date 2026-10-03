@@ -365,13 +365,13 @@ final class StatsReport
             return $r;
         };
         // A customer (who: a group's ID): its group and its websites, nothing else.
-        $own = $who === '*' ? null : $s->statsGroups[$who] ?? ['sites' => []];
+        $own = $who === '*' ? null : StatsExtension::of($s)['groups'][$who] ?? ['sites' => []];
         $sites = [];
         foreach ($own === null ? array_merge(StatsExtension::of($s)['hosts'], [Stats::OTHER]) : $own['sites'] as $name) {
             $sites[$name] = $row($name);
         }
         $groups = [];
-        foreach ($own === null ? $s->statsGroups : array_intersect_key($s->statsGroups, [$who => 1]) as $id => $g) {
+        foreach ($own === null ? StatsExtension::of($s)['groups'] : array_intersect_key(StatsExtension::of($s)['groups'], [$who => 1]) as $id => $g) {
             $sum = ['views' => 0, 'people' => 0, 'crawlers' => 0, 'search' => 0, 'ai' => 0, 'bots' => 0, 'stopped' => 0, 'notFound' => 0, 'prev' => 0, 'curve' => []];
             foreach ($g['sites'] as $name) {
                 foreach ($sites[$name] ?? [] as $k => $v) {

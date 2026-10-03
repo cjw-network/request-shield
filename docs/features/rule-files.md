@@ -65,8 +65,8 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `no-limit <name>` | `budgets` | switch a budget off, the default one too |
 | `challenge <paths> [max-age <duration>]` | `challenge.alwaysPaths`, `challenge.alwaysMaxAge` | always check the browser there; `max-age 5m`: a pass from the last five minutes there ([modes](modes.md)) |
 | `monitor <rule>` | `monitorRules` | before `block`, `restrict`, `allow`, `limit`, `challenge`, `ban`, `feed`, `query strict`: logged as it would decide, not enforced ([modes](modes.md)) |
-| `stats-group "<name>" <websites>` | `stats.groups` | websites of one customer, read together and each on its own; counted apart without naming them in `stats-hosts`; above the site blocks ([groups](statistics.md#groups-websites-per-customer)) |
-| `stats-access "<group>"\|* sha256:<hash> [until <day>]` | `stats.access` | who may read the statistics: the admin (`*`) or a group; only the token's hash (`bin/request-shield token`); above the site blocks ([who sees what](statistics.md#who-sees-what-tokens-a-login-signed-links)) |
+| `stats-group "<name>" <websites>` | `ext.stats.groups` | websites of one customer, read together and each on its own; counted apart without naming them in `stats-hosts`; above the site blocks ([groups](statistics.md#groups-websites-per-customer)) |
+| `dashboard-access "<principal>"\|* sha256:<hash> [until <day>]` | `dashboardAccess` | who may open the dashboard: the admin (`*`) or a principal (a customer's group in the statistics); only the token's hash (`bin/request-shield access-token`); above the site blocks ([who sees what](statistics.md#who-sees-what-tokens-a-login-signed-links)) |
 | `stats-skip <paths>` | `ext.stats.skip` | not in the statistics when they pass (a map proxy's tiles); refused or checked they are counted; protected all the same ([statistics](statistics.md#paths-that-are-not-counted-stats-skip)) |
 | `challenge-exempt <paths>` | `challenge.exemptPaths` | never challenge there (APIs, feeds) |
 | `exempt <addresses or ranges> [until <day>[T<hh:mm>]]` | `exempt.ips` | never counted and never checked, still refused for blocked paths and attack patterns ([IP lists](ip-lists.md)) |
@@ -333,7 +333,7 @@ keeps both the same.
 | `stats-hours`, `stats-days`, `stats-months`, `stats-flush` | days the hours are kept (7), days the day totals are kept (400, then summed into months), months kept (0: for good), seconds between writes to disk with APCu (60) |
 | `site-from` | which name picks a site block: `server-name` (the default, the web server's) or `host` (the Host header) — [site blocks](#site-blocks-rules-per-website) |
 | `plugin` (a rule, not `set`) | `plugin Vendor\Package\MyPlugin`: a [plugin](plugins.md), told what was decided and how a request ended; the statistics need none (`set stats on`); a class that is an [extension](plugins.md#extensions-words-and-settings-of-their-own) brings words and `set` keys of its own, known from its `plugin` line on |
-| `stats-session` | how long a login to the statistics lasts (`8h`; 1 minute to 30 days) |
+| `dashboard-session` | how long a login to the dashboard lasts (`8h`; 1 minute to 30 days) |
 | `stats-path` | where the statistics plugin's pages live (default `<dashboard-path>/stats`): `…/sites`, `/overview`, `/visitors`, `/protection` below it; the core's stay at `<dashboard-path>/waf/` |
 | `stats-hosts` | the websites with statistics of their own: names, `*.domain`, `host` (the host rule's), `sites` (the site blocks'); any other name counts as "other hosts" ([statistics per website](statistics.md#statistics-per-website)) |
 | `stats-depth` | folder levels a section's views are counted for exactly, 1 to 4 (2: `/news/`, `/news/2026/`; 3 where a language takes the first level: `/de/news/2026/`) |
