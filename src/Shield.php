@@ -29,6 +29,7 @@ use CjwNetwork\RequestShield\Rule\MethodRule;
 use CjwNetwork\RequestShield\Rule\PathSanityRule;
 use CjwNetwork\RequestShield\Rule\QueryRule;
 use CjwNetwork\RequestShield\Rule\RestrictedPathRule;
+use CjwNetwork\RequestShield\Rule\Step;
 use CjwNetwork\RequestShield\Rule\Rule;
 use CjwNetwork\RequestShield\Store\ApcuStore;
 use CjwNetwork\RequestShield\Store\FileStore;
@@ -59,6 +60,9 @@ final class Shield
 
     /** @var list<Rule> */
     private array $rules = [];
+
+    /** @var list<Step>|null the rule chain, derived when asked (chain()) */
+    private ?array $steps = null;
 
     /** @readonly */
 
@@ -109,6 +113,8 @@ final class Shield
         }
 
         // Kept out (the deny list), then banned for a while: before anything else.
+        // The order is Step::table()'s (ChainTest guards it): chain() derives the
+        // steps from these rules when a trace or a page asks -- a request never does.
         if ($s->denyTable !== []) {
             $this->rules[] = new DenyRule($s->denyTable);
         }
@@ -160,6 +166,29 @@ final class Shield
                 $this->rules[] = $this->budgetRule($budget);
             }
         }
+    }
+
+    /**
+     * The rule chain (0031 C.1): every step in the order the shield checks,
+     * the stages' steps without a rule where their settings are not in use.
+     * Derived from the rules when first asked (a trace, the rules page) --
+     * a request pays nothing for it.
+     *
+     * @return list<Step>
+     */
+    public function chain(): array
+    {
+        return $this->steps ??= $this->settings->mode === 'off' ? [] : Step::fromRules($this->rules);
+    }
+
+    /**
+     * The rules the request path runs, in order (the active steps of chain()).
+     *
+     * @return list<Rule>
+     */
+    public function rules(): array
+    {
+        return $this->rules;
     }
 
     /**

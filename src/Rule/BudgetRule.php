@@ -38,6 +38,12 @@ final class BudgetRule implements Rule
     ) {
     }
 
+    /** The budget's name (set limit <name> …): the step's key in the chain. */
+    public function name(): string
+    {
+        return $this->name;
+    }
+
     /** @param int $times how often this request counts (strict: twice for one a cache must not keep) */
     public function check(Request $request, float $now, int $times = 1): ?Decision
     {

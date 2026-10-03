@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The rule chain is one list** (0031 step C.1): `Shield::chain()` returns
+  the steps the shield checks, in order, each with a key and a stage
+  (`Rule\Step`, derived from the rules when a trace or a page asks -- a
+  request pays nothing; a step whose settings are not in use has no rule);
+  `request-shield trace` and the rules page's tester walk that list instead of
+  a copy of their own -- a rule added to the chain shows up in the trace by itself.
 - **The Pages capability** (0031 step B.10): a plugin draws the pages the
   shield answers with itself -- the refusal page (`error`), the browser check
   (`challenge`) and the dashboard's login form (`access-login`) -- in the

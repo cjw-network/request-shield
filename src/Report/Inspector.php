@@ -86,8 +86,10 @@ final class Inspector
     }
 
     /**
+     * Every step of the chain (Shield::chain(), 0031 C.1) tried against the
+     * request, in words; then the browser check and the verdict.
+     *
      * @return array{steps: list<array{check: string, key: string, state: string, text: string, rule: ?string}>, decision: Decision, verdict: string, rule: ?string, watched: ?string}
-     *   check: the step's name (in the language), key: the same in English, for a diagram
      */
     public function trace(Request $request, ?float $now = null): array
     {
@@ -99,118 +101,143 @@ final class Inspector
         /** @var list<array{check: string, key: string, state: string, text: string, rule: ?string}> $steps */
         $steps = [];
         $stopped = false;
-        $step = function (string $check, ?Decision $d, string $passText, callable $stopText, ?string $name = null) use (&$steps, &$stopped, $request, $w): void {
-            $name ??= $w($check);
+        $step = function (string $check, string $key, ?Decision $d, string $passText, callable $stopText, ?string $name = null) use (&$steps, &$stopped, $request): void {
+            $name ??= $this->w($check);
             if ($stopped) {
-                $steps[] = ['check' => $name, 'key' => $check, 'state' => 'skip', 'text' => $w('not checked: already refused above'), 'rule' => null];
+                $steps[] = ['check' => $name, 'key' => $key, 'state' => 'skip', 'text' => $this->w('not checked: already refused above'), 'rule' => null];
                 return;
             }
             if ($d === null) {
-                $steps[] = ['check' => $name, 'key' => $check, 'state' => 'pass', 'text' => $passText, 'rule' => null];
+                $steps[] = ['check' => $name, 'key' => $key, 'state' => 'pass', 'text' => $passText, 'rule' => null];
                 return;
             }
             $text = $stopText($d);
             $stop = $d->action === Decision::REJECT || $d->action === Decision::THROTTLE;
             $stopped = $d->action === Decision::REJECT;
-            $steps[] = ['check' => $name, 'key' => $check, 'state' => $stop ? 'stop' : 'note', 'text' => is_string($text) ? $text : '', 'rule' => $this->shield->explain($d, $request)];
+            $steps[] = ['check' => $name, 'key' => $key, 'state' => $stop ? 'stop' : 'note', 'text' => is_string($text) ? $text : '', 'rule' => $this->shield->explain($d, $request)];
         };
         $methods = implode(', ', $s->methods);
 
-        $step('Kept out', $s->denyTable === [] ? null : (new \CjwNetwork\RequestShield\Rule\DenyRule($s->denyTable))->check($request, $now),
-            $s->denyTable === [] ? $w('no address is kept out') : $w('%s is not on the deny list', $request->clientIp),
-            static fn (): string => $w('%s is on the deny list: 403 before everything else', $request->clientIp));
-        $feed = $s->feeds === [] ? null : ($this->shield->feedHit($request, 'deny') !== null ? Decision::reject(403, 'feed')
-            : ($this->shield->feedHit($request, 'check') !== null ? Decision::challenge('feed') : null));
-        $step('Public lists', $feed, $s->feeds === [] ? $w('no public blocklists') : $w('%s is on none of the public blocklists', $request->clientIp),
-            static fn (Decision $d): string => $d->action === Decision::REJECT ? $w('%s is on a public blocklist: 403', $request->clientIp)
-                : $w('%s is on a public blocklist: the browser check', $request->clientIp));
-        $banned = $s->bans === [] ? null : (new \CjwNetwork\RequestShield\Rule\BanRule($this->store, $s->exemptIps, $s->ipv6Prefix))->check($request, $now);
-        $step('Banned', $banned, $s->bans === [] ? $w('no automatic bans') : $w('%s is not banned', $request->clientIp),
-            static fn (Decision $d): string => $w('banned for a while: %s more seconds, nothing but 429', (string) $d->retryAfter));
-        $step('Kind of request', (new MethodRule($s->methods))->check($request, $now),
-            $w('%s is accepted (%s)', $request->method, $methods),
-            static fn (): string => $w('%s is not accepted — only %s', $request->method, $methods));
-        $step('Size', (new LimitsRule($s->maxUri, $s->maxQueryParameters, $s->maxHeaderBytes))->check($request, $now),
-            $w('address, parameters and headers within the limits (%s characters, %s parameters)', (string) $s->maxUri, (string) $s->maxQueryParameters),
-            static fn (Decision $d): string => ucfirst(Describe::reason($d->reason, $l)));
-        $step('Disguised address', (new PathSanityRule())->check($request, $now),
-            $w('the address is what it seems: no hidden encoding, no way out of the website\'s folder'),
-            static fn (Decision $d): string => ucfirst(Describe::reason($d->reason, $l)));
-        $step('Website name', $s->hosts === [] ? null : (new HostRule($s->hosts))->check($request, $now),
-            $s->hosts === [] ? $w('any website name is accepted') : $w('"%s" is one of this site\'s names', $request->host),
-            static fn (): string => $w('"%s" is not one of this site\'s names (%s)', $request->host, implode(', ', $s->hosts)));
-        $step('Addresses only attackers ask for', (new BlockedPathRule($s->blockedPaths, $s->blockExceptions))->check($request, $now),
-            $this->blockedPass($request),
-            fn (Decision $d): string => $w('refused: %s', $this->blockedMatch($request)));
-        $step('Where forms may be sent', $s->methodPaths === [] ? null : (new MethodPathRule($s->methodPaths))->check($request, $now),
-            isset($s->methodPaths[$request->method]) ? $w('%s is allowed at this address', $request->method) : ($s->methodPaths === [] ? $w('no restriction') : $w('no restriction for %s', $request->method)),
-            static fn (): string => $w('a %s is only accepted at: %s', $request->method, implode(', ', array_map($pattern, $s->methodPaths[$request->method] ?? []))));
-        // Forms only from the website itself (post-origin same).
-        $origin = null;
-        $originPass = $w('not checked (no post-origin rule)');
-        if ($s->postOrigin !== null) {
-            $origin = (new \CjwNetwork\RequestShield\Rule\PostOriginRule(Shield::ownNames($s), $s->postOrigin['missing'], $s->postOrigin['except'], $s->challenge->apiPaths, $s->exemptIps))->check($request, $now);
-            $from = \CjwNetwork\RequestShield\Rule\PostOriginRule::sentFrom($request);
-            $originPass = !in_array($request->method, ['POST', 'PUT', 'PATCH', 'DELETE'], true) ? $w('not a form (%s)', $request->method)
-                : ($from === null ? $w('it says nowhere where it comes from -- let through here (missing allow, an exception, or an address let in)') : $w('sent from %s: this website, or not checked here', $from));
-        }
-        $step('Where forms come from', $origin, $originPass, static function (Decision $d) use ($w, $request): string {
-            $from = \CjwNetwork\RequestShield\Rule\PostOriginRule::sentFrom($request);
-            return $d->reason === 'cross-site' ? $w('sent from %s -- another website (Origin, else Referer)', (string) $from) : $w('neither Origin nor Referer: %s', $d->action === Decision::CHALLENGE ? $w('the browser check') : $w('refused'));
-        });
-        $restricted = $s->restricted === [] ? null : (new RestrictedPathRule($s->restricted))->check($request, $now);
-        $step('Areas for certain visitors', $restricted, $this->restrictedPass($request),
-            fn (): string => $w('only for %s — %s is not one of them', $this->restrictedFor($request), $request->clientIp));
-        $crawler = null;
-        $crawlerText = $w('no known crawlers configured');
-        if ($s->crawlers !== []) {
-            $cr = $this->shield->crawlers();
-            $id = $cr->claims((string) $request->header('user-agent'));
-            if ($id === null) {
-                $crawlerText = $w('the User-Agent names no known crawler');
-            } elseif (!$cr->verified($request->clientIp, $id)) {
-                $crawlerText = $w('names %s, but %s is not one of its addresses — an ordinary visitor (when it is checked or stopped, the log notes claimed=%s)', $id, $request->clientIp, $id);
-            } else {
-                $policy = $cr->policy($id);
-                $crawlerText = $w('%s, verified by its address — ', $id) . (['allow' => $w('never given the browser check (its pace is still limited)'), 'check' => $w('checked like any visitor (crawler %s check)', $id)][$policy] ?? $w('refused'));
-                if ($policy === 'block') {
-                    $crawler = Decision::reject(403, 'crawler');
-                }
+        foreach ($this->shield->chain() as $st) {
+            // The step's rule, tried where its words want it (the budgets and the cache
+            // have tries of their own; feeds and crawlers are described, not run).
+            $try = static fn (): ?Decision => $st->rule?->check($request, $now);
+            switch ($st->key) {
+                case 'deny':
+                    $step($st->describe, $st->key, $try(), $st->rule === null ? $w('no address is kept out') : $w('%s is not on the deny list', $request->clientIp),
+                        static fn (): string => $w('%s is on the deny list: 403 before everything else', $request->clientIp));
+                    break;
+                case 'feed':
+                    // The lists named "check" too: the browser check, not a refusal.
+                    $feed = $s->feeds === [] ? null : ($this->shield->feedHit($request, 'deny') !== null ? Decision::reject(403, 'feed')
+                        : ($this->shield->feedHit($request, 'check') !== null ? Decision::challenge('feed') : null));
+                    $step($st->describe, $st->key, $feed, $s->feeds === [] ? $w('no public blocklists') : $w('%s is on none of the public blocklists', $request->clientIp),
+                        static fn (Decision $d): string => $d->action === Decision::REJECT ? $w('%s is on a public blocklist: 403', $request->clientIp)
+                            : $w('%s is on a public blocklist: the browser check', $request->clientIp));
+                    break;
+                case 'ban':
+                    $step($st->describe, $st->key, $try(), $st->rule === null ? $w('no automatic bans') : $w('%s is not banned', $request->clientIp),
+                        static fn (Decision $d): string => $w('banned for a while: %s more seconds, nothing but 429', (string) $d->retryAfter));
+                    break;
+                case 'method':
+                    $step($st->describe, $st->key, $try(), $w('%s is accepted (%s)', $request->method, $methods),
+                        static fn (): string => $w('%s is not accepted — only %s', $request->method, $methods));
+                    break;
+                case 'limits':
+                    $step($st->describe, $st->key, $try(), $w('address, parameters and headers within the limits (%s characters, %s parameters)', (string) $s->maxUri, (string) $s->maxQueryParameters),
+                        static fn (Decision $d): string => ucfirst(Describe::reason($d->reason, $l)));
+                    break;
+                case 'path':
+                    $step($st->describe, $st->key, $try(), $w('the address is what it seems: no hidden encoding, no way out of the website\'s folder'),
+                        static fn (Decision $d): string => ucfirst(Describe::reason($d->reason, $l)));
+                    break;
+                case 'host':
+                    $step($st->describe, $st->key, $try(), $s->hosts === [] ? $w('any website name is accepted') : $w('"%s" is one of this site\'s names', $request->host),
+                        static fn (): string => $w('"%s" is not one of this site\'s names (%s)', $request->host, implode(', ', $s->hosts)));
+                    break;
+                case 'blocked':
+                    $step($st->describe, $st->key, $try(), $this->blockedPass($request), fn (Decision $d): string => $w('refused: %s', $this->blockedMatch($request)));
+                    break;
+                case 'method-path':
+                    $step($st->describe, $st->key, $try(),
+                        isset($s->methodPaths[$request->method]) ? $w('%s is allowed at this address', $request->method) : ($s->methodPaths === [] ? $w('no restriction') : $w('no restriction for %s', $request->method)),
+                        static fn (): string => $w('a %s is only accepted at: %s', $request->method, implode(', ', array_map($pattern, $s->methodPaths[$request->method] ?? []))));
+                    break;
+                case 'post-origin':
+                    $originPass = $w('not checked (no post-origin rule)');
+                    if ($s->postOrigin !== null) {
+                        $from = \CjwNetwork\RequestShield\Rule\PostOriginRule::sentFrom($request);
+                        $originPass = !in_array($request->method, ['POST', 'PUT', 'PATCH', 'DELETE'], true) ? $w('not a form (%s)', $request->method)
+                            : ($from === null ? $w('it says nowhere where it comes from -- let through here (missing allow, an exception, or an address let in)') : $w('sent from %s: this website, or not checked here', $from));
+                    }
+                    $step($st->describe, $st->key, $try(), $originPass, static function (Decision $d) use ($w, $request): string {
+                        $from = \CjwNetwork\RequestShield\Rule\PostOriginRule::sentFrom($request);
+                        return $d->reason === 'cross-site' ? $w('sent from %s -- another website (Origin, else Referer)', (string) $from) : $w('neither Origin nor Referer: %s', $d->action === Decision::CHALLENGE ? $w('the browser check') : $w('refused'));
+                    });
+                    break;
+                case 'restricted':
+                    $step($st->describe, $st->key, $try(), $this->restrictedPass($request), fn (): string => $w('only for %s — %s is not one of them', $this->restrictedFor($request), $request->clientIp));
+                    break;
+                case 'crawlers':
+                    // Named crawlers are described whether or not any is refused (the rule exists only then).
+                    $crawler = null;
+                    $crawlerText = $w('no known crawlers configured');
+                    if ($s->crawlers !== []) {
+                        $cr = $this->shield->crawlers();
+                        $id = $cr->claims((string) $request->header('user-agent'));
+                        if ($id === null) {
+                            $crawlerText = $w('the User-Agent names no known crawler');
+                        } elseif (!$cr->verified($request->clientIp, $id)) {
+                            $crawlerText = $w('names %s, but %s is not one of its addresses — an ordinary visitor (when it is checked or stopped, the log notes claimed=%s)', $id, $request->clientIp, $id);
+                        } else {
+                            $policy = $cr->policy($id);
+                            $crawlerText = $w('%s, verified by its address — ', $id) . (['allow' => $w('never given the browser check (its pace is still limited)'), 'check' => $w('checked like any visitor (crawler %s check)', $id)][$policy] ?? $w('refused'));
+                            if ($policy === 'block') {
+                                $crawler = Decision::reject(403, 'crawler');
+                            }
+                        }
+                    }
+                    $step($st->describe, $st->key, $crawler, $crawlerText, static fn (): string => $w('refused (403): the site does not want this crawler'));
+                    break;
+                case 'query':
+                    $step($st->describe, $st->key, $try(), $this->queryPass($request), fn (): string => $w('refused: %s (query strict)', (string) $this->queryProblem($request)));
+                    break;
+                case 'content':
+                    $step($st->describe, $st->key, $try(), $s->contentIndex === [] ? $w('no attack patterns configured') : $this->attackPass($request),
+                        fn (): string => $w('refused: %s', $this->attackMatch($request)));
+                    break;
+                case 'cache':
+                    // The inspector's own cache check: without the application's $known callback.
+                    $cache = (new CacheableRule($s->cacheablePaths, $s->cacheableQuery))->check($request, $now);
+                    $step($st->describe, $st->key, $cache, $w('yes: a known address with known parameters'),
+                        static fn (Decision $d): string => $w('answered, but not kept: %s', Describe::reason($d->reason, $l)));
+                    break;
+                default:
+                    if (strncmp($st->key, 'budget:', 7) === 0 && isset($s->budgets[substr($st->key, 7)])) {
+                        // The budgets, as they stand (this request included, nothing counted).
+                        $b = $s->budgets[substr($st->key, 7)];
+                        $name = $w('Pace: "%s"', $b->name);
+                        if (!$b->covers($request->matchPath())) {
+                            $steps[] = ['check' => $name, 'key' => $st->key, 'state' => $stopped ? 'skip' : 'pass', 'text' => $stopped ? $w('not checked: already refused above') : $w('not counted at this address (only in its area: %s)', implode(', ', array_map($pattern, $b->paths))), 'rule' => null];
+                            break;
+                        }
+                        $exempt = IpAddress::inRanges($request->clientIp, $s->exemptIps);
+                        $count = $exempt ? 0 : (int) round($this->store->hit($b->counter() . ':' . IpAddress::bucket($request->clientIp, $s->ipv6Prefix), $b->window, $now));
+                        $pace = $exempt ? $w('%s is never counted', $request->clientIp) : $w('%s of %s per %s', (string) $count, (string) $b->limit, Describe::duration($b->window, $l))
+                            . ($b->challengeAt !== null ? $w(', browser check from %s', (string) $b->challengeAt) : '');
+                        $pd = null;
+                        if (!$exempt && $count > $b->limit) {
+                            $pd = $b->earnBack ? Decision::spent($b->name, 1) : Decision::throttle($b->name, 1);
+                        } elseif (!$exempt && $b->challengeAt !== null && $count > $b->challengeAt) {
+                            $pd = Decision::challenge($b->name);
+                        }
+                        $step($st->describe, $st->key, $pd, $pace, static fn (Decision $d): string => $pace . ($d->action === Decision::THROTTLE ? $w(' — too many: wait')
+                            : ($d->spent ? $w(' — too many: the check, then the counter starts again') : $w(' — past the check'))), $name);
+                    } else {
+                        // A step this inspector has no words for yet (a rule provider's, 0031 C.3): its outcome, plainly.
+                        $step($st->describe, $st->key, $try(), $w('passed'), static fn (Decision $d): string => ucfirst(Describe::reason($d->reason, $l)));
+                    }
             }
-        }
-        $step('Known crawlers', $crawler, $crawlerText, static fn (): string => $w('refused (403): the site does not want this crawler'));
-        $query = $s->queryParams === [] && !$s->queryStrict ? null : (new \CjwNetwork\RequestShield\Rule\QueryRule($s->queryIndex, $s->queryStrict))->check($request, $now);
-        $step('Known parameters', $query, $this->queryPass($request),
-            fn (): string => $w('refused: %s (query strict)', (string) $this->queryProblem($request)));
-        $step('Attack patterns', $s->contentIndex === [] ? null : (new ContentRule($s->contentIndex, $s->contentRules, $s->blockExceptions, $s->contentHints))->check($request, $now),
-            $s->contentIndex === [] ? $w('no attack patterns configured') : $this->attackPass($request),
-            fn (): string => $w('refused: %s', $this->attackMatch($request)));
-        $step('May a cache keep the answer?', (new CacheableRule($s->cacheablePaths, $s->cacheableQuery))->check($request, $now),
-            $w('yes: a known address with known parameters'),
-            static fn (Decision $d): string => $w('answered, but not kept: %s', Describe::reason($d->reason, $l)));
-
-        // The budgets, as they stand (this request included, nothing counted).
-        foreach ($s->budgets as $b) {
-            if ($b->onDemand) {
-                continue;
-            }
-            if (!$b->covers($request->matchPath())) {
-                $step("Pace: \"$b->name\"", null, $w('not counted at this address (only in its area: %s)', implode(', ', array_map($pattern, $b->paths))),
-                    static fn (): string => '', $w('Pace: "%s"', $b->name));
-                continue;
-            }
-            $exempt = IpAddress::inRanges($request->clientIp, $s->exemptIps);
-            $count = $exempt ? 0 : (int) round($this->store->hit($b->counter() . ':' . IpAddress::bucket($request->clientIp, $s->ipv6Prefix), $b->window, $now));
-            $pace = $exempt ? $w('%s is never counted', $request->clientIp) : $w('%s of %s per %s', (string) $count, (string) $b->limit, Describe::duration($b->window, $l))
-                . ($b->challengeAt !== null ? $w(', browser check from %s', (string) $b->challengeAt) : '');
-            $d = null;
-            if (!$exempt && $count > $b->limit) {
-                $d = $b->earnBack ? Decision::spent($b->name, 1) : Decision::throttle($b->name, 1);
-            } elseif (!$exempt && $b->challengeAt !== null && $count > $b->challengeAt) {
-                $d = Decision::challenge($b->name);
-            }
-            $step("Pace: \"$b->name\"", $d, $pace, static fn (Decision $d): string => $pace . ($d->action === Decision::THROTTLE ? $w(' — too many: wait')
-                : ($d->spent ? $w(' — too many: the check, then the counter starts again') : $w(' — past the check'))), $w('Pace: "%s"', $b->name));
         }
         $always = null;
         $age = null;
@@ -221,7 +248,7 @@ final class Inspector
                 break;
             }
         }
-        $step('Browser check', $always, $w('not asked for at this address') . ($s->challenge->exemptPaths !== [] ? $w(' (and never at %s)', implode(', ', array_map($pattern, $s->challenge->exemptPaths))) : ''),
+        $step('Browser check', 'always', $always, $w('not asked for at this address') . ($s->challenge->exemptPaths !== [] ? $w(' (and never at %s)', implode(', ', array_map($pattern, $s->challenge->exemptPaths))) : ''),
             static fn (): string => $w('every visitor is checked here, once per pass (valid for %s)', Describe::span($s->challenge->passTtl, $l))
                 . ($age !== null ? $w('; here only a pass from the last %s', Describe::span($age, $l)) : ''));
 

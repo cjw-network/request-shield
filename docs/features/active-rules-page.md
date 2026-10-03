@@ -57,7 +57,9 @@ Or with any settings: `RulesPage::render(Settings::load('site.rules'))`. The
 page is complete HTML without external resources, in light and dark. The demo
 has it at `/rules` (`examples/demo`).
 
-The parts are usable on their own: `Report\Inspector` (the step-by-step
+The inspector walks `Shield::chain()` -- the one list of what the shield
+checks, in its order (0031 C.1) -- so a step added to the chain appears in the
+trace by itself. The parts are usable on their own: `Report\Inspector` (the step-by-step
 check), `Report\LogStats` (counts per rule from the log), `Report\Describe`
 (settings and decisions in words).
 
