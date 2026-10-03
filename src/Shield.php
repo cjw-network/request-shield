@@ -99,6 +99,7 @@ final class Shield
     {
         $s = $this->settings = $config instanceof Settings ? $config : Settings::from($config);
         $this->store = $store ?? self::storeFor($s);
+        self::$failedDir = $s->store === 'memory' ? false : $s->storeDir;     // where failed() keeps "already noted"
         $this->base = Decision::allow();
         if ($s->mode === 'off') {
             return;             // no checks at all
@@ -169,8 +170,32 @@ final class Shield
      */
     public static function protectFile(string $file, ?callable $known = null, ?string $cacheDir = null, array $sources = []): Decision
     {
-        // With site blocks (rules per website): the settings of this request's website.
-        return self::protect(Settings::loadFor($file, $_SERVER, $cacheDir, $sources), $known);
+        try {
+            // With site blocks (rules per website): the settings of this request's website.
+            $settings = Settings::loadFor($file, $_SERVER, $cacheDir, $sources);
+        } catch (\Throwable $e) {
+            return self::failedOpen($e, null);      // the settings cannot be had: the site stays up (ADR 0007)
+        }
+        return self::protect($settings, $known);
+    }
+
+    /**
+     * The shield failed: the request goes on to the application, never
+     * cached, and the error log gets one line a minute. What the application
+     * sees is the same as for any uncached pass.
+     */
+    private static function failedOpen(\Throwable $e, ?Settings $s): Decision
+    {
+        $d = Decision::allowUncached('shield error');
+        self::$current = $d;
+        self::$rule = null;
+        $_SERVER['REQUEST_SHIELD'] = $d->action;
+        self::failed('shield', 'the shield failed and let the request through: ' . get_class($e) . ': ' . $e->getMessage()
+            . ' in ' . $e->getFile() . ':' . $e->getLine());
+        if ($s !== null && $s->debugHeader && !headers_sent()) {
+            header('X-Request-Shield: ' . $d->action . ' ' . $d->reason);
+        }
+        return $d;
     }
 
     /**
@@ -185,6 +210,25 @@ final class Shield
      * @param (callable(Request): ?bool)|null $known
      */
     public static function protect(array|Settings $config = [], ?callable $known = null): Decision
+    {
+        // Fail safe (ADR 0007): whatever breaks inside the shield, the request
+        // reaches the application -- uncached -- and PHP's error log hears it
+        // once a minute. exit() is not a Throwable: the shield's own answers
+        // (a refusal, the check page) are not affected.
+        try {
+            return self::run($config, $known);
+        } catch (\Throwable $e) {
+            return self::failedOpen($e, $config instanceof Settings ? $config : null);
+        }
+    }
+
+    /**
+     * What protect() does; apart.
+     *
+     * @param array<mixed>|Settings $config
+     * @param (callable(Request): ?bool)|null $known
+     */
+    private static function run(array|Settings $config, ?callable $known): Decision
     {
         $shield = new self($config, null, $known);
         $s = $shield->settings;
@@ -531,18 +575,57 @@ final class Shield
         return $this->plugins = $made;
     }
 
-    /** @var array<string, int> plugin => when its failure was last noted */
+    /** @var array<string, int> the cause (what failed, and the message) => when it was last noted, this process */
     private static array $failed = [];
 
-    /** A plugin that failed: noted in PHP's error log, once a minute per plugin and process -- the visitor never sees it. */
+    /**
+     * Where failed() keeps "already noted" across requests and workers: the
+     * site's store directory; null before any settings were made (the
+     * temp dir then); false with the memory store (nothing persists: in
+     * this process only -- the tests' case).
+     */
+    private static string|false|null $failedDir = null;
+
+    /**
+     * Something failed: noted in PHP's error log, once a minute per cause --
+     * the visitor never sees it. Across requests and workers too (APCu, else
+     * a marker file in the store directory): a broken deploy is one line a
+     * minute, not one a visitor.
+     */
+    private static function failed(string $what, string $message): void
+    {
+        $now = time();
+        $cause = hash('crc32b', $what . '|' . substr($message, 0, 200));
+        if ($now - (self::$failed[$cause] ?? 0) < 60) {
+            return;
+        }
+        self::$failed[$cause] = $now;
+        $dir = self::$failedDir ?? rtrim(sys_get_temp_dir(), '/') . '/request-shield';
+        if ($dir !== false) {
+            if (function_exists('apcu_enabled') && apcu_enabled()) {
+                if (!apcu_add('rshield:failed:' . hash('crc32b', $dir) . ':' . $cause, $now, 60)) {
+                    return;
+                }
+            } else {
+                $marker = $dir . '/failed-' . $cause;
+                $last = @filemtime($marker);
+                if ($last !== false && $now - $last < 60) {
+                    return;
+                }
+                if (!is_dir($dir)) {
+                    @mkdir($dir, 0700, true);
+                }
+                @touch($marker);
+            }
+        }
+        error_log('request-shield: ' . $message);
+    }
+
+    /** A plugin that failed. */
     private static function pluginFailed(Plugin|string $plugin, ?\Throwable $e): void
     {
         $name = is_string($plugin) ? $plugin : get_class($plugin);
-        if (time() - (self::$failed[$name] ?? 0) < 60) {
-            return;
-        }
-        self::$failed[$name] = time();
-        error_log('request-shield: plugin ' . (is_string($plugin) ? $plugin . ' is missing or no ' . Plugin::class : get_class($plugin) . ' failed: ' . ($e !== null ? $e->getMessage() : '?')));
+        self::failed($name, 'plugin ' . (is_string($plugin) ? $plugin . ' is missing or no ' . Plugin::class : get_class($plugin) . ' failed: ' . ($e !== null ? $e->getMessage() : '?')));
     }
 
     /** The shield of the rules marked "monitor" (null: there are none), built once. */
@@ -901,8 +984,13 @@ final class Shield
      */
     public function widget(string $start = 'input'): string
     {
-        $w = $this->settings->challenge->widgetPath;
-        return $w === null || $this->settings->mode === 'off' ? '' : \CjwNetwork\RequestShield\Challenge\Widget::html($w, $start);
+        try {
+            $w = $this->settings->challenge->widgetPath;
+            return $w === null || $this->settings->mode === 'off' ? '' : \CjwNetwork\RequestShield\Challenge\Widget::html($w, $start);
+        } catch (\Throwable $e) {
+            self::failed('widget', 'widget() failed, the form has no check: ' . $e->getMessage());
+            return '';                              // fail safe: the form works without the check
+        }
     }
 
     /** <widgetPath>/challenge (a task as JSON) and <widgetPath>/widget.js. */
@@ -958,6 +1046,16 @@ final class Shield
      * again (better: require the pass on the form's page, before).
      */
     public function requirePass(?int $fresh = null): void
+    {
+        try {
+            $this->requirePassNow($fresh);
+        } catch (\Throwable $e) {
+            self::failed('requirePass', 'requirePass() failed and let the request through: ' . $e->getMessage());
+        }
+    }
+
+    /** requirePass() proper. */
+    private function requirePassNow(?int $fresh): void
     {
         $request = $this->request;
         if ($request === null || $this->settings->mode === 'off' || ($this->passed && $fresh === null)) {
@@ -1064,24 +1162,30 @@ final class Shield
     {
         $decided = null;
         ob_start(function (string $buffer, int $phase) use (&$decided): string {
-            if ($decided === null) {
-                $decided = '';
-                foreach (headers_list() as $h) {
-                    if (preg_match('/^X-Request-Shield-Challenge:\s*(.*)$/i', $h, $m)) {
-                        header_remove('X-Request-Shield-Challenge');
-                        $page = $this->challengeFor(trim($m[1]));
-                        if ($page !== null) {
-                            $decided = $page;
+            try {
+                if ($decided === null) {
+                    $decided = '';
+                    foreach (headers_list() as $h) {
+                        if (preg_match('/^X-Request-Shield-Challenge:\s*(.*)$/i', $h, $m)) {
+                            header_remove('X-Request-Shield-Challenge');
+                            $page = $this->challengeFor(trim($m[1]));
+                            if ($page !== null) {
+                                $decided = $page;
+                            }
+                            break;
                         }
-                        break;
                     }
+                    if ($decided !== '') {
+                        return $decided;
+                    }
+                    $decided = false;
                 }
-                if ($decided !== '') {
-                    return $decided;
-                }
+                return $decided === false ? $buffer : '';     // after the check page: nothing of the application's
+            } catch (\Throwable $e) {
+                self::failed('app-challenge', 'the check the application asked for failed, its page went out: ' . $e->getMessage());
                 $decided = false;
+                return $buffer;                               // fail safe: the application's page as it is
             }
-            return $decided === false ? $buffer : '';     // after the check page: nothing of the application's
         });
     }
 
@@ -1118,6 +1222,17 @@ final class Shield
      * Budgets marked 'onDemand' => true in the configuration are only counted here.
      */
     public function consume(string $budget, ?Request $request = null, ?float $now = null, bool $answer = false): Decision
+    {
+        try {
+            return $this->consumeNow($budget, $request, $now, $answer);
+        } catch (\Throwable $e) {
+            self::failed('consume', "consume($budget) failed and let the request through: " . $e->getMessage());
+            return Decision::allowUncached('shield error');
+        }
+    }
+
+    /** consume() proper. */
+    private function consumeNow(string $budget, ?Request $request, ?float $now, bool $answer): Decision
     {
         $b = $this->settings->budgets[$budget] ?? null;
         $request ??= $this->request;

@@ -84,6 +84,11 @@ application, and whether the answer may be cached.
   site that changes one is told when an update changes it underneath.
 - **No dependencies, no services:** counters in APCu, or in plain files on hosting
   without APCu. PHP ≥ 8.0 (the Red Hat Enterprise Linux 9 baseline).
+- **Fail safe:** whatever breaks inside the shield — a store it cannot write,
+  an adapter's hook that throws — the request reaches the application, marked
+  uncached, and PHP's error log gets one line a minute. The shield's own
+  answers (a refusal, the check page) are not affected
+  ([ADR 0007](docs/adr/0007-fail-safe-pass-through.md)).
 
 It turns an expensive request (framework, database, rendering: 100–200 ms) into
 a cheap one (well under 0.1 ms). It does not replace protection in front of PHP

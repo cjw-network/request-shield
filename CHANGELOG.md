@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Fail safe** (0031 step A.2, ADR 0007): an exception anywhere inside
+  `Shield::protect()`, `protectFile()`, `requirePass()`, `consume()`,
+  `widget()` or the check the application asks for lets the request through
+  as `allow-uncached` with the reason `shield error`; PHP's error log gets one
+  line a minute per cause -- across requests and workers too (APCu, else a
+  marker in the store directory), so a broken deploy is one line a minute,
+  not one per visitor. Before, a throwing hook or store was a 500 for the
+  visitor. `tests/RobustnessTest.php`.
 - **`request-shield version [site.rules]`** (0031 step A.1): the library's
   version (`Shield::VERSION`, `0.4.0-dev` on main) and build, PHP, whether
   APCu is there, the shipped rule sets' versions; with a rule file also the

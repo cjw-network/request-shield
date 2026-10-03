@@ -61,7 +61,7 @@ the model you trust most there, not fast mode.
 
 ### Phase A — Robustness
 - [x] **A.1** `Shield::VERSION` + `request-shield version` (version, build, PHP, store, rule-set versions; the tier comes with A3.1) — `tests/CliTest.php`. `a73a8e0`
-- [ ] **A.2** Fail-safe wrapper: try/catch(\Throwable) around the body of `protect()`/`protectFile()`, `requirePass()`, `consume()`, `widget()`, the `ob_start` callback → `allowUncached('shield error')`, `Shield::failed()` throttled — `tests/RobustnessTest.php` cases 1, 7, 9 — red without the wrapper.
+- [x] **A.2** Fail-safe wrapper: try/catch(\Throwable) around the body of `protect()`/`protectFile()`, `requirePass()`, `consume()`, `widget()`, the `ob_start` callback → `allowUncached('shield error')`, `Shield::failed()` throttled — `tests/RobustnessTest.php` cases 1, 7, 9 — red without the wrapper. *(hash: next commit)*
 - [ ] **A.3** Compile fallback: catch in `Settings::load()/loadFor()` → last good compiled settings + `.failed` marker; none → `mode off` + log; `TypeError` in `import()` → `unlink` + rebuild — RobustnessTest cases 5, 6, 8, 10.
 - [ ] **A.4** Bootstrap search order (`REQUEST_SHIELD_CONFIG` → `request-shield.rules` next to the file → `config/request-shield.rules` → `config/request-shield.php`) in `bootstrap.php`; README install section corrected; E2E test without `REQUEST_SHIELD_CONFIG`.
 - [ ] **A.5** E2E tests set `REQUEST_SHIELD_CONFIG` themselves (PluginTest/AccessTest fail today with a local `config/request-shield.php`).
@@ -137,8 +137,11 @@ the model you trust most there, not fast mode.
 
 ## Status
 
-- **Last step done:** A.1
-- **Next step:** A.2
+- **Last step done:** A.2
+- **Next step:** A.3
 - **Open owner questions:** see the proposal's last section.
 - **Deviations from the plan:** none.
-- **Review of this step:** `pr-review-toolkit` is not installed on the machine that wrote 0.1; the fallback (code-review skill, sonnet) was used.
+- **Review:** `pr-review-toolkit` is not installed on the machine that wrote phase 0 and A.1–A.2; the fallback (code-review skill, sonnet, low) was used — for phase 0 (documents only) once over the whole phase, for the code steps once per step.
+- **Static analysis on this machine:** PHPStan runs; `composer taint` (Psalm 6) crashes with `Class "Composer\InstalledVersions" not found` because the local Composer is 1.10 (its autoloader lacks the class). CI runs it (`static-analysis.yml`); on a machine with Composer ≥ 2 run `composer install` and `composer taint` before pushing code steps.
+- **Finding from A.1:** the bench command in `AGENTS.md` needs `-d opcache.file_update_protection=0`, otherwise the "setup" lines show milliseconds for freshly compiled settings (fixed in AGENTS.md).
+- **Finding from A.2:** the "once a minute" throttle of error-log lines was per process only (`static` is reset per request under PHP-FPM and the built-in server) — it now also uses APCu or a marker file in the temp dir, so a broken deploy logs one line a minute, not one per visitor. A3.1 should move the marker next to the compiled settings (`store-dir/cache`).
