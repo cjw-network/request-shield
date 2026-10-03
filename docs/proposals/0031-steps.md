@@ -55,9 +55,9 @@ the model you trust most there, not fast mode.
 - [x] **0.1** `docs/proposals/0031-robust-core-plugins.md` (the plan) + `0031-steps.md` (this file, resume prompt, status) — files linked in `docs/README.md`, the `AGENTS.md` note is in. `2e4f4fa`
 - [x] **0.2** `docs/proposals/0002-single-file-build.md` (build, editions, bootstrap search order, signing) — status Draft, linked. `bd1c529`
 - [x] **0.3** Renumber the local drafts: `0002-check-levels.md` → `0032-check-levels.md` (with a section "Relation to 0004 modes"), `0003-event-log.md` → `0033-event-log.md` (relation to the `Sink` hook and `set log`); `docs/README.md` updated, 0007 noted as free; stash `local README proposal links` dropped. `910af9a`
-- [x] **0.4** `llms.txt` (start here / understand / never), `docs/llm/prompts/install.md`, `docs/llm/prompts/review.md` (the two prompts verbatim). *(hash: next commit)*
-- [ ] **0.5** `.gitattributes` comment corrected; `tests/DocsTest.php`: no duplicate proposal numbers, every `NNNN-*.md` linked from `docs/README.md`, every path in `llms.txt` exists — green, and red without 0.3.
-- [ ] **0.6** ADR placeholders (status proposed): 0007 fail-safe pass-through, 0008 compile-time extension points, 0009 plugins tighten only, 0010 single file and editions, 0011 one source for reference, demos and tests (RSF), 0012 repository structure and signing, 0013 hosting tiers, 0014 wire bytes and the `rs` prefix.
+- [x] **0.4** `llms.txt` (start here / understand / never), `docs/llm/prompts/install.md`, `docs/llm/prompts/review.md` (the two prompts verbatim). `a76231d`
+- [x] **0.5** `.gitattributes` comment corrected; `tests/DocsTest.php`: no duplicate proposal numbers, every `NNNN-*.md` linked from `docs/README.md`, every path in `llms.txt` exists — green, and red without 0.3. *(hash: next commit)*
+- [x] **0.6** ADR placeholders (status proposed): 0007 fail-safe pass-through, 0008 compile-time extension points, 0009 plugins tighten only, 0010 single file and editions, 0011 one source for reference, demos and tests (RSF), 0012 repository structure and signing, 0013 hosting tiers, 0014 wire bytes and the `rs` prefix. *(hash: the commit after 0.5)*
 
 ### Phase A — Robustness
 - [ ] **A.1** `Shield::VERSION` + `request-shield version` (version, build, PHP, store, tier, rule-set versions) — `tests/CliTest.php`.
@@ -137,8 +137,8 @@ the model you trust most there, not fast mode.
 
 ## Status
 
-- **Last step done:** 0.4
-- **Next step:** 0.5
+- **Last step done:** 0.6 (phase 0 complete)
+- **Next step:** A.1
 - **Open owner questions:** see the proposal's last section.
 - **Deviations from the plan:** none.
 - **Review of this step:** `pr-review-toolkit` is not installed on the machine that wrote 0.1; the fallback (code-review skill, sonnet) was used.

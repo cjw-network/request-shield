@@ -1,7 +1,7 @@
 # Only what runs on a server goes into a Composer install (dist archive) or a
-# GitHub release archive: src/, bootstrap.php, config/, LICENSE, README.md,
-# CHANGELOG.md, SECURITY.md. Everything for developing the library stays in
-# the repository.
+# GitHub release archive: src/, plugins/, bin/, rules/, bootstrap.php, config/,
+# llms.txt, LICENSE, README.md, CHANGELOG.md, SECURITY.md. Everything for
+# developing the library stays in the repository.
 /.github            export-ignore
 /bench              export-ignore
 /docs               export-ignore
