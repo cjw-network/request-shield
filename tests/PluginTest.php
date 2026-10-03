@@ -106,7 +106,7 @@ return [
         $old = ini_set('error_log', $log);
         try {
             same([], (new Shield(Settings::from([]), new MemoryStore()))->plugins(), 'no plugin: nothing to tell');
-            $made = (new Shield(Settings::from(['stats' => ['enabled' => true], 'storeDir' => sys_get_temp_dir()]), new MemoryStore()))->plugins();
+            $made = (new Shield(Settings::from(['ext' => ['stats' => ['enabled' => true]], 'storeDir' => sys_get_temp_dir()]), new MemoryStore()))->plugins();
             same([StatsPlugin::class], array_map('get_class', $made), 'the statistics come with set stats on');
             $made = (new Shield(Settings::from(['plugins' => ['RsRecordingPlugin', 'RsMissing\\Plugin', 'RsNotAPlugin']]), new MemoryStore()))->plugins();
             same(['RsRecordingPlugin'], array_map('get_class', $made), 'a missing class and one that is no Plugin are left out');

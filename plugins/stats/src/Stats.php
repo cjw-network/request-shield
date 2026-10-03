@@ -106,7 +106,8 @@ final class Stats
     {
         $apcu = $s->store === 'apcu' || ($s->store === 'auto' && Store\ApcuStore::usable());
         $dir = $s->storeDir . '/stats' . ($site === null ? '' : '/hosts/' . str_replace('*', '+', $site));
-        $stats = new self($dir, $apcu, $s->statsHours, $s->statsDays, $s->crawlerLogDir, $s->crawlerLogDays, $s->statsFlush, $s->statsMonths);
+        $o = StatsExtension::of($s);
+        $stats = new self($dir, $apcu, $o['hours'], $o['days'], $o['crawlerLog']['dir'], $o['crawlerLog']['days'], $o['flush'], $o['months']);
         $stats->site = $site;
         return $stats;
     }
@@ -126,12 +127,13 @@ final class Stats
      */
     public static function siteOf(Settings $s, string $host): ?string
     {
-        if ($s->statsHosts === []) {
+        $hosts = StatsExtension::of($s)['hosts'];
+        if ($hosts === []) {
             return null;
         }
         if (self::$namesFor !== $s) {
             self::$namesFor = $s;
-            self::$names = array_fill_keys($s->statsHosts, true);
+            self::$names = array_fill_keys($hosts, true);
         }
         $names = self::$names;
         if (isset($names[$host])) {
@@ -176,7 +178,7 @@ final class Stats
     /** Whether $site names something to read: a website of stats-hosts, OTHER, or group:<id>. */
     public static function known(Settings $s, string $site): bool
     {
-        return $site === self::OTHER || in_array($site, $s->statsHosts, true) || (strncmp($site, 'group:', 6) === 0 && isset($s->statsGroups[substr($site, 6)]));
+        return $site === self::OTHER || in_array($site, StatsExtension::of($s)['hosts'], true) || (strncmp($site, 'group:', 6) === 0 && isset($s->statsGroups[substr($site, 6)]));
     }
 
     /**
@@ -188,7 +190,8 @@ final class Stats
      */
     public static function all(Settings $s, ?string $site = null): array
     {
-        if ($s->statsHosts === []) {
+        $hosts = StatsExtension::of($s)['hosts'];
+        if ($hosts === []) {
             return [self::of($s)];
         }
         if ($site !== null && strncmp($site, 'group:', 6) === 0) {
@@ -199,7 +202,7 @@ final class Stats
             return [self::of($s, $site)];
         }
         $out = [self::of($s)];
-        foreach (array_merge($s->statsHosts, [self::OTHER]) as $name) {
+        foreach (array_merge($hosts, [self::OTHER]) as $name) {
             $out[] = self::of($s, $name);
         }
         return $out;

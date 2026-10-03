@@ -64,6 +64,11 @@ final class RsTestExtension implements Extension
         return ['failAt' => is_string($failAt) ? $failAt : null, 'marks' => $marks, 'hosts' => $base->hosts];
     }
 
+    public static function plugins(array $compiled): array
+    {
+        return [];
+    }
+
     public static function routes(): array
     {
         return [];

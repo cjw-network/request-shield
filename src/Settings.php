@@ -129,31 +129,9 @@ final class Settings
         public string $crawlerVerify = 'both',
         /** @var array<string, string> @readonly the policies as written: kind or crawler ID => allow, check, block */
         public array $crawlerPolicy = [],
-        /** @readonly counters for the dashboard (Stats) */
-        public bool $statsEnabled = false,
-        /** @readonly days the hourly counters are kept */
-        public int $statsHours = 7,
-        /** @readonly days the daily counters are kept */
-        public int $statsDays = 400,
-        /** @readonly one log per known crawler and day in this directory; null: none */
-        public ?string $crawlerLogDir = null,
-        /** @var list<string> @readonly the kinds whose crawlers are logged ([]: all) */
-        public array $crawlerLogKinds = [],
-        /** @readonly days a crawler's log is kept */
-        public int $crawlerLogDays = 30,
-        /** @readonly whether the crawler logs keep the query string */
-        public bool $crawlerLogQuery = true,
-        /** @var list<string> @readonly what is counted: requests, crawlers, not-found, bots, pages */
-        public array $statsParts = ['requests', 'crawlers', 'not-found', 'bots', 'pages', 'forms'],
-        /** @readonly with APCu, seconds between writes of the counts to disk (0: only hourly) */
-        public int $statsFlush = 60,
-        /** @readonly months the month totals are kept (0: for good) */
-        public int $statsMonths = 0,
-        /** @readonly folder levels a section's views are counted for exactly: 1 to 4 (2: /news/, /news/2026/) */
-        public int $statsDepth = 2,
         /** @readonly where the statistics pages live: <path>/dashboard, /stats, /shield */
         public string $dashboardPath = '/rs',
-        /** @var list<class-string> @readonly the plugins the rules name (the statistics come with "set stats on" on their own) */
+        /** @var list<class-string> @readonly the plugins the rules name, and those the extensions add at compile time (Extension::plugins(): the statistics with "set stats on") */
         public array $plugins = [],
         /** @var array<string, string> @readonly website name (a.de, *.b.de, default) => its site block (the block's first name); [] without site blocks */
         public array $sites = [],
@@ -193,10 +171,6 @@ final class Settings
         public array $feedWeights = [],
         /** @readonly a fetched list older than this is no longer used, in seconds */
         public int $feedsMaxAge = 259200,
-        /** @var list<string> @readonly the websites with statistics of their own (stats-hosts; *.domain: one label); [] one statistics for all */
-        public array $statsHosts = [],
-        /** @var list<string> @readonly paths left out of the statistics when they pass (stats-skip), as patterns; protected all the same */
-        public array $statsSkip = [],
         /** @var array<string, array{name: string, sites: list<string>, rule: string}> @readonly stats-group: id (customer-a) => its name, its websites */
         public array $statsGroups = [],
         /** @readonly where the statistics plugin's pages live (set stats-path; default <dashboard-path>/stats) */
@@ -335,13 +309,12 @@ final class Settings
             $strict ? 2 : 1,
             $monitorRules === null ? null : self::from(['mode' => $mode, 'monitorRules' => null] + $monitorRules),
             ...self::knownCrawlers($c, $verify),
-            ...self::stats($c),
             ...[self::dashboardPath($c), self::plugins($c)],
             ...self::sites($c),
             ...self::withFeeds(self::lists($c, $budgets), $feeds = self::feeds($c), self::accessNext($c)),
             ...self::live($c),
             ...array_slice($feeds, 0, 5),
-            ...[self::statsHosts($c), self::patternList(is_array($c['stats'] ?? null) ? ($c['stats']['skip'] ?? []) : [], 'stats.skip'), self::statsGroups($c), self::statsPath($c)],
+            ...[self::statsGroups($c), self::statsPath($c)],
             ...self::statsAccess($c),
             ...[self::postOrigin($c), self::patternList($c['backend'] ?? [], 'backend')],
             ...[self::ext($c), self::hooks($c), self::routes($c)],
@@ -354,55 +327,32 @@ final class Settings
      * offered extension owns keeps its values as they are -- nothing reads
      * them. A wrong value is an InvalidArgumentException like any other
      * setting's: on the request path the last good compiled settings stay.
+     * The plugins an extension runs per request (Extension::plugins(), 0031
+     * B.4) join the list the rules named, once each, so a request reads one
+     * list and never the slots.
      */
     private static function compiledExt(self $s): self
     {
         $checked = $s->ext;
+        $plugins = $s->plugins;
         foreach ($s->ext as $id => $raw) {
             $class = \CjwNetwork\RequestShield\Rules\Vocabulary::extension($id);
             if ($class !== null) {
                 $checked[$id] = $class::compile($raw, $s);
+                foreach ($class::plugins($checked[$id]) as $plugin) {
+                    if (!in_array($plugin, $plugins, true)) {
+                        $plugins[] = $plugin;
+                    }
+                }
             }
         }
-        if ($checked === $s->ext) {
+        if ($checked === $s->ext && $plugins === $s->plugins) {
             return $s;
         }
         $e = $s->export();
         $e['ext'] = $checked;
+        $e['plugins'] = $plugins;
         return self::import($e);
-    }
-
-    /**
-     * @param array<mixed> $c
-     * @return array{0: bool, 1: int, 2: int, 3: ?string, 4: list<string>, 5: int, 6: bool, 7: list<string>, 8: int, 9: int, 10: int}
-     */
-    private static function stats(array $c): array
-    {
-        $stats = self::map($c, 'stats');
-        $log = self::map($c, 'crawlerLog');
-        $dir = $log['dir'] ?? null;
-        if ($dir !== null && (!is_string($dir) || $dir === '')) {
-            throw self::wrong('crawlerLog.dir', 'null or a directory');
-        }
-        $kinds = self::strings($log, 'kinds', 'crawlerLog.kinds');
-        foreach ($kinds as $k) {
-            if (!in_array($k, Rules\RuleFile::KINDS, true)) {
-                throw self::wrong('crawlerLog.kinds', 'kinds of crawler: ' . implode(', ', Rules\RuleFile::KINDS));
-            }
-        }
-        $depth = self::int($stats, 'depth', 'stats.depth', 2);
-        if ($depth < 1 || $depth > 4) {
-            throw self::wrong('stats.depth', '1 to 4 folder levels');
-        }
-        $parts = array_key_exists('parts', $stats) ? self::strings($stats, 'parts', 'stats.parts') : self::STATS_PARTS;
-        foreach ($parts as $p) {
-            if (!in_array($p, self::STATS_PARTS, true)) {
-                throw self::wrong('stats.parts', implode(', ', self::STATS_PARTS));
-            }
-        }
-        return [self::bool($stats, 'enabled', 'stats.enabled'), max(1, self::int($stats, 'hours', 'stats.hours', 7)), max(1, self::int($stats, 'days', 'stats.days', 400)),
-            $dir, $kinds, max(1, self::int($log, 'days', 'crawlerLog.days', 30)), self::bool($log, 'query', 'crawlerLog.query', true),
-            $parts, max(0, self::int($stats, 'flush', 'stats.flush', 60)), max(0, self::int($stats, 'months', 'stats.months', 0)), $depth];
     }
 
     /**
@@ -741,46 +691,6 @@ final class Settings
             $out[] = $p;
         }
         return $out;
-    }
-
-    /**
-     * The websites with statistics of their own: the names given, "host" for
-     * the host rule's, "sites" for the site blocks' (not "default").
-     *
-     * @param array<mixed> $c
-     * @return list<string>
-     */
-    private static function statsHosts(array $c): array
-    {
-        $stats = is_array($c['stats'] ?? null) ? $c['stats'] : [];
-        $out = [];
-        // A group's websites are counted apart too: no need to name them twice.
-        $named = (array) ($stats['hosts'] ?? []);
-        foreach ((array) ($stats['groups'] ?? []) as $g) {
-            foreach (is_array($g) ? (array) ($g['sites'] ?? []) : [] as $site) {
-                $named[] = $site;
-            }
-        }
-        foreach ($named as $name) {
-            if (!is_string($name)) {
-                throw self::wrong('stats.hosts', 'website names');
-            }
-            $names = match ($name) {
-                'host' => (array) ($c['hosts'] ?? []),
-                'sites' => array_keys((array) ($c['sites'] ?? [])),
-                default => [$name],
-            };
-            foreach ($names as $n) {
-                if (!is_string($n)) {
-                    continue;
-                }
-                $n = rtrim(strtolower($n), '.');
-                if ($n !== '' && $n !== 'default' && preg_match('/^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/', $n) === 1) {
-                    $out[$n] = true;
-                }
-            }
-        }
-        return array_map('strval', array_keys($out));
     }
 
     /**
@@ -1337,15 +1247,12 @@ final class Settings
     public const DENY_SHOWN = 100;
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 41;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes
+    private const FORMAT = 42;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 
     /** The shipped rules and lists (rules/): for plugins, which may live elsewhere. */
     public const RULES_DIR = __DIR__ . '/../rules';
-
-    /** What the statistics can count (set stats <parts>). */
-    public const STATS_PARTS = ['requests', 'crawlers', 'not-found', 'bots', 'pages', 'forms'];
 
     /**
      * The settings of a file, checked only when it changed. A ".rules" file

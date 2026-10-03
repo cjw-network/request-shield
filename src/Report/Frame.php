@@ -33,7 +33,9 @@ final class Frame
         $base = $prefix . $s->dashboardPath;
         $stats = $prefix . $s->statsPath;
         // The statistics plugin's pages under its own path (set stats-path), the core's -- the firewall's -- under /waf/.
-        return ($s->statsHosts !== [] ? ['sites' => $stats . '/sites'] : []) + ['all' => $stats . '/overview', 'site' => $stats . '/visitors',
+        // The statistics' own slot, read for display only (until 0031 B.8, when the plugin declares its pages).
+        $hosts = is_array($s->ext['stats']['hosts'] ?? null) ? $s->ext['stats']['hosts'] : [];
+        return ($hosts !== [] ? ['sites' => $stats . '/sites'] : []) + ['all' => $stats . '/overview', 'site' => $stats . '/visitors',
             'shield' => $stats . '/protection', 'rules' => $base . '/waf/rules', 'live' => $base . '/waf/live', 'lists' => $base . '/waf/lists'];
     }
 

@@ -73,20 +73,9 @@ final class RuleFile
         'mode' => ['mode', 'mode'],
         'crawler-verify' => ['crawlerVerify', 'verify'],
         'log' => ['log.file', 'path'],
-        'stats' => ['stats', 'stats'],
-        'stats-flush' => ['stats.flush', 'seconds'],
         'dashboard-path' => ['dashboardPath', 'string'],
-        'stats-months' => ['stats.months', 'int'],
-        'stats-depth' => ['stats.depth', 'int'],
-        'stats-hosts' => ['stats.hosts', 'hostnames'],
         'stats-path' => ['stats.path', 'string'],
         'stats-session' => ['stats.session', 'seconds'],
-        'stats-hours' => ['stats.hours', 'int'],
-        'stats-days' => ['stats.days', 'int'],
-        'crawler-log' => ['crawlerLog.dir', 'path'],
-        'crawler-log-kinds' => ['crawlerLog.kinds', 'kinds'],
-        'crawler-log-days' => ['crawlerLog.days', 'int'],
-        'crawler-log-query' => ['crawlerLog.query', 'bool'],
         'log-level' => ['log.level', 'loglevel'],
         'live' => ['live.enabled', 'bool'],
         'live-keep' => ['live.keep', 'seconds'],
@@ -150,7 +139,7 @@ final class RuleFile
     private bool $sawSite = false;
 
     /** "set" keys that are about the server, not a website: not inside a site block. */
-    private const SERVER_WIDE = ['store', 'store-dir', 'secret', 'recheck', 'dns-lookups', 'ipv6-prefix', 'site-from', 'lists-dir', 'ban-growth', 'ban-max', 'live', 'live-keep', 'ban-keep', 'feeds-max-age', 'stats-hosts', 'stats-session'];
+    private const SERVER_WIDE = ['store', 'store-dir', 'secret', 'recheck', 'dns-lookups', 'ipv6-prefix', 'site-from', 'lists-dir', 'ban-growth', 'ban-max', 'live', 'live-keep', 'ban-keep', 'feeds-max-age', 'stats-session'];
 
     /** Reading a list file (allow.rules, deny.rules in lists-dir): only list lines there. */
     private bool $listing = false;
@@ -563,7 +552,9 @@ final class RuleFile
             $this->siteOpen = null;
             return;
         }
-        if ($this->siteOpen !== null && ($keyword === 'trust' || ($keyword === 'set' && in_array(strtolower($parts[0] ?? ''), self::SERVER_WIDE, true)))) {
+        // The core's server-wide keys, and an extension's registered as such (Vocabulary::set(serverWide: true)).
+        if ($this->siteOpen !== null && ($keyword === 'trust' || ($keyword === 'set' && (in_array(strtolower($parts[0] ?? ''), self::SERVER_WIDE, true)
+                || (Vocabulary::settingFor(strtolower($parts[0] ?? ''))['serverWide'] ?? false))))) {
             throw new RuleFileException("$at: " . ($keyword === 'trust' ? 'trust' : 'set ' . strtolower($parts[0] ?? '')) . ' is about the server, not a website -- put it above the site blocks');
         }
         if ($this->siteOpen !== null && ($keyword === 'stats-group' || $keyword === 'stats-access')) {
@@ -818,10 +809,6 @@ final class RuleFile
             case 'stats-access':
                 $this->statsAccess($line, $at);
                 return;
-            case 'stats-skip':
-                // Not in the statistics when they pass (a map proxy's tiles); protected all the same.
-                $this->patterns('stats.skip', $args, $at, false);
-                return;
             case 'api-path':
                 $this->patterns('challenge.apiPaths', $args, $at, false);
                 return;
@@ -888,9 +875,18 @@ final class RuleFile
                 return;
         }
         // An extension's word (ADR 0008): it gets the line's words, its values so
-        // far and the rule's id, and returns its values -- ext.<id> only.
+        // far and the rule's id, and returns its values -- ext.<id> only. A word
+        // that takes paths gets them compiled, as the core's path words are
+        // ("none" first stays, and empties the list).
         $word = Vocabulary::wordFor($keyword);
         if ($word !== null) {
+            if ($word['paths'] && $args !== []) {
+                $none = $args[0] === 'none';
+                $args = array_map('strval', array_keys($this->compile($args, $at, false)));
+                if ($none) {
+                    array_unshift($args, 'none');
+                }
+            }
             $values = $this->get('ext.' . $word['id']);
             $this->put('ext.' . $word['id'], ($word['parse'])($args, is_array($values) ? $values : [], $at, $this->rid));
             return;
@@ -905,7 +901,7 @@ final class RuleFile
      */
     public static function coreWords(): array
     {
-        return ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'stats-skip', 'stats-group', 'stats-access', 'api-path', 'post-origin', 'backend', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include',
+        return ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'stats-group', 'stats-access', 'api-path', 'post-origin', 'backend', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include',
             'match', 'monitor', 'expect', 'ids', 'version', 'replace'];
     }
 
@@ -1394,7 +1390,6 @@ final class RuleFile
             case 'challenge':
             case 'challenge-exempt':
             case 'backend':
-            case 'stats-skip':
             case 'cache-path':
             case 'api-path':
                 $noPaths();
@@ -1427,6 +1422,11 @@ final class RuleFile
                 return array_merge($args, ['at'], $path);   // counted in the area only
             case 'cache-query':
                 throw new RuleFileException("$at: cache-query per area is not there yet (proposal 0008) -- put it outside the block");
+        }
+        // An extension's word that takes paths (Vocabulary::word(paths: true)): the block's, like the core's.
+        if (Vocabulary::wordFor($keyword)['paths'] ?? false) {
+            $noPaths();
+            return $path;
         }
         throw new RuleFileException("$at: $keyword does not go inside a match block -- it is not about paths; put it outside");
     }
@@ -2103,28 +2103,19 @@ final class RuleFile
                 if ($def['check'] !== null) {
                     $v = ($def['check'])($v, $at);
                 }
+                if ($def['many']) {
+                    // One key, several values (set stats on|off|<parts>): the check named them.
+                    foreach (is_array($v) ? $v : [] as $name => $one) {
+                        $this->put('ext.' . $def['id'] . '.' . $name, $one);
+                    }
+                    return;
+                }
                 $this->put('ext.' . $def['id'] . '.' . $def['name'], $v);
                 return;
             }
             throw new RuleFileException("$at: unknown setting \"$key\"" . self::suggest($key, array_merge(array_keys(self::SET), ['text.title'], Vocabulary::known()['settings'])));
         }
         [$path, $type] = self::SET[$key];
-        if ($type === 'stats') {
-            // on, off, or the parts: set stats requests crawlers
-            $words = preg_split('/\s+/', strtolower($value)) ?: [];
-            if ($words === ['on'] || $words === ['off']) {
-                $this->put('stats.enabled', $words === ['on']);
-                return;
-            }
-            foreach ($words as $w) {
-                if (!in_array($w, \CjwNetwork\RequestShield\Settings::STATS_PARTS, true)) {
-                    throw new RuleFileException("$at: stats is on, off or what to count: " . implode(', ', \CjwNetwork\RequestShield\Settings::STATS_PARTS) . " -- not \"$w\"");
-                }
-            }
-            $this->put('stats.enabled', true);
-            $this->put('stats.parts', $words);
-            return;
-        }
         $this->put($path, $this->typed($key, $type, $value, $at, $file));
     }
 
@@ -2196,25 +2187,6 @@ final class RuleFile
                     throw new RuleFileException("$at: $key is a size (10M, 500K), not \"$value\"");
                 }
                 $v = (int) $m[1] * ['' => 1, 'k' => 1024, 'm' => 1048576, 'g' => 1073741824][strtolower($m[2] ?? '')];
-                break;
-            case 'hostnames':
-                // Website names (*.domain: one label), or "host" (the host rule's), "sites" (the site blocks').
-                $v = [];
-                foreach (preg_split('/\s+/', strtolower($value)) ?: [] as $name) {
-                    $name = rtrim($name, '.');
-                    if ($name !== 'host' && $name !== 'sites' && preg_match('/^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/', $name) !== 1) {
-                        throw new RuleFileException("$at: $key takes website names (www.example.org, *.example.org), host or sites -- not \"$name\"");
-                    }
-                    $v[] = $name;
-                }
-                break;
-            case 'kinds':
-                $v = preg_split('/\s+/', $value) ?: [];
-                foreach ($v as $k) {
-                    if (!in_array($k, self::KINDS, true)) {
-                        throw new RuleFileException("$at: $key takes kinds of crawler (" . implode(', ', self::KINDS) . "), not \"$k\"");
-                    }
-                }
                 break;
             case 'path':
                 // Relative to the rule file it is written in.

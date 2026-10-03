@@ -71,10 +71,11 @@ return [
         $s = Settings::from(['ext' => ['stats' => ['depth' => 2, 'parts' => ['forms']], 'rs-test' => []],
             'hooks' => ['handler' => ['\\Vendor\\Pkg\\Cache', 'Vendor\\Pkg\\Cache', 'Vendor\\Pkg\\Routes'], 'sink' => []],
             'routes' => ['/rs/stats' => ['ext' => 'stats', 'role' => 'reader']]]);
-        same(['stats' => ['depth' => 2, 'parts' => ['forms']], 'rs-test' => []], $s->ext, 'ext, as given');
+        same([], $s->ext['rs-test'] ?? null, 'ext, as given (an id no offered extension owns)');
+        same([2, ['forms']], [$s->ext['stats']['depth'] ?? null, $s->ext['stats']['parts'] ?? null], 'ext.stats: compiled by the shipped extension (0031 B.3), the values kept');
         same(['handler' => ['Vendor\\Pkg\\Cache', 'Vendor\\Pkg\\Routes'], 'sink' => []], $s->hooks, 'hooks: class names cleaned, once each');
         same(['/rs/stats' => ['ext' => 'stats', 'role' => 'reader']], $s->routes, 'routes, as given');
-        same([[], [], []], [Settings::from([])->ext, Settings::from([])->hooks, Settings::from([])->routes], 'empty by default');
+        same([['stats'], [], []], [array_keys(Settings::from([])->ext), Settings::from([])->hooks, Settings::from([])->routes], 'empty by default (but the shipped extension\'s slot)');
         $round = Settings::import(eval('return ' . var_export($s->export(), true) . ';'));
         same(serialize($s), serialize($round), 'the round trip keeps them');
         expectInvalid(['ext' => ['Stats' => []]], 'ext');

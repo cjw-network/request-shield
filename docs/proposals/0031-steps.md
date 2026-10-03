@@ -23,8 +23,9 @@ the deviation under "Status" and into the proposal before going on. Ask when an 
 (list in the proposal) is needed.
 
 Working mode: Do the work yourself in this session. Spawn subagents only for independent,
-read-heavy searches across many files — at most 2, model haiku (Explore agent). No forks, no
-workflows. After finishing a step, run exactly one review with pr-review-toolkit:code-reviewer,
+read-heavy searches across many files — at most 2, model haiku (Explore agent). A small Workflow
+(at most 5 agents) is allowed for a step that touches many files; sequential when the agents edit
+the same tree. After finishing a step, run exactly one review with pr-review-toolkit:code-reviewer,
 model sonnet, on the uncommitted changes only (git diff); report only high-confidence findings;
 fix them; then commit. If pr-review-toolkit is not installed here, use the code-review skill
 (sonnet) on the diff with the same rule and note it under "Status".
@@ -80,8 +81,8 @@ the model you trust most there, not fast mode.
 ### Phase B — Decoupling
 - [x] **B.1** `Settings::$ext/$hooks/$routes` as the last constructor parameters, `FORMAT` bump, round-trip test. `9c7bc27`
 - [x] **B.2** `Extension` interface + `Rules\Vocabulary` (word/set/offer); `RuleFile` asks the registry before the "unknown" throw; test extension `rs-test` with `set fail-at <stage>`. `1c5c4a6`
-- [ ] **B.3** Stats vocabulary out of `RuleFile`/`Settings`; `StatsExtension` registers it; the plugin reads `ext.stats.*` — stats tests unchanged and green.
-- [ ] **B.4** `Shield.php:506` removed; `StatsExtension::compile()` appends `StatsPlugin`; the `check` warning moves into `Extension::check()`.
+- [x] **B.3** Stats vocabulary out of `RuleFile`/`Settings`; `StatsExtension` registers it; the plugin reads `ext.stats.*` — stats tests unchanged and green. `(this commit; hash follows)`
+- [x] **B.4** `Shield.php:506` removed; `StatsExtension::compile()` appends `StatsPlugin`; the `check` warning moves into `Extension::check()`. `(this commit; hash follows)`
 - [ ] **B.5** Routes registry; `dashboardOnly()` without `Frame`; `Frame::links/isPage/pageFor/TABS` from `$s->routes`; stats declares its pages.
 - [ ] **B.6** The shield serves routes under `dashboard-path` (`Handler`, behind `Access::gate()`, `no-store`, `noindex`, CSRF); the demo wiring goes; `check` warns on a route without `restrict`/`dashboard-access`.
 - [ ] **B.7** `Access` generalised: `dashboard-access`/`dashboard-session`, cookie `rsd`, opaque principal; group mapping into the stats plugin; CLI `access-token`.
@@ -137,11 +138,12 @@ the model you trust most there, not fast mode.
 
 ## Status
 
-- **Last step done:** B.2
-- **Next step:** B.3
+- **Last step done:** B.4 (B.3+B.4 in one change)
+- **Next step:** B.5
 - **Open owner questions:** see the proposal's last section.
-- **Deviations from the plan:** none.
-- **Review:** `pr-review-toolkit` is not installed on the machine that wrote phase 0 and A.1–A.2; the fallback (code-review skill, sonnet, low) was used — for phase 0 (documents only) once over the whole phase, for the code steps once per step. A2.1 likewise (not installed on that machine either; the skill runs as a fork, so on the session's model, not sonnet -- no findings).
+- **Deviations from the plan:** `stats-group`, `stats-access`, `stats-session` and `stats-path` (and `Settings::statsGroups()/statsAccess()/statsPath()`) stayed in the core in B.3, because `src/Access.php` and `src/Report/Frame.php` read them and the core must not read an extension's slot; B.5 (routes) and B.7 (`dashboard-access`, the group mapping into the stats plugin) move them -- the proposal's B.3 row says so now.
+- **Finding from B.3/B.4:** `Extension::plugins(array $compiled)` is how a plugin gets appended: `Settings::compiledExt()` adds what it returns to `$s->plugins` (unique, order kept) after `compile()`, so `Shield` and `check` know no plugin by name any more. The tests that had to change: `ExtensionTest` (its `withRegistry()` must snapshot and re-offer `Vocabulary::extensions()` after `forget()`, or the bootstrap-offered `StatsExtension` vanishes for every later test file; `ext` always carries `stats` from `Config::defaults()`), `SettingsTest`, `PluginTest`, `StatsTest`, `StatsSitesTest` (removed properties → `StatsExtension::of()`, top-level `'stats'`/`'crawlerLog'` keys → `'ext' => ['stats' => …]`). `Vocabulary::set()` gained `name` (dotted for `crawlerLog.*`), `serverWide` and `many` (`set stats` writes `enabled` and `parts`), `word()` gained `paths` (the parser compiles the patterns first, so `origins['written']` keeps the glob); `Frame.php` read `statsHosts` too and now reads the slot for display only, until B.8. Review finding, applied: an eager `class_exists()` + `Vocabulary::offer()` in `bootstrap.php` would have loaded `StatsExtension`, `Extension` and `Vocabulary` (four `is_file()` through the autoloader) on every passing request, against ADR 0008; the bootstrap now only names the shipped extensions in the constant `REQUEST_SHIELD_EXTENSIONS` and `Vocabulary` resolves the list on its first lookup (`extension()`, `extensions()`, `offer()`, the word/key index) -- a test spawns a CLI process and asserts that none of the three classes is declared after `require bootstrap.php`. The names stay in the bootstrap, not in `src/`, because of the phase-B criterion `grep Stats src/ bin/ bootstrap.php = 0` (D.2 adjusts the bootstrap anyway). Composer installs never load `bootstrap.php`, so the constant that names the shipped extension is also defined by `plugins/stats/shipped.php` (composer.json autoload `files`; the test "a Composer install without bootstrap.php" runs a child PHP against `vendor/autoload.php`). A constant cannot grow: a second shipped extension needs a list mechanism -- decide at E.2/H.1 (the single file has no such problem).
+- **Review:** B.3/B.4 were reviewed by two read-only agents inside a workflow (one for correctness, one for plan compliance) instead of the single skill run. Earlier: `pr-review-toolkit` is not installed on the machine that wrote phase 0 and A.1–A.2; the fallback (code-review skill, sonnet, low) was used — for phase 0 (documents only) once over the whole phase, for the code steps once per step. A2.1 likewise (not installed on that machine either; the skill runs as a fork, so on the session's model, not sonnet -- no findings).
 - **Static analysis on this machine:** PHPStan runs; `composer taint` (Psalm 6) crashes with `Class "Composer\InstalledVersions" not found` because the local Composer is 1.10 (its autoloader lacks the class). CI runs it (`static-analysis.yml`); on a machine with Composer ≥ 2 run `composer install` and `composer taint` before pushing code steps.
 - **Finding from A.1:** the bench command in `AGENTS.md` needs `-d opcache.file_update_protection=0`, otherwise the "setup" lines show milliseconds for freshly compiled settings (fixed in AGENTS.md).
 - **Finding from B.2:** the registry is per process (`Vocabulary::offer()`), so a `plugin <class>` line offers the extension for every later reading in that process too -- harmless (its words only ever write into its own slot), and the tests call `Vocabulary::forget()`. `Extension::compile()` runs per `Settings::from()`, so a site block gets its own compiled slot. A `set` key's value is typed by the parser (the core's `typed()`), an extension adds a check per key; the shape of a whole slot is `compile()`'s. The `stats` set key is the one core key with logic of its own -- it stays in `set()` until B.3 moves it into the stats extension.

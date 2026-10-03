@@ -546,8 +546,9 @@ final class Shield
 
     /**
      * The plugins of these settings, made once: those the rules name ("plugin
-     * …"), and the statistics when "set stats" or "set crawler-log" is on. A
-     * class that is missing or no Plugin is left out (and logged).
+     * …") and those the extensions added when the rules were compiled (the
+     * statistics with "set stats" or "set crawler-log": StatsExtension::plugins()).
+     * A class that is missing or no Plugin is left out (and logged).
      *
      * @return list<Plugin>
      */
@@ -557,12 +558,8 @@ final class Shield
             return $this->plugins;
         }
         $s = $this->settings;
-        $classes = $s->plugins;
-        if (($s->statsEnabled || $s->crawlerLogDir !== null) && !in_array(StatsPlugin::class, $classes, true)) {
-            $classes[] = StatsPlugin::class;
-        }
         $made = [];
-        foreach ($classes as $class) {
+        foreach ($s->plugins as $class) {
             try {
                 $plugin = class_exists($class) && is_subclass_of($class, Plugin::class) ? new $class($s) : null;
             } catch (\Throwable $e) {

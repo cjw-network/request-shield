@@ -67,7 +67,7 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `monitor <rule>` | `monitorRules` | before `block`, `restrict`, `allow`, `limit`, `challenge`, `ban`, `feed`, `query strict`: logged as it would decide, not enforced ([modes](modes.md)) |
 | `stats-group "<name>" <websites>` | `stats.groups` | websites of one customer, read together and each on its own; counted apart without naming them in `stats-hosts`; above the site blocks ([groups](statistics.md#groups-websites-per-customer)) |
 | `stats-access "<group>"\|* sha256:<hash> [until <day>]` | `stats.access` | who may read the statistics: the admin (`*`) or a group; only the token's hash (`bin/request-shield token`); above the site blocks ([who sees what](statistics.md#who-sees-what-tokens-a-login-signed-links)) |
-| `stats-skip <paths>` | `stats.skip` | not in the statistics when they pass (a map proxy's tiles); refused or checked they are counted; protected all the same ([statistics](statistics.md#paths-that-are-not-counted-stats-skip)) |
+| `stats-skip <paths>` | `ext.stats.skip` | not in the statistics when they pass (a map proxy's tiles); refused or checked they are counted; protected all the same ([statistics](statistics.md#paths-that-are-not-counted-stats-skip)) |
 | `challenge-exempt <paths>` | `challenge.exemptPaths` | never challenge there (APIs, feeds) |
 | `exempt <addresses or ranges> [until <day>[T<hh:mm>]]` | `exempt.ips` | never counted and never checked, still refused for blocked paths and attack patterns ([IP lists](ip-lists.md)) |
 | `deny <addresses or ranges> [until <day>[T<hh:mm>]]` | `deny` | kept out: 403 before every other check ([IP lists](ip-lists.md)) |

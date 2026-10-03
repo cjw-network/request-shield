@@ -7,14 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`Extension::plugins()`**: an extension names the `Plugin` classes to run per
+  request given its compiled slot; the compiler appends them to the settings'
+  plugins, so `Shield` no longer adds `StatsPlugin` itself (0031 B.4) and the
+  `check` warning about a missing statistics plugin comes from
+  `StatsExtension::check()` (`request-shield check` asks every offered
+  extension). `Vocabulary::set()` takes `serverWide` (refused inside a site
+  block) and `many` (one key, several values: `set stats on|off|<parts>`),
+  `Vocabulary::word()` takes `paths` (the parser compiles the paths, inside a
+  match block the block's), and the type `path` is there for extensions.
 - **Extensions: words and settings of their own** (0031 step B.2, ADR 0008):
   a class implementing `Extension` registers rule words and `set` keys with
   `Rules\Vocabulary` (`word()`, `set()`, typed like the core's); the parser
   asks the registry before it calls a word or key unknown, writes into the
   extension's slot `ext.<id>` only, and `Extension::compile()` checks the
   slot with the base settings in hand when the rules are compiled. Offered
-  by `plugin <class>` (from that line on) or by the bootstrap for the shipped
-  ones; a request pays nothing. `tests/support/RsTestExtension.php` is the
+  by `plugin <class>` (from that line on) or, for the shipped ones the
+  bootstrap names (`REQUEST_SHIELD_EXTENSIONS`), on the registry's first
+  lookup; a request pays nothing. `tests/support/RsTestExtension.php` is the
   smallest one (`set fail-at <stage>` for the fail-safe tests)
   ([docs](docs/features/plugins.md#extensions-words-and-settings-of-their-own)).
 - **Settings carry the extensions' slots** (0031 step B.1): `ext` (extension
@@ -52,6 +62,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   S2 (APCu), and what is not active in it ([docs](docs/features/settings.md#what-this-installation-can-do-the-tiers)).
 
 ### Changed
+- **The statistics are an extension** (0031 steps B.3, B.4):
+  `plugins/stats/src/StatsExtension.php` registers `set stats`, `stats-flush`,
+  `stats-months`, `stats-depth`, `stats-hours`, `stats-days`, `stats-hosts`,
+  the `crawler-log` keys and the word `stats-skip` with `Rules\Vocabulary`
+  (the rule-file syntax is unchanged) and compiles them into `ext.stats`
+  (`enabled`, `parts`, `hours`, `days`, `months`, `flush`, `depth`, `hosts`,
+  `skip`, `crawlerLog`), which `StatsPlugin` and the statistics' pages read
+  through `StatsExtension::of($settings)`. The `Settings` properties
+  `statsEnabled`, `statsHours`, `statsDays`, `statsParts`, `statsFlush`,
+  `statsMonths`, `statsDepth`, `statsHosts`, `statsSkip`, `crawlerLogDir`,
+  `crawlerLogKinds`, `crawlerLogDays` and `crawlerLogQuery` and the constant
+  `Settings::STATS_PARTS` (now `StatsExtension::PARTS`) are gone; in a PHP
+  settings array (`Settings::from()`, `Config::defaults()`) the keys live
+  under `'ext' => ['stats' => [..., 'crawlerLog' => [...]]]` instead of the
+  top-level `'stats'` and `'crawlerLog'`. `StatsPlugin` is appended to the
+  settings' plugins by `StatsExtension::plugins()` when the rules are
+  compiled -- the `Shield` no longer wires it. `stats-group`, `stats-access`,
+  `stats-session` and `stats-path` stay in the core until 0031 B.5/B.7
+  (`Access` and `Frame` read them). The extension is only named
+  (`REQUEST_SHIELD_EXTENSIONS`: by `bootstrap.php`, or with Composer by
+  `plugins/stats/shipped.php` through the package's autoload `files`);
+  `Rules\Vocabulary` loads and offers it when the rules are compiled, if
+  `plugins/stats` is there -- a passing request loads no class for it. Compiled settings format 42: every installation
+  compiles once more after the update, nothing to do
+  ([docs](docs/features/statistics.md)).
 - **Shorter cookies** (0031 step A2.2, ADR 0014): the cookies are `rsp` (the
   pass; was `rs_pass`), `rss` (the solution; was `rs_solution`) and `rsd`
   (the statistics session; was `rs_stats`), and the pass cookie is

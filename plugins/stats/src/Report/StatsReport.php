@@ -12,6 +12,7 @@ namespace CjwNetwork\RequestShield\Report;
 
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Stats;
+use CjwNetwork\RequestShield\StatsExtension;
 use CjwNetwork\RequestShield\StatsPlugin;
 
 /**
@@ -214,7 +215,7 @@ final class StatsReport
         foreach ($stopped as $path => $x) {
             $path = (string) $path;
             $views[$path] = self::stop($views[$path] ?? $zero, $x);
-            foreach (StatsPlugin::folders($path, $s->statsDepth) as $at) {
+            foreach (StatsPlugin::folders($path, StatsExtension::of($s)['depth']) as $at) {
                 $folders[$at] = self::stop($folders[$at] ?? $zero, $x);
             }
         }
@@ -366,7 +367,7 @@ final class StatsReport
         // A customer (who: a group's ID): its group and its websites, nothing else.
         $own = $who === '*' ? null : $s->statsGroups[$who] ?? ['sites' => []];
         $sites = [];
-        foreach ($own === null ? array_merge($s->statsHosts, [Stats::OTHER]) : $own['sites'] as $name) {
+        foreach ($own === null ? array_merge(StatsExtension::of($s)['hosts'], [Stats::OTHER]) : $own['sites'] as $name) {
             $sites[$name] = $row($name);
         }
         $groups = [];

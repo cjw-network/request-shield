@@ -52,11 +52,11 @@ return [
     'set stats-hosts: names, *.domain, "host" (the host rule\'s), "sites" (the site blocks\') -- about the server; mistakes named' => function (): void {
         $dir = sitesStatsDir();
         try {
-            same(['a.de', 'www.a.de', '*.b.de'], sitesStatsSettings($dir, "set stats-hosts A.de www.a.de. *.b.de\n")->statsHosts, 'lower case, without the trailing dot');
-            same(['a.de', 'c.de', 'x.org'], sitesStatsSettings($dir, "host a.de c.de\nset stats-hosts host x.org\n")->statsHosts, 'host: the names the host rule allows');
-            same(['shop.a.de', 'a.de', '*.b.de'], sitesStatsSettings($dir, "set stats-hosts sites\nsite shop.a.de a.de {\n}\nsite *.b.de {\n}\nsite default {\n}\n")->statsHosts,
+            same(['a.de', 'www.a.de', '*.b.de'], sitesStatsSettings($dir, "set stats-hosts A.de www.a.de. *.b.de\n")->ext['stats']['hosts'], 'lower case, without the trailing dot');
+            same(['a.de', 'c.de', 'x.org'], sitesStatsSettings($dir, "host a.de c.de\nset stats-hosts host x.org\n")->ext['stats']['hosts'], 'host: the names the host rule allows');
+            same(['shop.a.de', 'a.de', '*.b.de'], sitesStatsSettings($dir, "set stats-hosts sites\nsite shop.a.de a.de {\n}\nsite *.b.de {\n}\nsite default {\n}\n")->ext['stats']['hosts'],
                 'sites: the site blocks\' names, not default');
-            same([], sitesStatsSettings($dir, '')->statsHosts, 'unset: one statistics, as before');
+            same([], sitesStatsSettings($dir, '')->ext['stats']['hosts'], 'unset: one statistics, as before');
             foreach (["set stats-hosts a_b.de\n" => 'takes website names', "set stats-hosts *.*.de\n" => 'takes website names',
                 "site a.de {\n  set stats-hosts a.de\n}\n" => 'is about the server'] as $text => $says) {
                 try {
@@ -128,7 +128,7 @@ return [
         $dir = sitesStatsDir();
         try {
             $s = sitesStatsSettings($dir, "stats-skip **/osm-proxy/** /tiles/**\nmatch /app/** {\n  stats-skip\n}\n[P] limit requests 4/min\nexempt none\n");
-            same(3, count($s->statsSkip), 'two paths, and a match block\'s area');
+            same(3, count($s->ext['stats']['skip']), 'two paths, and a match block\'s area');
             $shield = new Shield($s, new MemoryStore());
             foreach (['/', '/osm-proxy/12/2133/1390.png', '/tiles/a', '/app/x', '/osm-proxy/.env', '/osm-proxy/b', '/osm-proxy/c'] as $i => $path) {
                 sitesCount($shield, 'a.de', $path, SITES_T0 + $i);
@@ -149,7 +149,7 @@ return [
             $s = sitesStatsSettings($dir, "set stats-hosts c.de\n[G-A] stats-group \"Customer A\" a.de www.a.de b.de   # the agency's customer\nstats-group Reseller b.de c.de\n");
             same(['customer-a' => ['name' => 'Customer A', 'sites' => ['a.de', 'www.a.de', 'b.de'], 'rule' => 'G-A'], 'reseller' => ['name' => 'Reseller', 'sites' => ['b.de', 'c.de'], 'rule' => 'site.rules:6']],
                 $s->statsGroups, 'an ID for addresses; a website in two groups');
-            same(['c.de', 'a.de', 'www.a.de', 'b.de'], $s->statsHosts, 'a group\'s websites are counted apart too');
+            same(['c.de', 'a.de', 'www.a.de', 'b.de'], $s->ext['stats']['hosts'], 'a group\'s websites are counted apart too');
             foreach (['a.de', 'www.a.de', 'b.de', 'b.de', 'c.de', 'x.example'] as $host) {
                 sitesCount(new Shield($s, new MemoryStore()), $host);
             }

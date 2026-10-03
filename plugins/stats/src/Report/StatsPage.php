@@ -12,6 +12,7 @@ namespace CjwNetwork\RequestShield\Report;
 
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Stats;
+use CjwNetwork\RequestShield\StatsExtension;
 use CjwNetwork\RequestShield\Texts;
 
 /**
@@ -128,7 +129,7 @@ final class StatsPage
         if ($who !== '*' && isset($s->statsGroups[$who])) {
             $t['tabSites'] = $s->statsGroups[$who]['name'];     // a customer's tab: its group, not "all websites"
         }
-        if ($view === 'sites' && $s->statsHosts === []) {
+        if ($view === 'sites' && StatsExtension::of($s)['hosts'] === []) {
             $view = 'all';                  // no websites to compare: the overview
         }
         // The pages by views, or by what the shield stopped (the protection's view starts there).
@@ -147,7 +148,7 @@ final class StatsPage
         // the path names the view, GET parameters filter. Without links: ?view=.
         $links = [];
         foreach ((array) ($o['links'] ?? []) as $v => $u) {
-            if (in_array($v, ['sites', 'all', 'site', 'shield', 'rules', 'live', 'lists'], true) && $u !== '' && ($v !== 'sites' || $s->statsHosts !== [])
+            if (in_array($v, ['sites', 'all', 'site', 'shield', 'rules', 'live', 'lists'], true) && $u !== '' && ($v !== 'sites' || StatsExtension::of($s)['hosts'] !== [])
                 && ($who === '*' || in_array($v, ['sites', 'site', 'shield'], true))) {
                 $links[$v] = $u;
             }
@@ -155,7 +156,7 @@ final class StatsPage
         $action = $links[$view] ?? $action;
         $query = static fn (array $q): string => $action . '?' . http_build_query($links !== [] ? array_diff_key($q, ['view' => 1]) : $q);
 
-        if (!$s->statsEnabled) {
+        if (!StatsExtension::of($s)['enabled']) {
             $body = '<p class="note">' . $e($t['noStats']) . '</p>';
             return ($o['fragment'] ?? false) ? $body : self::page($body, $t['title'], $lang, $o, $e);
         }
@@ -220,7 +221,7 @@ final class StatsPage
         }
         $h .= '<a class="pill" href="' . $e($query(['days' => $days, 'by' => $by === 'hour' ? 'day' : $by, 'format' => 'json'] + $range + ($site !== null ? ['site' => $site] : []))) . '">JSON</a></div></div>';
         // The website switch (stats-hosts): all added up, one website, or the names the rules do not know.
-        if ($s->statsHosts !== [] && $view !== 'rules' && $view !== 'sites') {
+        if (StatsExtension::of($s)['hosts'] !== [] && $view !== 'rules' && $view !== 'sites') {
             $chosen = false;
             $option = static function (string $value, string $label) use ($site, $e, &$chosen): string {
                 $on = !$chosen && $value === (string) $site;
@@ -238,7 +239,7 @@ final class StatsPage
                 }
                 $opts .= '</optgroup>';
             }
-            $rest = $who !== '*' ? [] : array_values(array_filter($s->statsHosts, static fn (string $n): bool => !isset($grouped[$n])));
+            $rest = $who !== '*' ? [] : array_values(array_filter(StatsExtension::of($s)['hosts'], static fn (string $n): bool => !isset($grouped[$n])));
             if ($rest !== []) {
                 $opts .= $s->statsGroups !== [] ? '<optgroup label="' . $e($t['ungrouped']) . '">' : '';
                 foreach ($rest as $name) {
@@ -263,7 +264,7 @@ final class StatsPage
             $h .= ' <button type="submit">' . $e($t['show']) . '</button></form>';
         }
         $h .= '<p class="sub">' . $e(self::date($r['from'], $lang) . ' – ' . self::date($r['to'], $lang))
-            . ($s->statsHosts !== [] ? ' · ' . $e(self::siteName($s, $site, $t)) : '')
+            . (StatsExtension::of($s)['hosts'] !== [] ? ' · ' . $e(self::siteName($s, $site, $t)) : '')
             . ($who !== '*' ? ' · <a href="?' . $e(http_build_query(['rs-logout' => 1, 'lang' => $lang])) . '">' . $e($t['signOut']) . '</a>' : '') . ($crawler !== null ? ' · ' . $e($crawler) . ' · <a href="' . $e($query(['days' => $days, 'by' => $by, 'lang' => $lang])) . '">' . $e($t['all']) . '</a>' : '') . '</p>';
         if ($view === 'sites') {
             // All websites: the groups with their websites, the rest, where the traffic is.
@@ -584,7 +585,7 @@ final class StatsPage
         // The plugin's pages under its own path (set stats-path, default <dashboard-path>/stats);
         // "rules" is the core's (Rules & setup, under <dashboard-path>/waf/).
         $own = $prefix . $s->statsPath;
-        return ($s->statsHosts !== [] ? ['sites' => $own . '/sites'] : []) + ['all' => $own . '/overview', 'site' => $own . '/visitors',
+        return (StatsExtension::of($s)['hosts'] !== [] ? ['sites' => $own . '/sites'] : []) + ['all' => $own . '/overview', 'site' => $own . '/visitors',
             'shield' => $own . '/protection', 'rules' => $prefix . $s->dashboardPath . '/waf/rules'];
     }
 
@@ -602,7 +603,7 @@ final class StatsPage
             }
         }
         if ($p === strtolower($s->statsPath)) {
-            return $s->statsHosts !== [] ? 'sites' : 'all';
+            return StatsExtension::of($s)['hosts'] !== [] ? 'sites' : 'all';
         }
         return null;
     }

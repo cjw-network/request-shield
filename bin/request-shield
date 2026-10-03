@@ -440,7 +440,8 @@ if ($command === 'trace') {
 }
 
 if ($command === 'stats') {
-    if (!$settings->statsEnabled) {
+    $so = class_exists(\CjwNetwork\RequestShield\StatsExtension::class) ? \CjwNetwork\RequestShield\StatsExtension::of($settings) : ['enabled' => false, 'hosts' => []];
+    if (!$so['enabled']) {
         fwrite(STDERR, "no statistics: switch them on with \"set stats on\" in the rule file\n");
         exit(1);
     }
@@ -453,9 +454,9 @@ if ($command === 'stats') {
         exit(2);
     }
     if (isset($period['site']) && $period['site'] !== 'other' && !\CjwNetwork\RequestShield\Stats::known($settings, $period['site'])) {
-        fwrite(STDERR, $settings->statsHosts === [] ? "no statistics per website: set stats-hosts (or stats-group) in the rule file\n"
+        fwrite(STDERR, $so['hosts'] === [] ? "no statistics per website: set stats-hosts (or stats-group) in the rule file\n"
             : (strncmp($period['site'], 'group:', 6) === 0 ? 'no group ' . substr($period['site'], 6) . ' (' . implode(', ', array_keys($settings->statsGroups)) . ")\n"
-            : "no website {$period['site']} in stats-hosts (" . implode(', ', $settings->statsHosts) . ", other)\n"));
+            : "no website {$period['site']} in stats-hosts (" . implode(', ', $so['hosts']) . ", other)\n"));
         exit(2);
     }
     if (($period['site'] ?? null) === 'other') {
@@ -620,7 +621,11 @@ function crawlerListsAge(Settings $settings): array
  */
 function sectionsPastLimit(Settings $settings): array
 {
-    if (!$settings->statsEnabled || !in_array('pages', $settings->statsParts, true) || !is_dir($settings->storeDir . '/stats') || !class_exists(\CjwNetwork\RequestShield\Stats::class)) {
+    if (!class_exists(\CjwNetwork\RequestShield\StatsExtension::class) || !class_exists(\CjwNetwork\RequestShield\Stats::class)) {
+        return [];
+    }
+    $so = \CjwNetwork\RequestShield\StatsExtension::of($settings);
+    if (!$so['enabled'] || !in_array('pages', $so['parts'], true) || !is_dir($settings->storeDir . '/stats')) {
         return [];
     }
     $read = \CjwNetwork\RequestShield\Stats::of($settings)->read(gmdate('Ymd', time() - 6 * 86400), gmdate('Ymd'));
@@ -632,7 +637,7 @@ function sectionsPastLimit(Settings $settings): array
     }
     return $past === 0 ? [] : [number_format($past) . ' section views in the last 7 days were past the limit of ' . (\CjwNetwork\RequestShield\Stats::TOP * 2)
         . ' sections an hour on one folder level: the deepest levels are approximate there'
-        . ($settings->statsDepth > 1 ? ' -- set stats-depth ' . ($settings->statsDepth - 1) . ' if the upper ones are enough' : '') . "\n"];
+        . ($so['depth'] > 1 ? ' -- set stats-depth ' . ($so['depth'] - 1) . ' if the upper ones are enough' : '') . "\n"];
 }
 
 $versions = $settings->origins['versions'] ?? [];
@@ -669,9 +674,12 @@ if ($command === 'check' || $command === 'reload') {
         fwrite(STDERR, "warning: site blocks picked by the Host header (set site-from host), and no host rule -- a visitor names the website; list the names (host …), or use set site-from server-name\n");
         $warnings++;
     }
-    if (($settings->statsEnabled || $settings->crawlerLogDir !== null) && !class_exists(\CjwNetwork\RequestShield\StatsPlugin::class)) {
-        fwrite(STDERR, "warning: set stats (or crawler-log) is on, but the statistics plugin is not installed (plugins/stats) -- nothing is counted\n");
-        $warnings++;
+    // The extensions' own warnings about the compiled settings (Extension::check(), 0031 B.4).
+    foreach (\CjwNetwork\RequestShield\Rules\Vocabulary::extensions() as $extension) {
+        foreach ($extension::check($settings) as $warning) {
+            fwrite(STDERR, "warning: $warning\n");
+            $warnings++;
+        }
     }
     foreach (array_merge($settings->feeds, $settings->monitor !== null ? $settings->monitor->feeds : []) as $f) {
         if ($f['state'] !== 'in force') {

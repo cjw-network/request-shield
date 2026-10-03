@@ -15,14 +15,18 @@ use CjwNetwork\RequestShield\Tests\RsTestExtension;
  * base settings in hand. Uses ruleDir()/rulesFail() from RuleFileTest.php.
  */
 
-/** Runs $body with the registry empty before and after (the registry is per process). */
+/** Runs $body with the registry empty; afterwards the extensions offered before (the bootstrap's) are back (the registry is per process). */
 function withRegistry(callable $body): void
 {
+    $before = Vocabulary::extensions();
     Vocabulary::forget();
     try {
         $body();
     } finally {
         Vocabulary::forget();
+        foreach ($before as $class) {
+            Vocabulary::offer($class);
+        }
     }
 }
 
@@ -68,7 +72,7 @@ return [
             same(['failAt' => 'rules', 'marks' => ['a', 'b', 'c'], 'hosts' => ['a.example']], $s->ext['rs-test'] ?? null, 'compile(): checked, shaped, the base settings in hand');
             $round = Settings::import(eval('return ' . var_export($s->export(), true) . ';'));
             same(serialize($s), serialize($round), 'export/import keep it');
-            same([], Settings::from(extConfig("host a.example\n"))->ext, 'nothing written: no slot');
+            same(null, Settings::from(extConfig("host a.example\n"))->ext['rs-test'] ?? null, 'nothing written: no slot');
             // Wrong at the line: the extension's check, the type.
             rulesFail(['site.rules' => "set fail-at nowhere\n"], 'site.rules:1', 'fail-at is one of compile, rules');
             rulesFail(['site.rules' => "set marks-max many\n"], 'site.rules:1', 'marks-max is a number');
@@ -106,6 +110,7 @@ return [
                 public static function id(): string { return 'rs-test'; }
                 public static function vocabulary(Vocabulary $v): void { }
                 public static function compile(array $raw, Settings $base): array { return $raw; }
+                public static function plugins(array $compiled): array { return []; }
                 public static function routes(): array { return []; }
                 public static function commands(): array { return []; }
                 public static function check(Settings $s): array { return []; }
@@ -124,6 +129,7 @@ return [
                 public static function id(): string { return 'core-ish'; }
                 public static function vocabulary(Vocabulary $v): void { $v->word('block', static fn (array $a, array $v): array => $v); }
                 public static function compile(array $raw, Settings $base): array { return $raw; }
+                public static function plugins(array $compiled): array { return []; }
                 public static function routes(): array { return []; }
                 public static function commands(): array { return []; }
                 public static function check(Settings $s): array { return []; }
@@ -140,6 +146,7 @@ return [
                 public static function id(): string { return 'core-ish'; }
                 public static function vocabulary(Vocabulary $v): void { $v->set('debug-header', 'bool'); }
                 public static function compile(array $raw, Settings $base): array { return $raw; }
+                public static function plugins(array $compiled): array { return []; }
                 public static function routes(): array { return []; }
                 public static function commands(): array { return []; }
                 public static function check(Settings $s): array { return []; }

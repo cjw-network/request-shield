@@ -16,8 +16,9 @@ namespace CjwNetwork\RequestShield;
  * pages, bot families, pages not found and their links, sitemaps, page views,
  * what was stopped where -- and writes the per-crawler logs (set crawler-log).
  *
- * Registered by `set stats on` (or `set crawler-log …`) on its own; what it
- * counts is set with the `stats` words of the rule file. A request the shield
+ * Registered by `set stats on` (or `set crawler-log …`) on its own
+ * (StatsExtension::plugins()); what it counts is set with the `stats` words
+ * of the rule file, compiled into ext.stats (StatsExtension). A request the shield
  * answered itself is counted at once; one the site answers, when it has ended
  * (with the site's status).
  */
@@ -31,23 +32,28 @@ final class StatsPlugin implements Plugin
     /** @var list<string> the keys of a request that goes on to the site, counted when it ends */
     private array $pending = [];
 
+    /** @var array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, hosts: list<string>, skip: list<string>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}} the statistics' settings (ext.stats) */
+    private array $o;
+
     public function __construct(private Settings $settings)
     {
+        $this->o = StatsExtension::of($settings);
     }
 
     public function decided(Request $request, Decision $decision, ?string $rule, Seen $seen, float $now, bool $continues, ?Decision $would = null): void
     {
         $s = $this->settings;
+        $o = $this->o;
         // stats-skip: a path that is no page of the site (a map proxy's tiles) -- not counted when it
         // passes; refused or checked, it still is (an attack there stays visible).
         // The dashboard's own pages (the statistics, the live view's feed every few
         // seconds): looking at the numbers must not change them.
-        if ($decision->passes() && $would === null && (($s->statsSkip !== [] && self::skipped($s->statsSkip, $request->matchPath()))
+        if ($decision->passes() && $would === null && (($o['skip'] !== [] && self::skipped($o['skip'], $request->matchPath()))
             || (stripos($request->path, $s->dashboardPath) !== false || stripos($request->path, $s->statsPath) !== false) && \CjwNetwork\RequestShield\Report\Frame::isPage($s, $request->matchPath()))) {
             $this->waiting = false;
             return;
         }
-        $parts = $s->statsEnabled ? $s->statsParts : [];
+        $parts = $o['enabled'] ? $o['parts'] : [];
         $keys = [];
         if (in_array('requests', $parts, true)) {
             $keys[] = 'a:' . $decision->action;
@@ -61,7 +67,8 @@ final class StatsPlugin implements Plugin
         $crawling = in_array('crawlers', $parts, true);
         $paging = in_array('pages', $parts, true);
         // A crawler is looked at only for its statistics, the pages' visitors or its log.
-        $id = !$crawling && !$paging && $s->crawlerLogDir === null ? null : $seen->crawler();
+        $log = $o['crawlerLog'];
+        $id = !$crawling && !$paging && $log['dir'] === null ? null : $seen->crawler();
         $who = 'people';
         if ($id !== null) {
             $verified = $seen->verified();
@@ -85,11 +92,11 @@ final class StatsPlugin implements Plugin
                     $keys[] = 'l:sitemap:' . self::word($request->path) . "@$id|" . (int) $now . '|-';
                 }
             }
-            if ($s->crawlerLogDir !== null && ($s->crawlerLogKinds === [] || in_array($seen->crawlerKind(), $s->crawlerLogKinds, true))) {
+            if ($log['dir'] !== null && ($log['kinds'] === [] || in_array($seen->crawlerKind(), $log['kinds'], true))) {
                 // A verified crawler's address is its operator's: in full. One that
                 // only claims the name may be a person: as the log keeps addresses.
-                Log::append($s->crawlerLogDir . '/' . $id . '/' . date('Y-m-d', (int) $now) . '.log',
-                    Log::line($s, $request, $verified ? $decision : $decision->claiming($id), $rule, $now, false, $verified ? $request->clientIp : null, $s->crawlerLogQuery),
+                Log::append($log['dir'] . '/' . $id . '/' . date('Y-m-d', (int) $now) . '.log',
+                    Log::line($s, $request, $verified ? $decision : $decision->claiming($id), $rule, $now, false, $verified ? $request->clientIp : null, $log['query']),
                     $s->logMaxSize);
             }
         } elseif (in_array('bots', $parts, true) || $paging) {
@@ -127,7 +134,7 @@ final class StatsPlugin implements Plugin
                 $this->formOut = $out;                  // saved or an error: the site's answer, when it has ended
             }
         }
-        if (!$s->statsEnabled) {
+        if (!$o['enabled']) {
             return;
         }
         $stats = $this->stats;
@@ -177,7 +184,7 @@ final class StatsPlugin implements Plugin
             return;
         }
         self::$tended = $hour;
-        foreach (array_merge($s->statsHosts, [Stats::OTHER]) as $name) {
+        foreach (array_merge(StatsExtension::of($s)['hosts'], [Stats::OTHER]) as $name) {
             if ($name !== $site) {
                 Stats::of($s, $name)->tend($now);
             }
@@ -262,8 +269,7 @@ final class StatsPlugin implements Plugin
             return;
         }
         $this->waiting = false;
-        $s = $this->settings;
-        $parts = $s->statsParts;
+        $parts = $this->o['parts'];
         $keys = $this->pending;
         if ($status > 0) {
             $requests = in_array('requests', $parts, true);
@@ -282,7 +288,7 @@ final class StatsPlugin implements Plugin
             if (in_array('pages', $parts, true) && $status === 200 && $request->method === 'GET' && self::isHtml($headers)) {
                 $keys[] = 'pg:' . $this->who . '|' . self::word($request->path);
                 // Its first folders too (stats-depth, 2: /news/, /news/2026/): how many views a subtree got, exactly.
-                foreach (self::folders($request->path, $s->statsDepth) as $folder) {
+                foreach (self::folders($request->path, $this->o['depth']) as $folder) {
                     $keys[] = 'pd:' . $this->who . '|' . self::word($folder);
                 }
             }

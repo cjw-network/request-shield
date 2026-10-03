@@ -9,6 +9,7 @@ use CjwNetwork\RequestShield\Report\StatsReport;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Settings;
+use CjwNetwork\RequestShield\StatsExtension;
 use CjwNetwork\RequestShield\Shield;
 use CjwNetwork\RequestShield\Stats;
 use CjwNetwork\RequestShield\StatsPlugin;
@@ -58,8 +59,9 @@ return [
         try {
             file_put_contents("$dir/site.rules", "set stats on\nset stats-hours 3\nset stats-days 90\nset crawler-log logs/crawlers\nset crawler-log-kinds ai-training ai-user\nset crawler-log-days 14\nset crawler-log-query off\n");
             $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
+            $o = StatsExtension::of($s);
             same([true, 3, 90, "$dir/logs/crawlers", ['ai-training', 'ai-user'], 14, false],
-                [$s->statsEnabled, $s->statsHours, $s->statsDays, $s->crawlerLogDir, $s->crawlerLogKinds, $s->crawlerLogDays, $s->crawlerLogQuery]);
+                [$o['enabled'], $o['hours'], $o['days'], $o['crawlerLog']['dir'], $o['crawlerLog']['kinds'], $o['crawlerLog']['days'], $o['crawlerLog']['query']]);
             file_put_contents("$dir/bad.rules", "set crawler-log-kinds robots\n");
             try {
                 RuleFile::read(["$dir/bad.rules"]);
@@ -70,7 +72,7 @@ return [
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }
-        same([false, null], [Settings::from([])->statsEnabled, Settings::from([])->crawlerLogDir], 'off by default');
+        same([false, null], [StatsExtension::of(Settings::from([]))['enabled'], StatsExtension::of(Settings::from([]))['crawlerLog']['dir']], 'off by default');
         // Where the pages live: dashboard-path, something in front of it allowed.
         $page = \CjwNetwork\RequestShield\Report\StatsPage::class;
         same(['all' => '/rs/stats/overview', 'site' => '/rs/stats/visitors', 'shield' => '/rs/stats/protection', 'rules' => '/rs/waf/rules'], $page::links(Settings::from([])), 'the default: /rs, the plugin\'s pages under /rs/stats/');
@@ -80,7 +82,7 @@ return [
             $page::viewFor($admin, '/rs/stats/visitors'), $page::viewFor($admin, '/admin/rs/other')], 'which view a path is: capitals and a trailing slash do not matter');
         same(['all', null, null, null, null], [$page::viewFor($admin, '/admin/rs/stats'), $page::viewFor($admin, '/admin/rs/dashboard'), $page::viewFor($admin, '/admin/rs/shield'),
             $page::viewFor($admin, '/admin/rs/sites'), $page::viewFor($admin, '/admin/rs/rules')], 'the plugin\'s start (the overview without stats-hosts); the old addresses are gone');
-        $hosts = Settings::from(['stats' => ['enabled' => true, 'hosts' => ['a.de']]]);
+        $hosts = Settings::from(['ext' => ['stats' => ['enabled' => true, 'hosts' => ['a.de']]]]);
         same(['sites', 'sites'], [$page::viewFor($hosts, '/rs/stats'), $page::viewFor($hosts, '/rs/stats/sites')], 'with stats-hosts: all websites first');
         foreach (['admin/rs', '/a b', '/x/../y', ''] as $bad) {
             try {
@@ -94,13 +96,14 @@ return [
         try {
             file_put_contents("$dir/p.rules", "set stats crawlers not-found\nset stats-flush 30s\nset dashboard-path /admin/rs\n");
             $p = Settings::from(RuleFile::read(["$dir/p.rules"])['config']);
-            same([true, ['crawlers', 'not-found'], 30, '/admin/rs'], [$p->statsEnabled, $p->statsParts, $p->statsFlush, $p->dashboardPath], 'only some parts; the flush; the pages\' path');
-            same(Settings::STATS_PARTS, Settings::from(['stats' => ['enabled' => true]])->statsParts, 'all parts by default');
+            $o = StatsExtension::of($p);
+            same([true, ['crawlers', 'not-found'], 30, '/admin/rs'], [$o['enabled'], $o['parts'], $o['flush'], $p->dashboardPath], 'only some parts; the flush; the pages\' path');
+            same(StatsExtension::PARTS, StatsExtension::of(Settings::from(['ext' => ['stats' => ['enabled' => true]]]))['parts'], 'all parts by default');
             file_put_contents("$dir/d.rules", "set stats on\nset stats-depth 3\n");
-            same([2, 3], [Settings::from([])->statsDepth, Settings::from(RuleFile::read(["$dir/d.rules"])['config'])->statsDepth], 'section levels: 2 by default, stats-depth 3');
+            same([2, 3], [StatsExtension::of(Settings::from([]))['depth'], StatsExtension::of(Settings::from(RuleFile::read(["$dir/d.rules"])['config']))['depth']], 'section levels: 2 by default, stats-depth 3');
             foreach ([0, 5] as $bad) {
                 try {
-                    Settings::from(['stats' => ['depth' => $bad]]);
+                    Settings::from(['ext' => ['stats' => ['depth' => $bad]]]);
                     throw new TestFailure("accepted stats.depth $bad");
                 } catch (InvalidArgumentException $e) {
                     truthy(strpos($e->getMessage(), 'stats.depth') !== false && strpos($e->getMessage(), '1 to 4') !== false, $e->getMessage());
@@ -116,7 +119,7 @@ return [
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }
-        foreach ([['stats' => ['enabled' => 'yes']], ['crawlerLog' => ['dir' => '']], ['crawlerLog' => ['kinds' => ['robots']]]] as $bad) {
+        foreach ([['ext' => ['stats' => ['enabled' => 'yes']]], ['ext' => ['stats' => ['crawlerLog' => ['dir' => '']]]], ['ext' => ['stats' => ['crawlerLog' => ['kinds' => ['robots']]]]]] as $bad) {
             try {
                 Settings::from($bad);
                 throw new TestFailure('accepted ' . json_encode($bad));
@@ -203,7 +206,7 @@ return [
         try {
             foreach ([['requests'], ['crawlers'], ['not-found', 'bots']] as $parts) {
                 exec('rm -rf ' . escapeshellarg("$dir/stats"));
-                $s = Settings::from(['storeDir' => $dir, 'store' => 'file', 'stats' => ['enabled' => true, 'parts' => $parts]]);
+                $s = Settings::from(['storeDir' => $dir, 'store' => 'file', 'ext' => ['stats' => ['enabled' => true, 'parts' => $parts]]]);
                 $shield = new Shield($s, new MemoryStore());
                 foreach ([statsReq('/', STATS_ANTHROPIC, STATS_CLAUDEBOT), statsReq('/', '198.51.100.5', 'curl/8.5')] as $r) {
                     $d = $shield->decide($r, STATS_T0);
@@ -288,8 +291,8 @@ return [
     'recording a request: action, rule, status; a crawler verified or only claimed, its page, robots.txt, its last visit; other bots by family' => function (): void {
         $dir = statsDir();
         try {
-            $s = Settings::from(['storeDir' => $dir, 'store' => 'file', 'stats' => ['enabled' => true], 'crawlerPolicy' => ['CRAWL-GPTBOT' => 'block'],
-                'crawlerLog' => ['dir' => "$dir/crawlers", 'query' => false]]);
+            $s = Settings::from(['storeDir' => $dir, 'store' => 'file', 'ext' => ['stats' => ['enabled' => true, 'crawlerLog' => ['dir' => "$dir/crawlers", 'query' => false]]],
+                'crawlerPolicy' => ['CRAWL-GPTBOT' => 'block']]);
             $shield = new Shield($s, new MemoryStore());
             $record = static function (Request $r, float $t) use ($shield): Decision {
                 $d = $shield->decide($r, $t);
@@ -343,7 +346,7 @@ return [
     'the report: totals, rules, statuses, pages not found, crawlers -- and in words' => function (): void {
         $dir = statsDir();
         try {
-            $s = Settings::from(['storeDir' => $dir, 'store' => 'file', 'stats' => ['enabled' => true], 'crawlerPolicy' => ['CRAWL-GPTBOT' => 'block']]);
+            $s = Settings::from(['storeDir' => $dir, 'store' => 'file', 'ext' => ['stats' => ['enabled' => true]], 'crawlerPolicy' => ['CRAWL-GPTBOT' => 'block']]);
             $st = Stats::of($s);
             $st->count(['a:allow', 's:200', 'c:CRAWL-CLAUDEBOT:seen', 'c:CRAWL-CLAUDEBOT:verified', 'c:CRAWL-CLAUDEBOT:allowed', 'p:CRAWL-CLAUDEBOT:/news', 'l:CRAWL-CLAUDEBOT|' . STATS_T0 . '|' . STATS_ANTHROPIC], STATS_T0);
             $st->count(['a:reject', 'r:site.rules:4', 's:403', 'c:CRAWL-GPTBOT:seen', 'c:CRAWL-GPTBOT:verified', 'c:CRAWL-GPTBOT:refused'], STATS_T0 + 1);
@@ -574,7 +577,7 @@ return [
 'the visitors page (0022): six numbers against the period before, one chart, cards with tabs -- no script, everything escaped' => function (): void {
         $dir = statsDir();
         try {
-            $s = Settings::from(['storeDir' => $dir, 'store' => 'file', 'stats' => ['enabled' => true]]);
+            $s = Settings::from(['storeDir' => $dir, 'store' => 'file', 'ext' => ['stats' => ['enabled' => true]]]);
             $st = Stats::of($s);
             $day = 86400;
             // The 7 days before: 2 page views; these 7 days: 3, one of them a path with markup.

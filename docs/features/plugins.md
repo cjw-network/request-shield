@@ -105,8 +105,14 @@ A plugin runs per request and reads. An **extension** speaks at compile time:
 it adds words and `set` keys to the rule file, checks them when the rules are
 compiled, and what it checked lands in the compiled settings, in a slot of
 its own (`$settings->ext[<id>]`); the core never reads that slot. A request
-pays nothing for an extension (ADR 0008). A class may be both -- the
-statistics will be (0031 B.3).
+pays nothing for an extension (ADR 0008). The statistics are the first
+shipped extension (`plugins/stats/src/StatsExtension.php`: `set stats …`,
+`stats-hosts`, `stats-skip`, the `crawler-log` keys, compiled into
+`ext.stats`); the bootstrap names it, so no `plugin` line is needed. A class
+or a directory may be both: the statistics are one extension
+(`StatsExtension`) and one plugin (`StatsPlugin`, which
+`StatsExtension::plugins()` adds to the settings' plugins when something is
+counted or logged).
 
 ```php
 use CjwNetwork\RequestShield\{Extension, Settings};
@@ -118,7 +124,7 @@ final class AlertsExtension implements Extension
 
     public static function vocabulary(Vocabulary $v): void
     {
-        // set alerts-after 50: typed like the core's keys (bool, int, seconds, string, words);
+        // set alerts-after 50: typed like the core's keys (bool, int, seconds, string, words, path);
         // lands in ext.alerts.after (the extension's own prefix is dropped, the rest camelCased).
         $v->set('alerts-after', 'int', 'refusals per minute before a message');
         // alert-to ops@example.org: a word of its own; the parser hands it the line's
@@ -141,6 +147,7 @@ final class AlertsExtension implements Extension
         return ['after' => $raw['after'] ?? 50, 'to' => $raw['to']];
     }
 
+    public static function plugins(array $compiled): array { return []; }   // Plugin classes to run per request, from the compiled slot (0031 B.4)
     public static function routes(): array { return []; }       // pages under dashboard-path (0031 B.5)
     public static function commands(): array { return []; }     // command-line commands (0031 D.1)
     public static function check(Settings $s): array { return []; }   // warnings for `check` (0031 B.4)
@@ -154,12 +161,32 @@ alert-to ops@example.org
 ```
 
 - **Offered, then known.** `plugin <class>` offers an extension for the rest
-  of the reading; the shipped ones the bootstrap offers (`Vocabulary::offer()`),
-  so `set stats on` needs no `plugin` line. An extension's word before its
-  `plugin` line is an unknown rule.
+  of the reading; the shipped ones are only named (the constant
+  `REQUEST_SHIELD_EXTENSIONS`: `bootstrap.php` defines it right after the
+  autoloader; with Composer, `plugins/stats/shipped.php` does, loaded through
+  the package's autoload `files`) and the registry
+  loads and offers them on its first lookup, when the rules are compiled --
+  a class that is not there is skipped, and a passing request, which never
+  consults the registry, loads none of it (ADR 0008). So `set stats on`
+  needs no `plugin` line. An extension's word before its `plugin` line is an
+  unknown rule.
 - **Its own slot only.** Words and keys write into `ext.<id>`; a word or key
   the core has cannot be taken (the registry refuses it); two extensions
-  cannot share an id, a word or a key.
+  cannot share an id, a word or a key. A key's `name` says where below the
+  slot it lands (`set('stats-flush', 'seconds', …, name: 'flush')`; dotted
+  for a nested place, `crawlerLog.dir`); `many: true` lets one key write
+  several values (`set stats on|off|<parts>` writes `enabled` and `parts`).
+- **What runs per request:** `plugins()` names the `Plugin` classes, given the
+  compiled slot; they are appended to the settings' plugins when the rules
+  are compiled, so the `Shield` itself knows no plugin by name. The
+  statistics do this with `set stats on` (or a `crawler-log` directory).
+- **Above the site blocks:** `set(…, serverWide: true)` marks a key the
+  parser refuses inside a site block, with the core's message for its own
+  server-wide keys (`stats-hosts`).
+- **A word with paths:** `word(…, paths: true)` makes the parser compile the
+  line's paths to patterns before the word sees them, and inside a `match`
+  block the word takes no paths and gets the block's (`stats-skip`); a word
+  without it keeps "does not go inside a match block".
 - **Wrong at the line, or wrong at compile.** A bad value for a key is a
   `RuleFileException` naming the line (the key's type, or the extension's own
   check); a bad combination is an `InvalidArgumentException` from `compile()`

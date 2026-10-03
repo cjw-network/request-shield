@@ -148,7 +148,7 @@ rule compiler, plus the CLI that checks rule files.**
 | Stays in the core | Moves to the `stats` plugin (namespace `…\Stats\`) |
 |---|---|
 | `Shield`, `Request`, `Decision`, `Rule/*`, `Budget`, `IpAddress/IpTable`, `Seen`, `Texts`, `Responder`, `Challenge/*`, `Store/*`, `Log`, `Live` (the first `Sink`) | all `stats*`/`crawlerLog*` settings and their parsing |
-| `Config`, `Settings`, `Rules/*` (compile happens on the server) | `stats-group`, `stats-skip`, `set stats …` |
+| `Config`, `Settings`, `Rules/*` (compile happens on the server) | `stats-group`, `stats-skip`, `set stats …` (B.3 moved `set stats …`, `stats-hosts`, `stats-skip` and the `crawler-log` keys; `stats-group`, `stats-access`, `stats-session`, `stats-path` follow in B.5/B.7) |
 | `Access` as the **auth service for shield-served pages** (`dashboard-access`/`-session`) | group → websites mapping, per-customer tab filter |
 | `Plugin` + the new `Extension` interfaces | the stats pages, routes, tabs |
 | `Report/*` (the `/waf/*` pages) — **in the repository's core, but not in the mini file** | `stats`, `token` → core `access-token` |
@@ -564,7 +564,7 @@ the monorepo becomes `v1.2.0` in the mirror. Development stays one clone.
 | **A Robustness** | fail-safe wrapper, compile fallback, `RobustnessTest`, bootstrap search order, `Shield::VERSION` + `version` | review prompt A1–A3 |
 | **A3 Tiers** | cache path → `store-dir/cache`, S0 path, APCu uses behind a capability, `curl` fallback, `check`/`version` name the tier, `HostingTiersTest`, CI leg | A5 |
 | **A2 Bytes** | `X-RS…`, `rsp/rss/rsd`, pass cookie v2, internal headers removed, `WireBytesTest`, bytes in the bench | B4 |
-| **B Decoupling** | `$ext/$hooks/$routes`, `Extension` + `Vocabulary`, stats words out, `Shield.php:506` gone, routes registry, the shield serves routes, `Access` generalised, `RuleCounts`, `Sink`, `Pages` | `grep Stats src/ bin/ bootstrap.php` = 0 |
+| **B Decoupling** | `$ext/$hooks/$routes`, `Extension` + `Vocabulary`, stats words out (B.3 -- deviation: `stats-group`, `stats-access`, `stats-session`, `stats-path` stayed in the core because `Access` and `Frame` read them and the core must not read an extension's slot; B.5 and B.7 move them), `Shield.php:506` gone (B.4), routes registry, the shield serves routes, `Access` generalised (B.7: `stats-group`/`stats-access` move into the stats plugin here), `RuleCounts`, `Sink`, `Pages` | `grep Stats src/ bin/ bootstrap.php` = 0 |
 | **C Rule chain** | `Step`/`chain()`, `explain()` into the rules, `Inspector`/`SetupPage` derived, `RuleProvider`, `Handler` | the `fail-at` test extension |
 | **D CLI + namespace** | dispatch table, plugin commands, `…\Stats\`, `plugins.md`, ADRs accepted | CLI tests |
 | **E Single file** | `Shipped`, `build/single-file.php`, `REQUEST_SHIELD_ENTRY`, `SingleFileTest`, CI leg, `release.yml`, `verify/self-update`, `init`, `rules/app/*`, `docs/llm/install.md` tested literally | D1–D5, F1–F3 |

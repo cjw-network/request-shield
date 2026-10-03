@@ -34,6 +34,14 @@ spl_autoload_register(static function (string $class): void {
     }
 });
 
+// The shipped extensions: their words (set stats on, stats-skip …) are known to
+// the rule file without a plugin line. Only named here -- Rules\Vocabulary loads
+// and offers them the first time the rules are compiled (class_exists(), so a
+// build without plugins/stats has none); a passing request loads no class for it.
+if (!defined('REQUEST_SHIELD_EXTENSIONS')) {
+    define('REQUEST_SHIELD_EXTENSIONS', ['CjwNetwork\\RequestShield\\StatsExtension']);
+}
+
 (static function (): void {
     if (PHP_SAPI === 'cli' || defined('REQUEST_SHIELD_DONE')) {
         return;

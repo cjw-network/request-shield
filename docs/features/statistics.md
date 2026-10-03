@@ -3,8 +3,11 @@
 ## What it does
 
 The statistics are the shield's first [plugin](plugins.md) (`plugins/stats/`,
-`StatsPlugin`): `set stats on` brings them, no `plugin` line needed. With it the
-shield counts, per hour, while requests pass:
+`StatsPlugin`): `set stats on` brings them, no `plugin` line needed. They are
+also the first shipped [extension](plugins.md#extensions-words-and-settings-of-their-own)
+(`StatsExtension`): their words and `set` keys are theirs, compiled into the
+settings' slot `ext.stats`, not the core's. With them the shield counts, per
+hour, while requests pass:
 
 - **requests** — let through, checked, told to wait, refused; the rule behind
   each that was not a plain "let through"; the answer's **status code** (the
@@ -201,6 +204,24 @@ set stats-flush 60s                   # with APCu: written to disk this often (d
 
 Without `crawlers`, a crawler's request is not even looked at (no verification
 cost). A per-crawler log is a separate switch (below).
+
+In a PHP settings array (`Settings::from()`, `config/request-shield.php`) the
+same settings live under `'ext' => ['stats' => [...]]`, the crawler log
+nested inside:
+
+```php
+'ext' => ['stats' => [
+    'enabled' => true, 'parts' => ['requests', 'crawlers', 'not-found', 'bots', 'pages', 'forms'],
+    'hours' => 7, 'days' => 400, 'months' => 0, 'depth' => 2, 'flush' => 60,
+    'hosts' => [], 'skip' => [],                       // stats-hosts, stats-skip (regex patterns)
+    'crawlerLog' => ['dir' => null, 'kinds' => [], 'days' => 30, 'query' => true],
+]],
+```
+
+What is not given keeps its default. `stats-group`, `stats-access`,
+`stats-session` and `stats-path` are the core's for now (`'stats' => ['groups'
+=> …, 'access' => …, 'session' => …, 'path' => …]`), until 0031 steps B.5 and
+B.7 move them.
 
 ## Where the numbers live — and that they survive a restart
 

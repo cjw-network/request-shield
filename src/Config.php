@@ -160,13 +160,19 @@ final class Config
             // (StatsPage::links(), ::viewFor()). Something in front is fine: /admin/rs.
             'dashboardPath' => '/rs',
             // Plugins by class name: told what was decided and how a request ended
-            // (proposal 0023). The statistics come with 'stats' => ['enabled' => true].
+            // (proposal 0023). The statistics come with 'ext' => ['stats' => ['enabled' => true]].
             'plugins' => [],
-            'stats' => ['enabled' => false, 'parts' => ['requests', 'crawlers', 'not-found', 'bots', 'pages', 'forms'], 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 60, 'depth' => 2, 'hosts' => []],
-            // One log file per known crawler and day (dir/CRAWL-GPTBOT/2026-09-30.log),
-            // for the kinds listed ([]: all); kept 'days' days; 'query' false leaves
-            // the query string out. null: none.
-            'crawlerLog' => ['dir' => null, 'kinds' => [], 'days' => 30, 'query' => true],
+            // The extensions' settings, by extension id (ext.<id>; proposal 0031). The
+            // statistics' are the shipped extension's (StatsExtension, plugins/stats):
+            // the keys described above, 'hosts' (websites with statistics of their
+            // own) and 'skip' (path patterns not counted when they pass).
+            // 'crawlerLog': one log file per known crawler and day
+            // (dir/CRAWL-GPTBOT/2026-09-30.log), for the kinds listed ([]: all); kept
+            // 'days' days; 'query' false leaves the query string out. dir null: none.
+            'ext' => [
+                'stats' => ['enabled' => false, 'parts' => ['requests', 'crawlers', 'not-found', 'bots', 'pages', 'forms'], 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 60, 'depth' => 2, 'hosts' => [], 'skip' => [],
+                    'crawlerLog' => ['dir' => null, 'kinds' => [], 'days' => 30, 'query' => true]],
+            ],
             // Forms only from the website itself (post-origin same, proposal 0028):
             // ['missing' => 'check'|'allow'|'refuse', 'except' => [path patterns]]; null: off.
             'postOrigin' => null,

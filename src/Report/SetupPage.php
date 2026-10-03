@@ -144,6 +144,7 @@ final class SetupPage
         }
         $budgets = array_map(static fn ($b): string => $b->name . ' ' . $b->limit . '/' . Describe::duration($b->window), array_values($s->budgets));
         $verify = ['ranges' => $t['k.ranges'], 'dns' => $t['k.dnsV'], 'both' => $t['k.both']][$s->crawlerVerify] ?? $s->crawlerVerify;
+        $so = self::stats($s);
         $client = $f('d.client', $s->trustedProxies === [] ? '' : $f('d.proxies', implode(', ', $s->trustedProxies)), $s->ipv6Prefix, $s->exemptIps === [] ? '' : $f('d.exempt', implode(', ', $s->exemptIps)));
         // The checks, in the order the shield runs them: key, on, what it answers, how it is set.
         $steps = [
@@ -169,14 +170,14 @@ final class SetupPage
         ];
         // After the checks: what the log and the statistics write, and when.
         $after = [$s->logFile === null ? $t['x.logOff'] : $t['x.log.' . $s->logLevel]];
-        if ($s->statsEnabled) {
+        if ($so['enabled']) {
             $after[] = $t['x.stats'];
-            $after[] = $f('x.parts', implode(', ', $s->statsParts)) . ($s->store === 'apcu' || ($s->store === 'auto' && ApcuStore::usable()) ? $f('x.apcu', $s->statsFlush > 0 ? $s->statsFlush . ' s' : $t['k.onlyHourly']) : $t['x.files']);
+            $after[] = $f('x.parts', implode(', ', $so['parts'])) . ($s->store === 'apcu' || ($s->store === 'auto' && ApcuStore::usable()) ? $f('x.apcu', $so['flush'] > 0 ? $so['flush'] . ' s' : $t['k.onlyHourly']) : $t['x.files']);
         } else {
             $after[] = $t['x.statsOff'];
         }
         $h .= '<section class="card" id="way"><h2>' . $e($t['way']) . '</h2><p class="note">' . $e($t['wayIntro']) . '</p>'
-            . '<div class="diagram">' . Diagram::setup(array_values(array_map(static fn (array $st): array => ['label' => $t['l.' . $st[0]], 'name' => $t['s.' . $st[0]], 'on' => $st[1], 'what' => $st[3], 'stops' => $st[2] !== $t['a.pass'], 'feeds' => $st[0] === 'crawlers' && $s->statsEnabled], $steps)),
+            . '<div class="diagram">' . Diagram::setup(array_values(array_map(static fn (array $st): array => ['label' => $t['l.' . $st[0]], 'name' => $t['s.' . $st[0]], 'on' => $st[1], 'what' => $st[3], 'stops' => $st[2] !== $t['a.pass'], 'feeds' => $st[0] === 'crawlers' && $so['enabled']], $steps)),
                 ['request' => $t['x.request'], 'before' => $t['x.before'], 'site' => $t['x.site'], 'siteSub' => $t['x.siteSub'], 'answer' => $t['x.answer'], 'answerSub' => $t['x.answerSub'],
                 'after' => $t['x.after'], 'lines' => $after, 'feeds' => $t['x.feeds']]) . '</div><ol class="way">';
         $item = static fn (string $id, string $mark, bool $on, string $name, string $answers, string $what): string => '<li id="' . $id . '" class="' . ($on ? 'on' : 'off') . '"><span class="step">' . $e($mark) . '</span><div><b>' . $e($name) . '</b> <span class="state">' . $e($on ? $t['on'] : $t['off']) . '</span>'
@@ -185,7 +186,7 @@ final class SetupPage
         foreach ($steps as $i => [$key, $on, $answers, $what]) {
             $h .= $item('step-' . ($i + 1), (string) ($i + 1), $on, $t['s.' . $key], $answers, $e($what));
         }
-        $h .= $item('step-after', '›', $s->logFile !== null || $s->statsEnabled, $t['x.after'], '', implode('<br>', array_map($e, $after)));
+        $h .= $item('step-after', '›', $s->logFile !== null || $so['enabled'], $t['x.after'], '', implode('<br>', array_map($e, $after)));
         $h .= '</ol></section>';
 
         // ── The rules, as the rule files hold them ───────────────────────────
@@ -279,20 +280,20 @@ final class SetupPage
                 'k.crawlers' => (string) count($s->crawlers),
                 'k.verify' => $verify,
                 'k.policy' => $list($policies),
-                'k.crawlerLog' => $s->crawlerLogDir === null ? $t['off'] : $s->crawlerLogDir . ($s->crawlerLogKinds !== [] ? ' (' . implode(', ', $s->crawlerLogKinds) . ')' : ''),
-                'k.crawlerLogKeep' => $s->crawlerLogDir === null ? '—' : $s->crawlerLogDays . ' ' . $t['k.days1'] . ', ' . $t['k.crawlerLogQuery'] . ': ' . $yes($s->crawlerLogQuery),
+                'k.crawlerLog' => $so['crawlerLog']['dir'] === null ? $t['off'] : $so['crawlerLog']['dir'] . ($so['crawlerLog']['kinds'] !== [] ? ' (' . implode(', ', $so['crawlerLog']['kinds']) . ')' : ''),
+                'k.crawlerLogKeep' => $so['crawlerLog']['dir'] === null ? '—' : $so['crawlerLog']['days'] . ' ' . $t['k.days1'] . ', ' . $t['k.crawlerLogQuery'] . ': ' . $yes($so['crawlerLog']['query']),
             ],
             'stats' => [
-                'k.stats' => $s->statsEnabled ? $t['on'] : $t['off'],
-                'k.parts' => $list($s->statsParts),
-                'k.depth' => (string) $s->statsDepth,
-                'k.sites' => $s->statsHosts === [] ? $t['k.oneStats'] : $list($s->statsHosts),
+                'k.stats' => $so['enabled'] ? $t['on'] : $t['off'],
+                'k.parts' => $list($so['parts']),
+                'k.depth' => (string) $so['depth'],
+                'k.sites' => $so['hosts'] === [] ? $t['k.oneStats'] : $list($so['hosts']),
                 'k.groups' => $s->statsGroups === [] ? $t['d.none'] : implode('; ', array_map(static fn (array $g): string => $g['name'] . ': ' . implode(', ', $g['sites']), $s->statsGroups)),
-                'k.skip' => $s->statsSkip === [] ? $t['d.none'] : implode(', ', array_map(static fn (string $p): string => Describe::pattern($s, $p), $s->statsSkip)),
-                'k.flush' => $s->statsFlush > 0 ? $s->statsFlush . ' ' . $t['k.seconds'] : $t['k.onlyHourly'],
-                'k.hours' => $s->statsHours . ' ' . $t['k.days1'],
-                'k.days' => (string) $s->statsDays,
-                'k.months' => $s->statsMonths === 0 ? $t['k.forGood'] : (string) $s->statsMonths,
+                'k.skip' => $so['skip'] === [] ? $t['d.none'] : implode(', ', array_map(static fn (string $p): string => Describe::pattern($s, $p), $so['skip'])),
+                'k.flush' => $so['flush'] > 0 ? $so['flush'] . ' ' . $t['k.seconds'] : $t['k.onlyHourly'],
+                'k.hours' => $so['hours'] . ' ' . $t['k.days1'],
+                'k.days' => (string) $so['days'],
+                'k.months' => $so['months'] === 0 ? $t['k.forGood'] : (string) $so['months'],
                 'k.dashboard' => $s->dashboardPath,
             ],
             'log' => [
@@ -318,6 +319,24 @@ final class SetupPage
             $h .= '</table>';
         }
         return $h . '</section>';
+    }
+
+    /**
+     * The statistics' settings, for display only: their compiled slot
+     * (ext.stats, StatsExtension::compile()), or off without the extension.
+     * Until 0031 B.8, when the plugin shows its own settings.
+     *
+     * @return array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, hosts: list<string>, skip: list<string>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}}
+     */
+    private static function stats(Settings $s): array
+    {
+        $o = $s->ext['stats'] ?? [];
+        $log = is_array($o['crawlerLog'] ?? null) ? $o['crawlerLog'] : [];
+        $strings = static fn ($v): array => array_values(array_filter(is_array($v) ? $v : [], 'is_string'));
+        $int = static fn ($v, int $default): int => is_int($v) ? $v : $default;
+        return ['enabled' => ($o['enabled'] ?? false) === true, 'parts' => $strings($o['parts'] ?? []), 'hours' => $int($o['hours'] ?? null, 7), 'days' => $int($o['days'] ?? null, 400),
+            'months' => $int($o['months'] ?? null, 0), 'flush' => $int($o['flush'] ?? null, 60), 'depth' => $int($o['depth'] ?? null, 2), 'hosts' => $strings($o['hosts'] ?? []), 'skip' => $strings($o['skip'] ?? []),
+            'crawlerLog' => ['dir' => is_string($log['dir'] ?? null) ? $log['dir'] : null, 'kinds' => $strings($log['kinds'] ?? []), 'days' => $int($log['days'] ?? null, 30), 'query' => ($log['query'] ?? true) !== false]];
     }
 
     /**

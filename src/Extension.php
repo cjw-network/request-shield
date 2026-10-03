@@ -44,6 +44,17 @@ interface Extension
     public static function compile(array $raw, Settings $base): array;
 
     /**
+     * The Plugin classes to run per request, given the compiled slot: the
+     * compiler appends them to the settings' plugins (0031 B.4), so a request
+     * reads one list as before. [] for an extension that only speaks at
+     * compile time.
+     *
+     * @param array<string, mixed> $compiled what compile() returned
+     * @return list<class-string>
+     */
+    public static function plugins(array $compiled): array;
+
+    /**
      * The pages under dashboard-path it serves: path => what the page is
      * (0031 B.5 defines the entries; until then []).
      *
