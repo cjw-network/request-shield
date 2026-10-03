@@ -209,6 +209,12 @@ final class Settings
         public ?array $postOrigin = null,
         /** @var list<string> @readonly the editors' area (backend <paths>): its forms counted apart, per area; as patterns */
         public array $backend = [],
+        /** @var array<string, array<string, mixed>> @readonly the extensions' checked settings by extension id (ext.<id>.*; Extension::compile() fills it, 0031 B.2) -- plugins read their own, the core never does */
+        public array $ext = [],
+        /** @var array<string, list<class-string>> @readonly which plugins provide which capability (hook name => classes), recorded at compile time so a request costs one array access to know (0031 B.2–B.10) */
+        public array $hooks = [],
+        /** @var array<string, array<string, mixed>> @readonly the pages under dashboard-path the extensions declare (path => what it is), served by the shield (0031 B.5–B.6) */
+        public array $routes = [],
     ) {
     }
 
@@ -338,6 +344,7 @@ final class Settings
             ...[self::statsHosts($c), self::patternList(is_array($c['stats'] ?? null) ? ($c['stats']['skip'] ?? []) : [], 'stats.skip'), self::statsGroups($c), self::statsPath($c)],
             ...self::statsAccess($c),
             ...[self::postOrigin($c), self::patternList($c['backend'] ?? [], 'backend')],
+            ...[self::ext($c), self::hooks($c), self::routes($c)],
         );
     }
 
@@ -484,6 +491,67 @@ final class Settings
             $out[] = $name;
         }
         return array_values(array_unique($out));
+    }
+
+    /**
+     * The extensions' settings: extension id => its checked values. Nothing
+     * here is read by the core; an extension's compile() (0031 B.2) writes
+     * what its plugin reads at request time.
+     *
+     * @param array<mixed> $c
+     * @return array<string, array<string, mixed>>
+     */
+    private static function ext(array $c): array
+    {
+        $out = [];
+        foreach (self::map($c, 'ext') as $id => $values) {
+            if (!is_string($id) || !preg_match('/^[a-z][a-z0-9-]{0,31}$/', $id) || !is_array($values)) {
+                throw self::wrong('ext', 'a map of extension ids (letters, digits, "-") to their settings');
+            }
+            /** @var array<string, mixed> $values */
+            $out[$id] = $values;
+        }
+        return $out;
+    }
+
+    /**
+     * Which plugins provide which capability: hook name => the classes, as the
+     * compiler recorded them (instanceof at compile time, 0031 B.2), so a
+     * request asks one array instead of every plugin.
+     *
+     * @param array<mixed> $c
+     * @return array<string, list<class-string>>
+     */
+    private static function hooks(array $c): array
+    {
+        $out = [];
+        foreach (self::map($c, 'hooks') as $hook => $classes) {
+            if (!is_string($hook) || !preg_match('/^[a-z][a-zA-Z0-9]{0,31}$/', $hook) || !is_array($classes)) {
+                throw self::wrong('hooks', 'a map of hook names to lists of plugin classes');
+            }
+            $out[$hook] = self::plugins(['plugins' => $classes]);
+        }
+        return $out;
+    }
+
+    /**
+     * The pages under dashboard-path the extensions declare: path => what it
+     * is (the registry comes with 0031 B.5; the shield serves them from B.6).
+     *
+     * @param array<mixed> $c
+     * @return array<string, array<string, mixed>>
+     */
+    private static function routes(array $c): array
+    {
+        $out = [];
+        foreach (self::map($c, 'routes') as $path => $route) {
+            if (!is_string($path) || $path === '' || $path[0] !== '/' || !is_array($route)) {
+                throw self::wrong('routes', 'a map of paths (starting with "/") to what each page is');
+            }
+            /** @var array<string, mixed> $route */
+            $out[$path] = $route;
+        }
+        return $out;
     }
 
     /**
@@ -1245,7 +1313,7 @@ final class Settings
     public const DENY_SHOWN = 100;
 
     /** Bumped when the export's shape changes, so old compiled files are rebuilt. */
-    private const FORMAT = 40;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms
+    private const FORMAT = 41;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

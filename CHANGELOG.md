@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Settings carry the extensions' slots** (0031 step B.1): `ext` (extension
+  id => its checked settings), `hooks` (capability => the plugins that have
+  it) and `routes` (the pages under `dashboard-path`) are the last constructor
+  parameters of `Settings`, checked for shape, compiled, exported and imported
+  like every other setting; the core reads none of them yet (B.2 onwards fill
+  them). Compiled settings format 41: every installation compiles once more
+  after the update, nothing to do.
 - **The bytes on the wire have limits** (0031 step A2.3, ADR 0014 accepted):
   `tests/WireBytesTest.php` holds them as numbers -- the pass cookie at most
   48 bytes with its name (today 47), the check page at most 4096 bytes

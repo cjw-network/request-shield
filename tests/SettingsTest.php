@@ -67,6 +67,23 @@ return [
         $round = Settings::import(eval('return ' . var_export($s->export(), true) . ';'));
         same(serialize($s), serialize($round));
     },
+    'ext, hooks and routes: the extensions\' slots travel through compile, export and import unchanged (0031 B.1)' => function (): void {
+        $s = Settings::from(['ext' => ['stats' => ['depth' => 2, 'parts' => ['forms']], 'rs-test' => []],
+            'hooks' => ['handler' => ['\\Vendor\\Pkg\\Cache', 'Vendor\\Pkg\\Cache', 'Vendor\\Pkg\\Routes'], 'sink' => []],
+            'routes' => ['/rs/stats' => ['ext' => 'stats', 'role' => 'reader']]]);
+        same(['stats' => ['depth' => 2, 'parts' => ['forms']], 'rs-test' => []], $s->ext, 'ext, as given');
+        same(['handler' => ['Vendor\\Pkg\\Cache', 'Vendor\\Pkg\\Routes'], 'sink' => []], $s->hooks, 'hooks: class names cleaned, once each');
+        same(['/rs/stats' => ['ext' => 'stats', 'role' => 'reader']], $s->routes, 'routes, as given');
+        same([[], [], []], [Settings::from([])->ext, Settings::from([])->hooks, Settings::from([])->routes], 'empty by default');
+        $round = Settings::import(eval('return ' . var_export($s->export(), true) . ';'));
+        same(serialize($s), serialize($round), 'the round trip keeps them');
+        expectInvalid(['ext' => ['Stats' => []]], 'ext');
+        expectInvalid(['ext' => ['stats' => 'on']], 'ext');
+        expectInvalid(['hooks' => ['handler' => 'Vendor\\Pkg\\Cache']], 'hooks');
+        expectInvalid(['hooks' => ['handler' => ['not a class']]], 'plugins');
+        expectInvalid(['routes' => ['stats' => []]], 'routes');
+        expectInvalid(['routes' => ['/rs/stats' => 'page']], 'routes');
+    },
     'load(): compiled once, reused, rebuilt when the file changes' => function (): void {
         $dir = sys_get_temp_dir() . '/rshield-load-' . getmypid() . '-' . mt_rand();
         mkdir($dir);
