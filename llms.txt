@@ -8,9 +8,9 @@
 ## Start here
 
 - [AGENTS.md](AGENTS.md): the rules for working on this repository (correct and fast, fail safe, tests, docs).
-- [Install](docs/llm/install.md): download, verify, place outside the docroot, activate, verify. *(coming with 0031 step E.7; until then: README.md "Installation")*
-- [Write rules for an application](docs/llm/write-rules.md): what to look at in the app, what to write, monitor first. *(step E.7)*
-- [Check what you wrote](docs/llm/check.md): `check`, `test`, `trace`; reading errors; when to enforce. *(step E.7)*
+- [Install](docs/llm/install.md): download, verify, place outside the docroot, activate, see it work -- followed in a container ([the dry run](docs/llm/install-dryrun.md)).
+- [Write rules for an application](docs/llm/write-rules.md): what to look at in the app, what to write, monitor first.
+- [Check what you wrote](docs/llm/check.md): `check`, `test`, `trace`; reading errors and the log; when to enforce.
 - [Write examples next to the rules](docs/llm/write-rule-examples.md): `expect` lines, one near miss per rule, no personal data.
 - [Prompts](docs/llm/prompts/install.md): the install prompt a site owner gives an agent, and the [review prompt](docs/llm/prompts/review.md) that checks the project against its goals.
 

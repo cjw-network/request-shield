@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The guides for agents** (0031 step E.7): `docs/llm/install.md` (find
+  the places, download and verify, `init`, the shield's own directory for the
+  PHP user, switch it on and see that it is on, see it work, report),
+  `docs/llm/write-rules.md` (what to look at in an application and which line
+  each finding becomes, every example checked with `test`) and
+  `docs/llm/check.md` (`check`, `test`, `trace`, the log, when to enforce).
+  The install guide was followed literally in a `php:8.0-apache` container;
+  `docs/llm/install-dryrun.md` holds the log and what the first pass found:
+  a shield directory PHP could not write to (the shield let everything
+  through and logged nothing -- `check` as root did not show it), and
+  `/.env` never reaching PHP on a site without a front controller.
+  `tests/LlmDocsTest.php` holds every command and option the guides name to
+  the command line. The install prompt and `llms.txt` follow them.
 - **`init`, `verify`, `self-update`** (0031 step E.6): `request-shield init
   --app=plain|wordpress|symfony|exponential` writes a commented starter rule
   file in monitor mode (refused inside `--docroot`, or over a file without

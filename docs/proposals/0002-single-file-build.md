@@ -206,6 +206,14 @@ trusted comment. `init` takes `--docroot` to refuse a file inside it; the
 starters are `rules/starter/{plain,wordpress,symfony,exponential}.rules`,
 embedded as `Shipped::STARTERS`.
 
+**As built in E.7:** the install guide and its two companions are in
+`docs/llm/`; [the dry run](../llm/install-dryrun.md) followed it in
+`php:8.0-apache` with the files the release workflow makes, served locally (no
+release is published yet, no signature exists). It found two things the
+guide must say: the shield's directory must be writable by the PHP user
+(`check` run as root hides it -- run it as that user), and on a site without
+a front controller only PHP requests reach the shield.
+
 ### The bootstrap block — and the fix in `bootstrap.php`
 
 ```php
