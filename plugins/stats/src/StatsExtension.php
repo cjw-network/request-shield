@@ -345,9 +345,6 @@ final class StatsExtension implements Extension
     {
         $o = self::of($s);
         $warnings = [];
-        if (($o['enabled'] || $o['crawlerLog']['dir'] !== null) && !class_exists(StatsPlugin::class)) {
-            $warnings[] = 'set stats (or crawler-log) is on, but the statistics plugin is not installed (plugins/stats) -- nothing is counted';
-        }
         // A principal the dashboard lets in, but no group of that id: it sees no statistics.
         foreach ($s->dashboardAccess as $a) {
             if ($a['who'] !== '*' && !isset($o['groups'][$a['who']])) {

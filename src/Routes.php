@@ -138,6 +138,37 @@ final class Routes
     }
 
     /**
+     * The prefixes the routes lie below, for the request path's pre-filter
+     * (Dashboard::routeFor()): dashboard-path for every route below it, the
+     * route's own path for one outside it (a statistics path such as
+     * /admin/statistics), and none that lies below another. Lower case
+     * without a trailing "/"; with the statistics below dashboard-path,
+     * just dashboard-path -- one stripos, as before.
+     *
+     * @param array<string, mixed> $routes the compiled table
+     * @return list<string>
+     */
+    public static function bases(array $routes, string $dashboardPath): array
+    {
+        $dash = self::norm($dashboardPath);
+        $bases = [];
+        foreach (array_keys($routes) as $path) {
+            $p = self::norm((string) $path);
+            $bases[$dash !== '' && ($p === $dash || strncmp($p, $dash . '/', strlen($dash) + 1) === 0) ? $dash : $p] = true;
+        }
+        $bases = array_keys($bases);
+        sort($bases, SORT_STRING);
+        $out = [];
+        foreach ($bases as $b) {
+            $last = end($out);
+            if ($last === false || ($b !== $last && strncmp($b, $last . '/', strlen($last) + 1) !== 0)) {
+                $out[] = $b;
+            }
+        }
+        return $out;
+    }
+
+    /**
      * The route a request path asks for: the path itself, or its end
      * (/demo/index.php/rs/waf/live asks for /rs/waf/live) -- the longest
      * such, so a page below another is itself. For what the dashboard's own

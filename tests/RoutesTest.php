@@ -93,6 +93,12 @@ return [
         same([true, true, false, 'site', null], [Frame::isPage($s, '/demo/statistik/visitors'), Frame::isPage($s, '/rs/waf/lists'), Frame::isPage($s, '/rs/stats/visitors'),
             Frame::pageFor($s, '/Statistik/visitors/'), Frame::pageFor($s, '/rs/stats/visitors')]);
         same('/statistik/protection', Frame::links($s)['shield']);
+        // The shield serves them there too: the pre-filter knows every route's prefix, not only dashboard-path.
+        $req = static fn (string $path): \CjwNetwork\RequestShield\Request => \CjwNetwork\RequestShield\Request::fromServer(['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => $path, 'HTTP_HOST' => 'a.example', 'REMOTE_ADDR' => '203.0.113.7'], []);
+        same(['site', 'site', 'live', null], [\CjwNetwork\RequestShield\Dashboard::routeFor($s, $req('/statistik/visitors'))['key'] ?? null, \CjwNetwork\RequestShield\Dashboard::routeFor($s, $req('/demo/index.php/Statistik/visitors'))['key'] ?? null,
+            \CjwNetwork\RequestShield\Dashboard::routeFor($s, $req('/rs/waf/live'))['key'] ?? null, \CjwNetwork\RequestShield\Dashboard::routeFor($s, $req('/statistikx'))], 'routeFor() finds a page outside dashboard-path');
+        same(['/rs', '/statistik'], $s->routeBases, 'one prefix per place the pages live');
+        same(['/rs'], Settings::from([])->routeBases, 'the statistics below dashboard-path: one prefix, one stripos as before');
     },
     'an extension\'s route: ext its id, below dashboard-path, moved by set dashboard-path' => function (): void {
         withRegistry(function (): void {

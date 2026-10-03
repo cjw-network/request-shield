@@ -555,6 +555,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   demo has them at `/rs/…`, restricted to this machine.
 
 ### Fixed
+- **The statistics on a path of their own are served** (open from the 0031
+  D.3 review): with `set stats-path` outside `dashboard-path` (such as
+  `/admin/statistics`) the shield never served those pages, because its
+  pre-filter looked for `dashboard-path` only. The compiled settings carry
+  the prefixes the routes lie below (`routeBases`; just `dashboard-path` by
+  default, so one `stripos` as before). A `plugin … from <file>` file is
+  watched on every compile, also when its class is loaded already; the
+  statistics' unreachable "plugin not installed" warning is gone. Compiled
+  settings format 51.
 - A ban (`ban after …`) was named by no rule in `explain()`, the trace and
   the log of a banned request's later answers; with one ban rule, it is now
   named by it.

@@ -78,7 +78,7 @@ shows each known crawler's last 7 days next to its row.
 
 **Where it lives:** `set dashboard-path /rs` (the default; `/admin/rs` if the site
 wants it behind its admin area). The statistics plugin's pages live under
-its own path, **`set stats-path`** (default `<dashboard-path>/stats`, so `/rs/stats/`): **`/rs/stats/overview`** (everything), **`/rs/stats/visitors`**
+its own path, **`set stats-path`** (default `<dashboard-path>/stats`, so `/rs/stats/`; outside `dashboard-path` too, such as `/admin/statistics`): **`/rs/stats/overview`** (everything), **`/rs/stats/visitors`**
 (visitors and pages), **`/rs/stats/protection`** (the protection), and with
 `stats-hosts` **`/rs/stats/sites`** (all websites, below). `/rs/stats` itself is
 the plugin's start: all websites with `stats-hosts`, else the overview. The

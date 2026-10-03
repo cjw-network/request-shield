@@ -28,18 +28,23 @@ final class Dashboard
 {
     /**
      * The route of a request, or null -- cheap for the many requests that are
-     * none: one stripos against dashboard-path (every route lies below it),
-     * then the table.
+     * none: one stripos per place the routes lie (Routes::bases(); usually
+     * just dashboard-path), then the table.
      *
      * @return array{key: string, ext: ?string, tab: ?array{0: string, 1: string}, role: string, order: int, page?: string, path: string}|null
      */
     public static function routeFor(Settings $s, Request $request): ?array
     {
-        if ($s->routes === [] || stripos($request->path, $s->dashboardPath) === false) {
+        if ($s->routes === []) {
             return null;
         }
-        /** @var array{key: string, ext: ?string, tab: ?array{0: string, 1: string}, role: string, order: int, page?: string, path: string}|null */
-        return Routes::match($s, $request->matchPath());
+        foreach ($s->routeBases ?: [$s->dashboardPath] as $base) {
+            if (stripos($request->path, $base) !== false) {
+                /** @var array{key: string, ext: ?string, tab: ?array{0: string, 1: string}, role: string, order: int, page?: string, path: string}|null */
+                return Routes::match($s, $request->matchPath());
+            }
+        }
+        return null;
     }
 
     /**

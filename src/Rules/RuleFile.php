@@ -725,13 +725,15 @@ final class RuleFile
                     $files = (array) $this->get('pluginFiles');
                     $files[$class] = $from;
                     $this->put('pluginFiles', $files);
+                    // A changed plugin file is noticed like a changed rule file -- on every
+                    // compile, also when the class is loaded already (a second read in one process).
+                    $stat = self::stat($from);
+                    if ($stat !== null) {
+                        $this->seen[$from] = $stat;
+                    }
                     if (!class_exists($class)) {
-                        if (is_file($from)) {
+                        if ($stat !== null && is_file($from)) {
                             require_once $from;
-                            $stat = self::stat($from);
-                            if ($stat !== null) {
-                                $this->seen[$from] = $stat;         // a changed plugin file is noticed like a changed rule file
-                            }
                         } else {
                             $this->warnings[] = "$at: plugin $class from $written -- the file $from is not there; the plugin is left out until it is";
                         }

@@ -26,7 +26,7 @@ function withDashboard(string $rules, callable $body): void
     mkdir("$dir/docroot", 0700, true);
     file_put_contents("$dir/docroot/index.php", '<?php echo "site " . ($_SERVER["REQUEST_SHIELD"] ?? "-") . " " . $_SERVER["REQUEST_URI"];');
     file_put_contents("$dir/site.rules", "set recheck 0\nset store file\nset store-dir $dir/store\n" . str_replace('__DIR__', $dir, $rules));
-    file_put_contents("$dir/prepend.php", '<?php define("REQUEST_SHIELD_EXTENSIONS", ["CjwNetwork\\\\RequestShield\\\\StatsExtension", "CjwNetwork\\\\RequestShield\\\\Tests\\\\RsTestExtension"]);'
+    file_put_contents("$dir/prepend.php", '<?php define("REQUEST_SHIELD_EXTENSIONS", ["CjwNetwork\\\\RequestShield\\\\Stats\\\\StatsExtension", "CjwNetwork\\\\RequestShield\\\\Tests\\\\RsTestExtension"]);'
         . 'require ' . var_export(dirname(__DIR__) . '/bootstrap.php', true) . '; foreach (glob(' . var_export(__DIR__ . '/support/*.php', true) . ') as $f) { require $f; }' . "\n"
         . '\CjwNetwork\RequestShield\Shield::protectFile(' . var_export("$dir/site.rules", true) . ', null, ' . var_export("$dir/cache", true) . ');');
     $port = freePort();
@@ -101,6 +101,19 @@ return [
             // A change to the lists needs the page\'s token (CSRF).
             $r = $get('/rs/waf/lists', 'POST', [], 'do=remove&id=LIST-D1');
             truthy(strpos($r['body'], 'too old or not from this page') !== false, 'without the token: refused');
+        });
+    },
+    'the statistics on a path of their own, outside dashboard-path: the shield serves them there too' => function (): void {
+        if (!function_exists('proc_open')) {
+            skip('no proc_open');
+        }
+        withDashboard("set dashboard-path /rs\nset stats on\nset stats-path /admin/statistics\n[T-ADMIN] restrict **/rs/** **/admin/statistics** to 127.0.0.1 ::1\n", function (callable $get): void {
+            $r = $get('/admin/statistics/overview?lang=en');
+            same(200, $r['status'], 'the overview: ' . substr($r['body'], 0, 200));
+            truthy(strncmp($r['body'], 'site ', 5) !== 0, 'answered by the shield, not the site');
+            same('private, no-store', dashHeader($r['headers'], 'Cache-Control'), 'never kept');
+            same(200, $get('/rs/waf/live')['status'], 'the core\'s pages stay below dashboard-path');
+            truthy(strncmp($get('/admin/other')['body'], 'site ', 5) === 0, 'the site\'s own admin pages are the site\'s');
         });
     },
     'nobody guards the pages: the shield refuses them and check says what to do' => function (): void {

@@ -74,6 +74,8 @@ return [
             \Acme\FromFile\Heard::$paths = [];
             Log::note($s, Request::fromServer(['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/x', 'HTTP_HOST' => 'a.example', 'REMOTE_ADDR' => '203.0.113.7'], []), Decision::reject(404, 'blocked path'), 'SCAN', microtime(true));
             same(['/x'], \Acme\FromFile\Heard::$paths, 'and it hears what the log hears');
+            $again = RuleFile::read(["$dir/site.rules"]);
+            truthy(isset($again['seen']["$dir/plugins/heard.php"]), 'watched on every compile, also when the class is loaded already');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }
