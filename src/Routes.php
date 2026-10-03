@@ -44,10 +44,10 @@ final class Routes
     {
         $waf = $dashboardPath . '/waf';
         return [
-            $waf => ['key' => 'live', 'ext' => null, 'tab' => null, 'role' => 'admin', 'order' => 60],
-            "$waf/rules" => ['key' => 'rules', 'ext' => null, 'tab' => ['Rules & setup', 'Regeln & Einrichtung'], 'role' => 'admin', 'order' => 50],
-            "$waf/live" => ['key' => 'live', 'ext' => null, 'tab' => ['Live', 'Live'], 'role' => 'admin', 'order' => 60],
-            "$waf/lists" => ['key' => 'lists', 'ext' => null, 'tab' => ['Lists', 'Listen'], 'role' => 'admin', 'order' => 70],
+            $waf => ['key' => 'live', 'ext' => null, 'tab' => null, 'role' => 'admin', 'order' => 60, 'page' => 'CjwNetwork\\RequestShield\\Report\\LivePage'],
+            "$waf/rules" => ['key' => 'rules', 'ext' => null, 'tab' => ['Rules & setup', 'Regeln & Einrichtung'], 'role' => 'admin', 'order' => 50, 'page' => 'CjwNetwork\\RequestShield\\Report\\SetupPage'],
+            "$waf/live" => ['key' => 'live', 'ext' => null, 'tab' => ['Live', 'Live'], 'role' => 'admin', 'order' => 60, 'page' => 'CjwNetwork\\RequestShield\\Report\\LivePage'],
+            "$waf/lists" => ['key' => 'lists', 'ext' => null, 'tab' => ['Lists', 'Listen'], 'role' => 'admin', 'order' => 70, 'page' => 'CjwNetwork\\RequestShield\\Report\\ListsPage'],
         ];
     }
 
@@ -79,7 +79,11 @@ final class Routes
         if ($ext !== null && !is_string($ext)) {
             throw Settings::wrong($name, "for $path: ext null (the core) or an extension's id");
         }
-        return ['key' => $route['key'], 'ext' => $ext, 'tab' => $tab === null ? null : [$tab[0], $tab[1]], 'role' => $role, 'order' => $route['order']];
+        $page = $route['page'] ?? null;
+        if ($page !== null && (!is_string($page) || $page === '')) {
+            throw Settings::wrong($name, "for $path: page null or the class that serves it (a RoutePage)");
+        }
+        return ['key' => $route['key'], 'ext' => $ext, 'tab' => $tab === null ? null : [$tab[0], $tab[1]], 'role' => $role, 'order' => $route['order']] + ($page !== null ? ['page' => $page] : []);
     }
 
     /**

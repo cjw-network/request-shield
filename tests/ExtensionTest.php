@@ -72,7 +72,7 @@ return [
             same(['failAt' => 'rules', 'marks' => ['a', 'b', 'c'], 'hosts' => ['a.example'], 'dashboardPath' => '/rs'], $s->ext['rs-test'] ?? null, 'compile(): checked, shaped, the base settings in hand');
             $round = Settings::import(eval('return ' . var_export($s->export(), true) . ';'));
             same(serialize($s), serialize($round), 'export/import keep it');
-            same(null, Settings::from(extConfig("host a.example\n"))->ext['rs-test'] ?? null, 'nothing written: no slot');
+            same(['failAt' => null, 'marks' => [], 'hosts' => ['a.example'], 'dashboardPath' => '/rs'], Settings::from(extConfig("host a.example\n"))->ext['rs-test'] ?? null, 'nothing written: the slot holds the defaults -- every offered extension compiles (its routes and plugins apply)');
             // Wrong at the line: the extension's check, the type.
             rulesFail(['site.rules' => "set fail-at nowhere\n"], 'site.rules:1', 'fail-at is one of compile, rules');
             rulesFail(['site.rules' => "set marks-max many\n"], 'site.rules:1', 'marks-max is a number');

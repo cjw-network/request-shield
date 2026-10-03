@@ -25,7 +25,7 @@ use CjwNetwork\RequestShield\Texts;
  * The site decides who may open it (an address rule, its login), as for the
  * statistics: these are the log's lines, addresses as the log keeps them.
  */
-final class LivePage
+final class LivePage implements \CjwNetwork\RequestShield\RoutePage
 {
     /** Rows one answer carries at most: the newest. */
     public const MAX_ROWS = 300;
@@ -374,4 +374,28 @@ CSS;
   }, every);
 })();
 JS;
+
+    /**
+     * The route (0031 B.6): the page, or with ?format=json the new rows since the cursor.
+     *
+     * @param array<string, mixed> $route
+     * @param array<string, mixed> $ctx
+     */
+    public static function serve(Settings $s, \CjwNetwork\RequestShield\Request $request, array $route, array $ctx): \CjwNetwork\RequestShield\Response
+    {
+        /** @var array<string, string> $links */
+        $links = is_array($ctx['links'] ?? null) ? $ctx['links'] : [];
+        /** @var array<mixed> $get */
+        $get = is_array($ctx['get'] ?? null) ? $ctx['get'] : [];
+        $lang = is_string($ctx['lang'] ?? null) ? $ctx['lang'] : 'auto';
+        $accept = is_string($ctx['accept'] ?? null) ? $ctx['accept'] : null;
+        $ip = is_string($ctx['ip'] ?? null) ? $ctx['ip'] : '';
+        $own = $links['live'] ?? ((is_string($ctx['prefix'] ?? null) ? $ctx['prefix'] : '') . (is_string($route['path'] ?? null) ? $route['path'] : ''));
+        if (($get['format'] ?? '') === 'json') {
+            return \CjwNetwork\RequestShield\Response::json(200, self::json($s, is_string($get['cursor'] ?? null) ? $get['cursor'] : null, ['lang' => Texts::language($lang, $accept), 'ip' => $ip, 'links' => $links]));
+        }
+        $label = is_string($ctx['homeLabel'] ?? null) ? $ctx['homeLabel'] : '';
+        return \CjwNetwork\RequestShield\Response::html(200, self::render($s, ['links' => $links, 'lang' => $lang, 'accept' => $accept, 'ip' => $ip, 'home' => is_string($ctx['home'] ?? null) ? $ctx['home'] : '/', 'homeLabel' => $label,
+            'feed' => $own . '?format=json', 'lists' => $links['lists'] ?? null, 'title' => 'Live — ' . $label]));
+    }
 }

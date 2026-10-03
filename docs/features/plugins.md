@@ -240,9 +240,15 @@ What a plugin with pages should do the same way:
   group's website whatever address is asked for). The links a customer gets
   come through `Access::links($settings, $who, …)`: no tab it may not open
   (the routes whose role is `reader`).
-- **The site draws the frame.** The plugin returns HTML (or JSON with
-  `format=json`); headers, the status and the route stay with the site's
-  front controller, as in the [demo](../../examples/demo/index.php).
+- **The shield serves the pages** (0031 B.6). A route's `page` names a class
+  implementing `RoutePage`: `serve(Settings, Request, $route, $ctx)` returns a
+  `Response` (status, header lines, body). `Dashboard::serve()` answers a
+  request for a route before the application -- behind `Access::gate()` and
+  the route's role (`admin` pages refuse a customer with 403), every answer
+  `no-store` and `noindex`, a POST change with the page's token (CSRF). A
+  route nobody guards (no `restrict` rule covers it, no login) answers 403 and
+  `check` warns. The site wires nothing; the [demo](../../examples/demo/index.php)
+  wires nothing either. In a build without the pages a route answers 404.
 
 In the demo, `/customer-menu` is a pretend hosting panel: its "Statistics"
 item is a signed link (`Access::link()`) that opens Customer A's statistics,

@@ -327,7 +327,7 @@ return [
             skip('no exec');
         }
         $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
-        $dir = ruleDir(['site.rules' => "block /x/**\nlimit requests 5/min\n", 'ext/a.rules' => "challenge /login\n", 'bad.rules' => "blok /x\n"]);
+        $dir = ruleDir(['site.rules' => "block /x/**\nlimit requests 5/min\nrestrict /rs/** to 127.0.0.1 ::1\n", 'ext/a.rules' => "challenge /login\n", 'bad.rules' => "blok /x\n"]);
         try {
             exec("$bin check " . escapeshellarg("$dir/site.rules") . ' --source=' . escapeshellarg("$dir/ext/*.rules") . ' 2>&1', $out, $code);
             same(0, $code, implode("\n", $out));
@@ -486,7 +486,7 @@ return [
         same([], rulesFrom("unblock [SCAN-BACKUP] at /downloads/**\n")->origins['warnings'] ?? [], 'no revision named: no warning');
         same([], rulesFrom("[SITE-1@1] block /x\n[SITE-2] unblock [SITE-1@1]\n")->origins['warnings'] ?? [], 'own rules too');
         // A library update: SCAN-BACKUP is revision 2 now (a copy of the shipped file).
-        $dir = ruleDir(['site.rules' => "ids SITE\n[SITE-DL] unblock [SCAN-BACKUP@1] at /downloads/**\n"]);
+        $dir = ruleDir(['site.rules' => "ids SITE\n[SITE-DL] unblock [SCAN-BACKUP@1] at /downloads/**\n[SITE-RS] restrict /rs/** to 127.0.0.1 ::1\n"]);
         $lib = sys_get_temp_dir() . '/rshield-lib-' . getmypid() . '-' . mt_rand();
         try {
             mkdir($lib, 0700, true);

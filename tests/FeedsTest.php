@@ -31,7 +31,7 @@ function feedFile(string $dir, string $name, array $ranges, ?int $checked = null
 
 function feedsSettings(string $dir, string $rules): Settings
 {
-    file_put_contents("$dir/site.rules", "set store-dir $dir/store\n" . $rules);
+    file_put_contents("$dir/site.rules", "set store-dir $dir/store\nrestrict /rs/** to 127.0.0.1 ::1\n" . $rules);
     return Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
 }
 

@@ -157,7 +157,7 @@ return [
         $dir = sitesDir();
         mkdir("$dir/docroot");
         file_put_contents("$dir/docroot/index.php", '<?php echo "ok";');
-        file_put_contents("$dir/host.rules", "set store-dir $dir/store\nset site-from host\nhost shop.a.de a.de news.b.de other.org\nexempt none\n" . substr((string) file_get_contents("$dir/main.rules"), (int) strpos((string) file_get_contents("$dir/main.rules"), '[BASE-PACE]')));
+        file_put_contents("$dir/host.rules", "set store-dir $dir/store\nset site-from host\nhost shop.a.de a.de news.b.de other.org\nexempt none\nrestrict /rs/** to 127.0.0.1 ::1\n" . substr((string) file_get_contents("$dir/main.rules"), (int) strpos((string) file_get_contents("$dir/main.rules"), '[BASE-PACE]')));
         $port = freePort();
         $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1', escapeshellarg("$dir/host.rules"),
             serverPhp(), escapeshellarg(dirname(__DIR__) . '/bootstrap.php'), $port, escapeshellarg("$dir/docroot")), [], $pipes);
@@ -175,7 +175,9 @@ return [
             same(['404', '200'], [$get('shop.a.de', '/?unknown=1'), $get('news.b.de', '/?unknown=1')], 'query strict: the shop only');
             same('429', $get('news.b.de', '/login'), 'the browser check of *.b.de (from its include)');
             $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
-            exec("$bin check " . escapeshellarg("$dir/main.rules") . ' 2>&1', $out, $code);
+            // check wants the dashboard guarded (0031 B.6): the same rules with the restrict line a real install has.
+            file_put_contents("$dir/checked.rules", "restrict /rs/** to 127.0.0.1 ::1\n" . (string) file_get_contents("$dir/main.rules"));
+            exec("$bin check " . escapeshellarg("$dir/checked.rules") . ' 2>&1', $out, $code);
             truthy($code === 0 && strpos(implode("\n", $out), 'sites: shop.a.de (a.de) · *.b.de · default; picked by server-name') !== false, implode("\n", $out));
             $out = [];
             exec("$bin trace " . escapeshellarg("$dir/main.rules") . ' "GET https://shop.a.de/admin/x" 2>&1', $out, $code);

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The shield serves the dashboard's pages itself** (0031 step B.6): a
+  request for a route below `dashboard-path` (`/rs/waf/live`, `/rs/stats/…`,
+  an extension's own) is answered before the application -- behind
+  `Access::gate()` and the route's role (`admin` pages refuse a customer with
+  403), `no-store` and `noindex` on every answer, a POST change with the
+  page's token. A route's `page` names the class that serves it
+  (`RoutePage::serve()` returns a `Response`); the core's pages, the
+  statistics' and the test extension's have one. A route nobody guards (no
+  `restrict` rule covers it, no login) answers 403, and `request-shield check`
+  warns, naming the rule to add (`restrict /rs/** to <addresses>`). The demo
+  wires nothing any more; a customer asking an administrator's page gets 403
+  instead of a reduced view. Every offered extension now compiles, with an
+  empty slot when the rules said nothing of it, so its defaults, routes and
+  plugins apply ([docs](docs/features/plugins.md#extensions-words-and-settings-of-their-own)).
 - **`Extension::plugins()`**: an extension names the `Plugin` classes to run per
   request given its compiled slot; the compiler appends them to the settings'
   plugins, so `Shield` no longer adds `StatsPlugin` itself (0031 B.4) and the

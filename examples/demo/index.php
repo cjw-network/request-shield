@@ -67,23 +67,6 @@ $shield = Shield::active();
 $method = (string) ($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
 // Who reads the dashboard (stats-access in the rules): a customer by its cookie
-// or a signed link (the customer menu, /customer-menu); this machine -- the demo's
-// admin, as a CMS would say for its signed-in administrator -- without asking.
-// Not signed in: the shield's login form, and nothing else of the page.
-$dashGate = static function () use ($shield, $request, $url): array {
-    $g = \CjwNetwork\RequestShield\Access::gate($shield->settings, $request, $_GET, $_POST, ['admin' => \CjwNetwork\RequestShield\IpAddress::inRanges($request->clientIp, ['127.0.0.1', '::1']),
-        'lang' => (string) ($_GET['lang'] ?? 'auto'), 'home' => $url('/'), 'homeLabel' => 'request-shield demo']);
-    foreach ($g['headers'] as $h) {
-        header($h, false);
-    }
-    if ($g['who'] === null) {
-        http_response_code($g['status']);
-        header('Content-Type: text/html; charset=utf-8');
-        echo (string) $g['body'];
-        exit;
-    }
-    return $g;
-};
 
 // The pages behind the examples. Everything that gets here was let through.
 $content = null;
@@ -176,70 +159,6 @@ if ($path === '/search') {
         . '<h3>Or sign in with a token</h3><p>The demo\'s token for Customer A (a demo only — a real one is printed once by <code>bin/request-shield token</code>):<br><code>demo-customer-a-5b8e2d1f7c4a9e06b3d1f8a2c7e5</code></p>'
         . '<p><a href="' . $e($url($stats['site']) . '?rs-login=1') . '">The login form</a> · <a href="' . $e($url($stats['site']) . '?rs-logout=1') . '">Sign out</a> (back to the admin\'s view on this machine)</p>'
         . '</section></main></body></html>';
-    exit;
-} elseif ($shield !== null && in_array(\CjwNetwork\RequestShield\Report\Frame::pageFor($shield->settings, $path), ['live', 'lists'], true)) {
-    // The live view and the lists (the core's pages, from the log and the list
-    // files): under dashboard-path like the statistics, and restricted the same way.
-    // The admin's only: a customer signed in gets 403.
-    if ($dashGate()['who'] !== '*') {
-        http_response_code(403);
-        echo 'The live view and the lists are the admin\'s.';
-        exit;
-    }
-    $panelLinks = array_map($url, \CjwNetwork\RequestShield\Report\Frame::links($shield->settings));
-    $panelOpts = ['links' => $panelLinks, 'lang' => (string) ($_GET['lang'] ?? 'auto'), 'accept' => $request->header('accept-language'),
-        'home' => $url('/'), 'homeLabel' => 'request-shield demo', 'ip' => $request->clientIp];
-    header('Cache-Control: no-store');
-    if (\CjwNetwork\RequestShield\Report\Frame::pageFor($shield->settings, $path) === 'live') {
-        if (($_GET['format'] ?? '') === 'json') {
-            // The new rows since the page's cursor, every few seconds.
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(\CjwNetwork\RequestShield\Report\LivePage::json($shield->settings, isset($_GET['cursor']) ? (string) $_GET['cursor'] : null,
-                ['lang' => \CjwNetwork\RequestShield\Texts::language((string) ($_GET['lang'] ?? 'auto'), $request->header('accept-language')), 'ip' => $request->clientIp, 'links' => $panelLinks]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-            exit;
-        }
-        header('Content-Type: text/html; charset=utf-8');
-        echo \CjwNetwork\RequestShield\Report\LivePage::render($shield->settings, $panelOpts + ['feed' => $panelLinks['live'] . '?format=json', 'lists' => $panelLinks['lists'],
-            'title' => 'Live — request-shield demo']);
-        exit;
-    }
-    // The lists: a change comes as POST with the page's token; the list files are
-    // written whole and the rule file touched, so every server reads them.
-    $message = $method === 'POST' ? \CjwNetwork\RequestShield\Report\ListsPage::handle($shield->settings, $_POST, ['ip' => $request->clientIp, 'ruleFile' => REQUEST_SHIELD_CONFIG,
-        'lang' => \CjwNetwork\RequestShield\Texts::language((string) ($_GET['lang'] ?? 'auto'), $request->header('accept-language'))]) : null;
-    header('Content-Type: text/html; charset=utf-8');
-    echo \CjwNetwork\RequestShield\Report\ListsPage::render($shield->settings, $panelOpts + ['action' => $panelLinks['lists'], 'get' => $_GET, 'message' => $message,
-        'title' => 'Lists — request-shield demo']);
-    exit;
-} elseif ($shield !== null && \CjwNetwork\RequestShield\Report\StatsPage::viewFor($shield->settings, $path) !== null) {
-    // What the counters say (set stats on): the library's statistics page at
-    // dashboard-path (/rs here, /admin/rs on a site that likes it so) -- the path names the view (the dashboard: everything; stats: visitors and
-    // pages, for editors; shield: the protection, for admins), GET parameters
-    // filter; in the visitor's language (or ?lang=de|en); ?format=json for a CMS.
-    $view = (string) \CjwNetwork\RequestShield\Report\StatsPage::viewFor($shield->settings, $path);
-    $who = (string) $dashGate()['who'];                 // '*' this machine (the admin), or a customer's group
-    $askedSite = isset($_GET['site']) && $_GET['site'] !== '' ? (string) $_GET['site'] : null;
-    $days = max(1, min(400, (int) ($_GET['days'] ?? 7)));
-    $by = in_array($_GET['by'] ?? '', ['hour', 'day', 'week', 'month', 'year'], true) ? (string) $_GET['by'] : null;
-    $only = isset($_GET['crawler']) && isset($shield->settings->crawlers[(string) $_GET['crawler']]) ? (string) $_GET['crawler'] : null;
-    if (($_GET['format'] ?? '') === 'json') {
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(\CjwNetwork\RequestShield\Report\StatsReport::build($shield->settings, null, $days, null, ['by' => $by === null || $by === 'hour' ? 'day' : $by] + ($only !== null ? ['crawler' => $only] : [])
-            + (isset($_GET['path']) && $_GET['path'] !== '' ? ['path' => preg_match('#^[a-z0-9*+()][a-z0-9.*+()-]*/#i', (string) $_GET['path']) === 1 ? (string) $_GET['path'] : '/' . ltrim((string) $_GET['path'], '/')] : []) + (isset($_GET['sort']) ? ['sort' => (string) $_GET['sort']] : [])
-            + (\CjwNetwork\RequestShield\Access::site($shield->settings, $who, $askedSite) !== null ? ['site' => (string) \CjwNetwork\RequestShield\Access::site($shield->settings, $who, $askedSite)] : [])
-            + (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($_GET['from'] ?? '')) === 1 && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($_GET['to'] ?? '')) === 1
-                ? ['from' => str_replace('-', '', (string) $_GET['from']), 'to' => str_replace('-', '', (string) $_GET['to'])] : [])),
-            JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-    header('Content-Type: text/html; charset=utf-8');
-    echo \CjwNetwork\RequestShield\Report\StatsPage::render($shield->settings, ['view' => $view, 'who' => $who,
-        'links' => array_map($url, \CjwNetwork\RequestShield\Access::links($shield->settings, $who, \CjwNetwork\RequestShield\Report\Frame::links($shield->settings))),
-        'days' => $days, 'crawler' => $only, 'path' => isset($_GET['path']) ? (string) $_GET['path'] : null, 'sort' => (string) ($_GET['sort'] ?? ''),
-        'lang' => (string) ($_GET['lang'] ?? 'auto'), 'accept' => $request->header('accept-language'), 'fragment' => isset($_GET['fragment']),
-        'check' => $_GET, 'ip' => $request->clientIp, 'from' => (string) ($_GET['from'] ?? ''), 'to' => (string) ($_GET['to'] ?? ''),
-        'home' => $url('/'), 'homeLabel' => 'request-shield demo',
-        'site' => $askedSite] + ($by !== null ? ['by' => $by] : []));
     exit;
 } elseif ($path === '/api/status') {
     // 5 calls a minute; past that: 429 with the task as JSON and in the header

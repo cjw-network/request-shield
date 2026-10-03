@@ -337,17 +337,16 @@ final class Settings
         $checked = $s->ext;
         $plugins = $s->plugins;
         $routes = [];
-        foreach ($s->ext as $id => $raw) {
-            $class = \CjwNetwork\RequestShield\Rules\Vocabulary::extension($id);
-            if ($class !== null) {
-                $checked[$id] = $class::compile($raw, $s);
-                foreach ($class::plugins($checked[$id]) as $plugin) {
-                    if (!in_array($plugin, $plugins, true)) {
-                        $plugins[] = $plugin;
-                    }
+        // Every offered extension compiles -- with an empty slot when the rules said nothing
+        // of it: its defaults, its routes and its plugins apply all the same (0031 B.6).
+        foreach (\CjwNetwork\RequestShield\Rules\Vocabulary::extensions() as $id => $class) {
+            $checked[$id] = $class::compile($s->ext[$id] ?? [], $s);
+            foreach ($class::plugins($checked[$id]) as $plugin) {
+                if (!in_array($plugin, $plugins, true)) {
+                    $plugins[] = $plugin;
                 }
-                $routes[$id] = $class::routes($checked[$id]);
             }
+            $routes[$id] = $class::routes($checked[$id]);
         }
         // The same settings with the slots, the plugins and the pages filled in:
         // the value objects (budgets, challenge, monitor) are immutable and shared,

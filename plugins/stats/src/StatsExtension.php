@@ -257,12 +257,12 @@ final class StatsExtension implements Extension
     {
         $path = is_string($compiled['path'] ?? null) ? $compiled['path'] : '/rs/stats';
         $sites = ($compiled['hosts'] ?? []) !== [];
-        return [$path => ['key' => $sites ? 'sites' : 'all', 'tab' => null, 'role' => $sites ? 'reader' : 'admin', 'order' => 5]]
-            + ($sites ? [$path . '/sites' => ['key' => 'sites', 'tab' => ['All websites', 'Alle Websites'], 'role' => 'reader', 'order' => 10]] : [])
+        return [$path => ['key' => $sites ? 'sites' : 'all', 'tab' => null, 'role' => $sites ? 'reader' : 'admin', 'order' => 5, 'page' => Report\StatsPage::class]]
+            + ($sites ? [$path . '/sites' => ['key' => 'sites', 'tab' => ['All websites', 'Alle Websites'], 'role' => 'reader', 'order' => 10, 'page' => Report\StatsPage::class]] : [])
             + [
-                $path . '/overview' => ['key' => 'all', 'tab' => ['Dashboard', 'Dashboard'], 'role' => 'admin', 'order' => 20],
-                $path . '/visitors' => ['key' => 'site', 'tab' => ['Visitors & pages', 'Besucher & Seiten'], 'role' => 'reader', 'order' => 30],
-                $path . '/protection' => ['key' => 'shield', 'tab' => ['Protection', 'Schutz'], 'role' => 'reader', 'order' => 40],
+                $path . '/overview' => ['key' => 'all', 'tab' => ['Dashboard', 'Dashboard'], 'role' => 'admin', 'order' => 20, 'page' => Report\StatsPage::class],
+                $path . '/visitors' => ['key' => 'site', 'tab' => ['Visitors & pages', 'Besucher & Seiten'], 'role' => 'reader', 'order' => 30, 'page' => Report\StatsPage::class],
+                $path . '/protection' => ['key' => 'shield', 'tab' => ['Protection', 'Schutz'], 'role' => 'reader', 'order' => 40, 'page' => Report\StatsPage::class],
             ];
     }
 

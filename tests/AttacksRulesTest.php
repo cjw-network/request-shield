@@ -265,7 +265,7 @@ return [
         // The command line, too.
         $dir = sys_get_temp_dir() . '/rshield-atkf-' . getmypid() . '-' . mt_rand();
         mkdir($dir, 0700, true);
-        file_put_contents("$dir/site.rules", "include @attacks\n");
+        file_put_contents("$dir/site.rules", "include @attacks\nrestrict /rs/** to 127.0.0.1 ::1\n");
         try {
             $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/request-shield');
             exec("$bin check " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);

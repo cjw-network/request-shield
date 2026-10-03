@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace CjwNetwork\RequestShield\Tests;
 
 use CjwNetwork\RequestShield\Extension;
+use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Response;
+use CjwNetwork\RequestShield\RoutePage;
 use CjwNetwork\RequestShield\Rules\RuleFileException;
 use CjwNetwork\RequestShield\Rules\Vocabulary;
 use CjwNetwork\RequestShield\Settings;
@@ -14,7 +17,7 @@ use CjwNetwork\RequestShield\Settings;
  * place to fail on purpose (`set fail-at <stage>`), so the fail-safe tests
  * can make the shield throw at a chosen stage (0031 B.2, C.3).
  */
-final class RsTestExtension implements Extension
+final class RsTestExtension implements Extension, RoutePage
 {
     /** Where the extension (and, from 0031 C.3, its plugin) throws when asked to. */
     public const STAGES = ['compile', 'rules', 'handler', 'pages', 'sink', 'decided', 'ended'];
@@ -73,7 +76,7 @@ final class RsTestExtension implements Extension
     public static function routes(array $compiled): array
     {
         $base = is_string($compiled['dashboardPath'] ?? null) ? $compiled['dashboardPath'] : '/rs';
-        return [$base . '/rs-test/ping' => ['key' => 'ping', 'tab' => null, 'role' => 'admin', 'order' => 90]];
+        return [$base . '/rs-test/ping' => ['key' => 'ping', 'tab' => null, 'role' => 'admin', 'order' => 90, 'page' => self::class]];
     }
 
     public static function commands(): array
@@ -84,5 +87,11 @@ final class RsTestExtension implements Extension
     public static function check(Settings $s): array
     {
         return [];
+    }
+
+    /** The page behind /rs-test/ping (0031 B.6): says who reads and what stood before the route in the address. */
+    public static function serve(Settings $s, Request $request, array $route, array $ctx): Response
+    {
+        return Response::json(200, ['pong' => true, 'who' => $ctx['who'], 'prefix' => $ctx['prefix'], 'key' => $route['key'], 'method' => $request->method]);
     }
 }

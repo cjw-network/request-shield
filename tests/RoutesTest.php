@@ -45,10 +45,10 @@ return [
         withRegistry(function (): void {
             $s = Settings::from([]);
             same([
-                '/rs/waf/rules' => ['key' => 'rules', 'ext' => null, 'tab' => ['Rules & setup', 'Regeln & Einrichtung'], 'role' => 'admin', 'order' => 50],
-                '/rs/waf' => ['key' => 'live', 'ext' => null, 'tab' => null, 'role' => 'admin', 'order' => 60],
-                '/rs/waf/live' => ['key' => 'live', 'ext' => null, 'tab' => ['Live', 'Live'], 'role' => 'admin', 'order' => 60],
-                '/rs/waf/lists' => ['key' => 'lists', 'ext' => null, 'tab' => ['Lists', 'Listen'], 'role' => 'admin', 'order' => 70],
+                '/rs/waf/rules' => ['key' => 'rules', 'ext' => null, 'tab' => ['Rules & setup', 'Regeln & Einrichtung'], 'role' => 'admin', 'order' => 50, 'page' => 'CjwNetwork\\RequestShield\\Report\\SetupPage'],
+                '/rs/waf' => ['key' => 'live', 'ext' => null, 'tab' => null, 'role' => 'admin', 'order' => 60, 'page' => 'CjwNetwork\\RequestShield\\Report\\LivePage'],
+                '/rs/waf/live' => ['key' => 'live', 'ext' => null, 'tab' => ['Live', 'Live'], 'role' => 'admin', 'order' => 60, 'page' => 'CjwNetwork\\RequestShield\\Report\\LivePage'],
+                '/rs/waf/lists' => ['key' => 'lists', 'ext' => null, 'tab' => ['Lists', 'Listen'], 'role' => 'admin', 'order' => 70, 'page' => 'CjwNetwork\\RequestShield\\Report\\ListsPage'],
             ], $s->routes, 'exactly the core\'s, sorted by order then path');
             same(['rules' => '/rs/waf/rules', 'live' => '/rs/waf/live', 'lists' => '/rs/waf/lists'], Routes::links($s), 'one link per key, the pages with a tab');
             same(['rules' => '/demo/rs/waf/rules', 'live' => '/demo/rs/waf/live', 'lists' => '/demo/rs/waf/lists'], Routes::links($s, '/demo'), 'with a prefix');
@@ -98,7 +98,7 @@ return [
         withRegistry(function (): void {
             Vocabulary::offer(RsTestExtension::class);
             $s = routesSettings("set marks-max 3\n");
-            same(['key' => 'ping', 'ext' => 'rs-test', 'tab' => null, 'role' => 'admin', 'order' => 90], $s->routes['/rs/rs-test/ping'] ?? null);
+            same(['key' => 'ping', 'ext' => 'rs-test', 'tab' => null, 'role' => 'admin', 'order' => 90, 'page' => RsTestExtension::class], $s->routes['/rs/rs-test/ping'] ?? null);
             same('/rs/rs-test/ping', array_key_last($s->routes), 'order 90: last');
             $moved = routesSettings("set dashboard-path /admin/rs\nset marks-max 3\n");
             same([false, 'ping'], [isset($moved->routes['/rs/rs-test/ping']), $moved->routes['/admin/rs/rs-test/ping']['key'] ?? null]);
@@ -133,7 +133,7 @@ return [
     },
     'match(): the path or its end, the longest; page(): exact only' => function (): void {
         $s = Settings::from([]);
-        same(['key' => 'live', 'ext' => null, 'tab' => ['Live', 'Live'], 'role' => 'admin', 'order' => 60, 'path' => '/rs/waf/live'], Routes::match($s, '/demo/index.php/rs/waf/live'), 'below a prefix: the entry with its path');
+        same(['key' => 'live', 'ext' => null, 'tab' => ['Live', 'Live'], 'role' => 'admin', 'order' => 60, 'page' => 'CjwNetwork\\RequestShield\\Report\\LivePage', 'path' => '/rs/waf/live'], Routes::match($s, '/demo/index.php/rs/waf/live'), 'below a prefix: the entry with its path');
         same(['/rs/waf', '/rs/waf', '/rs/waf/live', null, null, null], [Routes::match($s, '/rs/waf')['path'] ?? null, Routes::match($s, '/app/RS/WAF/')['path'] ?? null, Routes::match($s, '/rs/waf/live/')['path'] ?? null,
             Routes::match($s, '/rs/waf/livestream'), Routes::match($s, '/xrs/waf'), Routes::match($s, '/')], 'capitals and a trailing / aside; a page below another is itself; never a longer name');
         same(['live', 'live', 'lists', null, null], [Routes::page($s, '/rs/waf'), Routes::page($s, '/RS/waf/live/'), Routes::page($s, '/rs/waf/lists'), Routes::page($s, '/demo/index.php/rs/waf/live'), Routes::page($s, '/rs')], 'page(): exact');

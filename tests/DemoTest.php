@@ -465,8 +465,10 @@ $customer = function (string $prefix): void {
         truthy(strpos($page['body'], 'Customer A') !== false && strpos($page['body'], 'Customer B') === false, 'Customer A only');
         truthy(strpos($page['body'], 'rs-logout=1') !== false, 'with a way to sign out');
         same(403, $get('GET', '/rs/waf/live', ['Cookie' => $cookie])['status'], 'never the firewall\'s pages');
-        $json = json_decode($get('GET', '/rs/stats/overview?format=json&site=' . rawurlencode('Customer B'), ['Cookie' => $cookie])['body'], true);
-        truthy(is_array($json) && ($json['site'] ?? null) !== 'Customer B', 'asking for another customer\'s site does not show it');
+        same(403, $get('GET', '/rs/stats/overview?format=json&site=' . rawurlencode('Customer B'), ['Cookie' => $cookie])['status'],
+            'the overview is the administrator\'s (the route\'s role): a customer is refused, whatever site it asks for');
+        $json = json_decode($get('GET', '/rs/stats/visitors?format=json&site=' . rawurlencode('Customer B'), ['Cookie' => $cookie])['body'], true);
+        truthy(is_array($json) && ($json['site'] ?? null) !== 'Customer B', 'asking for another customer\'s site on its own page does not show it');
         $out = $get('GET', '/rs/stats/sites?rs-logout=1', ['Cookie' => $cookie]);
         truthy(in_array($out['status'], [200, 303], true) && ($out['cookies']['rsd'] ?? 'x') === '', 'signed out: the cookie deleted');
     }, $prefix);

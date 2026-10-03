@@ -70,6 +70,9 @@ final class Shield
 
     private static ?string $rule = null;
 
+    /** The rule file the shield runs from (protectFile()): the dashboard touches it after a change to the lists. */
+    private static ?string $ruleFile = null;
+
     private static ?self $active = null;
 
     /** The request protect() decided about. */
@@ -172,6 +175,7 @@ final class Shield
     {
         // Where "already noted" is kept before any settings exist: with the compiled ones.
         self::$failedDir ??= $cacheDir ?? Settings::cacheDirFor($file);
+        self::$ruleFile = $file;
         try {
             // With site blocks (rules per website): the settings of this request's website.
             $settings = Settings::loadFor($file, $_SERVER, $cacheDir, $sources);
@@ -314,6 +318,17 @@ final class Shield
             $c = $s->challenge;
             (new Responder())->send($decision, $request, $s->debugHeader, $settled['page'], $rule,
                 Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts), $c->home);
+            exit;
+        }
+        // The dashboard's own pages (0031 B.6): a route is answered here, before the
+        // application -- for the many requests that are none, one stripos.
+        $route = Dashboard::routeFor($s, $request);
+        if ($route !== null) {
+            /** @var array<mixed> $get */
+            $get = $_GET;
+            /** @var array<mixed> $post */
+            $post = $_POST;
+            Dashboard::serve($s, $request, $route, $get, $post, self::$ruleFile)->send();
             exit;
         }
         if ($s->appChallenge && ($request->method === 'GET' || $request->method === 'HEAD')) {

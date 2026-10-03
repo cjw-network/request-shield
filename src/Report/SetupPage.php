@@ -24,7 +24,7 @@ use CjwNetwork\RequestShield\Store\Store;
  * belongs behind the admin login or a restrict rule, like the other views.
  * The challenge secret is never shown.
  */
-final class SetupPage
+final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
 {
     private const T = [
         'en' => [
@@ -449,5 +449,31 @@ final class SetupPage
         }
         ksort($files);
         return array_keys($files);
+    }
+
+    /**
+     * The route <dashboard-path>/waf/rules (0031 B.6): rules and setup, the tester, the way. With the statistics
+     * plugin present the page is the statistics' "rules" view (its frame and styling; until 0031 B.8, which gives
+     * this page a frame of its own); without it, the content in the core's frame.
+     *
+     * @param array<string, mixed> $route
+     * @param array<string, mixed> $ctx
+     */
+    public static function serve(Settings $s, \CjwNetwork\RequestShield\Request $request, array $route, array $ctx): \CjwNetwork\RequestShield\Response
+    {
+        $stats = 'CjwNetwork\\RequestShield\\Report\\StatsPage';
+        if (class_exists($stats) && (($s->ext['stats']['enabled'] ?? false) === true)) {     // until 0031 B.8: with the statistics on, their frame and styling for this view
+            return $stats::serve($s, $request, ['key' => 'rules'] + $route, $ctx);
+        }
+        /** @var array<string, string> $links */
+        $links = is_array($ctx['links'] ?? null) ? $ctx['links'] : [];
+        /** @var array<mixed> $get */
+        $get = is_array($ctx['get'] ?? null) ? $ctx['get'] : [];
+        $lang = \CjwNetwork\RequestShield\Texts::language(is_string($ctx['lang'] ?? null) ? $ctx['lang'] : 'auto', is_string($ctx['accept'] ?? null) ? $ctx['accept'] : null);
+        $lang = $lang === 'de' ? 'de' : 'en';
+        $action = $links['rules'] ?? ((is_string($ctx['prefix'] ?? null) ? $ctx['prefix'] : '') . (is_string($route['path'] ?? null) ? $route['path'] : ''));
+        $h = Frame::tabs($s, $links, 'rules', $lang) . self::render($s, $lang, [], ['check' => $get, 'action' => $action, 'keep' => ['lang' => $lang]] + (is_string($ctx['ip'] ?? null) ? ['ip' => $ctx['ip']] : []));
+        $label = is_string($ctx['homeLabel'] ?? null) ? $ctx['homeLabel'] : '';
+        return \CjwNetwork\RequestShield\Response::html(200, Frame::page(($lang === 'de' ? 'Regeln & Einrichtung — ' : 'Rules & setup — ') . $label, $lang, $h, ['home' => is_string($ctx['home'] ?? null) ? $ctx['home'] : '/', 'homeLabel' => $label]));
     }
 }

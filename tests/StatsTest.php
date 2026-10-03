@@ -452,7 +452,7 @@ return [
         $dir = statsDir();
         mkdir("$dir/docroot");
         file_put_contents("$dir/docroot/index.php", '<?php if (strpos($_SERVER["REQUEST_URI"], "/missing") === 0) { http_response_code(404); echo "not found"; exit; } echo "ok";');
-        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset stats on\nset stats-depth 3\nexempt none\n");
+        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset stats on\nset stats-depth 3\nexempt none\nrestrict /rs/** to 127.0.0.1 ::1\n");
         $port = freePort();
         $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1', escapeshellarg("$dir/site.rules"),
             serverPhp(), escapeshellarg(dirname(__DIR__) . '/bootstrap.php'), $port, escapeshellarg("$dir/docroot")), [], $pipes);

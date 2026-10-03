@@ -28,7 +28,7 @@ use CjwNetwork\RequestShield\Texts;
  * Print it where only the site's people see it: behind the CMS's login, or a
  * path restricted to some addresses (restrict /stats to 192.0.2.0/24).
  */
-final class StatsPage
+final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
 {
     private const T = [
         'en' => [
@@ -969,4 +969,40 @@ table.sites tr.sother td{color:var(--m)}table.sites .up{color:var(--crawlers)}ta
 .badge{display:inline-block;font-size:12px;padding:0 7px;border-radius:999px;border:1px solid var(--line);margin:2px 4px 0 0}.badge.s2{color:var(--s2)}.badge.s3{color:var(--s3)}.badge.s4{color:var(--s4)}.badge.s5{color:var(--s5)}
 .barcell{width:30%}.barcell i{display:block;height:8px;border-radius:4px;background:var(--a);margin-top:7px}code{font-size:13px;word-break:break-all}
 CSS;
+
+    /**
+     * The route (0031 B.6): what the counters say; ?format=json the report for a CMS. The
+     * route's key names the view (sites, all, site, shield).
+     *
+     * @param array<string, mixed> $route
+     * @param array<string, mixed> $ctx
+     */
+    public static function serve(Settings $s, \CjwNetwork\RequestShield\Request $request, array $route, array $ctx): \CjwNetwork\RequestShield\Response
+    {
+        /** @var array<mixed> $get */
+        $get = is_array($ctx['get'] ?? null) ? $ctx['get'] : [];
+        $who = is_string($ctx['who'] ?? null) ? $ctx['who'] : '*';
+        $view = is_string($route['key'] ?? null) ? $route['key'] : 'site';
+        $askedSite = isset($get['site']) && $get['site'] !== '' && is_string($get['site']) ? $get['site'] : null;
+        $days = max(1, min(400, is_numeric($get['days'] ?? null) ? (int) $get['days'] : 7));
+        $by = in_array($get['by'] ?? '', ['hour', 'day', 'week', 'month', 'year'], true) ? (string) $get['by'] : null;
+        $only = isset($get['crawler']) && is_string($get['crawler']) && isset($s->crawlers[$get['crawler']]) ? $get['crawler'] : null;
+        $path = isset($get['path']) && is_string($get['path']) && $get['path'] !== '' ? $get['path'] : null;
+        $from = is_string($get['from'] ?? null) ? $get['from'] : '';
+        $to = is_string($get['to'] ?? null) ? $get['to'] : '';
+        if (($get['format'] ?? '') === 'json') {
+            $site = \CjwNetwork\RequestShield\Access::site($s, $who, $askedSite);
+            $o = ['by' => $by === null || $by === 'hour' ? 'day' : $by] + ($only !== null ? ['crawler' => $only] : [])
+                + ($path !== null ? ['path' => preg_match('#^[a-z0-9*+()][a-z0-9.*+()-]*/#i', $path) === 1 ? $path : '/' . ltrim($path, '/')] : [])
+                + (isset($get['sort']) && is_string($get['sort']) ? ['sort' => $get['sort']] : []) + ($site !== null ? ['site' => $site] : [])
+                + (preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) === 1 && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to) === 1 ? ['from' => str_replace('-', '', $from), 'to' => str_replace('-', '', $to)] : []);
+            return \CjwNetwork\RequestShield\Response::json(200, StatsReport::build($s, null, $days, null, $o), [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        }
+        /** @var array<string, string> $links */
+        $links = is_array($ctx['links'] ?? null) ? $ctx['links'] : [];
+        return \CjwNetwork\RequestShield\Response::html(200, self::render($s, ['view' => $view, 'who' => $who, 'links' => $links, 'days' => $days, 'crawler' => $only, 'path' => $path,
+            'sort' => is_string($get['sort'] ?? null) ? $get['sort'] : '', 'lang' => is_string($ctx['lang'] ?? null) ? $ctx['lang'] : 'auto', 'accept' => is_string($ctx['accept'] ?? null) ? $ctx['accept'] : null,
+            'fragment' => isset($get['fragment']), 'check' => $get, 'ip' => is_string($ctx['ip'] ?? null) ? $ctx['ip'] : '', 'from' => $from, 'to' => $to,
+            'home' => is_string($ctx['home'] ?? null) ? $ctx['home'] : '/', 'homeLabel' => is_string($ctx['homeLabel'] ?? null) ? $ctx['homeLabel'] : '', 'site' => $askedSite] + ($by !== null ? ['by' => $by] : [])));
+    }
 }

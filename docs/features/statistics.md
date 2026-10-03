@@ -87,17 +87,14 @@ core's — the firewall's — pages live under `/rs/waf/`: **`/rs/waf/rules`** (
 `/rs/waf` opens the live view. Every plugin gets its own prefix this way.
 The path names the view; the filters stay GET parameters
 (`?days=30&by=week&lang=de&path=/news/&crawler=CRAWL-GOOGLE`, `format=json`).
-`StatsPage::links($settings)` returns the four addresses, `StatsPage::viewFor(
-$settings, $path)` which view a path is (capitals and a trailing slash do not
-matter) — a site or a CMS routes them to `StatsPage::render()`, behind its
-login or restricted to some addresses (`restrict /rs/** to 192.0.2.0/24`):
-
-```php
-$view = StatsPage::viewFor($settings, $path);
-if ($view !== null) {
-    echo StatsPage::render($settings, ['view' => $view, 'links' => StatsPage::links($settings)] + $_GET-derived options);
-}
-```
+**The shield serves these pages itself** (0031 B.6): a request for one of
+them is answered before the site runs -- behind a `restrict` rule that covers
+it (`restrict **/rs/** to 192.0.2.0/24`: the office; `**` in front, so it holds
+behind a front controller too) or the login below; every answer is `no-store`
+and `noindex`. The site routes nothing, and `check` warns while nothing guards
+the pages. `StatsPage::links($settings)` still returns the addresses (for a
+menu), `StatsPage::viewFor($settings, $path)` which view a path is (capitals
+and a trailing slash do not matter).
 
 `Report\StatsPage::render()` prints the page, in **views** with tabs between them —
 the overview (`'view' => 'all'`) and two for different people: **Visitors & pages** (`'view' => 'site'`, the
@@ -363,22 +360,16 @@ set stats-session 8h                                          # how long a login
   everything, no form. A customer's cookie still comes first (its own view),
   and `?rs-login=1` shows the form all the same, to try a customer's view.
 
-In the site's front controller:
+Nothing to wire: the shield runs `Access::gate()` itself when it serves a
+page (`Dashboard::serve()`, 0031 B.6) -- the form, the redirect of a signed
+link, the 429 after too many tries, and the reader's view with the tabs it may
+open (`Access::links()`). The site's own administrator is whoever passes the
+`restrict` rule that covers the pages. A site that wants the pages inside its
+own backend can still call `StatsPage::render()` with `'who'` from a gate of
+its own, as the demo's `/customer-menu` makes a signed link with `Access::link()`.
 
-```php
-use CjwNetwork\RequestShield\{Access, Request};
-use CjwNetwork\RequestShield\Report\StatsPage;
-
-$gate = Access::gate($settings, Request::fromServer($_SERVER), $_GET, $_POST);
-foreach ($gate['headers'] as $h) { header($h, false); }
-http_response_code($gate['status']);
-if ($gate['who'] === null) { echo $gate['body']; exit; }       // the form, a redirect, 429
-echo StatsPage::render($settings, ['view' => StatsPage::viewFor($settings, $path), 'who' => $gate['who'],
-    'links' => Access::links($settings, $gate['who'], StatsPage::links($settings)), 'site' => $_GET['site'] ?? null] + …);
-```
-
-For the JSON: `'site' => Access::site($settings, $gate['who'], $_GET['site'] ?? null)` in
-`StatsReport::build()`.
+For the JSON (`?format=json`): the shield passes `Access::site($settings, $who, $_GET['site'] ?? null)` to
+`StatsReport::build()` -- a customer sees its group's websites, whatever it asks for.
 
 ## What is counted how
 

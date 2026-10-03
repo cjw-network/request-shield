@@ -30,7 +30,7 @@ use CjwNetwork\RequestShield\Texts;
  * check its own form token instead, 'csrfChecked' => true). The site decides
  * who may open the page, as for the statistics.
  */
-final class ListsPage
+final class ListsPage implements \CjwNetwork\RequestShield\RoutePage
 {
     /** Entries shown at most; the search narrows a long list. */
     public const SHOWN = 200;
@@ -334,4 +334,30 @@ final class ListsPage
 .search{display:flex;gap:6px;margin:0 0 8px}.search input{flex:1;max-width:360px}.inline{display:flex;flex-wrap:wrap;gap:4px}.inline input{min-width:160px;flex:1}
 .stamp{display:block;color:var(--m);font-size:12px;margin-top:2px}.review{color:var(--throttled)}.badge.deny{border-color:var(--refused);color:var(--refused)}.badge.exempt{border-color:var(--through);color:var(--through)}
 CSS;
+
+    /**
+     * The route (0031 B.6): a POST is a change (handle(), with the page's token), then the page.
+     *
+     * @param array<string, mixed> $route
+     * @param array<string, mixed> $ctx
+     */
+    public static function serve(Settings $s, \CjwNetwork\RequestShield\Request $request, array $route, array $ctx): \CjwNetwork\RequestShield\Response
+    {
+        /** @var array<string, string> $links */
+        $links = is_array($ctx['links'] ?? null) ? $ctx['links'] : [];
+        /** @var array<mixed> $get */
+        $get = is_array($ctx['get'] ?? null) ? $ctx['get'] : [];
+        /** @var array<mixed> $post */
+        $post = is_array($ctx['post'] ?? null) ? $ctx['post'] : [];
+        $lang = is_string($ctx['lang'] ?? null) ? $ctx['lang'] : 'auto';
+        $accept = is_string($ctx['accept'] ?? null) ? $ctx['accept'] : null;
+        $ip = is_string($ctx['ip'] ?? null) ? $ctx['ip'] : '';
+        $who = is_string($ctx['who'] ?? null) ? $ctx['who'] : '*';
+        $message = ($ctx['method'] ?? 'GET') === 'POST'
+            ? self::handle($s, $post, ['ip' => $ip, 'ruleFile' => $ctx['ruleFile'] ?? null, 'lang' => Texts::language($lang, $accept), 'user' => $who === '*' ? '' : $who])
+            : null;
+        $label = is_string($ctx['homeLabel'] ?? null) ? $ctx['homeLabel'] : '';
+        return \CjwNetwork\RequestShield\Response::html(200, self::render($s, ['action' => $links['lists'] ?? ((is_string($ctx['prefix'] ?? null) ? $ctx['prefix'] : '') . (is_string($route['path'] ?? null) ? $route['path'] : '')), 'get' => $get, 'message' => $message,
+            'links' => $links, 'lang' => $lang, 'accept' => $accept, 'ip' => $ip, 'home' => is_string($ctx['home'] ?? null) ? $ctx['home'] : '/', 'homeLabel' => $label, 'title' => 'Lists — ' . $label]));
+    }
 }
