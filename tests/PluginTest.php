@@ -67,7 +67,7 @@ function pluginReq(string $uri, string $ua = 'Mozilla/5.0 (X11; Linux x86_64) Fi
 }
 
 return [
-    'RSF6.4 naming plugins: in a rule file (plugin <class>) and in PHP settings -- class names only, never inside a match block' => function (): void {
+    'RSF06-04 naming plugins: in a rule file (plugin <class>) and in PHP settings -- class names only, never inside a match block' => function (): void {
         $dir = sys_get_temp_dir() . '/rs-plugin-' . getmypid() . '-' . mt_rand();
         mkdir($dir);
         try {
@@ -101,7 +101,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.4 the plugins a shield makes: those named, the statistics with "set stats on", nothing for a class that is missing or no Plugin' => function (): void {
+    'RSF06-04 the plugins a shield makes: those named, the statistics with "set stats on", nothing for a class that is missing or no Plugin' => function (): void {
         $log = sys_get_temp_dir() . '/rs-plugin-log-' . getmypid() . '-' . mt_rand();
         $old = ini_set('error_log', $log);
         try {
@@ -116,7 +116,7 @@ return [
             @unlink($log);
         }
     },
-    'RSF6.4 record(): the plugins hear the decision -- final, or "continues" with ended() after the site; a failing plugin changes nothing' => function (): void {
+    'RSF06-04 record(): the plugins hear the decision -- final, or "continues" with ended() after the site; a failing plugin changes nothing' => function (): void {
         $log = sys_get_temp_dir() . '/rs-plugin-log-' . getmypid() . '-' . mt_rand();
         $old = ini_set('error_log', $log);
         try {
@@ -132,7 +132,7 @@ return [
             @unlink($log);
         }
     },
-    'RSF6.4 Seen: the website, who came, a bot\'s family -- worked out once, on demand' => function (): void {
+    'RSF06-04 Seen: the website, who came, a bot\'s family -- worked out once, on demand' => function (): void {
         $s = Settings::from(['storeDir' => sys_get_temp_dir()]);
         $shield = new Shield($s, new MemoryStore());
         $seen = new Seen(pluginReq('/', 'curl/8.5', 'Shop.Example.ORG.:80'), $shield);
@@ -144,7 +144,7 @@ return [
             same(Stats::botFamily($ua), Seen::family($ua), "the same families as before: $ua");
         }
     },
-    'RSF6.4 the real path: a plugin in a rule file, ended() with the site\'s status, a broken plugin -- the site answers all the same' => function (): void {
+    'RSF06-04 the real path: a plugin in a rule file, ended() with the site\'s status, a broken plugin -- the site answers all the same' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -193,11 +193,11 @@ final class RsE2eBroken implements CjwNetwork\RequestShield\Plugin {
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-'RSF6.4 the example in docs/features/plugins.md runs: one line in the error log when refusals pile up' => function (): void {
+'RSF06-04 the example in docs/features/RSF06-04-plugins.md runs: one line in the error log when refusals pile up' => function (): void {
         if (!\CjwNetwork\RequestShield\Store\ApcuStore::usable()) {
             skip('APCu not enabled (php -d apc.enable_cli=1)');
         }
-        $doc = (string) file_get_contents(dirname(__DIR__) . '/docs/features/plugins.md');
+        $doc = (string) file_get_contents(dirname(__DIR__) . '/docs/features/RSF06-04-plugins.md');
         truthy(preg_match('/```php\n(<\?php\nnamespace Acme\\\\Shield;.*?)```/s', $doc, $m) === 1, 'the example is in the guide');
         $file = sys_get_temp_dir() . '/rs-plugin-doc-' . getmypid() . '.php';
         $log = sys_get_temp_dir() . '/rs-plugin-doc-' . getmypid() . '.log';

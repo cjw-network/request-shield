@@ -102,7 +102,7 @@ function modesPass(Settings $s, float $now, int $ago): string
 }
 
 return [
-    'RSF5.3 rule files: set mode, monitor before a rule, challenge … max-age -- and the mistakes' => function (): void {
+    'RSF05-03 rule files: set mode, monitor before a rule, challenge … max-age -- and the mistakes' => function (): void {
         same('enforce', modesSettings("")->mode, 'the default');
         foreach (['off', 'monitor', 'strict'] as $m) {
             same($m, modesSettings("set mode $m\n")->mode);
@@ -130,7 +130,7 @@ return [
         modesFail("challenge /login max-age soon\n", 'site.rules:1', 'max-age is a duration');
         modesFail("challenge /login max-age 0\n", 'site.rules:1', 'at least one second');
     },
-    'RSF5.3 strict: the check from a quarter of each limit, a pass for 15 minutes, twice the difficulty -- the site\'s own values win where it sets them' => function (): void {
+    'RSF05-03 strict: the check from a quarter of each limit, a pass for 15 minutes, twice the difficulty -- the site\'s own values win where it sets them' => function (): void {
         $s = modesSettings("set mode strict\nlimit requests 600/min\nlimit posts 20/min challenge-at 5\nlimit misses 60/min on-demand\nset difficulty-min 50000\nset difficulty-max 80000\n");
         same(150, $s->budgets['requests']->challengeAt, 'a quarter');
         same(5, $s->budgets['posts']->challengeAt, 'its own challenge-at');
@@ -149,7 +149,7 @@ return [
             truthy(strpos($e->getMessage(), 'mode') !== false, $e->getMessage());
         }
     },
-    'RSF5.3 strict: an address a cache must not keep counts twice' => function (): void {
+    'RSF05-03 strict: an address a cache must not keep counts twice' => function (): void {
         foreach (['enforce' => [10, 10], 'strict' => [10, 5]] as $mode => [$cached, $uncached]) {
             $s = modesSettings("set mode $mode\nset search-engines off\ncache-path /page/*\nlimit requests 10/min challenge-at 50\n");
             $shield = new Shield($s, new MemoryStore());
@@ -162,7 +162,7 @@ return [
             same($uncached, $passed('/random/x1'), "$mode: a made-up address");
         }
     },
-    'RSF5.3 challenge … max-age: a pass issued too long ago is not enough there, and enough elsewhere' => function (): void {
+    'RSF05-03 challenge … max-age: a pass issued too long ago is not enough there, and enough elsewhere' => function (): void {
         $s = modesSettings("set secret " . MODES_SECRET . "\nset search-engines off\nchallenge /login max-age 5m\nchallenge /account\n");
         $shield = new Shield($s, new MemoryStore());
         $settle = static function (string $uri, string $pass) use ($shield): string {
@@ -175,7 +175,7 @@ return [
         same(Decision::ALLOW_UNCACHED === $settle('/login', $fresh) || Decision::ALLOW === $settle('/login', $fresh), true, 'a minute ago: through');
         truthy($settle('/account', $old) !== Decision::CHALLENGE, 'elsewhere the long pass counts');
     },
-    'RSF5.3 the rules page names the mode and the watched rules; trace says what they would do' => function (): void {
+    'RSF05-03 the rules page names the mode and the watched rules; trace says what they would do' => function (): void {
         $s = modesSettings("[SITE-OLD] monitor block /old/**   # the old API\n[SITE-CO] challenge /checkout max-age 5m\n");
         $html = \CjwNetwork\RequestShield\Report\RulesPage::render($s, ['check' => ['url' => '/old/x', 'method' => 'GET', 'ip' => '198.51.100.7'], 'store' => new MemoryStore()]);
         truthy(strpos($html, '1 rule is only watched (monitor)') !== false, 'the mode line');
@@ -187,7 +187,7 @@ return [
         $t = (new \CjwNetwork\RequestShield\Report\Inspector(modesSettings("set mode monitor\n"), new MemoryStore()))->trace(\CjwNetwork\RequestShield\Report\Inspector::request('GET', '/.env', '198.51.100.7'), 1000.0);
         same('sees the page — monitor mode; enforced, it gets "not found" (404) — the site never sees it', $t['verdict']);
     },
-    'RSF5.3 mode off: nothing checked, counted or logged -- the site runs' => function (): void {
+    'RSF05-03 mode off: nothing checked, counted or logged -- the site runs' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -201,7 +201,7 @@ return [
             same([], $log(), 'no log');
         });
     },
-    'RSF5.3 mode monitor: everything decided, counted and logged as it would be -- nobody refused, nothing cached' => function (): void {
+    'RSF05-03 mode monitor: everything decided, counted and logged as it would be -- nobody refused, nothing cached' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -224,7 +224,7 @@ return [
             truthy(strpos($lines, ' reject ') === false && strpos($lines, ' throttle ') === false, 'nothing enforced');
         });
     },
-    'RSF5.3 monitor before a rule: logged, not enforced -- the rest as always, and a budget counted once' => function (): void {
+    'RSF05-03 monitor before a rule: logged, not enforced -- the rest as always, and a budget counted once' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }

@@ -1,4 +1,4 @@
-# RSF5.4 Examples next to the rules: `expect` and `request-shield test`
+# RSF05-04 Examples next to the rules: `expect` and `request-shield test`
 
 ## What it does
 

@@ -1,4 +1,4 @@
-# RSF6.1 The active rules page
+# RSF06-01 The active rules page
 
 ## What it does
 
@@ -6,7 +6,7 @@ A page that shows how the site is protected — for site owners, not only for
 technicians — and lets anyone with access try an address against the rules:
 
 - **At a glance:** how many kinds of address are refused, restricted areas,
-  limits per visitor, and — from the [log](log-and-rule-ids.md) — how many
+  limits per visitor, and — from the [log](RSF05-05-log-and-rule-ids.md) — how many
   requests were refused and checked in the last 24 hours.
 - **Try an address:** kind of request, address and the visitor's IP; the page
   shows every check as a step — ✓ fine, ! answered with a remark (not cached,

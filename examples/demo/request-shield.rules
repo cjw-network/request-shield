@@ -91,7 +91,7 @@ set         dashboard-path /rs                                     # the statist
 # address (so one can be kept out exactly), for an hour, never on disk (APCu).
 set         live on
 
-# Public blocklists (docs/features/blocklist-feeds.md): off until a rule names one.
+# Public blocklists (docs/features/RSF01-03-blocklist-feeds.md): off until a rule names one.
 # Fetched by cron (bin/request-shield feeds request-shield.rules update), never
 # per request. Try a list first: "count" only counts and logs what it would do.
 #[DEMO-DROP]        feed spamhaus-drop count                       # hijacked networks; later: deny

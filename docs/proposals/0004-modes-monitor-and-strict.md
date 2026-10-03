@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Implemented** 2026-09-30 (see [modes](../features/modes.md)) |
+| Status | **Implemented** 2026-09-30 (see [modes](../features/RSF05-03-modes.md)) |
 | Proposed | 2026-09-29 |
 | Affects | Shield::protect(), rule files, the log |
 
@@ -62,7 +62,7 @@ its line. When the log shows no false hits, remove the word.
 ## The log levels (implemented with rule files)
 
 `set log-level off | stop | flag | all` — see
-[the log](../features/log-and-rule-ids.md). In `monitor` mode the would-be
+[the log](../features/RSF05-05-log-and-rule-ids.md). In `monitor` mode the would-be
 decisions are logged at their level (`stop` shows what would have been
 refused).
 

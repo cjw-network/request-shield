@@ -5,7 +5,7 @@ For an AI agent fitting a starter rule file (`request-shield init`, see
 time: a rule that is wrong is only logged. Every line you add gets an ID of
 the file's namespace (`[SITE-…]`), a comment saying why, and at least one
 `expect` line below it ([write-rule-examples.md](write-rule-examples.md)).
-The full vocabulary is in [rule-files.md](../features/rule-files.md); a rule
+The full vocabulary is in [rule-files.md](../features/RSF05-01-rule-files.md); a rule
 you are not sure of is better left out -- the starter is safe as it is.
 
 ## What to look at, and what it becomes

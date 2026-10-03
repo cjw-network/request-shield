@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Accepted** 2026-10-02 (decisions below: the recommendations); **phase 1 implemented** 2026-10-02 ([examples](../features/rule-examples.md)): `expect`, `request-shield test`, the built-in and Exponential examples, the instruction for language models |
+| Status | **Accepted** 2026-10-02 (decisions below: the recommendations); **phase 1 implemented** 2026-10-02 ([examples](../features/RSF05-04-rule-examples.md)): `expect`, `request-shield test`, the built-in and Exponential examples, the instruction for language models |
 | Proposed | 2026-10-02 |
 | Affects | rule files (new line `expect`), the command line (`request-shield test`, later `request-shield crawl`), the rules page (`<dashboard-path>/waf/rules`), the demos (their test tables), the built-in rule files, a short instruction for language models (`docs/llm/`) |
 

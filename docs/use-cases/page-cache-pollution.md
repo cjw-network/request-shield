@@ -23,5 +23,5 @@ return [
 - The cache counts its misses with `Shield::consume('misses', $request)`; a
   client that makes the site render 60 times a minute gets 429.
 
-Features: [trusted proxies](../features/trusted-proxies.md),
-[cacheable definition](../features/cacheable-definition.md), [budgets](../features/budgets.md).
+Features: [trusted proxies](../features/RSF01-01-trusted-proxies.md),
+[cacheable definition](../features/RSF04-01-cacheable-definition.md), [budgets](../features/RSF03-01-budgets.md).

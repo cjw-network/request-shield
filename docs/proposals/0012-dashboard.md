@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** — the counters implemented 2026-09-30 (see [statistics](../features/statistics.md)); the panel to come |
+| Status | **Draft** — the counters implemented 2026-09-30 (see [statistics](../features/RSF06-03-statistics.md)); the panel to come |
 | Proposed | 2026-09-30 |
 | Affects | a new optional part (`Report\Panel`), the store (counters), the rules page, the log |
 
@@ -46,7 +46,7 @@ before:
 
 ## Motivation
 
-- Today the rules page ([active rules](../features/active-rules-page.md))
+- Today the rules page ([active rules](../features/RSF06-01-active-rules-page.md))
   explains the rules and shows the last 24 hours from the log. A site owner
   also wants the *trend* — "more refusals since Tuesday?" — and the big
   picture without reading log lines.
@@ -154,7 +154,7 @@ never parses it.
   rule ID, a country code, a crawler ID.
 - The country is looked up from the address and only the country is kept.
 - "Lately" shows the log's lines as the log keeps them (masked addresses by
-  default, see [the log](../features/log-and-rule-ids.md)).
+  default, see [the log](../features/RSF05-05-log-and-rule-ids.md)).
 - The panel sets one cookie, only for someone who logs in (a session, not
   tracking).
 

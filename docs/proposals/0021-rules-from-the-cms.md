@@ -4,7 +4,7 @@
 |---|---|
 | Status | **Draft** |
 | Proposed | 2026-09-30 |
-| Affects | rule files ([0003](0003-human-readable-rule-files.md): `include`, `recheck`, `reload`), budgets, the browser check ([app challenges](../features/app-challenges.md), [0010](0010-browser-check-in-the-form.md)), known parameters ([0009](0009-typed-query-parameters.md)), the rules pages, the Exponential adapter |
+| Affects | rule files ([0003](0003-human-readable-rule-files.md): `include`, `recheck`, `reload`), budgets, the browser check ([app challenges](../features/RSF03-04-app-challenges.md), [0010](0010-browser-check-in-the-form.md)), known parameters ([0009](0009-typed-query-parameters.md)), the rules pages, the Exponential adapter |
 
 ## Summary
 

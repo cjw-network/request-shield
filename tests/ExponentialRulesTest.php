@@ -31,7 +31,7 @@ function exponentialExamplesPass(string $admin): void
 }
 
 return [
-    'RSF5.1 both main files are valid as shipped (monitor mode): check finds no error' => function (): void {
+    'RSF05-01 both main files are valid as shipped (monitor mode): check finds no error' => function (): void {
         foreach (['uri', 'host'] as $admin) {
             $read = RuleFile::read([exponentialMain($admin)]);
             same('monitor', $read['config']['mode'] ?? null, "admin-$admin ships in monitor mode: log first, refuse nobody");
@@ -39,11 +39,11 @@ return [
         }
     },
 
-    'RSF5.1 the admin as the siteaccess /admin: every example next to the rules passes, switched on' => static fn () => exponentialExamplesPass('uri'),
+    'RSF05-01 the admin as the siteaccess /admin: every example next to the rules passes, switched on' => static fn () => exponentialExamplesPass('uri'),
 
-    'RSF5.1 the admin on a host of its own: every example passes -- its block picked by the server name' => static fn () => exponentialExamplesPass('host'),
+    'RSF05-01 the admin on a host of its own: every example passes -- its block picked by the server name' => static fn () => exponentialExamplesPass('host'),
 
-    'RSF5.1 as written (monitor mode): nobody is refused -- the examples that expect a refusal say so' => function (): void {
+    'RSF05-01 as written (monitor mode): nobody is refused -- the examples that expect a refusal say so' => function (): void {
         $run = Examples::run([exponentialMain('uri')], true);
         $failed = array_filter($run['results'], static fn (array $r): bool => $r['status'] === 'fail');
         truthy(count($failed) > 20, 'refusals expected, none given: ' . count($failed));
@@ -52,7 +52,7 @@ return [
         }
     },
 
-    'RSF5.1 pass lifetimes: editors on their own host one check a working day, visitors two hours' => function (): void {
+    'RSF05-01 pass lifetimes: editors on their own host one check a working day, visitors two hours' => function (): void {
         $dir = sys_get_temp_dir() . '/rshield-exp-cache-' . getmypid();
         try {
             same(28800, Settings::loadFor(exponentialMain('host'), ['SERVER_NAME' => 'admin.example.org'], $dir)->challenge->passTtl, 'editors on their own host');

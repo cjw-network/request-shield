@@ -5,12 +5,12 @@
 | Status | **Draft** — partly built, see *Relation to the log and the `Sink` hook* |
 | Proposed | 2026-09-28 (as a local draft numbered 0003; renumbered 2026-10-03, 0003 is the rule files) |
 | Affects | the shield, the responder, the budgets; a new `bin/shield-report` |
-| Relates to | [0032 check levels](0032-check-levels.md) (the `monitor` event) · [log and rule IDs](../features/log-and-rule-ids.md) · [0016 rule advisor](0016-rule-advisor.md) · [0031](0031-robust-core-plugins.md) (the `Sink` hook) |
+| Relates to | [0032 check levels](0032-check-levels.md) (the `monitor` event) · [log and rule IDs](../features/RSF05-05-log-and-rule-ids.md) · [0016 rule advisor](0016-rule-advisor.md) · [0031](0031-robust-core-plugins.md) (the `Sink` hook) |
 
 ## Relation to the log and the `Sink` hook (2026-10-03)
 
 Since this was drafted the core has a log of its own
-([log and rule IDs](../features/log-and-rule-ids.md)): `set log <file>`,
+([log and rule IDs](../features/RSF05-05-log-and-rule-ids.md)): `set log <file>`,
 `log-level`, one line per decision with the rule id, masked addresses,
 rotation, and the live view reading it. [0031](0031-robust-core-plugins.md)
 adds a **`Sink`** hook, so a JSON-lines event log as described here becomes a

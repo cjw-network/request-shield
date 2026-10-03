@@ -49,7 +49,7 @@ function sitesRequests(Settings $s, ?string $site, int $t = SITES_T0): int
 }
 
 return [
-    'RSF6.3 set stats-hosts: names, *.domain, "host" (the host rule\'s), "sites" (the site blocks\') -- about the server; mistakes named' => function (): void {
+    'RSF06-03 set stats-hosts: names, *.domain, "host" (the host rule\'s), "sites" (the site blocks\') -- about the server; mistakes named' => function (): void {
         $dir = sitesStatsDir();
         try {
             same(['a.de', 'www.a.de', '*.b.de'], sitesStatsSettings($dir, "set stats-hosts A.de www.a.de. *.b.de\n")->ext['stats']['hosts'], 'lower case, without the trailing dot');
@@ -71,7 +71,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.3 whose statistics: the name exactly, *.domain one label deep, anything else "other" -- a made-up Host gets none of its own' => function (): void {
+    'RSF06-03 whose statistics: the name exactly, *.domain one label deep, anything else "other" -- a made-up Host gets none of its own' => function (): void {
         $dir = sitesStatsDir();
         try {
             $s = sitesStatsSettings($dir, "set stats-hosts a.de www.a.de *.b.de\n");
@@ -86,7 +86,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.3 counted per website, read per website or all added up -- what was counted before stats-hosts stays in the sum' => function (): void {
+    'RSF06-03 counted per website, read per website or all added up -- what was counted before stats-hosts stays in the sum' => function (): void {
         $dir = sitesStatsDir();
         try {
             // Before: one statistics.
@@ -106,7 +106,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.3 a quiet website\'s hour is rolled up too: the first request of an hour tends the others' => function (): void {
+    'RSF06-03 a quiet website\'s hour is rolled up too: the first request of an hour tends the others' => function (): void {
         $dir = sitesStatsDir();
         try {
             $s = sitesStatsSettings($dir, "set stats-hosts a.de b.de\n");
@@ -124,7 +124,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.3 stats-skip: paths that are no pages (a map proxy) are not counted when they pass -- refused or checked they are; protected all the same' => function (): void {
+    'RSF06-03 stats-skip: paths that are no pages (a map proxy) are not counted when they pass -- refused or checked they are; protected all the same' => function (): void {
         $dir = sitesStatsDir();
         try {
             $s = sitesStatsSettings($dir, "stats-skip **/osm-proxy/** /tiles/**\nmatch /app/** {\n  stats-skip\n}\n[P] limit requests 4/min\nexempt none\n");
@@ -143,7 +143,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.3 stats-group: websites per customer -- read together and each on its own; counted apart without naming them twice; mistakes named' => function (): void {
+    'RSF06-03 stats-group: websites per customer -- read together and each on its own; counted apart without naming them twice; mistakes named' => function (): void {
         $dir = sitesStatsDir();
         try {
             $s = sitesStatsSettings($dir, "set stats-hosts c.de\n[G-A] stats-group \"Customer A\" a.de www.a.de b.de   # the agency's customer\nstats-group Reseller b.de c.de\n");
@@ -182,7 +182,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.3 all websites at a glance: each group and its websites, where the traffic is, against the period before -- only with stats-hosts' => function (): void {
+    'RSF06-03 all websites at a glance: each group and its websites, where the traffic is, against the period before -- only with stats-hosts' => function (): void {
         $dir = sitesStatsDir();
         try {
             $s = sitesStatsSettings($dir, "set stats-hosts c.de d.de\nstats-group \"Customer A\" a.de b.de\n");
@@ -221,7 +221,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.3 several websites read together: every page with its website in front -- the same path on two is two pages; the filter takes website/path' => function (): void {
+    'RSF06-03 several websites read together: every page with its website in front -- the same path on two is two pages; the filter takes website/path' => function (): void {
         $dir = sitesStatsDir();
         try {
             $s = sitesStatsSettings($dir, "stats-group \"Customer A\" a.de b.de\n");
@@ -246,7 +246,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.3 looking at the numbers does not change them: the dashboard\'s own requests that pass are not counted; refused, they are' => function (): void {
+    'RSF06-03 looking at the numbers does not change them: the dashboard\'s own requests that pass are not counted; refused, they are' => function (): void {
         $dir = sitesStatsDir();
         try {
             $s = sitesStatsSettings($dir, "[R-RS] restrict **/rs/** to 127.0.0.1\n");
@@ -269,7 +269,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.3 set stats-path: the plugin\'s own address -- its pages below it, the core\'s stay at <dashboard-path>/waf/' => function (): void {
+    'RSF06-03 set stats-path: the plugin\'s own address -- its pages below it, the core\'s stay at <dashboard-path>/waf/' => function (): void {
         $dir = sitesStatsDir();
         try {
             same('/rs/stats', sitesStatsSettings($dir, '')->ext['stats']['path'] ?? null, 'the default: <dashboard-path>/stats (ext.stats.path, 0031 B.5)');
@@ -291,7 +291,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.3 the page: a website switch (all, each, other), the choice kept in the links; the command line: --site' => function (): void {
+    'RSF06-03 the page: a website switch (all, each, other), the choice kept in the links; the command line: --site' => function (): void {
         $dir = sitesStatsDir();
         try {
             $s = sitesStatsSettings($dir, "set stats-hosts a.de b.de\n");

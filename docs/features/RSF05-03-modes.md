@@ -1,4 +1,4 @@
-# RSF5.3 Modes: monitor first, strict under attack
+# RSF05-03 Modes: monitor first, strict under attack
 
 ## What it does
 
@@ -48,7 +48,7 @@ stored.
 ## Use cases
 
 - **Putting the shield in front of a live site:** `set mode monitor` for a few
-  days, read the log (or the [rules page](active-rules-page.md)), then
+  days, read the log (or the [rules page](RSF06-01-active-rules-page.md)), then
   `enforce`.
 - **A new rule on a running site:** `monitor block /old-api/**` — does anyone
   still use it?

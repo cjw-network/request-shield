@@ -1,4 +1,4 @@
-# RSF5.7 The single file
+# RSF05-07 The single file
 
 request-shield can be one PHP file: `request-shield.php`, the **mini edition**.
 It holds the checks, the answers, the browser check, the log, the rule

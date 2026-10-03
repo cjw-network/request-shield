@@ -1,4 +1,4 @@
-# RSF2.5 Known query parameters
+# RSF02-05 Known query parameters
 
 ## What it does
 
@@ -20,7 +20,7 @@ With that list the shield
   parameter, or a value not of its type, is answered "not found" (404) at once,
   before a single attack pattern runs;
 - **scans only what could hold an attack**: the [attack
-  patterns](rule-files.md#attack-patterns) see the free-text values (`text`),
+  patterns](RSF05-01-rule-files.md#attack-patterns) see the free-text values (`text`),
   the unknown parameters and the values not of their type — name and value, as
   they stand in the query. A number or a word is not scanned: it cannot hold an
   attack.
@@ -29,7 +29,7 @@ With that list the shield
 
 Without `strict` nothing is refused for being unknown: the request is answered
 as before, and a cache must not keep it (that is `cache-query`, see
-[the cacheable definition](cacheable-definition.md)).
+[the cacheable definition](RSF04-01-cacheable-definition.md)).
 
 ## Use cases
 
@@ -79,7 +79,7 @@ links keep working. They stay uncacheable unless `cache-query` names them.
 
 Rule file: as above. The line `query strict` has an ID like any rule
 (`[SITE-Q] query strict`); a refusal names it (`X-RS: reject
-unknown parameter; rule=SITE-Q`, the log, the [rules page](active-rules-page.md)).
+unknown parameter; rule=SITE-Q`, the log, the [rules page](RSF06-01-active-rules-page.md)).
 `strict` is for the whole site: not inside a `match` block.
 
 PHP array:

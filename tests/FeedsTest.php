@@ -41,7 +41,7 @@ function feedReq(string $ip, string $path = '/', string $ua = 'Mozilla/5.0 Firef
 }
 
 return [
-    'RSF1.3 the formats: plain (comments), DShield\'s columns, JSON lines, a JSON document\'s fields anywhere' => function (): void {
+    'RSF01-03 the formats: plain (comments), DShield\'s columns, JSON lines, a JSON document\'s fields anywhere' => function (): void {
         same(['45.1.2.3', '45.2.0.0/16', '2a01:4f8::1'], Feeds::parse("# a header\n45.1.2.3   # a scanner\n; another comment\n\n45.2.0.0/16 extra words\n2a01:4f8::1\n", 'plain'));
         same(['185.12.59.0/24', '45.3.4.0/24'], Feeds::parse("#\n#   DShield\n185.12.59.0\t185.12.59.255\t24\t323\tBLIX\n45.3.4.0\t45.3.4.255\t24\nbroken line\n", 'dshield'));
         same(['1.10.16.0/20', '2a0e:8f00::/29'], Feeds::parse("{\"cidr\":\"1.10.16.0/20\",\"sblid\":\"SBL1\"}\n{\"cidr\":\"2a0e:8f00::/29\"}\n{\"type\":\"metadata\",\"records\":2}\n", 'jsonl:cidr'));
@@ -49,14 +49,14 @@ return [
             'ipv6_prefixes' => [['ipv6_prefix' => '2600:1f00::/24']]]) ?: '', 'json:ip_prefix,ipv6_prefix'));
         same([true, true, true, true, false, false], [Feeds::isFormat('plain'), Feeds::isFormat('dshield'), Feeds::isFormat('jsonl:cidr'), Feeds::isFormat('json:a,b'), Feeds::isFormat('xml'), Feeds::isFormat('json:')]);
     },
-    'RSF1.3 what is kept: valid, normalised, once each -- never the site\'s own network, wide ranges only for lists meant to hold them' => function (): void {
+    'RSF01-03 what is kept: valid, normalised, once each -- never the site\'s own network, wide ranges only for lists meant to hold them' => function (): void {
         $c = Feeds::clean(['45.1.2.3', '45.1.2.3/32', '45.1.2.77/24', 'nonsense', '10.1.2.3', '0.0.0.0/8', '224.0.0.0/3', '172.16.5.0/24', '192.168.1.1', '100.64.0.1',
             'fe80::1', 'fd00::/8', '::1', '45.0.0.0/8', '2a01::/16', '2a01:4f8::/32', '127.0.0.0/8', '8.0.0.0/7'], false);
         same(['2a01:4f8::/32', '45.1.2.0/24', '45.1.2.3'], $c['ranges'], 'normalised, sorted, once each');
         same([1, 6, 7], [$c['invalid'], $c['special'], $c['wide']], 'what was dropped, counted (a wide range as wide, before its network is looked at)');
         same(['2a01::/16', '45.0.0.0/8'], Feeds::clean(['45.0.0.0/8', '2a01::/16', '10.0.0.0/8'], true)['ranges'], 'wide-ok: whole networks kept, the own network still not');
     },
-    'RSF1.3 fetching: due or not, the validators (304: unchanged), a broken or much shorter list kept, https only, several addresses with a part each' => function (): void {
+    'RSF01-03 fetching: due or not, the validators (304: unchanged), a broken or much shorter list kept, https only, several addresses with a part each' => function (): void {
         $dir = feedsDir();
         try {
             $f = static fn (array $over = []): array => [$over + ['name' => 'test', 'urls' => ['https://lists.example/a.txt'], 'format' => 'plain', 'every' => 3600, 'wideOk' => false]];
@@ -102,7 +102,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF1.3 the rule: names from the catalog or a list of one\'s own (https), the actions, count = watched, at <paths> -- mistakes named' => function (): void {
+    'RSF01-03 the rule: names from the catalog or a list of one\'s own (https), the actions, count = watched, at <paths> -- mistakes named' => function (): void {
         $dir = feedsDir();
         try {
             $s = feedsSettings($dir, "[F-DROP] feed spamhaus-drop deny\n[F-OWN] feed own-list https://lists.example/bad.txt check at /login/** format dshield\n"
@@ -139,7 +139,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF1.3 deciding: deny 403 right after the deny list, check = the browser check, at <paths>, ban-signal weighs -- never exempt, a trusted proxy or a verified crawler' => function (): void {
+    'RSF01-03 deciding: deny 403 right after the deny list, check = the browser check, at <paths>, ban-signal weighs -- never exempt, a trusted proxy or a verified crawler' => function (): void {
         $dir = feedsDir();
         try {
             feedFile($dir, 'spamhaus-drop', ['45.10.0.0/16']);
@@ -173,7 +173,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF1.3 a list too old is not used -- and the settings are built again when it grows too old; "count" refuses nobody' => function (): void {
+    'RSF01-03 a list too old is not used -- and the settings are built again when it grows too old; "count" refuses nobody' => function (): void {
         $dir = feedsDir();
         try {
             $now = time();
@@ -192,7 +192,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF1.3 the export: the deny list and the deny feeds as the fewest blocks -- not what touches a trusted proxy or an address let in, not "at" lists; four formats' => function (): void {
+    'RSF01-03 the export: the deny list and the deny feeds as the fewest blocks -- not what touches a trusted proxy or an address let in, not "at" lists; four formats' => function (): void {
         $dir = feedsDir();
         try {
             feedFile($dir, 'spamhaus-drop', ['45.10.0.0/24', '45.10.1.0/24', '45.70.0.0/16', '2a0e:8f00::/29']);
@@ -229,7 +229,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF1.3 ranges back to CIDR blocks: the fewest, exactly covering -- neighbours joined, IPv6, everything' => function (): void {
+    'RSF01-03 ranges back to CIDR blocks: the fewest, exactly covering -- neighbours joined, IPv6, everything' => function (): void {
         $t = \CjwNetwork\RequestShield\IpTable::class;
         same(['10.0.0.1/32', '10.0.0.2/31', '10.0.0.4/31', '10.0.0.6/32'], $t::blocks((string) inet_pton('10.0.0.1'), (string) inet_pton('10.0.0.6')));
         same(['10.0.0.0/23', '10.0.2.5/32', '2001:db8::/47'], $t::cidrs($t::build([[['10.0.0.0/24', '10.0.1.0/24', '10.0.2.5'], 'A'], [['2001:db8::/48', '2001:db8:1::/48'], 'B']])));
@@ -237,7 +237,7 @@ return [
         same(['0a000000', '0affffff'], $t::bounds('10.1.2.3/8'));
         same([null, null], [$t::bounds('10.0.0.0/33'), $t::bounds('nonsense')]);
     },
-    'RSF1.3 the live view and the rules page name the list' => function (): void {
+    'RSF01-03 the live view and the rules page name the list' => function (): void {
         $dir = feedsDir();
         try {
             feedFile($dir, 'spamhaus-drop', ['45.10.0.0/16']);

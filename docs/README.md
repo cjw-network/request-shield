@@ -4,39 +4,39 @@
   [the parts and their switches](explained/parts.md) ·
   [the browser check](explained/browser-check.md)
 - **Features** — what each part does, use cases, configuration, cost, limits;
-  each has an id `RSF<group>.<n>` (in the order the shield asks its
-  questions; `php tests/run.php RSF2.6` runs one feature's tests):
+  each has an id `RSF<gg>-<nn>`, its page is named by it (in the order the shield asks its
+  questions; `php tests/run.php RSF02-06` runs one feature's tests):
 
   | Id | Question | Feature |
   |---|---|---|
-  | RSF1.1 | Who is asking | [trusted proxies](features/trusted-proxies.md) |
-  | RSF1.2 | Who is asking | [IP lists and automatic bans](features/ip-lists.md) |
-  | RSF1.3 | Who is asking | [public blocklists (feeds)](features/blocklist-feeds.md) |
-  | RSF1.4 | Who is asking | [known crawlers](features/known-crawlers.md) |
-  | RSF2.1 | What is asked | [hard rejects](features/hard-rejects.md) |
-  | RSF2.2 | What is asked | blocked paths (scanners) -- in [rule files](features/rule-files.md#the-built-in-rules) for now |
-  | RSF2.3 | What is asked | [access rules](features/access-rules.md) |
-  | RSF2.4 | What is asked | [forms only from the website itself (`post-origin`)](features/forms-from-the-website.md) |
-  | RSF2.5 | What is asked | [known query parameters](features/known-parameters.md) |
-  | RSF2.6 | What is asked | attack patterns -- in [rule files](features/rule-files.md#the-built-in-rules) for now |
-  | RSF3.1 | How often | [budgets and stores](features/budgets.md) |
-  | RSF3.2 | How often | [browser challenge](features/browser-challenge.md) |
-  | RSF3.3 | How often | [the check inside the form](features/browser-check-in-the-form.md) |
-  | RSF3.4 | How often | [the site asks for the check](features/app-challenges.md) |
-  | RSF4.1 | What a cache may keep | [cacheable definition](features/cacheable-definition.md) |
-  | RSF4.2 | What a cache may keep | cache keys without tracking (proposal 0020) |
-  | RSF5.1 | Operating | [rule files](features/rule-files.md) |
-  | RSF5.2 | Operating | [settings](features/settings.md) |
-  | RSF5.3 | Operating | [modes: monitor and strict](features/modes.md) |
-  | RSF5.4 | Operating | [examples next to the rules (`expect`, `request-shield test`)](features/rule-examples.md) |
-  | RSF5.5 | Operating | [log and rule IDs](features/log-and-rule-ids.md) |
-  | RSF5.6 | Operating | error pages (proposal 0030) |
-  | RSF5.7 | Operating | [the single file](features/single-file.md) |
-  | RSF6.1 | Watching & connecting | [active rules page](features/active-rules-page.md) |
-  | RSF6.2 | Watching & connecting | [the live view and the lists in the dashboard](features/live-and-lists.md) |
-  | RSF6.3 | Watching & connecting | [statistics](features/statistics.md) |
-  | RSF6.4 | Watching & connecting | [plugins](features/plugins.md) |
-  | RSF6.5 | Watching & connecting | API (plugin, planned) |
+  | RSF01-01 | Who is asking | [trusted proxies](features/RSF01-01-trusted-proxies.md) |
+  | RSF01-02 | Who is asking | [IP lists and automatic bans](features/RSF01-02-ip-lists.md) |
+  | RSF01-03 | Who is asking | [public blocklists (feeds)](features/RSF01-03-blocklist-feeds.md) |
+  | RSF01-04 | Who is asking | [known crawlers](features/RSF01-04-known-crawlers.md) |
+  | RSF02-01 | What is asked | [hard rejects](features/RSF02-01-hard-rejects.md) |
+  | RSF02-02 | What is asked | blocked paths (scanners) -- in [rule files](features/RSF05-01-rule-files.md#the-built-in-rules) for now |
+  | RSF02-03 | What is asked | [access rules](features/RSF02-03-access-rules.md) |
+  | RSF02-04 | What is asked | [forms only from the website itself (`post-origin`)](features/RSF02-04-forms-from-the-website.md) |
+  | RSF02-05 | What is asked | [known query parameters](features/RSF02-05-known-parameters.md) |
+  | RSF02-06 | What is asked | attack patterns -- in [rule files](features/RSF05-01-rule-files.md#the-built-in-rules) for now |
+  | RSF03-01 | How often | [budgets and stores](features/RSF03-01-budgets.md) |
+  | RSF03-02 | How often | [browser challenge](features/RSF03-02-browser-challenge.md) |
+  | RSF03-03 | How often | [the check inside the form](features/RSF03-03-browser-check-in-the-form.md) |
+  | RSF03-04 | How often | [the site asks for the check](features/RSF03-04-app-challenges.md) |
+  | RSF04-01 | What a cache may keep | [cacheable definition](features/RSF04-01-cacheable-definition.md) |
+  | RSF04-02 | What a cache may keep | cache keys without tracking (proposal 0020) |
+  | RSF05-01 | Operating | [rule files](features/RSF05-01-rule-files.md) |
+  | RSF05-02 | Operating | [settings](features/RSF05-02-settings.md) |
+  | RSF05-03 | Operating | [modes: monitor and strict](features/RSF05-03-modes.md) |
+  | RSF05-04 | Operating | [examples next to the rules (`expect`, `request-shield test`)](features/RSF05-04-rule-examples.md) |
+  | RSF05-05 | Operating | [log and rule IDs](features/RSF05-05-log-and-rule-ids.md) |
+  | RSF05-06 | Operating | error pages (proposal 0030) |
+  | RSF05-07 | Operating | [the single file](features/RSF05-07-single-file.md) |
+  | RSF06-01 | Watching & connecting | [active rules page](features/RSF06-01-active-rules-page.md) |
+  | RSF06-02 | Watching & connecting | [the live view and the lists in the dashboard](features/RSF06-02-live-and-lists.md) |
+  | RSF06-03 | Watching & connecting | [statistics](features/RSF06-03-statistics.md) |
+  | RSF06-04 | Watching & connecting | [plugins](features/RSF06-04-plugins.md) |
+  | RSF06-05 | Watching & connecting | API (plugin, planned) |
 - **Privacy** — what the shield processes about visitors, feature by feature,
   and the GDPR: [privacy and the GDPR](privacy.md)
 - **For AI agents** — [llms.txt](../llms.txt) is the entry;

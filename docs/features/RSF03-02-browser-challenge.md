@@ -1,4 +1,4 @@
-# RSF3.2 The browser challenge (proof of work)
+# RSF03-02 The browser challenge (proof of work)
 
 *In plain words, for site owners: [the browser check, explained](../explained/browser-check.md).*
 
@@ -30,7 +30,7 @@ it expires (the hard `limit` still applies).
   User-Agent. Solutions are single-use and expire (`solutionTtl`).
 - **The site's own check page:** a plugin with the `Pages` capability draws it
   (`challenge`: it gets the task, the solution field's name, the texts, the form
-  to send again, home and logo; [plugins](plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)) -- headers and cookies stay the shield's.
+  to send again, home and logo; [plugins](RSF06-04-plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)) -- headers and cookies stay the shield's.
 - **Small on the wire:** the pass cookie is `rsp=2.<expires base36>.<tag>.<mac>`
   (43 bytes of value, a 64-bit client tag and a 128-bit MAC, base64url); the
   browser sends it with every request while the pass lasts. The solution
@@ -44,7 +44,7 @@ it expires (the hard `limit` still applies).
 - **Known crawlers** — search engines and AI crawlers that behave — are
   never given the check: verified by their operators' published address
   lists or by DNS, never by the name they send
-  ([known crawlers](known-crawlers.md)). A site can check or refuse them by
+  ([known crawlers](RSF01-04-known-crawlers.md)). A site can check or refuse them by
   kind or one by one.
 - **Always-checked paths** (`alwaysPaths`): a login or admin page checks every
   visitor once per pass cookie, whatever the budgets say, for every method — a
@@ -108,7 +108,7 @@ Apple, DuckDuckGo, OpenAI, Anthropic, Perplexity, Common Crawl. Those only DNS
 can verify are then ordinary visitors (checked where the site checks). The
 lists come with each release; `php bin/request-shield crawlers <site.rules>
 update` fetches newer ones where there is internet, and `store-dir/crawlers/`
-is deployed like any other file ([known crawlers](known-crawlers.md#without-internet-a-dmz)).
+is deployed like any other file ([known crawlers](RSF01-04-known-crawlers.md#without-internet-a-dmz)).
 `set dns-lookups 0` or a short resolver timeout (`options timeout:1 attempts:1`
 in `/etc/resolv.conf`) also keep DNS from making anyone wait.
 

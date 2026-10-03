@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Implemented** 2026-09-29 (see [rule files](../features/rule-files.md#versions-revisions-and-replacing-a-rule)) |
+| Status | **Implemented** 2026-09-29 (see [rule files](../features/RSF05-01-rule-files.md#versions-revisions-and-replacing-a-rule)) |
 | Proposed | 2026-09-29 |
 | Affects | rule files, `bin/request-shield`, the active rules page |
 

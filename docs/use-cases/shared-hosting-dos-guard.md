@@ -31,5 +31,5 @@ of 100–200 ms.
 hoster's protection (or a CDN) is what helps; the shield keeps each request
 cheap.
 
-Features: [hard rejects](../features/hard-rejects.md), [budgets](../features/budgets.md),
-[browser challenge](../features/browser-challenge.md).
+Features: [hard rejects](../features/RSF02-01-hard-rejects.md), [budgets](../features/RSF03-01-budgets.md),
+[browser challenge](../features/RSF03-02-browser-challenge.md).

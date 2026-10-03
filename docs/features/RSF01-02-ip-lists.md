@@ -1,4 +1,4 @@
-# RSF1.2 IP lists and automatic bans
+# RSF01-02 IP lists and automatic bans
 
 From [proposal 0013](../proposals/0013-ip-lists.md).
 
@@ -52,7 +52,7 @@ From [proposal 0013](../proposals/0013-ip-lists.md).
 exempt 192.0.2.50 until 2026-10-31T18:00                      # the agency, for the relaunch
 ```
 
-`deny` may also stand in a [site block](rule-files.md#site-blocks-rules-per-website) and
+`deny` may also stand in a [site block](RSF05-01-rule-files.md#site-blocks-rules-per-website) and
 then keeps the address off that website only.
 
 ### The list files
@@ -113,7 +113,7 @@ set ban-max 1d        # at most (default 1d)
 - Counted per client as for the budgets: IPv4 by address, IPv6 by its /64.
   Only when the signal happens; a passing request counts nothing.
 - **Never banned:** addresses let in (`exempt`), trusted proxies (`trust`),
-  and verified crawlers ([known crawlers](known-crawlers.md)), which keep getting
+  and verified crawlers ([known crawlers](RSF01-04-known-crawlers.md)), which keep getting
   the pause they understand. A client that only borrows a crawler's name is
   banned like anyone else.
 - **One ban for every website:** `ban` belongs above the site blocks (an error
@@ -128,7 +128,7 @@ set ban-max 1d        # at most (default 1d)
 
 ## How it shows
 
-- The [active rules page](active-rules-page.md) lists "Kept out and let in"
+- The [active rules page](RSF06-01-active-rules-page.md) lists "Kept out and let in"
   (with each entry's end) and "Banned for a while" with their IDs and lines.
   The setup view shows both as the first two steps of the way of a request.
 - `request-shield trace site.rules 203.0.113.7 /` names the entry that decides
@@ -189,7 +189,7 @@ single addresses spread over the internet:
   store on a shared disk, for all of them. For the firewall level, feed the log
   line to fail2ban: cheaper still, and a good second line.
 - Behind a load balancer the client address must be right
-  ([trusted proxies](trusted-proxies.md)), or the balancer would be counted,
+  ([trusted proxies](RSF01-01-trusted-proxies.md)), or the balancer would be counted,
   which the shield refuses for trusted proxies anyway.
 - **OPcache's memory:** the table is compiled into the settings file, which
   OPcache keeps in its shared memory, and its strings may go into the interned
@@ -200,7 +200,7 @@ single addresses spread over the internet:
   big list is read on every request: tens of milliseconds at 100,000 entries.
 - Lists and bans hold addresses: see [privacy](../privacy.md). Entries without an
   end should be reviewed; a ban ends by itself, at most after `ban-max`.
-- In the dashboard: [the live view and the lists](live-and-lists.md): add an
+- In the dashboard: [the live view and the lists](RSF06-02-live-and-lists.md): add an
   entry with a comment, extend, remove, the active bans with "lift", "keep out
   for good?" after the third ban in a day. `set ban-keep file` lets bans
   survive a restart of APCu.

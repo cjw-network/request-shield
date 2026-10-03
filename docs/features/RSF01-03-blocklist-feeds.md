@@ -1,4 +1,4 @@
-# RSF1.3 Public blocklists (feeds)
+# RSF01-03 Public blocklists (feeds)
 
 From [proposal 0025](../proposals/0025-blocklist-feeds.md).
 
@@ -12,7 +12,7 @@ own action**:
 |---|---|
 | `deny` | 403, right after the deny list (the reason `feed`, the log names the rule) |
 | `check` | the browser check, as on an always-checked page; a pass lets the visitor through |
-| `ban-signal <n>` | every ban signal counts n times: a scanner from the list is banned after its first refusal instead of its twentieth ([bans](ip-lists.md#bans)) |
+| `ban-signal <n>` | every ban signal counts n times: a scanner from the list is banned after its first refusal instead of its twentieth ([bans](RSF01-02-ip-lists.md#bans)) |
 | `count` | nothing, but logged as what it would have done (`monitor-reject 403 "feed"`) and shown in the live view: **the safe way to try a list** |
 
 `at <paths>` narrows an action to some paths (`check at /login/** /contact`).
@@ -22,7 +22,7 @@ anywhere: the lists are fetched (pull only), compiled with the rules into the
 same sorted table as the deny list, and searched in 2–3 µs.
 
 **Never affected:** addresses let in (`exempt`), trusted proxies, and crawlers
-that proved who they are ([known crawlers](known-crawlers.md)). **Taken out of
+that proved who they are ([known crawlers](RSF01-04-known-crawlers.md)). **Taken out of
 every list when it is fetched:** the site's own network (10/8, 172.16/12,
 192.168/16, 127/8, 100.64/10, 169.254/16, 0/8, 224/3, fc00::/7, fe80::/10, ff00::/8,
 ::1, ::ffff:0:0/96), and ranges wider than /16 (IPv4) or /32 (IPv6), unless the
@@ -145,7 +145,7 @@ lists itself.
 
 ## How it shows
 
-- The [live view](live-and-lists.md): source **feed**, "on the public list
+- The [live view](RSF06-02-live-and-lists.md): source **feed**, "on the public list
   Spamhaus DROP", the rule ID.
 - The rules page: a group "Public blocklists" with each list, its action, its
   entries, when it was fetched, its terms. The setup view: a step "Public

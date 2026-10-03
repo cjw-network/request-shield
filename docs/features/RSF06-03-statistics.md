@@ -1,10 +1,10 @@
-# RSF6.3 Statistics: what the shield did, and what the crawlers did
+# RSF06-03 Statistics: what the shield did, and what the crawlers did
 
 ## What it does
 
-The statistics are the shield's first [plugin](plugins.md) (`plugins/stats/`,
+The statistics are the shield's first [plugin](RSF06-04-plugins.md) (`plugins/stats/`,
 `StatsPlugin`): `set stats on` brings them, no `plugin` line needed. They are
-also the first shipped [extension](plugins.md#extensions-words-and-settings-of-their-own)
+also the first shipped [extension](RSF06-04-plugins.md#extensions-words-and-settings-of-their-own)
 (`StatsExtension`): their words and `set` keys are theirs, compiled into the
 settings' slot `ext.stats`, not the core's. With them the shield counts, per
 hour, while requests pass:
@@ -13,7 +13,7 @@ hour, while requests pass:
   each that was not a plain "let through"; the answer's **status code** (the
   site's own, at the end of the request, and the shield's own refusals); what
   monitor mode would have done;
-- **crawlers** — for each known crawler ([0011](known-crawlers.md)): how
+- **crawlers** — for each known crawler ([0011](RSF01-04-known-crawlers.md)): how
   often it came, verified or only claiming the name, let through / checked /
   refused / told to wait, whether it read `robots.txt`, its top pages (50 a day),
   its last visit and address;
@@ -83,7 +83,7 @@ its own path, **`set stats-path`** (default `<dashboard-path>/stats`, so `/rs/st
 `stats-hosts` **`/rs/stats/sites`** (all websites, below). `/rs/stats` itself is
 the plugin's start: all websites with `stats-hosts`, else the overview. The
 core's — the firewall's — pages live under `/rs/waf/`: **`/rs/waf/rules`** (rules
-& setup, below), `/rs/waf/live`, `/rs/waf/lists` ([live and lists](live-and-lists.md));
+& setup, below), `/rs/waf/live`, `/rs/waf/lists` ([live and lists](RSF06-02-live-and-lists.md));
 `/rs/waf` opens the live view. Every plugin gets its own prefix this way.
 The path names the view; the filters stay GET parameters
 (`?days=30&by=week&lang=de&path=/news/&crawler=CRAWL-GOOGLE`, `format=json`).
@@ -362,7 +362,7 @@ set dashboard-session 8h                                      # how long a login
   `restrict /rs/** to …` still applies first.
 - **The form in the site's look:** a plugin with the `Pages` capability draws
   the login form (`access-login`), the shield keeps the headers and the cookie
-  ([plugins](plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)).
+  ([plugins](RSF06-04-plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)).
 - **Without `dashboard-access` lines nothing is asked:** the site's own rules
   decide, as before.
 - **The site's administrator:** `Access::gate(…, ['admin' => true])` when the
@@ -419,7 +419,7 @@ Editors (backend)
 - **How it ended:** saved (the site answered 2xx or 3xx: the usual redirect
   after saving), an error (4xx, 5xx), or stopped by the shield: refused,
   checked, told to wait, and how many of those came from another website
-  ([`post-origin`](forms-from-the-website.md)). With the live view, "stopped"
+  ([`post-origin`](RSF02-04-forms-from-the-website.md)). With the live view, "stopped"
   links to it, filtered to that form.
 - **The editors' area apart:** `backend <paths>` (also as `backend` inside a
   `match` block, or `backend /**` in the admin's `site` block) marks it. Its

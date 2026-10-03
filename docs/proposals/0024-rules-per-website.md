@@ -200,7 +200,7 @@ place; the base must come first (after the first `site` block only `site`,
 website together (every file any of them reads is in the base's check), and a
 website's settings are loaded with the base's check — one more include from
 OPcache. `bin/request-shield check` reads every block and lists them; `trace`
-takes the website from its address. Details: [rule files](../features/rule-files.md#site-blocks-rules-per-website).
+takes the website from its address. Details: [rule files](../features/RSF05-01-rule-files.md#site-blocks-rules-per-website).
 
 ## Open questions (answered above)
 

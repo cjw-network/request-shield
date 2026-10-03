@@ -50,7 +50,7 @@ function steps(array $trace): array
 const REPORT_RULES = "host www.example.org\nblock /wp-admin/**\nrestrict /admin/** to 192.0.2.0/24\nallow POST /contact\ncache-path / /page/*\ncache-query page\nlimit requests 5/min challenge-at 3\nchallenge /login\n";
 
 return [
-    'RSF6.1 trace: every check as a step, in order; after a refusal the rest is not checked' => function (): void {
+    'RSF06-01 trace: every check as a step, in order; after a refusal the rest is not checked' => function (): void {
         $i = new Inspector(reportSettings(REPORT_RULES), new MemoryStore());
         $t = $i->trace(Inspector::request('GET', 'https://www.example.org/wp-admin/install.php', '198.51.100.7'), 1000.0);
         same(Decision::REJECT, $t['decision']->action);
@@ -60,7 +60,7 @@ return [
             'Where forms may be sent' => 'skip', 'Where forms come from' => 'skip', 'Areas for certain visitors' => 'skip', 'Known crawlers' => 'skip', 'Known parameters' => 'skip', 'Attack patterns' => 'skip', 'May a cache keep the answer?' => 'skip', 'Pace: "requests"' => 'skip', 'Browser check' => 'skip'], steps($t));
         same('refused: /wp-admin/**', step($t, 'Addresses only attackers ask for')['text'], 'the pattern as it was written');
     },
-    'RSF6.1 trace: the other outcomes, in plain words' => function (): void {
+    'RSF06-01 trace: the other outcomes, in plain words' => function (): void {
         $i = new Inspector(reportSettings(REPORT_RULES), new MemoryStore());
         $at = static fn (string $m, string $u, string $ip = '198.51.100.7'): array => $i->trace(Inspector::request($m, $u, $ip), 1000.0);
         same('allow', $at('GET', 'https://www.example.org/page/about?page=2')['decision']->action);
@@ -77,7 +77,7 @@ return [
         same('note', steps($t)['Browser check']);
         same('wp-admin', explode('/', Inspector::request('GET', 'wp-admin/x', '1.2.3.4')->path)[1], 'a bare path is a path');
     },
-    'RSF6.1 trace: counts nothing, but shows the count' => function (): void {
+    'RSF06-01 trace: counts nothing, but shows the count' => function (): void {
         $s = reportSettings(REPORT_RULES);
         $store = new MemoryStore();
         $shield = new Shield($s, $store);
@@ -94,13 +94,13 @@ return [
         same('challenge', $t['decision']->action);
         same(3.0, round($store->peek('requests:198.51.100.7', 60, 1000.0)), 'the traces counted nothing');
     },
-    'RSF6.1 describe: built-in patterns, durations, verdicts' => function (): void {
+    'RSF06-01 describe: built-in patterns, durations, verdicts' => function (): void {
         same('backups, dumps and archives: .bak, .old, .sql, .zip, .tar.gz, .log …', Describe::builtIn(\CjwNetwork\RequestShield\Config::scannerPaths()[1]));
         same(['minute', '10 seconds', '2 hours', '1 minute', '1 day'], [Describe::duration(60), Describe::duration(10), Describe::duration(7200), Describe::span(60), Describe::span(86400)]);
         same('has to wait 7 seconds (429 Too Many Requests)', Describe::verdict(Decision::throttle('x', 7)));
         same('regex ^/x$', Describe::pattern(Settings::from([]), '#^/x$#'), 'a PHP array pattern: the expression');
     },
-    'RSF6.1 log stats: count and last time per rule, the latest lines, only the last 24 hours' => function (): void {
+    'RSF06-01 log stats: count and last time per rule, the latest lines, only the last 24 hours' => function (): void {
         $dir = sys_get_temp_dir() . '/rshield-stats-' . getmypid() . '-' . mt_rand();
         mkdir($dir);
         try {
@@ -121,7 +121,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.1 the page: rules in plain words, origins, counts, the check -- everything escaped' => function (): void {
+    'RSF06-01 the page: rules in plain words, origins, counts, the check -- everything escaped' => function (): void {
         $dir = sys_get_temp_dir() . '/rshield-page-' . getmypid() . '-' . mt_rand();
         mkdir($dir);
         try {
@@ -145,7 +145,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.1 diagrams: valid SVG, the path of a request, everything escaped; the files in docs/ are current' => function (): void {
+    'RSF06-01 diagrams: valid SVG, the path of a request, everything escaped; the files in docs/ are current' => function (): void {
         $i = new Inspector(reportSettings(REPORT_RULES), new MemoryStore());
         $t = $i->trace(Inspector::request('GET', 'https://www.example.org/wp-admin/<script>', '198.51.100.7'), 1000.0);
         $svg = \CjwNetwork\RequestShield\Report\Diagram::trace($t, 'GET /wp-admin/<script>');

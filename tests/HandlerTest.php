@@ -32,14 +32,14 @@ function handlerRequest(string $uri): Request
 }
 
 return [
-    'RSF6.4 Request::cacheKey(): scheme and host in lower case, the routed path, the parameters sorted; nothing of the client' => function (): void {
+    'RSF06-04 Request::cacheKey(): scheme and host in lower case, the routed path, the parameters sorted; nothing of the client' => function (): void {
         same('https://a.example/news/2026/?a%5Bb%5D=1&a=2&page=3', handlerRequest('/news//2026/./?page=3&a[b]=1&a=2')->cacheKey(), 'sorted byte-wise, encoded, the path collapsed');
         same(handlerRequest('/x?b=1&a=2')->cacheKey(), handlerRequest('/x?a=2&b=1')->cacheKey(), 'the order of the parameters does not matter');
         same('https://a.example/x', handlerRequest('/x')->cacheKey(), 'no parameters: no question mark');
         same('https://a.example/x?q=caf%C3%A9%20au%20lait', handlerRequest('/x?q=caf%C3%A9+au+lait')->cacheKey(), 'one encoding for one value');
         truthy(handlerRequest('/x')->cacheKey() === Request::fromServer(['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/x', 'HTTP_HOST' => 'a.example', 'REMOTE_ADDR' => '198.51.100.9', 'HTTPS' => 'on', 'HTTP_COOKIE' => 'rsp=x'], [])->cacheKey(), 'another client, a cookie: the same key');
     },
-    'RSF6.4 hooks: a plugin with the capability is recorded; Shield::handle() asks it for a passing request -- its answer, or null; a failing one is skipped and noted' => function (): void {
+    'RSF06-04 hooks: a plugin with the capability is recorded; Shield::handle() asks it for a passing request -- its answer, or null; a failing one is skipped and noted' => function (): void {
         Vocabulary::forget();
         $dir = ruleDir([]);
         try {
@@ -66,7 +66,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.4 end to end: the handler answers /cached before the application, a refusal never reaches it, a failing handler changes nothing for the visitor' => function (): void {
+    'RSF06-04 end to end: the handler answers /cached before the application, a refusal never reaches it, a failing handler changes nothing for the visitor' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }

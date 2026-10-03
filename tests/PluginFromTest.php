@@ -60,7 +60,7 @@ final class Words implements Extension
 PHP;
 
 return [
-    'RSF6.4 plugin … from <file>: the file is recorded relative to the rule file, loaded when the rules are compiled (its capability recorded) and when the shield makes its plugins' => function (): void {
+    'RSF06-04 plugin … from <file>: the file is recorded relative to the rule file, loaded when the rules are compiled (its capability recorded) and when the shield makes its plugins' => function (): void {
         $dir = ruleDir(['site.rules' => "host a.example\nplugin Acme\\FromFile\\Heard from plugins/heard.php\n", 'plugins/heard.php' => FROM_PLUGIN]);
         try {
             $read = RuleFile::read(["$dir/site.rules"]);
@@ -80,7 +80,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.4 an extension from a file: its words are known from that line on; a file that is not there is a warning (check), not an error -- the plugin is left out' => function (): void {
+    'RSF06-04 an extension from a file: its words are known from that line on; a file that is not there is a warning (check), not an error -- the plugin is left out' => function (): void {
         \CjwNetwork\RequestShield\Rules\Vocabulary::forget();
         $dir = ruleDir(['site.rules' => "host a.example\nplugin Acme\\FromFile\\Words from acme/words.php\nset acme-level 3\n", 'acme/words.php' => FROM_EXTENSION,
             'missing.rules' => "host a.example\nplugin Acme\\FromFile\\Nowhere from acme/nowhere.php\n"]);

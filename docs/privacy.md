@@ -93,7 +93,7 @@ feature by feature, for what exists today and for the proposals.
   resolver; `set dns-lookups 0`. The lists are fetched only by an administrator
   (`crawlers update`, `bin/update-crawler-lists`), never while a request runs.
 
-### IP lists and automatic bans ([docs](features/ip-lists.md))
+### IP lists and automatic bans ([docs](features/RSF01-02-ip-lists.md))
 
 - **What:** the list files (`allow.rules`, `deny.rules` in `lists-dir`) hold
   addresses or ranges, each with its reason, who added it and when, and an end
@@ -112,7 +112,7 @@ feature by feature, for what exists today and for the proposals.
   store-dir until its ban ends (at most `ban-max`), so the ban survives a
   restart.
 
-### Public blocklists (feeds, [docs](features/blocklist-feeds.md))
+### Public blocklists (feeds, [docs](features/RSF01-03-blocklist-feeds.md))
 
 - **Pull only:** the lists are fetched; nothing about the site's visitors is
   sent anywhere.
@@ -123,7 +123,7 @@ feature by feature, for what exists today and for the proposals.
   used. A refusal names the list's rule in the log, so a visitor hit by
   mistake can be let in.
 
-### The live view (`set live on`, [docs](features/live-and-lists.md))
+### The live view (`set live on`, [docs](features/RSF06-02-live-and-lists.md))
 
 - **What:** the last requests the shield stopped or checked (at most 2,000),
   each with the **full address**, the request, the user agent and the rule.
@@ -231,7 +231,7 @@ The shield keeps no profile to hand out or correct: budget counters live for
 seconds to minutes, statistics are aggregates without identifiers. What can hold
 an address for longer: the log (masked by default; full with `log-ip full`),
 per-crawler logs of requests that only claim a crawler's name (masked), and the
-deny list and bans ([IP lists](features/ip-lists.md)). For a request about those, search the files for the
+deny list and bans ([IP lists](features/RSF01-02-ip-lists.md)). For a request about those, search the files for the
 address or its network — and keep their retention short, so there is little to
 find.
 

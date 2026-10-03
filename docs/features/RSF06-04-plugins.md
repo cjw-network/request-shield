@@ -1,4 +1,4 @@
-# RSF6.4 Plugins
+# RSF06-04 Plugins
 
 The core of request-shield is a mini web application firewall: it checks every
 request, decides, answers what it refuses itself, and logs. Everything beyond
@@ -279,7 +279,7 @@ it fits next to the core:
 
 | | The statistics plugin | The core |
 |---|---|---|
-| **Its words** in the rule file | `set stats …`, `stats-hosts`, `stats-group` (the group a `dashboard-access` principal maps to), `stats-skip`, `set stats-path` ([statistics](statistics.md)); the login itself is the core's (`dashboard-access`, `set dashboard-session`) | everything else |
+| **Its words** in the rule file | `set stats …`, `stats-hosts`, `stats-group` (the group a `dashboard-access` principal maps to), `stats-skip`, `set stats-path` ([statistics](RSF06-03-statistics.md)); the login itself is the core's (`dashboard-access`, `set dashboard-session`) | everything else |
 | **Its address** | its own setting `ext.stats.path` (`set stats-path`, default `<dashboard-path>/stats`); `StatsExtension::routes()` declares `/sites`, `/overview`, `/visitors`, `/protection` below it into `$s->routes` | `Routes::core()`: `<dashboard-path>/waf/`: `live`, `lists`, `rules` |
 | **Its pages** | `StatsPage::viewFor($settings, $path)` says which page a path is (null: not one of its own, from `$s->routes`), `StatsPage::render()` draws it, `StatsPage::links()` the tabs | `Frame::pageFor()`, `Frame::links()` (both from `$s->routes`) |
 | **Who may read them** | `Access::gate()`: the admin everything, a customer its group (`who`) | the site's own rules (`restrict <dashboard-path>/** to …`) |

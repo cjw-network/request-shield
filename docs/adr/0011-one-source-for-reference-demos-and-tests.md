@@ -10,10 +10,10 @@ find a feature by.
 
 ## Decision
 
-- Every feature has an id **`RSF<group>.<n>`** ("request-shield feature"),
+- Every feature has an id **`RSF<gg>-<nn>`** ("request-shield feature", two digits each: `RSF02-06`),
   never reassigned. Groups follow the question a request answers, in the order
-  the shield asks: RSF1 who is asking · RSF2 what is asked · RSF3 how often ·
-  RSF4 what a cache may keep · RSF5 operating · RSF6 watching & connecting.
+  the shield asks: RSF01 who is asking · RSF02 what is asked · RSF03 how often ·
+  RSF04 what a cache may keep · RSF05 operating · RSF06 watching & connecting.
 - A feature exists only with **docs** (`docs/features/<slug>.md`, H1 with the
   id, ≥ 1 diagram), a **demo** (a `# demo: RSF… ` group of `expect` lines in
   the demo rule file), **tests** whose names begin with the id (end-to-end for
@@ -28,6 +28,6 @@ find a feature by.
 
 ## Consequences
 
-- `php tests/run.php RSF2.6` runs exactly one feature's tests; `trace` reads in
+- `php tests/run.php RSF02-06` runs exactly one feature's tests; `trace` reads in
   the order of the docs.
 - Adding a feature demo means adding `expect` lines, not PHP.

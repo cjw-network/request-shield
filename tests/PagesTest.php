@@ -36,7 +36,7 @@ function pagesRequest(string $path = '/x', array $more = []): Request
 }
 
 return [
-    'RSF6.4 hooks: a plugin with the capability is recorded; without one every page is the shield\'s' => function (): void {
+    'RSF06-04 hooks: a plugin with the capability is recorded; without one every page is the shield\'s' => function (): void {
         $dir = ruleDir([]);
         try {
             same(['pages' => [PagesPlugin::class]], pagesSettings("plugin CjwNetwork\\RequestShield\\Tests\\PagesPlugin\n", $dir)->hooks);
@@ -47,7 +47,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.4 the three kinds: the refusal page (Responder), the check page (Gate), the login form (Access) come from the plugin, with the context each needs; the headers stay the shield\'s' => function (): void {
+    'RSF06-04 the three kinds: the refusal page (Responder), the check page (Gate), the login form (Access) come from the plugin, with the context each needs; the headers stay the shield\'s' => function (): void {
         Vocabulary::forget();
         $dir = ruleDir([]);
         try {
@@ -75,7 +75,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.4 a plugin that throws: the shield\'s own page goes out, and PHP\'s error log hears it once a minute' => function (): void {
+    'RSF06-04 a plugin that throws: the shield\'s own page goes out, and PHP\'s error log hears it once a minute' => function (): void {
         Vocabulary::forget();
         $dir = ruleDir([]);
         try {
@@ -95,7 +95,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.4 end to end: a refusal and a check page in the site\'s look; a failing plugin changes nothing for the visitor; a passing request pays nothing' => function (): void {
+    'RSF06-04 end to end: a refusal and a check page in the site\'s look; a failing plugin changes nothing for the visitor; a passing request pays nothing' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }

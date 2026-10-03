@@ -11,7 +11,7 @@ decides them.
 You write examples for the rules of a request-shield rule file. request-shield
 is a firewall in front of a PHP website: each rule refuses, checks or limits
 certain requests. An example is one line that says what must happen to one
-request. Format ([details](../features/rule-examples.md)):
+request. Format ([details](../features/RSF05-04-rule-examples.md)):
 
 ```text
 expect <METHOD> <address> <outcome> [by <ID>] [from <address>] [with pass] [times <n>]   # why

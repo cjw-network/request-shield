@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Implemented** 2026-09-30 (see [known parameters](../features/known-parameters.md)) |
+| Status | **Implemented** 2026-09-30 (see [known parameters](../features/RSF02-05-known-parameters.md)) |
 | Proposed | 2026-09-29 |
 | Affects | rule files, the order of the checks, the attack rules (0007), the Exponential adapter |
 
@@ -29,7 +29,7 @@ A site says which query parameters it knows, and of which type — `Offset int`,
   parameters in the path (`/news/(offset)/12`); only the search and forms use
   a query string. Every other `?…` is either a marketing tag or an attack
   appended to an arbitrary address (`/article?id=1' …`).
-- The attack rules ([0007](../features/rule-files.md)) are the most expensive
+- The attack rules ([0007](../features/RSF05-01-rule-files.md)) are the most expensive
   check: about 2 µs for a query with parameters. A name list and a type are
   far cheaper and answer most of these requests before them.
 - A list of known parameters is also documentation: what does this site take?

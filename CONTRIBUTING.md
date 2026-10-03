@@ -29,7 +29,7 @@ things come first: **it must be right, and it must be fast.**
    `docs/proposals/`; a design decision an ADR in `docs/adr/`; every change a
    line in `CHANGELOG.md` under *Unreleased* — in the same pull request.
 7. **The single file.** `php build/single-file.php` turns `src/` into one
-   file ([the single file](docs/features/single-file.md)); `tests/SingleFileTest.php`
+   file ([the single file](docs/features/RSF05-07-single-file.md)); `tests/SingleFileTest.php`
    builds it and puts a request through it. The whole suite runs against the
    built file too:
    `php build/single-file.php && php build/single-file.php --edition=stats`, then

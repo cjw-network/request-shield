@@ -1,4 +1,4 @@
-# RSF2.4 Forms only from the website itself: `post-origin`
+# RSF02-04 Forms only from the website itself: `post-origin`
 
 ## What it does
 
@@ -32,7 +32,7 @@ most valuable for applications and plugins without form tokens of their own.
 
 It is **not a bot defence**: a script sets `Origin` and `Referer` to whatever
 it likes. Against bots, the browser check inside the form
-([the widget](browser-check-in-the-form.md)) and the pace do the work.
+([the widget](RSF03-03-browser-check-in-the-form.md)) and the pace do the work.
 
 ## The website's own names
 
@@ -76,7 +76,7 @@ expect POST /contact                                         check   # neither h
 ```
 
 `header <Name>:<value>` sends a header with the example
-([examples](rule-examples.md)); `request-shield test` decides them.
+([examples](RSF05-04-rule-examples.md)); `request-shield test` decides them.
 
 ## Where it runs
 

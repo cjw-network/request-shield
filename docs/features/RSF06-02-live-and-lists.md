@@ -1,4 +1,4 @@
-# RSF6.2 The live view and the lists in the dashboard
+# RSF06-02 The live view and the lists in the dashboard
 
 From [proposal 0026](../proposals/0026-live-view-and-lists.md). Two pages beside
 the statistics, under `dashboard-path`: `/rs/waf/live` and `/rs/waf/lists`.
@@ -43,7 +43,7 @@ the statistics, under `dashboard-path`: `/rs/waf/live` and `/rs/waf/lists`.
 | contains | refused, banned, told to wait, checked, and what watched rules would have done | what `log-level` keeps |
 | cost per request | **~5 µs for a request that was stopped** (a counter and one entry); nothing for one that passes | the log line (already there) |
 
-The live memory is the first **sink** (0031 B.9): `Log::note()` hands every record it has to the live view and to the plugins with the `Sink` capability ([plugins](plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)); a passing request is never noted, so it pays nothing.
+The live memory is the first **sink** (0031 B.9): `Log::note()` hands every record it has to the live view and to the plugins with the `Sink` capability ([plugins](RSF06-04-plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)); a passing request is never noted, so it pays nothing.
 
 The page asks for new rows with a cursor: in the memory the number of the last
 entry, in the log the byte where the last read ended. A reader far behind
@@ -115,7 +115,7 @@ if ($page === 'live' && ($_GET['format'] ?? '') === 'json') {
 
 ## Guards
 
-The same as on the command line ([IP lists](ip-lists.md#the-command-line)), plus one:
+The same as on the command line ([IP lists](RSF01-02-ip-lists.md#the-command-line)), plus one:
 
 - never a range that holds a trusted proxy;
 - **never the address of the person clicking** (it would lock them out);

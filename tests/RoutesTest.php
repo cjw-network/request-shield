@@ -41,7 +41,7 @@ function routesBrief(Settings $s): array
 }
 
 return [
-    'RSF6.4 the core alone: four routes below <dashboard-path>/waf, in the tabs\' order; links for rules, live, lists' => function (): void {
+    'RSF06-04 the core alone: four routes below <dashboard-path>/waf, in the tabs\' order; links for rules, live, lists' => function (): void {
         withRegistry(function (): void {
             $s = Settings::from([]);
             same([
@@ -57,7 +57,7 @@ return [
             same(['/admin/rs/waf/rules', '/admin/rs/waf', '/admin/rs/waf/live', '/admin/rs/waf/lists'], array_keys(Settings::from(['dashboardPath' => '/admin/rs'])->routes), 'set dashboard-path moves them');
         });
     },
-    'RSF6.4 the statistics extension declares its pages: ext stats, roles, the start alias, the tabs\' order' => function (): void {
+    'RSF06-04 the statistics extension declares its pages: ext stats, roles, the start alias, the tabs\' order' => function (): void {
         $s = routesSettings("set stats on\nset stats-hosts a.de\n");
         same([
             ['/rs/stats', 'sites', 'stats', 'reader', false],
@@ -87,7 +87,7 @@ return [
         same('/rs/stats', StatsExtension::of($s)['path'], 'the path in the slot');
         same(StatsExtension::defaults()['path'], StatsExtension::of(Settings::from([]))['path']);
     },
-    'RSF6.4 set stats-path moves the statistics\' routes, the frame follows (the rest in StatsSitesTest "set stats-path")' => function (): void {
+    'RSF06-04 set stats-path moves the statistics\' routes, the frame follows (the rest in StatsSitesTest "set stats-path")' => function (): void {
         $s = routesSettings("set stats on\nset stats-path /statistik\n");
         same(['/statistik', '/statistik/overview', '/statistik/visitors', '/statistik/protection'], array_slice(array_keys($s->routes), 0, 4));
         same([true, true, false, 'site', null], [Frame::isPage($s, '/demo/statistik/visitors'), Frame::isPage($s, '/rs/waf/lists'), Frame::isPage($s, '/rs/stats/visitors'),
@@ -100,7 +100,7 @@ return [
         same(['/rs', '/statistik'], $s->routeBases, 'one prefix per place the pages live');
         same(['/rs'], Settings::from([])->routeBases, 'the statistics below dashboard-path: one prefix, one stripos as before');
     },
-    'RSF6.4 an extension\'s route: ext its id, below dashboard-path, moved by set dashboard-path' => function (): void {
+    'RSF06-04 an extension\'s route: ext its id, below dashboard-path, moved by set dashboard-path' => function (): void {
         withRegistry(function (): void {
             Vocabulary::offer(RsTestExtension::class);
             $s = routesSettings("set marks-max 3\n");
@@ -112,7 +112,7 @@ return [
             same(['ping', 'admin'], [Routes::page($moved, '/admin/rs/rs-test/ping'), Routes::match($moved, '/x/admin/rs/rs-test/ping')['role'] ?? null]);
         });
     },
-    'RSF6.4 two routes on one path refuse to compile, naming both owners' => function (): void {
+    'RSF06-04 two routes on one path refuse to compile, naming both owners' => function (): void {
         foreach (['/rs/waf/live', '/RS/waf/live/', '/rs/stats/visitors'] as $path) {
             try {
                 Settings::from(['routes' => [$path => ['key' => 'mine', 'tab' => null, 'role' => 'admin', 'order' => 1]]]);
@@ -137,7 +137,7 @@ return [
         same('/rs/mine', Routes::links($s)['mine'] ?? null, 'kept');
         same(['all', 'site', 'shield', 'mine', 'rules', 'live', 'lists'], array_keys(Routes::tabs($s)), 'order 45: between the statistics and the rules');
     },
-    'RSF6.4 match(): the path or its end, the longest; page(): exact only' => function (): void {
+    'RSF06-04 match(): the path or its end, the longest; page(): exact only' => function (): void {
         $s = Settings::from([]);
         same(['key' => 'live', 'ext' => null, 'tab' => ['Live', 'Live'], 'role' => 'admin', 'order' => 60, 'page' => 'CjwNetwork\\RequestShield\\Report\\LivePage', 'path' => '/rs/waf/live'], Routes::match($s, '/demo/index.php/rs/waf/live'), 'below a prefix: the entry with its path');
         same(['/rs/waf', '/rs/waf', '/rs/waf/live', null, null, null], [Routes::match($s, '/rs/waf')['path'] ?? null, Routes::match($s, '/app/RS/WAF/')['path'] ?? null, Routes::match($s, '/rs/waf/live/')['path'] ?? null,
@@ -145,7 +145,7 @@ return [
         same(['live', 'live', 'lists', null, null], [Routes::page($s, '/rs/waf'), Routes::page($s, '/RS/waf/live/'), Routes::page($s, '/rs/waf/lists'), Routes::page($s, '/demo/index.php/rs/waf/live'), Routes::page($s, '/rs')], 'page(): exact');
         same([true, false], [Frame::isPage($s, '/demo/index.php/rs/waf/live'), Frame::isPage($s, '/rs/wafx')], 'the frame derives isPage()');
     },
-    'RSF6.4 Access::links(): the admin gets everything, a reader the routes whose role is reader' => function (): void {
+    'RSF06-04 Access::links(): the admin gets everything, a reader the routes whose role is reader' => function (): void {
         $s = routesSettings("set stats on\nset stats-hosts a.de\n");
         $links = Frame::links($s);
         same(['sites', 'all', 'site', 'shield', 'rules', 'live', 'lists'], array_keys(Access::links($s, '*', $links)));

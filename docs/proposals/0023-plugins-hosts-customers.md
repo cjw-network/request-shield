@@ -72,7 +72,7 @@ it, the bot family, whether the site's answer was a page (HTML).
   packages when the interface has settled.
 - **Your own plugins** — for example metrics for a monitoring system, a message
   to a chat channel when refusals pile up, an export of the bans for a firewall:
-  a guide (`docs/features/plugins.md`) with a 40-line example.
+  a guide (`docs/features/RSF06-04-plugins.md`) with a 40-line example.
 - **Compatibility:** `set stats on` without the plugin installed: `check` says
   which package to install, the site keeps running without statistics.
 
@@ -174,7 +174,7 @@ for the panel), extended to groups.
 *Built (phase 5): `/customer-menu` in the demo, `stats-access` with two public
 demo tokens, the gate's `admin` option (the demo's own machine is the
 administrator, `?rs-login=1` shows the form); the plugin guide in
-[plugins](../features/plugins.md#the-statistics-plugin-a-plugin-with-pages-of-its-own).
+[plugins](../features/RSF06-04-plugins.md#the-statistics-plugin-a-plugin-with-pages-of-its-own).
 The rule tester's "other hosts" example is left to the rules page.*
 
 Once 2–4 exist, the demo shows them with two websites it answers to anyway
@@ -221,7 +221,7 @@ Phase 1 as built: `CjwNetwork\RequestShield\Plugin` with `decided()` and
 follows) — the page hook of the sketch above comes with phase 4, when the
 plugin's own pages need it. `Seen` as described, lazily. `plugin <class>` and
 `'plugins' => […]`; the statistics registered by `set stats on`. Details:
-[plugins](../features/plugins.md), [ADR 0006](../adr/0006-core-and-plugins.md).
+[plugins](../features/RSF06-04-plugins.md), [ADR 0006](../adr/0006-core-and-plugins.md).
 
 ## Open questions (answered above)
 

@@ -70,7 +70,7 @@ function dashHeader(array $lines, string $name): string
 }
 
 return [
-    'RSF6.1 behind a restrict rule: the shield answers the pages itself, with no-store and noindex; the site never sees them; an unknown page below dashboard-path is the site\'s' => function (): void {
+    'RSF06-01 behind a restrict rule: the shield answers the pages itself, with no-store and noindex; the site never sees them; an unknown page below dashboard-path is the site\'s' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -103,7 +103,7 @@ return [
             truthy(strpos($r['body'], 'too old or not from this page') !== false, 'without the token: refused');
         });
     },
-    'RSF6.1 the statistics on a path of their own, outside dashboard-path: the shield serves them there too' => function (): void {
+    'RSF06-01 the statistics on a path of their own, outside dashboard-path: the shield serves them there too' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -116,7 +116,7 @@ return [
             truthy(strncmp($get('/admin/other')['body'], 'site ', 5) === 0, 'the site\'s own admin pages are the site\'s');
         });
     },
-    'RSF6.1 nobody guards the pages: the shield refuses them and check says what to do' => function (): void {
+    'RSF06-01 nobody guards the pages: the shield refuses them and check says what to do' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -134,7 +134,7 @@ return [
             truthy(strpos($text, "warning: the dashboard's pages are open to everyone (") !== false && strpos($text, 'restrict /rs/** to') !== false && substr_count($text, 'open to everyone') === 1, 'check warns once, naming the fix: ' . $text);
         });
     },
-    'RSF6.1 a route from an address the restrict rule keeps out is refused by the rule, before any page' => function (): void {
+    'RSF06-01 a route from an address the restrict rule keeps out is refused by the rule, before any page' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }

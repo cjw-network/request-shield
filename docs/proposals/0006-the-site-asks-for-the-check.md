@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Implemented** 2026-09-29 (see [the site asks for the check](../features/app-challenges.md)) |
+| Status | **Implemented** 2026-09-29 (see [the site asks for the check](../features/RSF03-04-app-challenges.md)) |
 | Proposed | 2026-09-29 |
 | Affects | Shield, Gate, the check page, texts |
 

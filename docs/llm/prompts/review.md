@@ -66,7 +66,7 @@ C3 The rule vocabulary has ONE source (a declarative table) and the reference do
    it: php docs/tools/gen-reference.php --check exits 0; tests assert the table covers the parser.
 C4 Plugins can tighten but never loosen: no hook may replace or weaken a Decision (read the dispatch
    code; look for stricter()); a throwing plugin rule counts as pass and is logged once a minute.
-C5 API (RSF6.5) is a plugin, not core: grep -rn "api/v1\|openapi" src/ is empty; plugins/api exists
+C5 API (RSF06-05) is a plugin, not core: grep -rn "api/v1\|openapi" src/ is empty; plugins/api exists
    with an ApiProvider capability other plugins use (the stats plugin's endpoints are declared in
    plugins/stats, not in plugins/api); GET /rs/api/v1/openapi.yaml lists every endpoint including
    plugin ones; tests/ApiContractTest.php proves every response matches its schema and that
@@ -88,7 +88,7 @@ D5 The built file is also the CLI (php request-shield.php check …) and finds r
 
 E. Demo and tests per feature
 E1 php bin/request-shield examples examples/demo/request-shield.rules --coverage docs/features exits
-   0: every docs/features/*.md has a unique feature id in its H1 (RSF<group>.<n>) and a "# demo:"
+   0: every docs/features/*.md has a unique feature id in its H1 (RSF<gg>-<nn>) and a "# demo:"
    group with that id and >= 1 expect line, or is listed in docs/features/.demo-exempt with a
    reason; the same id appears in trace output and on the demo page's anchors.
 E2 php bin/request-shield test examples/demo/request-shield.rules exits 0 and lists 0 rules without
@@ -97,8 +97,8 @@ E3 php docs/tools/sync-examples.php --check exits 0 (the tables in the docs equa
 E4 The demo runs as its README says (php -S … router.php); tests/DemoTest.php passes; "Show the
    answer" is server-side (shows redirects, cross-host, times N).
 E5 A recorded static demo is published (GitHub Pages) from the same expect lines, stating the commit.
-E6 Every feature has tests under its id: php tests/run.php RSF<n>.<m> runs >= 1 test for every id
-   found in docs/features/*.md; features in groups RSF1–RSF4 (the request path) also have an
+E6 Every feature has tests under its id: php tests/run.php RSF<gg>-<nn> runs >= 1 test for every id
+   found in docs/features/*.md; features in groups RSF01–RSF04 (the request path) also have an
    end-to-end test (php -S) under that id. tests/FeatureContractTest.php enforces doc + demo + test
    coverage and exits 0; quote its output.
 

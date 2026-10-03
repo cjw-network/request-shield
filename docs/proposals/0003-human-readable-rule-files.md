@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Implemented** (see [rule files](../features/rule-files.md)) |
+| Status | **Implemented** (see [rule files](../features/RSF05-01-rule-files.md)) |
 | Proposed | 2026-09-29 |
 | Affects | settings loading, adapters |
 

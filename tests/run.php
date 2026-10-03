@@ -3,7 +3,7 @@
  * Runs every tests/*Test.php. Each returns an array of name => closure; a
  * closure passes when it returns without an exception.
  *
- *   php tests/run.php [filter]      a part of "File > test name", or a feature id (RSF2.6, RSF2)
+ *   php tests/run.php [filter]      a part of "File > test name", or a feature id (RSF02-06, the group RSF02)
  */
 
 declare(strict_types=1);
@@ -54,6 +54,11 @@ foreach ($args as $i => $a) {
     }
 }
 $filter = (string) (array_values($args)[0] ?? '');
+// A feature id is written RSF02-06 (the group: RSF02); another form names the right one.
+if (preg_match('/^RSF\d/', $filter) === 1 && preg_match('/^RSF\d{2}(-\d{2})?$/', $filter) !== 1) {
+    fwrite(STDERR, "tests/run.php: a feature id is written RSF02-06 (two digits each, a dash), the group RSF02 -- not \"$filter\"\n");
+    exit(2);
+}
 $pass = $fail = $skipped = 0;
 $files = $only !== null ? [$only] : (glob(__DIR__ . '/*Test.php') ?: []);
 
@@ -116,10 +121,10 @@ if ($isolate) {
 foreach ($tests as $file => $set) {
     foreach ($set as $name => $test) {
         $label = basename($file, '.php') . ' > ' . $name;
-        // A feature id (RSF2.6, or a group: RSF2) runs exactly that feature's tests, by
+        // A feature id (RSF02-06, or a group: RSF02) runs exactly that feature's tests, by
         // their names' beginning (0031 F.1); anything else is a part of "File > name".
-        $byId = preg_match('/^RSF\d+(\.\d+)*$/', $filter) === 1;
-        if ($filter !== '' && ($byId ? preg_match('/^' . preg_quote($filter, '/') . '[ .]/', (string) $name) !== 1 : stripos($label, $filter) === false)) {
+        $byId = preg_match('/^RSF\d{2}(-\d{2})?$/', $filter) === 1;
+        if ($filter !== '' && ($byId ? preg_match('/^' . preg_quote($filter, '/') . '[ -]/', (string) $name) !== 1 : stripos($label, $filter) === false)) {
             continue;
         }
         if ($only !== null) {
@@ -143,7 +148,7 @@ if ($only !== null) {
 }
 // A feature id that matched no test proves nothing: a typo (RSF26) or a feature
 // without tests must not pass in silence.
-if (preg_match('/^RSF\d+(\.\d+)*$/', $filter) === 1 && $pass + $fail + $skipped === 0) {
+if (preg_match('/^RSF\d{2}(-\d{2})?$/', $filter) === 1 && $pass + $fail + $skipped === 0) {
     echo "  FAIL  no test has the id $filter\n";
     $fail++;
 }

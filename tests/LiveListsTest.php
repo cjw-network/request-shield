@@ -37,7 +37,7 @@ function liveLine(Settings $s, string $url, Decision $d, ?string $rule, string $
 }
 
 return [
-    'RSF6.2 the log tail: the end first, then only what is new -- whole lines, a rotated log from its start, a burst skipped to its newest' => function (): void {
+    'RSF06-02 the log tail: the end first, then only what is new -- whole lines, a rotated log from its start, a burst skipped to its newest' => function (): void {
         $dir = liveDir();
         try {
             $f = "$dir/shield.log";
@@ -72,7 +72,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.2 each row: the website, what happened, why in words, where from -- list, ban, built-in, own rule, pace, crawler, basic check, watched' => function (): void {
+    'RSF06-02 each row: the website, what happened, why in words, where from -- list, ban, built-in, own rule, pace, crawler, basic check, watched' => function (): void {
         $dir = liveDir();
         try {
             mkdir("$dir/store/lists", 0750, true);
@@ -111,7 +111,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.2 the dashboard does not show itself; the page escapes what the log holds; without a log it says how to switch it on' => function (): void {
+    'RSF06-02 the dashboard does not show itself; the page escapes what the log holds; without a log it says how to switch it on' => function (): void {
         $dir = liveDir();
         try {
             $s = liveSettings($dir, "set dashboard-path /admin/rs\n");
@@ -131,7 +131,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.2 the lists page: a token per address and hour; add with a comment, change, extend, remove -- with the guards' => function (): void {
+    'RSF06-02 the lists page: a token per address and hour; add with a comment, change, extend, remove -- with the guards' => function (): void {
         $dir = liveDir();
         try {
             $s = liveSettings($dir, "trust 10.1.0.0/16\n");
@@ -182,7 +182,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.2 the page shows the entries (escaped, searched, the rest counted) and the active bans -- lifted with one click, "for good?" after the third' => function (): void {
+    'RSF06-02 the page shows the entries (escaped, searched, the rest counted) and the active bans -- lifted with one click, "for good?" after the third' => function (): void {
         $dir = liveDir();
         try {
             mkdir("$dir/store/lists", 0750, true);
@@ -218,7 +218,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.2 the live memory (set live on): the full address, only what stopped a request, the cursor, the ring, each store-dir its own' => function (): void {
+    'RSF06-02 the live memory (set live on): the full address, only what stopped a request, the cursor, the ring, each store-dir its own' => function (): void {
         if (!\CjwNetwork\RequestShield\Live::usable()) {
             skip('no APCu in this PHP (apc.enable_cli=1)');
         }
@@ -259,7 +259,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.2 the live memory without APCu (set store file): live.log in store-dir, the full address, the cursor, live-keep, rotation' => function (): void {
+    'RSF06-02 the live memory without APCu (set store file): live.log in store-dir, the full address, the cursor, live-keep, rotation' => function (): void {
         $dir = liveDir();
         try {
             $s = liveSettings($dir, "set store file\nset live on\nset live-keep 10m\nset log-level off\n");
@@ -295,7 +295,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.2 set ban-keep file: a ban survives a restart of APCu, and is lifted from both' => function (): void {
+    'RSF06-02 set ban-keep file: a ban survives a restart of APCu, and is lifted from both' => function (): void {
         if (!\CjwNetwork\RequestShield\Live::usable()) {
             skip('no APCu in this PHP (apc.enable_cli=1)');
         }
@@ -332,7 +332,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.2 the dashboard\'s own pages, restricted to an address, do not count against the pace -- without a restrict rule they do' => function (): void {
+    'RSF06-02 the dashboard\'s own pages, restricted to an address, do not count against the pace -- without a restrict rule they do' => function (): void {
         $dir = liveDir();
         try {
             $req = static fn (string $path, string $ip = '127.0.0.1'): Request => Request::fromServer(['REQUEST_URI' => $path, 'REQUEST_METHOD' => 'GET',
@@ -368,7 +368,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.2 the list file functions: notes by ID without reading every entry, update keeps the rest, removeId, find newest first' => function (): void {
+    'RSF06-02 the list file functions: notes by ID without reading every entry, update keeps the rest, removeId, find newest first' => function (): void {
         $dir = liveDir();
         try {
             file_put_contents("$dir/deny.rules", "[LIST-D1] deny 10.0.0.1   # one · cli 2026-10-01 09:00\n[LIST-D11] deny 10.0.0.11   # eleven · cli 2026-10-01 09:00\n[LIST-D2] deny 10.0.0.2\n");

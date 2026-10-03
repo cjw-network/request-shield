@@ -56,7 +56,7 @@ function rootHere(): bool
 }
 
 return [
-    'RSF5.2 the defaults: the compiled settings and the store live in .request-shield/ next to the rules, not in the temp dir' => function (): void {
+    'RSF05-02 the defaults: the compiled settings and the store live in .request-shield/ next to the rules, not in the temp dir' => function (): void {
         $dir = sys_get_temp_dir() . '/rs-defaults-' . getmypid() . '-' . mt_rand();
         mkdir($dir, 0700, true);
         try {
@@ -75,7 +75,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF5.2 Tier::of names S0, S1, S2 and what is off' => function (): void {
+    'RSF05-02 Tier::of names S0, S1, S2 and what is off' => function (): void {
         $dir = sys_get_temp_dir() . '/rs-tierof-' . getmypid() . '-' . mt_rand();
         mkdir($dir, 0700, true);
         mkdir("$dir/ro", 0500);
@@ -98,7 +98,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF5.2 S0 on the real path: rules in a directory nobody can write -- the stateless rules decide, the pace cannot count, the site answers' => function (): void {
+    'RSF05-02 S0 on the real path: rules in a directory nobody can write -- the stateless rules decide, the pace cannot count, the site answers' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -119,7 +119,7 @@ return [
             same(3, $code, 'check exits 3: warnings');
         }, true);
     },
-    'RSF5.2 S2 on the real path: APCu -- the pace counts in memory, no counter files' => function (): void {
+    'RSF05-02 S2 on the real path: APCu -- the pace counts in memory, no counter files' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -134,7 +134,7 @@ return [
             same([], glob("$dir/site/.request-shield/store/*/*.c"), 'no counter files: the memory counted');
         }, false, true);
     },
-    'RSF5.2 the same requests, the same decisions at S0, S1 and S2 -- the stateless rules do not depend on the tier' => function (): void {
+    'RSF05-02 the same requests, the same decisions at S0, S1 and S2 -- the stateless rules do not depend on the tier' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -165,7 +165,7 @@ return [
         }
         truthy(count($got) >= 2, 'at least two tiers compared: ' . implode(', ', array_keys($got)));
     },
-    'RSF5.2 S1 on the real path: a writable directory, no APCu -- the pace counts in files' => function (): void {
+    'RSF05-02 S1 on the real path: a writable directory, no APCu -- the pace counts in files' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }

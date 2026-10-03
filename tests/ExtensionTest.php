@@ -53,14 +53,14 @@ function extInvalid(string $text, string $key): void
 }
 
 return [
-    'RSF6.4 not offered: an extension\'s words and settings are unknown, as before' => function (): void {
+    'RSF06-04 not offered: an extension\'s words and settings are unknown, as before' => function (): void {
         withRegistry(function (): void {
             rulesFail(['site.rules' => "set fail-at rules\n"], 'site.rules:1', 'unknown setting "fail-at"');
             rulesFail(['site.rules' => "rs-test-mark a\n"], 'site.rules:1', 'unknown rule "rs-test-mark"');
             same([], Vocabulary::known()['words']);
         });
     },
-    'RSF6.4 offered: set and word land in ext.<id>, typed at the line; compile() checks them with the base settings, the result round-trips' => function (): void {
+    'RSF06-04 offered: set and word land in ext.<id>, typed at the line; compile() checks them with the base settings, the result round-trips' => function (): void {
         withRegistry(function (): void {
             Vocabulary::offer(RsTestExtension::class);
             Vocabulary::offer(RsTestExtension::class);          // again: nothing
@@ -85,7 +85,7 @@ return [
             extInvalid("set marks-max 1\nrs-test-mark a b\n", 'ext.rs-test.marks');
         });
     },
-    'RSF6.4 inside a site block: the website\'s own values, compiled for that website' => function (): void {
+    'RSF06-04 inside a site block: the website\'s own values, compiled for that website' => function (): void {
         withRegistry(function (): void {
             Vocabulary::offer(RsTestExtension::class);
             $text = "host a.example b.example\nrs-test-mark base\nsite b.example {\n  set fail-at sink\n  rs-test-mark b\n}\n";
@@ -93,7 +93,7 @@ return [
             same(['failAt' => 'sink', 'marks' => ['base', 'b']], array_intersect_key(Settings::from(extConfig($text, 'b.example'))->ext['rs-test'] ?? [], ['marks' => 1, 'failAt' => 1]), 'the website: the base\'s values and its own');
         });
     },
-    'RSF6.4 plugin <class>: a class that is an extension is offered for the rest of the reading; one that is not stays a plugin as before' => function (): void {
+    'RSF06-04 plugin <class>: a class that is an extension is offered for the rest of the reading; one that is not stays a plugin as before' => function (): void {
         withRegistry(function (): void {
             $c = extConfig("plugin CjwNetwork\\RequestShield\\Tests\\RsTestExtension\nset fail-at rules\n");
             same('rules', $c['ext']['rs-test']['failAt'] ?? null, 'known from the plugin line on');
@@ -104,7 +104,7 @@ return [
             same(['Acme\\Shield\\RefusalAlert'], extConfig("plugin Acme\\Shield\\RefusalAlert\n")['plugins'] ?? null, 'a class that is not there: recorded, check warns');
         });
     },
-    'RSF6.4 the registry refuses what would collide: a core word or setting, a second extension with the same id, a wrong id' => function (): void {
+    'RSF06-04 the registry refuses what would collide: a core word or setting, a second extension with the same id, a wrong id' => function (): void {
         withRegistry(function (): void {
             $bad = new class implements Extension {
                 public static function id(): string { return 'rs-test'; }

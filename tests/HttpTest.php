@@ -44,7 +44,7 @@ function httpIn(string $ini, string $url): mixed
 }
 
 return [
-    'RSF1.3 Http::get: status, body, the headers of the last answer, redirects, at most N bytes, the User-Agent' => function (): void {
+    'RSF01-03 Http::get: status, body, the headers of the last answer, redirects, at most N bytes, the User-Agent' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -61,7 +61,7 @@ return [
             same(null, Http::offline(), 'this PHP can fetch');
         });
     },
-    'RSF1.3 allow_url_fopen off: curl takes over, the same answer; without curl too, a clear word on what to do' => function (): void {
+    'RSF01-03 allow_url_fopen off: curl takes over, the same answer; without curl too, a clear word on what to do' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }

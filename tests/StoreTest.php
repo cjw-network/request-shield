@@ -21,15 +21,15 @@ function slidingWindowChecks(Store $s): void
 }
 
 return [
-    'RSF3.1 memory store: sliding window' => function (): void {
+    'RSF03-01 memory store: sliding window' => function (): void {
         slidingWindowChecks(new MemoryStore());
     },
-    'RSF3.1 file store: sliding window' => function (): void {
+    'RSF03-01 file store: sliding window' => function (): void {
         $dir = sys_get_temp_dir() . '/rshield-test-' . getmypid() . '-' . mt_rand();
         slidingWindowChecks(new FileStore($dir, 0.0));
         exec('rm -rf ' . escapeshellarg($dir));
     },
-    'RSF3.1 file store: concurrent processes lose no count' => function (): void {
+    'RSF03-01 file store: concurrent processes lose no count' => function (): void {
         if (!function_exists('pcntl_fork')) {
             skip('no pcntl');
         }
@@ -53,7 +53,7 @@ return [
         same(2000.0, $store->peek('shared', 60, $now), '8 processes x 250 hits');
         exec('rm -rf ' . escapeshellarg($dir));
     },
-    'RSF3.1 file store: sweep removes only past windows' => function (): void {
+    'RSF03-01 file store: sweep removes only past windows' => function (): void {
         $dir = sys_get_temp_dir() . '/rshield-test-' . getmypid() . '-' . mt_rand();
         $store = new FileStore($dir, 0.0);
         $store->hit('old', 60, 100 * 60.0);
@@ -62,10 +62,10 @@ return [
         same(1.0, $store->peek('new', 60, 200 * 60.0 + 1), 'current window kept');
         exec('rm -rf ' . escapeshellarg($dir));
     },
-    'RSF3.1 file store: an unwritable directory never blocks' => function (): void {
+    'RSF03-01 file store: an unwritable directory never blocks' => function (): void {
         same(0.0, (new FileStore('/proc/no-such-dir', 0.0))->hit('k', 60, 1.0));
     },
-    'RSF3.1 apcu store: sliding window (when APCu is enabled here)' => function (): void {
+    'RSF03-01 apcu store: sliding window (when APCu is enabled here)' => function (): void {
         if (!ApcuStore::usable()) {
             skip('APCu not enabled (php -d apc.enable_cli=1)');
         }

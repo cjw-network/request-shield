@@ -30,8 +30,8 @@ else:
   they typed.
 - **Unwelcome addresses stay out** — keep an address out for a week with one
   command, let the office in, and ban for a while whoever keeps knocking
-  ([IP lists and automatic bans](docs/features/ip-lists.md)); a live view shows
-  what is stopped right now, and why ([live and lists](docs/features/live-and-lists.md)).
+  ([IP lists and automatic bans](docs/features/RSF01-02-ip-lists.md)); a live view shows
+  what is stopped right now, and why ([live and lists](docs/features/RSF06-02-live-and-lists.md)).
 - **Search engines stay welcome** — Google, Bing and others are recognised and
   let through.
 - **Readable rules** — one per line, in a plain text file; every refusal names
@@ -105,24 +105,24 @@ server and PHP slots, just very briefly.
   page, attack rules, match blocks, the check inside the form, earning back a
   spent budget (forms and APIs), the demo; PHP 8.0.
 - **Unreleased:** known query parameters and their types, `query strict`,
-  `@tracking` ([docs](docs/features/known-parameters.md)); modes — monitor
+  `@tracking` ([docs](docs/features/RSF02-05-known-parameters.md)); modes — monitor
   first, strict under attack, `monitor` for single rules, `challenge …
-  max-age` ([docs](docs/features/modes.md)); known crawlers — search engines
+  max-age` ([docs](docs/features/RSF05-03-modes.md)); known crawlers — search engines
   and AI crawlers verified by their published address lists or DNS, allowed,
-  checked or refused per kind ([docs](docs/features/known-crawlers.md));
+  checked or refused per kind ([docs](docs/features/RSF01-04-known-crawlers.md));
   statistics — requests, rules, status codes, pages not found and who links
   to them, what each crawler did — kept per hour, `bin/request-shield stats`
-  ([docs](docs/features/statistics.md)); plugins — the core is the firewall,
+  ([docs](docs/features/RSF06-03-statistics.md)); plugins — the core is the firewall,
   the statistics are its first plugin, and your own hang on the same two hooks
-  ([docs](docs/features/plugins.md)); rules per website (`site` blocks); IP
+  ([docs](docs/features/RSF06-04-plugins.md)); rules per website (`site` blocks); IP
   lists — `deny`, `exempt … until`, list files kept from the command line —
-  and automatic, temporary bans ([docs](docs/features/ip-lists.md)); the live
+  and automatic, temporary bans ([docs](docs/features/RSF01-02-ip-lists.md)); the live
   view and the lists in the dashboard — what is stopped right now, with the
   reason and where it came from, an address kept out with one click and a
-  comment ([docs](docs/features/live-and-lists.md)); public blocklists
+  comment ([docs](docs/features/RSF06-02-live-and-lists.md)); public blocklists
   (Spamhaus DROP, DShield, blocklist.de, Tor, cloud ranges …) fetched by cron,
   each with its own action, and exported for a firewall
-  ([docs](docs/features/blocklist-feeds.md)).
+  ([docs](docs/features/RSF01-03-blocklist-feeds.md)).
 - **Next:** adapters for
   Exponential, WordPress and Ibexa; exporting the rules to nginx, Apache and
   Varnish.
@@ -179,7 +179,7 @@ extensions' rule files as `sources`.
 
 ## Configuration
 
-As a rule file ([all rules](docs/features/rule-files.md)):
+As a rule file ([all rules](docs/features/RSF05-01-rule-files.md)):
 
 ```text
 trust        10.0.0.0/8
@@ -197,7 +197,7 @@ rules in effect with their origins, or makes every server read it again;
 `trace site.rules "GET https://…/wp-login.php"` shows what happens to a
 request, check by check; `version [site.rules]` says what is installed (the
 version, PHP, APCu, the store in use, the rule sets' versions). The same as a
-page for the admin area: [the active rules page](docs/features/active-rules-page.md).
+page for the admin area: [the active rules page](docs/features/RSF06-01-active-rules-page.md).
 
 Or as a PHP array — every key, with its default, is in `src/Config.php`;
 `config/request-shield.dist.php` is a starting point:
@@ -245,7 +245,7 @@ headers behind a trusted proxy, every check on:
 | settings compiled on every request (tier S0: nowhere to write) | + ~30 µs |
 | challenge page / solution check / pass cookie (challenged clients only) | ~12 / ~9 / ~5 µs |
 
-The tiers ([settings](docs/features/settings.md#what-this-installation-can-do-the-tiers)):
+The tiers ([settings](docs/features/RSF05-02-settings.md#what-this-installation-can-do-the-tiers)):
 PHP ≥ 8.0 is the only requirement; a writable directory and APCu make it
 faster. `request-shield check site.rules` says which tier a hosting gives.
 

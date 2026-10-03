@@ -1,4 +1,4 @@
-# RSF2.1 Hard rejects
+# RSF02-01 Hard rejects
 
 ## What it does
 

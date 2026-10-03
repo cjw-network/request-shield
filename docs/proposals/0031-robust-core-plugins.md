@@ -21,7 +21,7 @@ commits since v0.2.0). This proposal fixes the direction before v1.0:
   they cost nothing when unused. A visual WAF backend, a statistics backend, an
   HTTP-cache backend, an API and CMS adapters are all **plugins**.
 - **Every feature has documentation, a demo and tests under one id**
-  (`RSF<group>.<n>`), enforced by a test.
+  (`RSF<gg>-<nn>`), enforced by a test.
 - **An AI installs it from one prompt**: downloads the file, activates it,
   derives the rules for the application, verifies them. "Security must not be
   a luxury."
@@ -40,6 +40,7 @@ aliases, no transition periods. The SemVer policy below starts with v1.0.0.
 | Hosting | Runs fast **with APCu**, and **without it on minimal requirements** (shared hosting): PHP ≥ 8.0 and nothing else. |
 | Features | Every feature: docs, a demo and tests under its id. |
 | Working mode | See [0031-steps.md](0031-steps.md): the work is done in the session; subagents only for read-heavy searches (at most 2, Explore, haiku); exactly one review (`pr-review-toolkit:code-reviewer`, sonnet) on the uncommitted diff before each commit. |
+| Feature ids (2026-10-04) | Two digits each and a dash, `RSF01-16`, everywhere (titles, tests, docs, the runner); the feature pages are named by the id: `RSF01-16-<slug>.md`. |
 
 ## Principles (each becomes an ADR)
 
@@ -58,8 +59,8 @@ aliases, no transition periods. The SemVer policy below starts with v1.0.0.
 4. **One source of truth.** The rule vocabulary is a declarative table; the
    reference docs, error messages, setup page and demos are generated from it.
    Demos come from `expect` lines, not from PHP tables.
-5. **Every feature: docs, a demo and tests under one id `RSF<n>.<m>`.** A test
-   (`FeatureContractTest`) enforces it; `php tests/run.php RSF2.6` runs exactly
+5. **Every feature: docs, a demo and tests under one id `RSF<gg>-<nn>`.** A test
+   (`FeatureContractTest`) enforces it; `php tests/run.php RSF02-06` runs exactly
    that feature's tests.
 6. **One URL, one file, one signature.** `releases/latest/download/request-shield.php`
    plus checksum and signature; the file is also the CLI.
@@ -199,7 +200,7 @@ working; third-party plugins without Composer load with
 `Inspector`, `explain()` (moves into the rule classes) and `SetupPage` derive
 from it.
 
-### The API: a plugin with its own extension point (RSF6.5)
+### The API: a plugin with its own extension point (RSF06-05)
 
 Today's JSON is scattered (`?format=json`, `LivePage::json()`, `stats --json`).
 The API becomes **`plugins/api`** (package `request-shield-api`, file
@@ -222,7 +223,7 @@ final class Endpoint {
         public bool $write,        // only with `set api-write on`
         public string $service,    // class-string<ApiService>: handle(Request, array $params): array
         public array $schema,      // response shape, for OpenAPI and the contract test
-        public string $feature,    // 'RSF6.3'
+        public string $feature,    // 'RSF06-03'
     ) {}
 }
 ```
@@ -383,36 +384,38 @@ without the change.
 
 ### Feature ids and the feature contract
 
-Three kinds of ids, told apart at a glance: **`RSF2.6`** = feature, **`0031`** =
+Three kinds of ids, told apart at a glance: **`RSF02-06`** = feature, **`0031`** =
 proposal (planning history), **`[SCAN-HIDDEN]`** = rule. Feature ids are
-`RSF<group>.<n>`; groups follow the question a request answers, in the order the
+`RSF<gg>-<nn>`, two digits each and a dash (`RSF02-06`; owner decision 2026-10-04: they
+sort as text, and the feature pages are named by them:
+`docs/features/RSF02-06-<slug>.md`); groups follow the question a request answers, in the order the
 shield asks them, so `trace` reads in the same order as the docs. Ids are
 never reassigned (gaps allowed).
 
 | Group | Question | Features |
 |---|---|---|
-| **RSF1 Who is asking** | the other side's identity | RSF1.1 trusted proxies · RSF1.2 IP lists & bans · RSF1.3 public blocklists (feeds) · RSF1.4 known crawlers |
-| **RSF2 What is asked** | the request's shape and target | RSF2.1 hard rejects · RSF2.2 blocked paths (scanners) · RSF2.3 access rules · RSF2.4 forms from the website (post-origin) · RSF2.5 known parameters · RSF2.6 attack patterns |
-| **RSF3 How often** | pace and proof | RSF3.1 budgets & pace · RSF3.2 browser check · RSF3.3 the check in the form · RSF3.4 the site asks for the check |
-| **RSF4 What a cache may keep** | cache hygiene | RSF4.1 cacheable definition · RSF4.2 cache keys without tracking (0020) |
-| **RSF5 Operating** | writing and checking rules | RSF5.1 rule files · RSF5.2 settings · RSF5.3 modes · RSF5.4 examples next to the rules · RSF5.5 log & rule ids · RSF5.6 error pages (0030) · RSF5.7 the single file & releases (added in F.1: phase E made it a feature) |
-| **RSF6 Watching & connecting** | what the shield does, and how others reach it | RSF6.1 rules page · RSF6.2 live & lists · RSF6.3 statistics (plugin) · RSF6.4 plugins & extensions · RSF6.5 API (plugin) |
+| **RSF01 Who is asking** | the other side's identity | RSF01-01 trusted proxies · RSF01-02 IP lists & bans · RSF01-03 public blocklists (feeds) · RSF01-04 known crawlers |
+| **RSF02 What is asked** | the request's shape and target | RSF02-01 hard rejects · RSF02-02 blocked paths (scanners) · RSF02-03 access rules · RSF02-04 forms from the website (post-origin) · RSF02-05 known parameters · RSF02-06 attack patterns |
+| **RSF03 How often** | pace and proof | RSF03-01 budgets & pace · RSF03-02 browser check · RSF03-03 the check in the form · RSF03-04 the site asks for the check |
+| **RSF04 What a cache may keep** | cache hygiene | RSF04-01 cacheable definition · RSF04-02 cache keys without tracking (0020) |
+| **RSF05 Operating** | writing and checking rules | RSF05-01 rule files · RSF05-02 settings · RSF05-03 modes · RSF05-04 examples next to the rules · RSF05-05 log & rule ids · RSF05-06 error pages (0030) · RSF05-07 the single file & releases (added in F.1: phase E made it a feature) |
+| **RSF06 Watching & connecting** | what the shield does, and how others reach it | RSF06-01 rules page · RSF06-02 live & lists · RSF06-03 statistics (plugin) · RSF06-04 plugins & extensions · RSF06-05 API (plugin) |
 
 A feature **exists** only when all of these are there, under its id — and
 `tests/FeatureContractTest.php` enforces it in both directions:
 
 | Part | Where | Form |
 |---|---|---|
-| Docs | `docs/features/<slug>.md` | H1 `# RSF2.6 …`; what it does, use cases, configuration, cost, limits, ≥ 1 diagram, the generated examples block |
-| Demo | `examples/demo/request-shield.rules` | a `# demo: RSF2.6 <slug> <title>` group with ≥ 1 `expect` (a hit **and** a near miss that must pass) — also the executable tests run by `request-shield test` and the rows of the demo page |
-| Unit tests | `tests/<Feature>Test.php` | names begin with the id: `'RSF2.6 attack patterns: …'`; `php tests/run.php RSF2.6` runs exactly this feature |
-| End-to-end test | same file, `php -S` | mandatory for everything on the request path (groups RSF1–RSF4) |
+| Docs | `docs/features/<slug>.md` | H1 `# RSF02-06 …`; what it does, use cases, configuration, cost, limits, ≥ 1 diagram, the generated examples block |
+| Demo | `examples/demo/request-shield.rules` | a `# demo: RSF02-06 <slug> <title>` group with ≥ 1 `expect` (a hit **and** a near miss that must pass) — also the executable tests run by `request-shield test` and the rows of the demo page |
+| Unit tests | `tests/<Feature>Test.php` | names begin with the id: `'RSF02-06 attack patterns: …'`; `php tests/run.php RSF02-06` runs exactly this feature |
+| End-to-end test | same file, `php -S` | mandatory for everything on the request path (groups RSF01–RSF04) |
 | UI help | every page/section showing the feature | one sentence + a `?` link with the id to the docs anchor (`Help::link()`) |
 | Bench line, reference, changelog | docs "cost", `Vocabulary`, `CHANGELOG.md` | measured with the feature off and on; entries name the id |
 
-The id appears in the docs H1, the demo rule file (`# demo: RSF2.6 …`, rows
-`RSF2.6.1`, anchors `#RSF2.6`), `test`/`examples` output, every `trace` step,
-the rules/setup pages, the generated reference (`restrict → RSF2.3`) and the UI
+The id appears in the docs H1, the demo rule file (`# demo: RSF02-06 …`, rows
+`RSF02-06.1`, anchors `#RSF02-06`), `test`/`examples` output, every `trace` step,
+the rules/setup pages, the generated reference (`restrict → RSF02-03`) and the UI
 help links. Debug header and log keep the **rule id** — no extra byte per
 request.
 
@@ -503,7 +506,7 @@ choice at the cost of one move commit.
 ├── bootstrap.php  bin/  src/  rules/ (incl. rules/app/{wordpress,drupal,symfony,ibexa,exponential}.rules)
 ├── build/single-file.php           → request-shield.php (mini), -waf.php, -stats.php, -api.php
 ├── plugins/
-│   ├── api/        cjw-network/request-shield-api      (RSF6.5: endpoints, OpenAPI, in-process facade; …\Api\)
+│   ├── api/        cjw-network/request-shield-api      (RSF06-05: endpoints, OpenAPI, in-process facade; …\Api\)
 │   ├── waf/        cjw-network/request-shield-waf      (Report/* pages; requires request-shield-api; …\Waf\)
 │   └── stats/      cjw-network/request-shield-stats    (…\Stats\; requires request-shield ^1.0)
 ├── adapters/

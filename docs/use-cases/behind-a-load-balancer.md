@@ -16,4 +16,4 @@ proxy added; scheme and host come from `X-Forwarded-Proto`/`-Host` only via a
 balancer, and from anyone else those headers are removed before the
 application runs.
 
-Feature: [trusted proxies](../features/trusted-proxies.md).
+Feature: [trusted proxies](../features/RSF01-01-trusted-proxies.md).

@@ -102,7 +102,7 @@ expect GET /user/login with pass                  answered   # checked once: the
 # /content/action), "tip a friend", comments. A POST without a pass gets the
 # check page, and the form is sent again by itself -- nothing typed is lost.
 # (The check can also sit inside the form, solved while typing: the widget,
-# docs/features/browser-check-in-the-form.md -- one line in the template.)
+# docs/features/RSF03-03-browser-check-in-the-form.md -- one line in the template.)
 [EXP-FORMS]     challenge **/content/action **/content/tipafriend/** **/comment/add/** **/newsletter/subscribe/** max-age 30m   # contact forms, tip a friend, comments, newsletter: checked once per half hour
 expect POST /content/action header Origin:https://www.example.org   check
 expect POST /bold_ger/content/action header Origin:https://www.example.org   check

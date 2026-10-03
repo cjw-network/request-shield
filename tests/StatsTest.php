@@ -54,7 +54,7 @@ function statsBackends(): array
 }
 
 return [
-    'RSF6.3 rule files and PHP settings: set stats, crawler-log and their mistakes' => function (): void {
+    'RSF06-03 rule files and PHP settings: set stats, crawler-log and their mistakes' => function (): void {
         $dir = statsDir();
         try {
             file_put_contents("$dir/site.rules", "set stats on\nset stats-hours 3\nset stats-days 90\nset crawler-log logs/crawlers\nset crawler-log-kinds ai-training ai-user\nset crawler-log-days 14\nset crawler-log-query off\n");
@@ -128,7 +128,7 @@ return [
             }
         }
     },
-    'RSF6.3 counting: per hour, read at once; the finished hours rolled into the day file; old hours summed, old days gone -- files and APCu' => function (): void {
+    'RSF06-03 counting: per hour, read at once; the finished hours rolled into the day file; old hours summed, old days gone -- files and APCu' => function (): void {
         foreach (statsBackends() as $label => $apcu) {
             $dir = statsDir();
             try {
@@ -164,7 +164,7 @@ return [
             }
         }
     },
-    'RSF6.3 APCu survives a restart: every flush seconds the counts go to the hour\'s file -- nothing counted twice, nothing lost' => function (): void {
+    'RSF06-03 APCu survives a restart: every flush seconds the counts go to the hour\'s file -- nothing counted twice, nothing lost' => function (): void {
         if (!ApcuStore::usable()) {
             skip('APCu not enabled (php -d apc.enable_cli=1)');
         }
@@ -201,7 +201,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.3 only the parts switched on are counted; without "crawlers" no crawler is even looked at' => function (): void {
+    'RSF06-03 only the parts switched on are counted; without "crawlers" no crawler is even looked at' => function (): void {
         $dir = statsDir();
         try {
             foreach ([['requests'], ['crawlers'], ['not-found', 'bots']] as $parts) {
@@ -221,7 +221,7 @@ return [
         }
         same(['s:404', 'n:/a%2A3'], StatsPlugin::statusKeys(statsReq('/a*3'), 404), 'a "*" in a path would read as a count: escaped');
     },
-    'RSF6.3 days, weeks, months, years: old days summed into their month, kept for good (or stats-months); the report grouped and filtered' => function (): void {
+    'RSF06-03 days, weeks, months, years: old days summed into their month, kept for good (or stats-months); the report grouped and filtered' => function (): void {
         $dir = statsDir();
         try {
             $st = new Stats($dir, false, 2, 30, null, 30, 60, 0);
@@ -252,7 +252,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.3 groups with a limit: 50 pages per crawler, 50 pages not found, 5 referrers each -- the rest as "(other)"' => function (): void {
+    'RSF06-03 groups with a limit: 50 pages per crawler, 50 pages not found, 5 referrers each -- the rest as "(other)"' => function (): void {
         foreach (statsBackends() as $label => $apcu) {
             $dir = statsDir();
             try {
@@ -288,7 +288,7 @@ return [
             }
         }
     },
-    'RSF6.3 recording a request: action, rule, status; a crawler verified or only claimed, its page, robots.txt, its last visit; other bots by family' => function (): void {
+    'RSF06-03 recording a request: action, rule, status; a crawler verified or only claimed, its page, robots.txt, its last visit; other bots by family' => function (): void {
         $dir = statsDir();
         try {
             $s = Settings::from(['storeDir' => $dir, 'store' => 'file', 'ext' => ['stats' => ['enabled' => true, 'crawlerLog' => ['dir' => "$dir/crawlers", 'query' => false]]],
@@ -330,7 +330,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.3 status keys: pages not found and where the links to them are -- the site\'s own path, another site\'s host only' => function (): void {
+    'RSF06-03 status keys: pages not found and where the links to them are -- the site\'s own path, another site\'s host only' => function (): void {
         same(['s:200'], StatsPlugin::statusKeys(statsReq('/a'), 200));
         same([true, true, false, true], [StatsPlugin::isHtml([]), StatsPlugin::isHtml(['Content-Type: text/html; charset=utf-8']), StatsPlugin::isHtml(['X-A: b', 'content-type: application/json']),
             StatsPlugin::isHtml(['Content-Type: application/xhtml+xml'])], 'a page: HTML, or no Content-Type (PHP\'s default)');
@@ -343,7 +343,7 @@ return [
             same($family, Stats::botFamily((string) $ua), (string) $ua);
         }
     },
-    'RSF6.3 the report: totals, rules, statuses, pages not found, crawlers -- and in words' => function (): void {
+    'RSF06-03 the report: totals, rules, statuses, pages not found, crawlers -- and in words' => function (): void {
         $dir = statsDir();
         try {
             $s = Settings::from(['storeDir' => $dir, 'store' => 'file', 'ext' => ['stats' => ['enabled' => true]], 'crawlerPolicy' => ['CRAWL-GPTBOT' => 'block']]);
@@ -445,7 +445,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF6.3 the real path: protect() counts every request, the site\'s 404s with their referrers; bin/request-shield stats says it' => function (): void {
+    'RSF06-03 the real path: protect() counts every request, the site\'s 404s with their referrers; bin/request-shield stats says it' => function (): void {
         if (!function_exists('proc_open') || !function_exists('exec')) {
             skip('no proc_open');
         }
@@ -510,7 +510,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-'RSF6.3 rules & setup: the way of a request, every rule in words (English, German), every setting -- never the secret; the protection view explains its rules' => function (): void {
+'RSF06-03 rules & setup: the way of a request, every rule in words (English, German), every setting -- never the secret; the protection view explains its rules' => function (): void {
         $dir = statsDir();
         try {
             $secret = str_repeat('never-show-me-', 3);
@@ -577,7 +577,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-'RSF6.3 the visitors page (0022): six numbers against the period before, one chart, cards with tabs -- no script, everything escaped' => function (): void {
+'RSF06-03 the visitors page (0022): six numbers against the period before, one chart, cards with tabs -- no script, everything escaped' => function (): void {
         $dir = statsDir();
         try {
             $s = Settings::from(['storeDir' => $dir, 'store' => 'file', 'ext' => ['stats' => ['enabled' => true]]]);

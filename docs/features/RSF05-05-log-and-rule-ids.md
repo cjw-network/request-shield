@@ -1,4 +1,4 @@
-# RSF5.5 The log and rule IDs
+# RSF05-05 The log and rule IDs
 
 Which rule a decision names is the rule's own answer (`Rule::explain()`, 0031 C.2): the shield asks the chain, so a rule added to it names itself in the log and on the pages.
 
@@ -9,7 +9,7 @@ where it was written:
 
 | ID | Meaning |
 |---|---|
-| `SITE-10` | a rule's own ID (`[SITE-10] restrict …`, see [rule files](rule-files.md#ids-namespaces-and-descriptions)) |
+| `SITE-10` | a rule's own ID (`[SITE-10] restrict …`, see [rule files](RSF05-01-rule-files.md#ids-namespaces-and-descriptions)) |
 | `site.rules:12` | a rule without an ID: line 12 of a rule file (relative to the main file's directory) |
 | `ext/shop/settings/request-shield.rules:2` | an extension's rule file |
 | `SCAN-BACKUP` | a built-in rule (`SCAN-HIDDEN`, `-BACKUP`, `-TEST`, `-DBTOOL`, `-CGI`; `WP-FOLDERS`, `-SCRIPTS`), from `rules/*.rules` |
@@ -48,7 +48,7 @@ User-Agent:
 ```
 
 The URL is the one the visitor used: scheme and host as a [trusted
-proxy](trusted-proxies.md) reports them, the path and query as sent (not
+proxy](RSF01-01-trusted-proxies.md) reports them, the path and query as sent (not
 decoded — `//admin/` and `%61dmin` stay visible).
 
 | Level | Written |
@@ -61,7 +61,7 @@ decoded — `//admin/` and `%61dmin` stay visible).
 Budgets counted by the application (`Shield::active()->consume('misses')`)
 are logged the same way when they refuse.
 
-What a rule would have decided in [`set mode monitor`](modes.md), or a rule
+What a rule would have decided in [`set mode monitor`](RSF05-03-modes.md), or a rule
 marked `monitor`, is written with `monitor-` in front — `monitor-reject 404
 "blocked path" rule=SITE-OLD` — at the level of that decision: the visitor
 got in.

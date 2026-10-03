@@ -87,7 +87,7 @@ TfD/PoaO2r/SSDaMTXu6zmLkII3GB07szkXESeujwS/5wYQT9YhcOMxBixLwXPAJIlXgJ3pWXVr0K4to
 ';
 
 return [
-    'RSF5.7 Minisign: signatures made by minisign 0.12 itself are accepted -- prehashed and legacy; the file changed by one byte is not' => function (): void {
+    'RSF05-07 Minisign: signatures made by minisign 0.12 itself are accepted -- prehashed and legacy; the file changed by one byte is not' => function (): void {
         if (!Minisign::available()) {
             skip('PHP has no sodium here');
         }
@@ -100,7 +100,7 @@ return [
             truthy(!($e instanceof TestFailure), $e->getMessage());
         }
     },
-    'RSF5.7 Minisign: a signature by the key is checked -- prehashed and legacy; another file, another key, a changed comment, a broken file are refused' => function (): void {
+    'RSF05-07 Minisign: a signature by the key is checked -- prehashed and legacy; another file, another key, a changed comment, a broken file are refused' => function (): void {
         $key = msKey();
         $data = "<?php // the file\n";
         same('request-shield v1.0.0 sha256:x', Minisign::verify($data, msSign($data, $key, 'request-shield v1.0.0 sha256:x'), $key['pub']));
@@ -123,7 +123,7 @@ return [
         $refused(static fn () => Minisign::verify($data, "untrusted comment: x\nAAAA\ntrusted comment: c\nAAAA\n", $key['pub']), 'not a minisign signature');
         $refused(static fn () => Minisign::verify($data, $sig, 'bm90IGEga2V5'), 'not a minisign key');
     },
-    'RSF5.7 verify: the checksum from SHA256SUMS; without a key it says the signature is not checked; with one, the signature and its checksum' => function (): void {
+    'RSF05-07 verify: the checksum from SHA256SUMS; without a key it says the signature is not checked; with one, the signature and its checksum' => function (): void {
         $dir = releaseDir();
         try {
             $data = "<?php // released\n";
@@ -156,7 +156,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF5.7 self-update: refused without the release key; --check says whether a newer release exists; the update checks everything first, keeps .prev, updates the statistics file too' => function (): void {
+    'RSF05-07 self-update: refused without the release key; --check says whether a newer release exists; the update checks everything first, keeps .prev, updates the statistics file too' => function (): void {
         $dir = releaseDir();
         try {
             file_put_contents("$dir/request-shield.php", "<?php\n// 1.0.0\n");
@@ -214,7 +214,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF5.7 init: a starter per application, printed or written; never into the document root, never over a file without --force; each starter compiles and its examples pass' => function (): void {
+    'RSF05-07 init: a starter per application, printed or written; never into the document root, never over a file without --force; each starter compiles and its examples pass' => function (): void {
         same(['exponential', 'plain', 'symfony', 'wordpress'], Shipped::starters());
         $dir = releaseDir();
         try {
@@ -247,7 +247,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF5.7 the command line: init, verify, self-update -- self-update refuses a source checkout, and in the single file the missing key' => function (): void {
+    'RSF05-07 the command line: init, verify, self-update -- self-update refuses a source checkout, and in the single file the missing key' => function (): void {
         if (!function_exists('exec')) {
             skip('no exec');
         }

@@ -2,7 +2,7 @@
 
 *For site owners, editors and anyone who wants to know what happens — no
 programming knowledge needed. The technical details are in
-[the feature description](../features/browser-challenge.md).*
+[the feature description](../features/RSF03-02-browser-challenge.md).*
 
 ## In one sentence
 

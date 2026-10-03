@@ -12,7 +12,7 @@ function cli(string $args): array
 }
 
 return [
-    'RSF5.2 the version is one literal, in the shape of a release (or the next one, -dev)' => function (): void {
+    'RSF05-02 the version is one literal, in the shape of a release (or the next one, -dev)' => function (): void {
         truthy(preg_match('/^\d+\.\d+\.\d+(-dev)?$/', Shield::VERSION) === 1, 'Shield::VERSION is a version: ' . Shield::VERSION);
         if (rsSingle() === null) {
             same('source', Shield::BUILD, 'the repository is the source build');
@@ -24,7 +24,7 @@ return [
         truthy(preg_match('/^## \[(\d+\.\d+\.\d+)\]/m', $log, $m) === 1, 'the changelog names the last release');
         truthy(version_compare((string) strtok(Shield::VERSION, '-'), $m[1], '>'), 'VERSION ' . Shield::VERSION . ' is ahead of the last release ' . $m[1]);
     },
-    'RSF5.2 request-shield version: what is installed, without a rule file' => function (): void {
+    'RSF05-02 request-shield version: what is installed, without a rule file' => function (): void {
         foreach (['version', '--version'] as $word) {
             [$out, $code] = cli($word);
             same(0, $code, "$word exits 0: " . implode(' | ', $out));
@@ -34,7 +34,7 @@ return [
             same(3, count($out), 'nothing more without a rule file');
         }
     },
-    'RSF5.1 the tool is the class Cli: Cli::main($argv) runs it without the script, as the single file will (0031 E.2)' => function (): void {
+    'RSF05-01 the tool is the class Cli: Cli::main($argv) runs it without the script, as the single file will (0031 E.2)' => function (): void {
         if (!function_exists('exec')) {
             skip('no exec');
         }
@@ -46,7 +46,7 @@ return [
         same(2, $exit2, 'a wrong command: the usage, exit 2');
         truthy(strpos(implode("\n", $out2), 'usage: request-shield') === 0, implode(' | ', $out2));
     },
-    'RSF5.2 request-shield version site.rules: the store in use, the mode, the versions of the site\'s files' => function (): void {
+    'RSF05-02 request-shield version site.rules: the store in use, the mode, the versions of the site\'s files' => function (): void {
         $dir = sys_get_temp_dir() . '/rs-cli-' . getmypid() . '-' . mt_rand();
         mkdir($dir, 0700, true);
         try {
@@ -66,7 +66,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF5.1 the extensions\' commands (0031 D.1): the statistics\' stats is one, run from the table; the usage lists it with the plugin\'s own line' => function (): void {
+    'RSF05-01 the extensions\' commands (0031 D.1): the statistics\' stats is one, run from the table; the usage lists it with the plugin\'s own line' => function (): void {
         $commands = \CjwNetwork\RequestShield\Stats\StatsExtension::commands();
         same(['stats'], array_keys($commands));
         truthy(is_subclass_of($commands['stats'], \CjwNetwork\RequestShield\Cli\Command::class), 'a Cli\\Command');

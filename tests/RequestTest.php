@@ -6,7 +6,7 @@ use CjwNetwork\RequestShield\IpAddress;
 use CjwNetwork\RequestShield\Request;
 
 return [
-    'RSF1.1 ranges: IPv4 and IPv6 CIDR, single addresses' => function (): void {
+    'RSF01-01 ranges: IPv4 and IPv6 CIDR, single addresses' => function (): void {
         truthy(IpAddress::inRanges('10.1.2.3', ['10.0.0.0/8']), '10/8');
         truthy(!IpAddress::inRanges('11.1.2.3', ['10.0.0.0/8']), 'not 10/8');
         truthy(IpAddress::inRanges('192.168.1.200', ['192.168.1.128/25']), '/25');
@@ -17,13 +17,13 @@ return [
         truthy(!IpAddress::inRanges('10.0.0.1', ['2001:db8::/32']), 'v4 in v6 range');
         truthy(!IpAddress::inRanges('junk', ['0.0.0.0/0']), 'not an address');
     },
-    'RSF1.1 bucket: IPv4 whole, IPv6 by its /64' => function (): void {
+    'RSF01-01 bucket: IPv4 whole, IPv6 by its /64' => function (): void {
         same('203.0.113.7', IpAddress::bucket('203.0.113.7'));
         same('2001:db8:1:2::/64', IpAddress::bucket('2001:db8:1:2:aaaa:bbbb:cccc:dddd'));
         same(IpAddress::bucket('2001:db8:1:2::1'), IpAddress::bucket('2001:db8:1:2:ffff::9'), 'same /64, same bucket');
         same('2001:db8::/48', IpAddress::bucket('2001:db8:0:5::1', 48));
     },
-    'RSF1.1 forwarded headers only from a trusted proxy' => function (): void {
+    'RSF01-01 forwarded headers only from a trusted proxy' => function (): void {
         $server = ['REMOTE_ADDR' => '198.51.100.9', 'HTTP_HOST' => 'exp:8080', 'REQUEST_URI' => '/a?b=1',
                    'HTTP_X_FORWARDED_FOR' => '6.6.6.6', 'HTTP_X_FORWARDED_PROTO' => 'https', 'HTTP_X_FORWARDED_HOST' => 'evil.example'];
         $r = Request::fromServer($server, ['10.0.0.0/8']);
@@ -38,20 +38,20 @@ return [
         same('evil.example', $r->host);
         same(true, $r->viaTrustedProxy);
     },
-    'RSF1.1 X-Forwarded-For is read right to left, past trusted hops only' => function (): void {
+    'RSF01-01 X-Forwarded-For is read right to left, past trusted hops only' => function (): void {
         $r = Request::fromServer(['REMOTE_ADDR' => '10.0.0.5', 'HTTP_X_FORWARDED_FOR' => '1.1.1.1, 203.0.113.7, 10.0.0.9'], ['10.0.0.0/8']);
         same('203.0.113.7', $r->clientIp, 'a client cannot put an address in front of its own');
         $r = Request::fromServer(['REMOTE_ADDR' => '10.0.0.5', 'HTTP_X_FORWARDED_FOR' => 'garbage, 203.0.113.7'], ['10.0.0.0/8']);
         same('203.0.113.7', $r->clientIp, 'stops at an invalid hop');
     },
-    'RSF1.1 path, query and parameter names' => function (): void {
+    'RSF01-01 path, query and parameter names' => function (): void {
         $r = Request::fromServer(['REQUEST_URI' => '/x/y?a=1&b[c]=2&&d#frag', 'REQUEST_METHOD' => 'get']);
         same('/x/y', $r->path);
         same('a=1&b[c]=2&&d', $r->query);
         same(['a', 'b', 'd'], $r->queryNames());
         same('GET', $r->method);
     },
-    'RSF1.1 content(): what the attack rules see -- decoded twice, lower case, comments out' => function (): void {
+    'RSF01-01 content(): what the attack rules see -- decoded twice, lower case, comments out' => function (): void {
         $r = Request::fromServer([
             'REQUEST_URI' => '/A%20Path?x=UnIoN%2F%2A%2A%2FSeLeCt%25201&y=a+b',
             'HTTP_USER_AGENT' => 'Bad%20Bot',
@@ -70,7 +70,7 @@ return [
         same('', Request::fromServer(['REQUEST_URI' => '/'])->content('query'), 'no query: empty');
         same('', Request::fromServer([])->content('headers'), 'no headers: empty');
     },
-    'RSF1.1 mayHold(): the raw value holds a text (any case) or something encoded' => function (): void {
+    'RSF01-01 mayHold(): the raw value holds a text (any case) or something encoded' => function (): void {
         $r = Request::fromServer(['REQUEST_URI' => '/p?a=1', 'HTTP_USER_AGENT' => 'Mozilla/5.0', 'HTTP_X_ONE' => 'A ${Thing}', 'HTTP_COOKIE' => '${cookie}']);
         same(true, $r->mayHold('headers', ['${thing']), 'any case');
         same(false, $r->mayHold('query', ['${']));

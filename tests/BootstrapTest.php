@@ -58,7 +58,7 @@ function withLibrary(array $files, ?string $env, callable $body): void
 $rules = "set store file\nset store-dir __LIB__/var\nblock /secret/**\n";
 
 return [
-    'RSF5.1 request-shield.rules next to bootstrap.php is found without any setting -- the three-line install' => function () use ($rules): void {
+    'RSF05-01 request-shield.rules next to bootstrap.php is found without any setting -- the three-line install' => function () use ($rules): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -67,7 +67,7 @@ return [
             same('ok allow', $get('/')['body'], 'the site answers, and knows');
         });
     },
-    'RSF5.1 config/request-shield.rules is found too; a named file wins over both' => function () use ($rules): void {
+    'RSF05-01 config/request-shield.rules is found too; a named file wins over both' => function () use ($rules): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -79,7 +79,7 @@ return [
             same(200, $get('/secret/x')['status'], 'not the one next to bootstrap.php');
         });
     },
-    'RSF5.1 without any settings file the shield does nothing; a named file that is missing means nothing too' => function () use ($rules): void {
+    'RSF05-01 without any settings file the shield does nothing; a named file that is missing means nothing too' => function () use ($rules): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }

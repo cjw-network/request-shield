@@ -13,4 +13,4 @@ Googlebot, Bingbot and the other major crawlers are verified by DNS and never
 challenged. IPv6 clients are counted per /64, so rotating inside it does not
 help.
 
-Features: [browser challenge](../features/browser-challenge.md), [budgets](../features/budgets.md).
+Features: [browser challenge](../features/RSF03-02-browser-challenge.md), [budgets](../features/RSF03-01-budgets.md).

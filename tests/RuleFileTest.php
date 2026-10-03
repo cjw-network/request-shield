@@ -68,7 +68,7 @@ function decideFor(Settings $s, string $path, array $server = []): string
 }
 
 return [
-    'RSF5.1 patterns: * within a segment, ** across, ? one character; no leading /: anywhere' => function (): void {
+    'RSF05-01 patterns: * within a segment, ** across, ? one character; no leading /: anywhere' => function (): void {
         $cases = [
             ['/wp-admin/**', '/wp-admin', true], ['/wp-admin/**', '/wp-admin/x/y.php', true], ['/wp-admin/**', '/wp-adminx', false],
             ['/page/*', '/page/about', true], ['/page/*', '/page/a/b', false], ['/page/*', '/page', false],
@@ -82,7 +82,7 @@ return [
         }
         same(1, preg_match(Pattern::fromRegex('^/a#b'), '/a#b'), 'a # in a regex');
     },
-    'RSF5.1 the format: every keyword fills its setting' => function (): void {
+    'RSF05-01 the format: every keyword fills its setting' => function (): void {
         $s = rulesFrom(<<<'RULES'
             # a comment
             host        www.example.org Example.org     # trailing comment
@@ -124,7 +124,7 @@ return [
         same('file', $s->store);
         same(['title' => 'Einen Moment, bitte'], $s->challenge->texts);
     },
-    'RSF5.1 taking back: none, any, unblock, no-limit' => function (): void {
+    'RSF05-01 taking back: none, any, unblock, no-limit' => function (): void {
         $s = rulesFrom("block /x/**\nunblock /x/**\nunblock @scanners\nexempt none 192.0.2.1\nno-limit requests\ncache-path /a\ncache-path any\nmethod none GET\n");
         same([], $s->blockedPaths, 'the scanner set and the block taken back');
         same(['192.0.2.1'], $s->exemptIps, 'none empties the defaults too');
@@ -134,7 +134,7 @@ return [
         same([], rulesFrom("cache-query none\n")->cacheableQuery, 'none: no parameter');
         truthy(count(rulesFrom("block @wordpress\n")->blockedPaths) === 5 + 2, 'the WordPress set');
     },
-    'RSF5.1 the decisions follow the rules' => function (): void {
+    'RSF05-01 the decisions follow the rules' => function (): void {
         $s = rulesFrom("host www.example.org\nblock /wp-admin/**\ncache-path / /page/*\ncache-query page\nchallenge /login\n");
         same('reject blocked path', decideFor($s, '/wp-admin/install.php'));
         same('reject blocked path', decideFor($s, '/backup.sql'), 'the scanner paths stay');
@@ -144,7 +144,7 @@ return [
         same('challenge always', decideFor($s, '/login'));
         same('reject host', decideFor($s, '/', ['HTTP_HOST' => 'evil.example']));
     },
-    'RSF5.1 environment variables: ${NAME}, ${NAME:-default}, an error when unset' => function (): void {
+    'RSF05-01 environment variables: ${NAME}, ${NAME:-default}, an error when unset' => function (): void {
         putenv('RSHIELD_TEST_SECRET=' . str_repeat('s', 40));
         same(str_repeat('s', 40), rulesFrom("set secret \${RSHIELD_TEST_SECRET}\n")->challenge->secret);
         putenv('RSHIELD_TEST_SECRET');
@@ -160,7 +160,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF5.1 errors name file and line' => function (): void {
+    'RSF05-01 errors name file and line' => function (): void {
         rulesFail(['site.rules' => "host a.example\n\nblok /x\n"], 'site.rules:3', 'unknown rule "blok" (did you mean "block"?)');
         rulesFail(['site.rules' => "block regex ^/(a\n"], 'site.rules:1', 'not a valid regular expression');
         rulesFail(['site.rules' => "limit requests 600/fortnight\n"], 'site.rules:1', 'not a rate');
@@ -176,7 +176,7 @@ return [
         rulesFail(['site.rules' => "host\n"], 'site.rules:1', 'needs at least one value');
         rulesFail(['site.rules' => "include rules.d/10.rules\n", 'rules.d/10.rules' => "host a\nmethod GET!\n"], 'rules.d/10.rules:2', 'not a method');
     },
-    'RSF5.1 the settings check still applies: a short secret' => function (): void {
+    'RSF05-01 the settings check still applies: a short secret' => function (): void {
         $dir = ruleDir(['site.rules' => "set secret tooshort\n"]);
         try {
             Settings::load("$dir/site.rules", "$dir/cache");
@@ -187,7 +187,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF5.1 include: in alphabetical order, relative to the file, not above it, no loops' => function (): void {
+    'RSF05-01 include: in alphabetical order, relative to the file, not above it, no loops' => function (): void {
         $dir = ruleDir([
             'site.rules' => "include rules.d/*.rules\nblock /site\n",
             'rules.d/90-late.rules' => "limit x 9/min\n",
@@ -212,7 +212,7 @@ return [
         $empty = rulesFrom("include none.d/*.rules\n");
         truthy($empty->budgets !== [], 'a glob matching nothing is fine');
     },
-    'RSF5.1 sources: several files, the main file last' => function (): void {
+    'RSF05-01 sources: several files, the main file last' => function (): void {
         $dir = ruleDir([
             'site.rules' => "limit x 5/min\n",
             'ext/shop/settings/request-shield.rules' => "limit x 1/min\nchallenge /shop/checkout\n",
@@ -228,7 +228,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF5.1 load(): compiled once; a change in any file is noticed (recheck 0)' => function (): void {
+    'RSF05-01 load(): compiled once; a change in any file is noticed (recheck 0)' => function (): void {
         $dir = ruleDir(['site.rules' => "set recheck 0\ninclude rules.d/*.rules\n", 'rules.d/a.rules' => "host a.example\n"]);
         try {
             same(['a.example'], Settings::load("$dir/site.rules", "$dir/cache")->hosts);
@@ -252,7 +252,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF5.1 load(): with APCu, other files are checked only every "recheck" seconds; the main file without it' => function (): void {
+    'RSF05-01 load(): with APCu, other files are checked only every "recheck" seconds; the main file without it' => function (): void {
         $dir = ruleDir(['site.rules' => "set recheck 60\ninclude rules.d/*.rules\n", 'rules.d/a.rules' => "host a.example\n"]);
         try {
             same(['a.example'], Settings::load("$dir/site.rules", "$dir/cache")->hosts);
@@ -269,7 +269,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF2.3 restrict: paths only for some addresses; //, %61, case and /./ do not get past it' => function (): void {
+    'RSF02-03 restrict: paths only for some addresses; //, %61, case and /./ do not get past it' => function (): void {
         $s = rulesFrom("restrict /admin/** /api/** to 192.0.2.0/24 2001:db8::/32\n");
         $from = static fn (string $ip, string $path): string => decideFor($s, $path, ['REMOTE_ADDR' => $ip]);
         foreach (['/admin', '/admin/', '/admin/users', '//admin/', '/%61dmin/', '/ADMIN/x', '/./admin/', '/api/v1'] as $path) {
@@ -285,7 +285,7 @@ return [
         rulesFail(['site.rules' => "restrict /admin/**\n"], 'site.rules:1', 'restrict <paths> to');
         rulesFail(['site.rules' => "restrict /admin/** to office\n"], 'site.rules:1', 'not an address');
     },
-    'RSF2.3 allow: a method only on some paths, anywhere else 405' => function (): void {
+    'RSF02-03 allow: a method only on some paths, anywhere else 405' => function (): void {
         $s = rulesFrom("allow POST /edit /contact\nallow PUT DELETE /api/**\n");
         same(['GET', 'HEAD', 'POST', 'OPTIONS', 'PUT', 'DELETE'], $s->methods, 'the methods are allowed at all');
         $as = static fn (string $method, string $path): string => decideFor($s, $path, ['REQUEST_METHOD' => $method]);
@@ -297,7 +297,7 @@ return [
         same('allow', $as('GET', '/page/about'), 'other methods are not affected');
         rulesFail(['site.rules' => "allow POST\n"], 'site.rules:1', 'allow <METHODS> <paths>');
     },
-    'RSF5.5 the rule behind a decision: file and line, default, built-in, or the setting' => function (): void {
+    'RSF05-05 the rule behind a decision: file and line, default, built-in, or the setting' => function (): void {
         $dir = ruleDir(['site.rules' => "# comment\nblock /x/**\nrestrict /admin/** to 192.0.2.1\nallow POST /edit\nlimit requests 2/min\nchallenge /login\n"]);
         try {
             $s = Settings::load("$dir/site.rules", "$dir/cache");
@@ -322,7 +322,7 @@ return [
         $r = Request::fromServer(['REQUEST_URI' => '/b', 'REMOTE_ADDR' => '198.51.100.7']);
         same('blockedPaths[1]', $shield->explain($shield->decide($r, 1000.0), $r));
     },
-    'RSF5.1 bin/request-shield: check, show, reload, trace' => function (): void {
+    'RSF05-01 bin/request-shield: check, show, reload, trace' => function (): void {
         if (!function_exists('exec')) {
             skip('no exec');
         }
@@ -360,7 +360,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF2.3 unblock at: blocked paths open at some paths only, for some addresses only; traversal never' => function (): void {
+    'RSF02-03 unblock at: blocked paths open at some paths only, for some addresses only; traversal never' => function (): void {
         $s = rulesFrom("unblock at /admin/files/** for 192.0.2.0/24\nunblock [SCAN-HIDDEN] at /public/**\n");
         $from = static fn (string $ip, string $path): string => decideFor($s, $path, ['REMOTE_ADDR' => $ip]);
         same('allow', $from('192.0.2.5', '/admin/files/.env'), 'the admin file reader, from the office');
@@ -381,7 +381,7 @@ return [
         $a = new Shield(['blockExceptions' => [['paths' => ['#^/files/#'], 'patterns' => null, 'ips' => []]]], new MemoryStore());
         same('allow', $a->decide(Request::fromServer(['REQUEST_URI' => '/files/.env', 'REMOTE_ADDR' => '198.51.100.7']), 1000.0)->action);
     },
-    'RSF2.3 unblock at: shown in the check, on the page, and warned about without "for"' => function (): void {
+    'RSF02-03 unblock at: shown in the check, on the page, and warned about without "for"' => function (): void {
         $dir = ruleDir(['site.rules' => "unblock at /admin/files/** for 192.0.2.0/24\nunblock [SCAN-BACKUP] at /downloads/**\n"]);
         try {
             $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
@@ -402,7 +402,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF5.5 IDs: [SITE-10] before a rule names it everywhere; the comment after it describes it' => function (): void {
+    'RSF05-05 IDs: [SITE-10] before a rule names it everywhere; the comment after it describes it' => function (): void {
         $dir = ruleDir(['site.rules' => "ids SITE\n\n[SITE-10] restrict /admin/** to 192.0.2.0/24   # the admin area: office only\n[SITE-ADMIN-FILES] unblock [SCAN-HIDDEN] at /admin/files/** for 192.0.2.0/24\n block /x/**   # no ID: file and line\n[SITE-20] limit requests 5/min\n"]);
         try {
             $s = Settings::load("$dir/site.rules", "$dir/cache");
@@ -426,7 +426,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF5.5 IDs: the namespace of a file, required IDs, no duplicates, and the errors' => function (): void {
+    'RSF05-05 IDs: the namespace of a file, required IDs, no duplicates, and the errors' => function (): void {
         same('SHOP-1', rulesFrom("ids SHOP\n[SHOP-1] block /x\nblock /y\n")->origin('blockedPaths', '#^/x$#'), 'IDs optional by default');
         truthy(rulesFrom("ids SHOP required\nset debug-header on\n[SHOP-1] block /x\n") !== null, 'set and include need no ID');
         rulesFail(['site.rules' => "ids SHOP required\n[SHOP-1] block /x\nblock /y\n"], 'site.rules:3', 'every rule in this file needs an ID');
@@ -445,7 +445,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF2.2 the built-in rules: shipped as rule files, the same as the PHP defaults' => function (): void {
+    'RSF02-02 the built-in rules: shipped as rule files, the same as the PHP defaults' => function (): void {
         $mirror = \CjwNetwork\RequestShield\Config::builtIns();
         $defaults = rulesFrom('');
         same(\CjwNetwork\RequestShield\Config::scannerPaths(), $defaults->blockedPaths, 'rules/scanners.rules = Config::scannerPaths()');
@@ -463,7 +463,7 @@ return [
         same(4, count(rulesFrom("unblock [SCAN-CGI]\n")->blockedPaths), 'one taken back by its ID');
         same('SCAN-BACKUP', \CjwNetwork\RequestShield\Config::setName(\CjwNetwork\RequestShield\Config::scannerPaths()[1]), 'PHP array settings: the ID too');
     },
-    'RSF5.1 versions: one per file, named by its namespace; shown by check' => function (): void {
+    'RSF05-01 versions: one per file, named by its namespace; shown by check' => function (): void {
         $dir = ruleDir(['site.rules' => "ids SITE\nversion 2026-09-29.2\ninclude ext/*.rules\n", 'ext/shop.rules' => "version 1.4.0\nblock /x\n"]);
         try {
             $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
@@ -480,7 +480,7 @@ return [
         rulesFail(['site.rules' => "version two words\n"], 'site.rules:1', 'version <version>');
         rulesFail(['site.rules' => "[X-1] version 1\n"], 'site.rules:1', 'version <version>');
     },
-    'RSF5.1 revisions: [ID@n] defines and pins; a changed rule is a warning, and still applies' => function (): void {
+    'RSF05-01 revisions: [ID@n] defines and pins; a changed rule is a warning, and still applies' => function (): void {
         same('1', rulesFrom('')->origin('rev', 'SCAN-BACKUP'), 'the built-ins have revisions');
         same([], rulesFrom("unblock [SCAN-BACKUP@1] at /downloads/**\n")->origins['warnings'] ?? [], 'the reviewed revision: no warning');
         same([], rulesFrom("unblock [SCAN-BACKUP] at /downloads/**\n")->origins['warnings'] ?? [], 'no revision named: no warning');
@@ -520,7 +520,7 @@ return [
         rulesFail(['site.rules' => "[SITE-1@0] block /x\n"], 'site.rules:1', 'is not an ID');
         rulesFail(['site.rules' => "unblock [SCAN-BACKUP@x]\n"], 'site.rules:1', 'is not an ID');
     },
-    'RSF5.1 replace: a rule swapped in one line, keeping its ID -- and its count in the log' => function (): void {
+    'RSF05-01 replace: a rule swapped in one line, keeping its ID -- and its count in the log' => function (): void {
         $dir = ruleDir(['site.rules' => "ids SITE\nreplace [SCAN-BACKUP@1] block *.sql *.sql.gz *.bak   # backups, but not archives: this site offers .zip downloads\n"
             . "[SITE-PACE] limit requests 5/min\nreplace [SITE-PACE] limit requests 50/min challenge-at 25\n[SITE-ADM] restrict /admin/** to 192.0.2.1\nreplace [SITE-ADM] restrict /admin/** to 192.0.2.0/24\n"]);
         try {
@@ -547,7 +547,7 @@ return [
         rulesFail(['site.rules' => "replace [SCAN-CGI] set debug-header on\n"], 'site.rules:1', 'replace takes a rule');
         rulesFail(['site.rules' => "replace [SCAN-CGI] blok /x\n"], 'site.rules:1', 'unknown rule "blok"');
     },
-    'RSF2.6 content rules: block query, header <Name>, headers, anywhere -- regular expressions always' => function (): void {
+    'RSF02-06 content rules: block query, header <Name>, headers, anywhere -- regular expressions always' => function (): void {
         $s = rulesFrom('block query \bunion\s+select\b' . "\n"
             . 'block header User-Agent \b(sqlmap|nikto)\b' . "\n"
             . 'block headers \$\{jndi:' . "\n"
@@ -580,7 +580,7 @@ return [
         rulesFail(['site.rules' => "block query @scanners\n"], 'site.rules:1', 'expressions, not references');
         rulesFail(['site.rules' => "block query [X-1]\n"], 'site.rules:1', 'expressions, not references');
     },
-    'RSF2.6 content rules: unblock takes one back; at some paths, for some addresses; replace keeps the ID' => function (): void {
+    'RSF02-06 content rules: unblock takes one back; at some paths, for some addresses; replace keeps the ID' => function (): void {
         same('allow', decideFor(rulesFrom("block query sqlmap\nunblock regex sqlmap\n"), '/?a=sqlmap'), 'the expression as written');
         same('allow', decideFor(rulesFrom("ids X required\n[X-1] block query sqlmap\n[X-2] unblock [X-1]\n"), '/?a=sqlmap'), 'by its ID');
         // A glob is another pattern, not the expression.
@@ -614,7 +614,7 @@ return [
             truthy(strpos($e->getMessage(), 'contentRules') !== false, $e->getMessage());
         }
     },
-    'RSF5.1 match blocks: the same settings as the rules written out' => function (): void {
+    'RSF05-01 match blocks: the same settings as the rules written out' => function (): void {
         $blocks = <<<'RULES'
             ids SITE
             match /admin/** {
@@ -662,7 +662,7 @@ return [
         same('challenge always', decideFor($s, '/shop/checkout/pay'));
         same('reject blocked path', decideFor($s, '/old/page'));
     },
-    'RSF5.1 match blocks: what does not go, with file and line' => function (): void {
+    'RSF05-01 match blocks: what does not go, with file and line' => function (): void {
         rulesFail(['site.rules' => "match /a/** {\n  restrict /b to 192.0.2.1\n}\n"], 'site.rules:2', 'inside match: restrict to <addresses>');
         rulesFail(['site.rules' => "match /a/** {\n  challenge /b\n}\n"], 'site.rules:2', 'challenge takes no paths');
         rulesFail(['site.rules' => "match /a/** {\n  allow POST /b\n}\n"], 'site.rules:2', 'inside match: allow <METHODS>');
@@ -681,11 +681,11 @@ return [
         rulesFail(['site.rules' => "match regex ^/(a {\n}\n"], 'site.rules:1', 'not a valid regular expression');
         rulesFail(['site.rules' => "include x.rules\n", 'x.rules' => "match /a/** {\n"], 'x.rules:1', 'match without its }');
     },
-    'RSF5.1 match blocks: replace inside a block keeps the area' => function (): void {
+    'RSF05-01 match blocks: replace inside a block keeps the area' => function (): void {
         $s = rulesFrom("ids SITE\nmatch /admin/** {\n  [SITE-ADM] restrict to 192.0.2.1\n}\nmatch /admin/** {\n  replace [SITE-ADM] restrict to 192.0.2.0/24\n}\n");
         same([['paths' => ['#^/admin(?:/.*)?$#i'], 'ips' => ['192.0.2.0/24']]], $s->restricted);
     },
-    'RSF5.1 on-exceeded and api-path in rule files' => function (): void {
+    'RSF05-01 on-exceeded and api-path in rule files' => function (): void {
         $s = rulesFrom("limit posts 20/min on-exceeded challenge\nlimit calls 5/min on-demand on-exceeded throttle\napi-path /api/**\nmatch /v2/** {\n  api-path\n}\n");
         same([true, false], [$s->budgets['posts']->earnBack, $s->budgets['calls']->earnBack]);
         same(false, $s->budgets['requests']->earnBack, 'the default: a pause');
@@ -698,7 +698,7 @@ return [
             truthy(strpos($e->getMessage(), 'budgets.x.onExceeded') !== false, $e->getMessage());
         }
     },
-    'RSF2.3 a POST refused (405) is named by the first allow POST line -- not by an area\'s own, written later' => function (): void {
+    'RSF02-03 a POST refused (405) is named by the first allow POST line -- not by an area\'s own, written later' => function (): void {
         $dir = ruleDir(['site.rules' => "[SITE-POST] allow POST /contact /search\nmatch /admin/** {\n  [SITE-ADMIN-POST] allow POST\n}\n"]);
         try {
             $s = Settings::load("$dir/site.rules", "$dir/cache");
@@ -711,7 +711,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF3.1 limit inside a match block (or limit … at <paths>): only requests in the area count -- everywhere else the budget is not touched' => function (): void {
+    'RSF03-01 limit inside a match block (or limit … at <paths>): only requests in the area count -- everywhere else the budget is not touched' => function (): void {
         $dir = ruleDir(['site.rules' => "exempt none\nno-limit requests\nmatch /search/** {\n  [S-SEARCH] limit searches 3/min   # searches\n}\n[S-API] limit api 2/min challenge-at 1 at /api/** /v2/**\n"]);
         try {
             $s = Settings::load("$dir/site.rules", "$dir/cache");
@@ -734,7 +734,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF3.1 an area\'s budget: in a site block, on demand, watched; one name, one budget' => function (): void {
+    'RSF03-01 an area\'s budget: in a site block, on demand, watched; one name, one budget' => function (): void {
         $dir = ruleDir(['site.rules' => "exempt none\nsite shop.example {\n  match /cart/** {\n    limit carts 2/min on-demand\n  }\n}\n",
             'watch.rules' => "exempt none\nmatch /search/** {\n  monitor limit searches 1/min\n}\n"]);
         try {

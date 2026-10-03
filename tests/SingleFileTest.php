@@ -53,7 +53,7 @@ function singlePhp(string $code, string $flags = ''): array
 }
 
 return [
-    'RSF5.7 the suite runs on what REQUEST_SHIELD_ENTRY names: the built file, or else the source tree (0031 E.3)' => function (): void {
+    'RSF05-07 the suite runs on what REQUEST_SHIELD_ENTRY names: the built file, or else the source tree (0031 E.3)' => function (): void {
         $from = (string) (new ReflectionClass(Shield::class))->getFileName();
         same(rsSingle() ?? realpath(dirname(__DIR__) . '/src/Shield.php'), $from, 'where Shield comes from in this run');
         if (rsSingle() !== null) {
@@ -62,7 +62,7 @@ return [
             same(['entry', 'cli'], [basename(rsEntry(), '.php') === 'rs-test-entry' ? 'entry' : rsEntry(), basename(rsCli(), '.php') === 'rs-test-cli' ? 'cli' : rsCli()], 'servers and the command line use it too');
         }
     },
-    'RSF5.7 the build: one file that php -l accepts, one declare, nothing read relative to the sources, the version and the build named, byte-identical twice' => function (): void {
+    'RSF05-07 the build: one file that php -l accepts, one declare, nothing read relative to the sources, the version and the build named, byte-identical twice' => function (): void {
         $file = singleFile();
         exec(escapeshellarg(PHP_BINARY) . ' -l ' . escapeshellarg($file) . ' 2>&1', $out, $code);
         same(0, $code, implode(' | ', $out));
@@ -76,7 +76,7 @@ return [
         same(sha1($text), sha1((string) file_get_contents($again)), 'the same sources, the same bytes');
         unlink($again);
     },
-    'RSF5.7 loaded twice, with and without OPcache; the statistics after it, and before it without harm; every class of src/ is there' => function (): void {
+    'RSF05-07 loaded twice, with and without OPcache; the statistics after it, and before it without harm; every class of src/ is there' => function (): void {
         $file = singleFile();
         $stats = singleFile('stats');
         $classes = [];
@@ -96,7 +96,7 @@ return [
             truthy(strpos(implode("\n", $out), 'needs request-shield.php loaded first') !== false, 'the statistics before the core: one line in the error log, nothing declared');
         }
     },
-    'RSF5.7 the file is the command line: version names the build, check comes to what bin/request-shield comes to' => function (): void {
+    'RSF05-07 the file is the command line: version names the build, check comes to what bin/request-shield comes to' => function (): void {
         $file = singleFile();
         $dir = dirname($file) . '/cli';
         @mkdir($dir);
@@ -111,7 +111,7 @@ return [
         };
         same($check(dirname(__DIR__) . '/bin/request-shield'), $check($file), 'the same verdict (the warnings differ by the statistics\' pages, which the mini file has not)');
     },
-    'RSF5.7 a request through the file (auto_prepend_file): the rules found next to it, a scanner refused, a page let through' => function (): void {
+    'RSF05-07 a request through the file (auto_prepend_file): the rules found next to it, a scanner refused, a page let through' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -144,7 +144,7 @@ return [
             proc_close($proc);
         }
     },
-    'RSF5.7 the visitors\' scripts lose indentation and comment lines only, and stay JavaScript' => function (): void {
+    'RSF05-07 the visitors\' scripts lose indentation and comment lines only, and stay JavaScript' => function (): void {
         $file = singleFile();
         $read = 'require ' . var_export($file, true) . '; echo json_encode([\\CjwNetwork\\RequestShield\\Challenge\\ChallengePage::SCRIPT, (new ReflectionClassConstant(\\CjwNetwork\\RequestShield\\Challenge\\Widget::class, "BOX"))->getValue()]);';
         [$out] = singlePhp($read);
@@ -171,7 +171,7 @@ return [
             skip('node not installed: the scripts are compared line by line, not parsed');
         }
     },
-    'RSF5.7 an edition that cannot be built yet says why; an unknown one is refused' => function (): void {
+    'RSF05-07 an edition that cannot be built yet says why; an unknown one is refused' => function (): void {
         [$out, $code] = singleBuild('--edition=waf --out=/nonexistent/x.php');
         truthy($code === 1 && strpos(implode("\n", $out), 'G.3') !== false, implode(' | ', $out));
         [$out, $code] = singleBuild('--edition=api --out=/nonexistent/x.php');

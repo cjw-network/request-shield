@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Implemented** 2026-09-30, except the dashboard tab (see [statistics](../features/statistics.md)) |
+| Status | **Implemented** 2026-09-30, except the dashboard tab (see [statistics](../features/RSF06-03-statistics.md)) |
 | Proposed | 2026-09-30 |
 | Affects | known crawlers ([0011](0011-known-crawlers.md)), the counters of [0012](0012-dashboard.md), the log |
 

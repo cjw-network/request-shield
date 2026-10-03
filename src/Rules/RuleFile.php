@@ -17,7 +17,7 @@ use CjwNetwork\RequestShield\Texts;
 
 /**
  * Rule files: the settings written one rule per line, for people rather than
- * PHP (docs/features/rule-files.md).
+ * PHP (docs/features/RSF05-01-rule-files.md).
  *
  *   host        www.example.org example.org
  *   block       /wp-admin/**  *.sql

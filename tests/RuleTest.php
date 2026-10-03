@@ -20,22 +20,22 @@ function decide(array $config, Request $r, float $now = 1000.0): Decision
 }
 
 return [
-    'RSF2.1 a normal page passes and is cacheable' => function (): void {
+    'RSF02-01 a normal page passes and is cacheable' => function (): void {
         $d = decide([], req('/news/article'));
         same(Decision::ALLOW, $d->action);
         truthy($d->cacheable(), 'cacheable');
     },
-    'RSF2.1 methods' => function (): void {
+    'RSF02-01 methods' => function (): void {
         same(405, decide([], req('/', 'TRACE'))->status);
         same(405, decide([], req('/', 'PUT'))->status);
         same(Decision::ALLOW_UNCACHED, decide([], req('/', 'POST'))->action, 'POST passes, never cached');
     },
-    'RSF2.1 sizes' => function (): void {
+    'RSF02-01 sizes' => function (): void {
         same(414, decide([], req('/' . str_repeat('a', 5000)))->status);
         same(400, decide([], req('/?' . implode('&', array_map(fn ($i) => "p$i=1", range(1, 80)))))->status);
         same(431, decide([], req('/', 'GET', ['HTTP_COOKIE' => str_repeat('x', 20000)]))->status);
     },
-    'RSF2.1 path sanity' => function (): void {
+    'RSF02-01 path sanity' => function (): void {
         foreach (['/a/../etc/passwd', '/a/%2e%2e/b', '/a/%252e%252e/b', '/a%00b', '/a%zz', '/a%c3%28', '/a\\..\\b'] as $bad) {
             same(Decision::REJECT, decide([], req($bad))->action, $bad);
         }
@@ -43,7 +43,7 @@ return [
             same(Decision::ALLOW, decide([], req($good))->action, $good);
         }
     },
-    'RSF2.1 hosts' => function (): void {
+    'RSF02-01 hosts' => function (): void {
         $c = ['hosts' => ['www.example.org', '*.cdn.example.org']];
         same(Decision::ALLOW, decide($c, req('/'))->action);
         same(Decision::ALLOW, decide($c, req('/', 'GET', ['HTTP_HOST' => 'img.cdn.example.org:443']))->action);
@@ -51,7 +51,7 @@ return [
         same(404, decide($c, req('/', 'GET', ['HTTP_HOST' => 'cdn.example.org']))->status, 'the bare suffix is not a subdomain');
         same(404, decide($c, req('/', 'GET', ['HTTP_HOST' => 'x.cdn.example.org.evil']))->status);
     },
-    'RSF2.2 scanner paths' => function (): void {
+    'RSF02-02 scanner paths' => function (): void {
         foreach (['/.env', '/.git/config', '/backup.sql', '/site.tar.gz', '/phpinfo.php', '/vendor/phpunit/x', '/phpmyadmin/'] as $p) {
             same(404, decide([], req($p))->status, $p);
         }
@@ -59,20 +59,20 @@ return [
         same(Decision::ALLOW, decide([], req('/wp-login.php'))->action, 'WordPress paths only when asked');
         same(404, decide(['blockedPaths' => array_merge(Config::scannerPaths(), Config::wordpressPaths())], req('/wp-login.php'))->status);
     },
-    'RSF4.1 cacheable definition: query parameters and paths' => function (): void {
+    'RSF04-01 cacheable definition: query parameters and paths' => function (): void {
         $c = ['cacheable' => ['query' => ['page'], 'paths' => ['#^/(news|about)(/|$)#']]];
         same(Decision::ALLOW, decide($c, req('/news/x?page=2'))->action);
         same('query parameter', decide($c, req('/news/x?utm_source=1'))->reason);
         same(Decision::ALLOW_UNCACHED, decide($c, req('/random-' . mt_rand()))->action, 'unknown path: answered, not cached');
     },
-    'RSF4.1 cacheable definition: an adapter index decides first' => function (): void {
+    'RSF04-01 cacheable definition: an adapter index decides first' => function (): void {
         $known = fn (Request $r) => $r->path === '/known' ? true : ($r->path === '/gone' ? false : null);
         $shield = new Shield(['cacheable' => ['paths' => ['#^/fallback$#']]], new MemoryStore(), $known);
         same(Decision::ALLOW, $shield->decide(req('/known'), 1.0)->action);
         same('unknown url', $shield->decide(req('/gone'), 1.0)->reason);
         same(Decision::ALLOW, $shield->decide(req('/fallback'), 1.0)->action, 'no opinion: the path patterns');
     },
-    'RSF3.1 budget: challenge, then 429, per client; exempt addresses never' => function (): void {
+    'RSF03-01 budget: challenge, then 429, per client; exempt addresses never' => function (): void {
         $shield = new Shield(['budgets' => ['requests' => ['limit' => 10, 'window' => 60, 'challengeAt' => 5]]], new MemoryStore());
         $now = 60.0 * 100;
         $seen = [];
@@ -91,7 +91,7 @@ return [
         }
         same(Decision::ALLOW, $d->action, 'exempt');
     },
-    'RSF3.1 budget: a rotating IPv6 client inside one /64 shares one budget' => function (): void {
+    'RSF03-01 budget: a rotating IPv6 client inside one /64 shares one budget' => function (): void {
         $shield = new Shield(['budgets' => ['requests' => ['limit' => 5, 'window' => 60]]], new MemoryStore());
         $d = null;
         for ($i = 1; $i <= 6; $i++) {
@@ -99,7 +99,7 @@ return [
         }
         same(Decision::THROTTLE, $d->action);
     },
-    'RSF3.1 consume(): budgets counted only on demand (cache misses)' => function (): void {
+    'RSF03-01 consume(): budgets counted only on demand (cache misses)' => function (): void {
         $shield = new Shield(['budgets' => ['requests' => ['limit' => 0], 'misses' => ['limit' => 3, 'window' => 60, 'onDemand' => true]]], new MemoryStore());
         $r = req('/');
         for ($i = 0; $i < 10; $i++) {
@@ -112,13 +112,13 @@ return [
         same([Decision::ALLOW, Decision::ALLOW, Decision::ALLOW, Decision::THROTTLE], $seen);
         same(Decision::ALLOW, $shield->consume('no-such-budget', $r, 60.0)->action);
     },
-    'RSF2.1 a rejection stops the checks: nothing is counted for it' => function (): void {
+    'RSF02-01 a rejection stops the checks: nothing is counted for it' => function (): void {
         $store = new MemoryStore();
         $shield = new Shield(['budgets' => ['requests' => ['limit' => 1, 'window' => 60]]], $store);
         $shield->decide(req('/.env'), 60.0);
         same(0.0, $store->peek('requests:203.0.113.7', 60, 60.0));
     },
-    'RSF2.6 content rules: attack patterns in the query and the headers, 403 "attack"' => function (): void {
+    'RSF02-06 content rules: attack patterns in the query and the headers, 403 "attack"' => function (): void {
         $c = ['contentRules' => [
             ['target' => 'query', 'patterns' => ['#\bunion\s+select\b#i']],
             ['target' => 'header:user-agent', 'patterns' => ['#\bsqlmap\b#i']],
@@ -145,7 +145,7 @@ return [
         $r = req('/?q=union bank');
         same(null, $shield->explain($shield->decide($r, 1000.0), $r));
     },
-    'RSF2.6 content rules: an exception opens a pattern at some paths, for some addresses' => function (): void {
+    'RSF02-06 content rules: an exception opens a pattern at some paths, for some addresses' => function (): void {
         $c = ['contentRules' => [['target' => 'query', 'patterns' => ['#\bunion\s+select\b#i', '#\bhavij\b#i']]],
             'blockExceptions' => [['paths' => ['#^/search#'], 'patterns' => ['#\bunion\s+select\b#i'], 'ips' => ['192.0.2.0/24']]]];
         same(Decision::ALLOW, decide($c, req('/search?id=1 union select 2', 'GET', ['REMOTE_ADDR' => '192.0.2.5']))->action, 'open there, for them');

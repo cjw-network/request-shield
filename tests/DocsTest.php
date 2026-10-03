@@ -34,7 +34,8 @@ return [
         $index = (string) file_get_contents(dirname(__DIR__) . '/docs/README.md');
         foreach (glob(dirname(__DIR__) . '/docs/features/*.md') ?: [] as $f) {
             $h1 = (string) strtok((string) file_get_contents($f), "\n");
-            truthy(preg_match('/^# (RSF\d+\.\d+) /', $h1, $m) === 1, basename($f) . ": the title begins with its id: $h1");
+            truthy(preg_match('/^# (RSF(\d{2})-(\d{2})) /', $h1, $m) === 1, basename($f) . ": the title begins with its id, RSF<gg>-<nn>: $h1");
+            truthy(strncmp(basename($f), "RSF{$m[2]}-{$m[3]}-", 9) === 0, basename($f) . ": the file name begins with the id (RSF{$m[2]}-{$m[3]}-…)");
             truthy(preg_match('/\| ' . preg_quote($m[1], '/') . ' \|[^\n]*\(features\/' . preg_quote(basename($f), '/') . '\)/', $index) === 1, basename($f) . ": docs/README.md lists it as {$m[1]}");
         }
         if (!function_exists('exec')) {
@@ -43,14 +44,19 @@ return [
         // Exactly the tests whose names begin with the id: counted in the files themselves.
         $named = 0;
         foreach (glob(__DIR__ . '/*Test.php') ?: [] as $f) {
-            $named += preg_match_all("/^ *'RSF2\\.4 /m", (string) file_get_contents($f));
+            $named += preg_match_all("/^ *'RSF02-04 /m", (string) file_get_contents($f));
         }
-        exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/run.php') . ' RSF2.4 2>&1', $out, $code);
+        exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/run.php') . ' RSF02-04 2>&1', $out, $code);
         $text = implode("\n", $out);
-        truthy($named >= 3, "tests named RSF2.4: $named");
-        truthy($code === 0 && preg_match('/PASS - (\d+) passed, 0 failed, (\d+) skipped/', $text, $n) === 1 && (int) $n[1] + (int) $n[2] === $named, "run.php RSF2.4 runs exactly those $named: " . $text);
+        truthy($named >= 3, "tests named RSF02-04: $named");
+        truthy($code === 0 && preg_match('/PASS - (\d+) passed, 0 failed, (\d+) skipped/', $text, $n) === 1 && (int) $n[1] + (int) $n[2] === $named, "run.php RSF02-04 runs exactly those $named: " . $text);
         exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/run.php') . ' RSF26 2>&1', $none, $code);
         same([1, true], [$code, strpos(implode("\n", $none), 'no test has the id RSF26') !== false], 'an id without tests fails, never passes in silence');
+        foreach (['RSF02.04', 'RSF2.4', 'RSF2-4'] as $wrong) {
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/run.php') . ' ' . $wrong . ' 2>&1', $old, $code);
+            same([2, true], [$code, strpos(implode("\n", $old), 'is written RSF02-06') !== false], "$wrong is refused with the right form");
+            unset($old);
+        }
     },
     'proposals: one number each, none twice, every one linked from docs/README.md' => function (): void {
         $dir = docsRoot() . '/docs/proposals';

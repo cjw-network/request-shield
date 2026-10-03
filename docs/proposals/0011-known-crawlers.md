@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Implemented** 2026-09-30 (see [known crawlers](../features/known-crawlers.md)) |
+| Status | **Implemented** 2026-09-30 (see [known crawlers](../features/RSF01-04-known-crawlers.md)) |
 | Proposed | 2026-09-30 |
 | Affects | the browser check, budgets, rule files, the rules page |
 

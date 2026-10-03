@@ -8,12 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 - **Feature ids** (0031 step F.1): every feature page's title begins with
-  its id `RSF<group>.<n>` (`# RSF2.3 Access rules …`), `docs/README.md` lists
+  its id `RSF<gg>-<nn>` (`# RSF02-03 Access rules …`) and its file is named
+  by it (`docs/features/RSF02-03-access-rules.md`), `docs/README.md` lists
   the features as a table by id -- the five without a page of their own yet
-  (RSF2.2, RSF2.6, RSF4.2, RSF5.6, RSF6.5) named where they are documented
+  (RSF02-02, RSF02-06, RSF04-02, RSF05-06, RSF06-05) named where they are documented
   or planned -- and every feature's tests begin with its id.
-  `php tests/run.php RSF2.6` runs exactly that feature's tests, `RSF2` its
-  group. RSF5.7 is new: the single file and its releases.
+  `php tests/run.php RSF02-06` runs exactly that feature's tests, `RSF02` its
+  group. RSF05-07 is new: the single file and its releases.
 - **The guides for agents** (0031 step E.7): `docs/llm/install.md` (find
   the places, download and verify, `init`, the shield's own directory for the
   PHP user, switch it on and see that it is on, see it work, report),
@@ -64,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   Deterministic; every declaration is conditional, so a second include (with
   or without OPcache) does nothing. `tests/SingleFileTest.php` builds both and
   puts a request through the file; `bench/single-file.php` compares it with
-  the source tree. See [the single file](docs/features/single-file.md).
+  the source tree. See [the single file](docs/features/RSF05-07-single-file.md).
 - **`Rules\Shipped`, the one reader of `rules/`** (0031 step E.1): the
   shipped rule sets, the feed catalog, the crawlers' address lists and the
   ready crawlers are read through one class, so the single-file build (E.2)
@@ -76,7 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (`RuleFile::crawlerListFiles()`, `CrawlerLists::read()`/`update()`).
   `RuleFile::shippedReady()` is what `rules/crawlers.php` holds, as an array.
 - **The plugins guide rewritten around extensions** (0031 step D.3):
-  `docs/features/plugins.md` explains the two interfaces (`Extension` at
+  `docs/features/RSF06-04-plugins.md` explains the two interfaces (`Extension` at
   compile time, `Plugin` per request), the capabilities, `plugin … from`, the
   served pages and the commands in one place; ADR 0008 (extension points
   resolved at compile time) and ADR 0009 (plugins tighten, never loosen) are
@@ -130,14 +131,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   noted once a minute). Headers and cookies stay the shield's; asked only when
   the shield answers itself, never for a passing request. Compiled settings
   format 47. With this, phase B of 0031 (decoupling) is complete
-  ([docs](docs/features/plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)).
+  ([docs](docs/features/RSF06-04-plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)).
 - **The Sink capability** (0031 step B.9): `Log::note()` hands its record --
   every request the shield did something about -- to the live view and to
   every plugin with `Sink` (`$s->hooks['sink']`, recorded when the rules are
   compiled); a sink that throws is left out for that request and noted in
   PHP's error log once a minute, the log and the other sinks still get it. The
   live view is the first sink (`Live` implements it). Compiled settings format
-  46 ([docs](docs/features/plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)).
+  46 ([docs](docs/features/RSF06-04-plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)).
 - **Capabilities on plugins, the first: RuleCounts** (0031 step B.8): the
   compiler records which plugin class implements which capability into the
   compiled settings (`hooks`, by `instanceof` when the rules are compiled); the
@@ -146,7 +147,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   plugin any more. Rules & setup is the core's page in the core's frame with
   its own styling; the statistics page has no `rules` view (its tab leads to
   the core's page). Compiled settings format 45
-  ([docs](docs/features/plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)).
+  ([docs](docs/features/RSF06-04-plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)).
 - **Who may open the dashboard is the core's, who sees what is the pages'**
   (0031 step B.7): `dashboard-access "<principal>"|* sha256:<hash> [until
   <day>]` and `set dashboard-session` replace `stats-access` and
@@ -156,7 +157,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   the statistics extension's word now (`ext.stats.groups`), a principal
   without a group sees no statistics and `check` says so. The CLI command is
   `access-token` (was `token`). Compiled settings format 44
-  ([docs](docs/features/statistics.md#who-sees-what-tokens-a-login-signed-links)).
+  ([docs](docs/features/RSF06-03-statistics.md#who-sees-what-tokens-a-login-signed-links)).
 - **The shield serves the dashboard's pages itself** (0031 step B.6): a
   request for a route below `dashboard-path` (`/rs/waf/live`, `/rs/stats/…`,
   an extension's own) is answered before the application -- behind
@@ -170,7 +171,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   wires nothing any more; a customer asking an administrator's page gets 403
   instead of a reduced view. Every offered extension now compiles, with an
   empty slot when the rules said nothing of it, so its defaults, routes and
-  plugins apply ([docs](docs/features/plugins.md#extensions-words-and-settings-of-their-own)).
+  plugins apply ([docs](docs/features/RSF06-04-plugins.md#extensions-words-and-settings-of-their-own)).
 - **`Extension::plugins()`**: an extension names the `Plugin` classes to run per
   request given its compiled slot; the compiler appends them to the settings'
   plugins, so `Shield` no longer adds `StatsPlugin` itself (0031 B.4) and the
@@ -190,7 +191,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   bootstrap names (`REQUEST_SHIELD_EXTENSIONS`), on the registry's first
   lookup; a request pays nothing. `tests/support/RsTestExtension.php` is the
   smallest one (`set fail-at <stage>` for the fail-safe tests)
-  ([docs](docs/features/plugins.md#extensions-words-and-settings-of-their-own)).
+  ([docs](docs/features/RSF06-04-plugins.md#extensions-words-and-settings-of-their-own)).
 - **Settings carry the extensions' slots** (0031 step B.1): `ext` (extension
   id => its checked settings), `hooks` (capability => the plugins that have
   it) and `routes` (the pages under `dashboard-path`) are the last constructor
@@ -204,7 +205,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   gzipped (today 4065), the headers the shield adds to the check page and to
   the answer that hands out the pass, and no header or cookie of the shield
   on a passing request unless `debug-header` is on; `bench/overhead.php`
-  prints the sizes ([docs](docs/features/browser-challenge.md#cost)).
+  prints the sizes ([docs](docs/features/RSF03-02-browser-challenge.md#cost)).
 - **Fail safe** (0031 step A.2, ADR 0007): an exception anywhere inside
   `Shield::protect()`, `protectFile()`, `requirePass()`, `consume()`,
   `widget()` or the check the application asks for lets the request through
@@ -219,11 +220,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   changes); at a first install the shield runs switched off and says so; a
   compiled settings file cut short is deleted and compiled anew.
   `Settings::load()` for tools still throws; `check` is where a mistake is an
-  error ([docs](docs/features/settings.md#when-the-rules-cannot-be-compiled)).
+  error ([docs](docs/features/RSF05-02-settings.md#when-the-rules-cannot-be-compiled)).
 - **The tier an installation runs at** (0031 step A3.1, ADR 0013): `check`
   and `version site.rules` print S0 (no writable directory, no APCu: the
   stateless rules only, settings compiled on every request), S1 (files) or
-  S2 (APCu), and what is not active in it ([docs](docs/features/settings.md#what-this-installation-can-do-the-tiers)).
+  S2 (APCu), and what is not active in it ([docs](docs/features/RSF05-02-settings.md#what-this-installation-can-do-the-tiers)).
 
 ### Changed
 - **The command line is the class `Cli`** (0031 step E.2, first part):
@@ -271,7 +272,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `Rules\Vocabulary` loads and offers it when the rules are compiled, if
   `plugins/stats` is there -- a passing request loads no class for it. Compiled settings format 42: every installation
   compiles once more after the update, nothing to do
-  ([docs](docs/features/statistics.md)).
+  ([docs](docs/features/RSF06-03-statistics.md)).
 - **Shorter cookies** (0031 step A2.2, ADR 0014): the cookies are `rsp` (the
   pass; was `rs_pass`), `rss` (the solution; was `rs_solution`) and `rsd`
   (the statistics session; was `rs_stats`), and the pass cookie is
@@ -335,7 +336,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   visitors page (stopped links to the live view), `bin/request-shield stats`,
   the JSON. `backend <paths>` marks the editors' area: its forms count as one
   entry per area. Never what was typed
-  ([docs](docs/features/statistics.md#forms-sent-from-where-how-they-ended)).
+  ([docs](docs/features/RSF06-03-statistics.md#forms-sent-from-where-how-they-ended)).
 - **Forms only from the website itself** (proposal 0028, phase 1):
   `post-origin same [missing check|allow|refuse] [except <paths>]`. A POST,
   PUT, PATCH or DELETE must come from one of the website's own names (the
@@ -345,7 +346,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   is sent again). Never for `except` paths (payment callbacks, single
   sign-on), `api-path` and addresses let in; `monitor post-origin` to try it.
   In the trace ("Where forms come from"), the rules page, the log and the live
-  view ([docs](docs/features/forms-from-the-website.md)). The Exponential rules
+  view ([docs](docs/features/RSF02-04-forms-from-the-website.md)). The Exponential rules
   use it (`EXP-ORIGIN`). Examples take `header <Name>:<value>`
   (`expect POST /contact header Origin:https://evil.example 403`).
 - **Examples next to the rules** (proposal 0029, phase 1): `expect <METHOD>
@@ -357,14 +358,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   loads. The built-in `scanners`, `wordpress` and `tracking` rules and the
   Exponential rules carry examples (72 and 69); an instruction for language
   models to propose them: `docs/llm/write-rule-examples.md`
-  ([docs](docs/features/rule-examples.md)).
+  ([docs](docs/features/RSF05-04-rule-examples.md)).
 - **A budget for one area** (proposal 0008, second step): `limit` inside a
   `match` block, or `limit … at <paths>`, counts only the requests to that
   area (a search: 10 a minute, while reading pages never uses it up); also
   on demand, in site blocks, watched with `monitor`. An area's budget needs a
   name of its own, so the site-wide pace is never replaced by accident. The
   trace says "not counted at this address" elsewhere
-  ([docs](docs/features/budgets.md#a-budget-for-one-area)).
+  ([docs](docs/features/RSF03-01-budgets.md#a-budget-for-one-area)).
 - **Rules for an Exponential site** (`examples/exponential/`): the frontend
   (`/content/view/…` and admin modules refused, internal files, downloads of
   uploaded archives, view parameters as numbers, a POST only where Exponential
@@ -384,7 +385,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   administrator: everything, no form; `?rs-login=1` shows it anyway). The plugin
   guide: what the statistics plugin owns (its words, its address, its pages, who
   may read them) and what a plugin with pages should do the same way
-  ([docs](docs/features/plugins.md#the-statistics-plugin-a-plugin-with-pages-of-its-own)).
+  ([docs](docs/features/RSF06-04-plugins.md#the-statistics-plugin-a-plugin-with-pages-of-its-own)).
 - **Access to the statistics per group** (proposal 0023, phase 4):
   `stats-access "Customer A"|* sha256:<hash> [until …]` (only the token's hash;
   `bin/request-shield token` prints a token and the line), `set stats-session`.
@@ -394,7 +395,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   tries counted (10 a minute, then 429) and logged without the token. A
   customer sees only its group — the statistics page enforces it (`who`):
   no Rules & setup, no server overview, no live view or lists, the protection
-  without the rules ([docs](docs/features/statistics.md#who-sees-what-tokens-a-login-signed-links)).
+  without the rules ([docs](docs/features/RSF06-03-statistics.md#who-sees-what-tokens-a-login-signed-links)).
 - `set stats-path`: the statistics plugin's own address (default
   `<dashboard-path>/stats`); the core's pages stay at `<dashboard-path>/waf/`.
 - Several websites read together (all of them, a group): every page, section,
@@ -408,19 +409,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (`/rs/sites`) shows each group with its websites, the rest and the other
   hosts side by side: page views, the change against the period before, people,
   crawlers, bots, stopped, not found, a small curve — sorted by traffic
-  ([docs](docs/features/statistics.md#all-websites-at-a-glance-rssites)).
+  ([docs](docs/features/RSF06-03-statistics.md#all-websites-at-a-glance-rssites)).
 - **`stats-skip <paths>`**: paths that are no pages of the site (a map
   proxy's tiles, an image resizer) are left out of the statistics when they
   pass; refused or checked they are still counted, and every rule applies to
   them as before. Also in match and site blocks
-  ([docs](docs/features/statistics.md#paths-that-are-not-counted-stats-skip)).
+  ([docs](docs/features/RSF06-03-statistics.md#paths-that-are-not-counted-stats-skip)).
 - **Statistics per website** (proposal 0023, phase 2): `set stats-hosts a.de
   www.a.de *.b.de` (or `host`, `sites`) — each named website counted in its
   own directory (`stats/hosts/<name>/`), any other Host as "other hosts" (a
   made-up name gets no statistics of its own). The pages get a website switch
   (all added up · each · other hosts), kept in every link and the JSON;
   `bin/request-shield stats --site=`. 0.15–0.35 µs per request to find the
-  website ([docs](docs/features/statistics.md#statistics-per-website)).
+  website ([docs](docs/features/RSF06-03-statistics.md#statistics-per-website)).
 - The live view links each rule ID to where it is written: its line on the
   rules page, a list entry on the lists page (`LivePage::json(…, ['links' => …])`).
 - **Public blocklists as feeds** (proposal 0025): `feed <name> [<https-url>]
@@ -437,7 +438,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   used. `feeds … export --format=plain|nginx|nftables|ipset [--write=…]`: the
   deny list and the deny feeds as the fewest CIDR blocks, for the level below
   PHP. A `.htaccess` export was measured and not built: 2,000 ranges made a
-  static file 8× slower ([docs](docs/features/blocklist-feeds.md)).
+  static file 8× slower ([docs](docs/features/RSF01-03-blocklist-feeds.md)).
 - **The live view and the lists in the dashboard** (proposal 0026):
   `/rs/live` shows what the shield stops right now (the website, the address,
   the request, what happened, why in words, and where from: a list, a ban, a
@@ -451,7 +452,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   of the command line plus never the viewer's own address; POST with a token
   (HMAC of the secret, address and hour). `set ban-keep file`: bans survive a
   restart of APCu. `Report\LivePage`, `ListsPage`, `LogTail`, `Frame`, `Live`
-  ([docs](docs/features/live-and-lists.md)).
+  ([docs](docs/features/RSF06-02-live-and-lists.md)).
 - **IP lists and automatic bans** (proposal 0013): `deny <addresses> [until
   …]` keeps an address out with 403 before every other check; `exempt … until`
   lets one in for a while — never counted, never checked, still refused for
@@ -464,7 +465,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (`ban-growth`, `ban-max`), never for addresses let in, trusted proxies or
   verified crawlers, one ban for every website; `monitor ban` to watch first.
   The store has `mark()`/`marked()`. ~1 µs per request with APCu
-  ([docs](docs/features/ip-lists.md)). Big lists: the deny entries compile into
+  ([docs](docs/features/RSF01-02-ip-lists.md)). Big lists: the deny entries compile into
   one sorted table (`IpTable`), so loading the settings costs the same with a
   million entries as with none and a lookup 2–3 µs; while one request rebuilds
   the settings, the others keep the last ones (`bench/big-lists.php`).
@@ -486,7 +487,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   Named in a rule file (`plugin <class>`) or the PHP settings (`'plugins'`);
   read only; an error in a plugin is logged and never reaches the visitor;
   `check` warns about one it cannot find. No plugin, no cost. A guide with a
-  tested example: [docs/features/plugins.md](docs/features/plugins.md).
+  tested example: [docs/features/RSF06-04-plugins.md](docs/features/RSF06-04-plugins.md).
 - **The visitors page** ("Visitors & pages", proposal 0022 phase 1): six
   numbers with their change against the period before (page views by people,
   requests by people, crawler visits, bot requests, stopped, not found), one
@@ -507,7 +508,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   scripts, handlers, outside links or styles; at most 16 KB) and inlined. Inline
   SVG and CSS only: the page is 8.7 KB instead of 6.2 KB (4.1 KB instead of
   3.1 KB gzip), built as fast as before (~11 µs)
-  ([docs](docs/features/browser-challenge.md#how-it-looks)).
+  ([docs](docs/features/RSF03-02-browser-challenge.md#how-it-looks)).
 - Known query parameters and their types (proposal 0009): `query <name> <type>
   … [at <paths>]` (types `int`, `number`, `word`, `id`, `list`, `text`, `any`,
   `/regex/`; names with `*`; inside `match` blocks too). The attack patterns
@@ -517,7 +518,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `@attacks`). An empty value is of every type. `rules/tracking.rules`
   (`include @tracking`, IDs `TRACK-…`) declares the marketing tags. The rules
   page, `trace`, `show` and `Shield::explain()` name them
-  ([docs](docs/features/known-parameters.md)).
+  ([docs](docs/features/RSF02-05-known-parameters.md)).
 - The demo declares its parameters, includes `@tracking` and runs `query
   strict`.
 - Modes (proposal 0004): `set mode off | monitor | enforce | strict`.
@@ -531,7 +532,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   rule: logged, not enforced, a shared budget counted once. `challenge <paths>
   max-age 5m` asks for a pass from the last five minutes there. The rules page,
   `show` and `trace` name the mode and the watched rules
-  ([docs](docs/features/modes.md)).
+  ([docs](docs/features/RSF05-03-modes.md)).
 - The demo watches a rule (`/old/api`) and has a checkout with `max-age 20s`.
 
 - Known crawlers (proposal 0011): search engines and AI crawlers that behave
@@ -549,7 +550,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   lists them and fetches current lists into store-dir; `bin/update-crawler-lists`
   refreshes the shipped lists before a release (a weekly workflow reports
   changes); `trace --ua=…`. The rules page lists the crawlers and counts false
-  claims ([docs](docs/features/known-crawlers.md)).
+  claims ([docs](docs/features/RSF01-04-known-crawlers.md)).
 
 - Statistics (proposals 0012, 0014): `set stats on` counts, per hour, what the
   shield did (let through, checked, told to wait, refused, the rule behind it,
@@ -571,7 +572,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (+27 µs with files, one appended line). Days, weeks, months and years:
   old days are summed into month files (kept for good, or `stats-months`);
   `stats --from=… --to=… --by=day|week|month|year --crawler=<ID>`
-  ([docs](docs/features/statistics.md)).
+  ([docs](docs/features/RSF06-03-statistics.md)).
 - The statistics page, `Report\StatsPage::render()`: tiles with the last 48
   hours, stacked bars for who came (people, crawlers, bots) and what the
   shield did, the answers as a ring, a bar per crawler, sitemaps, pages not
@@ -688,11 +689,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   compiled for OPcache and, with APCu, checked for changes every 10 seconds
   without a `stat()` in between (~5.5 µs setup). `${NAME:-default}` for
   environment variables. `bin/request-shield check|show|reload`
-  ([docs](docs/features/rule-files.md), proposal 0003).
+  ([docs](docs/features/RSF05-01-rule-files.md), proposal 0003).
 - Access rules: `restrict <paths> to <addresses>` (403 for everyone else) and
   `allow <METHODS> <paths>` (405 elsewhere), matched against the path as the
   application routes it — `//admin`, `/%61dmin` and case do not get past
-  ([docs](docs/features/access-rules.md)).
+  ([docs](docs/features/RSF02-03-access-rules.md)).
 - Rule IDs: every decision that stops or flags a request names its rule
   (`SITE-10`, `site.rules:12`, `SCAN-BACKUP`, `built-in`) in `X-Request-Shield`,
   `$_SERVER['REQUEST_SHIELD_RULE']` and `Shield::currentRule()`; looked up only
@@ -701,7 +702,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   masked|full`, one rotation at `log-max-size`), one line per request the
   shield stopped or flagged, with the full URL; the address first, anonymised
   by default and written as its network (`198.51.100.0/24`)
-  ([docs](docs/features/log-and-rule-ids.md)).
+  ([docs](docs/features/RSF05-05-log-and-rule-ids.md)).
 - `Shield::active()`: the shield `protect()` ran with, so the application
   counts on-demand budgets against the same settings and request
   (`Shield::active()->consume('misses')`); refusals are logged.
@@ -709,12 +710,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   their origin and how often each decided in the last 24 hours, the latest
   activity, and a check that tries any address step by step without counting
   it; refreshes itself. `bin/request-shield trace`
-  ([docs](docs/features/active-rules-page.md)).
+  ([docs](docs/features/RSF06-01-active-rules-page.md)).
 - `unblock [<what>] at <paths> [for <addresses>]`: blocked paths let through at
   some paths only — an admin's file reader that has to open `.env` or a
   backup — optionally only for some addresses; the path check is never lifted;
   `check` warns about exceptions for everyone
-  ([docs](docs/features/access-rules.md#exceptions-an-admins-file-reader)).
+  ([docs](docs/features/RSF02-03-access-rules.md#exceptions-an-admins-file-reader)).
 - Rule IDs of one's own: `[SITE-10]` before a rule names it in decisions,
   the log, the rules page and `trace` instead of `file:line`; `ids <NS>
   [required]` gives a file its number block; an ID used twice is an error
@@ -722,7 +723,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - The built-in blocks are rule files shipped with the library
   (`rules/scanners.rules`, `rules/wordpress.rules`, IDs `SCAN-…`, `WP-…`):
   `include @wordpress`, `unblock [SCAN-CGI]`, `unblock @scanners`
-  ([docs](docs/features/rule-files.md#the-built-in-rules)).
+  ([docs](docs/features/RSF05-01-rule-files.md#the-built-in-rules)).
 - Versioned rule sets: `version <word>` per rule file, revisions per rule
   (`[SCAN-BACKUP@1]`); a rule that takes back, replaces or opens another names
   the revision reviewed, and `check` and the rules page warn when a library
@@ -742,7 +743,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   too; not files or over 256 KB; a button without JavaScript) — and the
   response header `X-Request-Shield-Challenge: required` on a page
   (`set app-challenge on`). Proposal 0006
-  ([docs](docs/features/app-challenges.md)).
+  ([docs](docs/features/RSF03-04-app-challenges.md)).
 - `set home /`: the shield's own pages (404, 403, a pause, the check page) link
   back to the site ("To the home page", in the visitor's language); the rules
   page takes a link back too. The demo leads back to its front page from
@@ -777,7 +778,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `challenge.alwaysPaths`: paths every visitor has to pass the browser check
   for (once per pass cookie), whatever the budgets say — for a login or admin
   page; a POST without a pass gets 429
-  ([docs](docs/features/browser-challenge.md)).
+  ([docs](docs/features/RSF03-02-browser-challenge.md)).
 - A demo site, `examples/demo/`: one example per feature, the check included;
   `php -S 127.0.0.1:8080 examples/demo/router.php`, or in any subdirectory
   of a web server, with rewrite rules (`.htaccess`) or as `index.php/…`; its
@@ -799,7 +800,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   checked when read — a passing request without them does nothing extra. The
   rules page, `bin/request-shield show|check|trace` and `Shield::explain()`
   name them like every other rule
-  ([docs](docs/features/rule-files.md#attack-patterns)).
+  ([docs](docs/features/RSF05-01-rule-files.md#attack-patterns)).
 - `rules/attacks.rules` (`include @attacks`): a reviewed set against SQL
   injection, cross-site scripting, code and shell injection, file inclusion,
   Log4Shell and the known attack tools and exploit paths, after the OWASP Core
@@ -878,10 +879,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   budget's `challengeAt`, a signed pass cookie bound to client and User-Agent,
   single-use solutions, difficulty growing towards the limit, verified search
   engine crawlers and exempt paths never challenged
-  ([docs](docs/features/browser-challenge.md)).
+  ([docs](docs/features/RSF03-02-browser-challenge.md)).
 - `Shield::protectFile()`: settings checked once and compiled into a PHP file
   OPcache serves, rebuilt when the file changes; `bootstrap.php` uses it
-  ([docs](docs/features/settings.md)).
+  ([docs](docs/features/RSF05-02-settings.md)).
 - Typed settings: a wrong type is an error naming the key.
 - Documentation: features, use cases, proposals, architecture decisions.
 - Tests report skipped cases; the challenge page's script is tested in Node.

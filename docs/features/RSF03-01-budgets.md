@@ -1,4 +1,4 @@
-# RSF3.1 Budgets and stores
+# RSF03-01 Budgets and stores
 
 ## What it does
 
@@ -42,8 +42,8 @@ api-path /api/**                                           # a check there is JS
   without a solve starts again. A person solves once or twice; a bot that keeps
   coming back pays more each time.
 - **Forms** come back after the check (the fields in the page, as in
-  [the site asks for the check](app-challenges.md)); a form with files needs the
-  [check inside the form](browser-check-in-the-form.md).
+  [the site asks for the check](RSF03-04-app-challenges.md)); a form with files needs the
+  [check inside the form](RSF03-03-browser-check-in-the-form.md).
 - **APIs** — requests asking for or sending JSON, or on an `api-path` — get
   `429` with the task as JSON and in the header `Request-Shield-Challenge`
   (ALTCHA's format, base64url); the client solves it and repeats the request

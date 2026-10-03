@@ -95,7 +95,7 @@ final class Config
             // How hard the shield acts: off (nothing at all), monitor (everything
             // checked, counted and logged as it would be decided -- nobody is
             // refused), enforce, strict (enforce with tighter values, for a site
-            // under attack). See docs/features/modes.md.
+            // under attack). See docs/features/RSF05-03-modes.md.
             'mode' => 'enforce',
             // The rules again with those marked "monitor" in a rule file: they
             // are logged, not enforced (written by RuleFile; null: none).

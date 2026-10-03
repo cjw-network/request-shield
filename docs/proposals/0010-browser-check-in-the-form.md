@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Implemented** 2026-09-29 (see [the browser check inside the form](../features/browser-check-in-the-form.md)) |
+| Status | **Implemented** 2026-09-29 (see [the browser check inside the form](../features/RSF03-03-browser-check-in-the-form.md)) |
 | Proposed | 2026-09-29 |
 | Affects | the browser check, `requirePass()` ([0006](0006-the-site-asks-for-the-check.md)), a new small endpoint, texts |
 

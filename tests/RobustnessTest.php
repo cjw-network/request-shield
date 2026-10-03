@@ -50,7 +50,7 @@ function withFailing(string $rules, string $known, callable $body): void
 }
 
 return [
-    'RSF5.5 an exception in the decision path: the request passes, uncached, as "shield error"' => function (): void {
+    'RSF05-05 an exception in the decision path: the request passes, uncached, as "shield error"' => function (): void {
         $server = $_SERVER;
         $_SERVER = ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/page', 'HTTP_HOST' => 'example.org', 'REMOTE_ADDR' => '198.51.100.7', 'SERVER_PROTOCOL' => 'HTTP/1.1'] + $_SERVER;
         unset($_SERVER['REQUEST_SHIELD']);
@@ -73,7 +73,7 @@ return [
             @unlink((string) $log);
         }
     },
-    'RSF5.5 a plugin\'s rule that throws (RuleProvider, 0031 C.3): through the public API the request passes as if the rule said nothing -- not as a shield error -- and the error log hears it once' => function (): void {
+    'RSF05-05 a plugin\'s rule that throws (RuleProvider, 0031 C.3): through the public API the request passes as if the rule said nothing -- not as a shield error -- and the error log hears it once' => function (): void {
         $server = $_SERVER;
         $_SERVER = ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/forbidden', 'HTTP_HOST' => 'example.org', 'REMOTE_ADDR' => '198.51.100.7', 'SERVER_PROTOCOL' => 'HTTP/1.1'] + $_SERVER;
         unset($_SERVER['REQUEST_SHIELD']);
@@ -95,7 +95,7 @@ return [
             @unlink((string) $log);
         }
     },
-    'RSF5.5 the real path: the site answers although the shield throws; its own refusals still stand; the error log hears it once' => function (): void {
+    'RSF05-05 the real path: the site answers although the shield throws; its own refusals still stand; the error log hears it once' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -112,7 +112,7 @@ return [
             same(1, preg_match_all('/the shield failed and let the request through: RuntimeException: boom/', $log), "one line for three requests, not three:\n$log");
         });
     },
-    'RSF5.5 a store directory nobody can write: nothing is counted, every request passes, no error' => function (): void {
+    'RSF05-05 a store directory nobody can write: nothing is counted, every request passes, no error' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -135,7 +135,7 @@ return [
             same('', trim((string) @file_get_contents("$dir/php-errors.log")), 'no error for the visitor and none in the log');
         });
     },
-    'RSF5.5 a rule file broken after a good compile: the last good rules stay in force, one line in the log, the fix is picked up' => function (): void {
+    'RSF05-05 a rule file broken after a good compile: the last good rules stay in force, one line in the log, the fix is picked up' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -155,7 +155,7 @@ return [
             same([], glob("$dir/cache/settings-*.failed"), 'the marker is gone');
         });
     },
-    'RSF5.5 a rule file broken at first install: the shield runs switched off, the site answers, the log says why' => function (): void {
+    'RSF05-05 a rule file broken at first install: the shield runs switched off, the site answers, the log says why' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -171,7 +171,7 @@ return [
             truthy(glob("$dir/cache/settings-*.failed") !== [], 'the marker');
         });
     },
-    'RSF5.5 a compiled settings file cut short: the next request compiles anew, no error reaches the visitor' => function (): void {
+    'RSF05-05 a compiled settings file cut short: the next request compiles anew, no error reaches the visitor' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -193,7 +193,7 @@ return [
             same('', trim((string) @file_get_contents("$dir/php-errors.log")), 'nothing for the log: nothing was wrong with the rules');
         });
     },
-    'RSF5.5 compiled settings of another format are not taken: compiled anew' => function (): void {
+    'RSF05-05 compiled settings of another format are not taken: compiled anew' => function (): void {
         $dir = sys_get_temp_dir() . '/rs-fmt-' . getmypid() . '-' . mt_rand();
         mkdir($dir, 0700, true);
         try {
@@ -211,7 +211,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'RSF5.5 the file store and the secret on an unwritable directory do not throw' => function (): void {
+    'RSF05-05 the file store and the secret on an unwritable directory do not throw' => function (): void {
         $dir = sys_get_temp_dir() . '/rs-ro-unit-' . getmypid() . '-' . mt_rand();
         mkdir($dir, 0500);
         try {

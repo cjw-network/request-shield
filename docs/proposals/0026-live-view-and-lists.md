@@ -130,7 +130,7 @@ That is an open question below.
 |---|---|
 | per request | nothing new: the log line exists already (when `set log` is on) |
 | an open live tab | every 3 s one read of the new log bytes (at most 64 KB) and their parsing: well under a millisecond for a few dozen lines |
-| writing a list entry | the list file written whole, then one rebuild of the settings ([big lists](../features/ip-lists.md#big-lists): 2 s for 200,000 entries, others keep the last settings meanwhile) |
+| writing a list entry | the list file written whole, then one rebuild of the settings ([big lists](../features/RSF01-02-ip-lists.md#big-lists): 2 s for 200,000 entries, others keep the last settings meanwhile) |
 
 ## Privacy
 

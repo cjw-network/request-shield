@@ -1,4 +1,4 @@
-# RSF5.1 Rule files
+# RSF05-01 Rule files
 
 ## What it does
 
@@ -50,32 +50,32 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `host <names>` | `hosts` | the site's hosts; others 404 |
 | `trust <addresses or ranges>` | `trustedProxies` | who may send `X-Forwarded-*` |
 | `method <METHODS>` | `methods` | methods allowed at all |
-| `allow <METHODS> <paths>` | `methodPaths` | those methods only there, else 405 ([access rules](access-rules.md)) |
-| `restrict <paths> to <addresses or ranges>` | `restricted` | only those addresses, else 403 ([access rules](access-rules.md)) |
+| `allow <METHODS> <paths>` | `methodPaths` | those methods only there, else 405 ([access rules](RSF02-03-access-rules.md)) |
+| `restrict <paths> to <addresses or ranges>` | `restricted` | only those addresses, else 403 ([access rules](RSF02-03-access-rules.md)) |
 | `block <paths>` / `unblock <paths>` | `blockedPaths` | 404 before the site sees it / take a block back |
 | `block query|header <Name>|headers|anywhere <regex>` | `contentRules` | attack patterns in the query or the headers, 403 |
-| `unblock [<what>] at <paths> [for <addresses>]` | `blockExceptions` | blocked paths let through at some paths only (an admin's file reader) ([access rules](access-rules.md#exceptions-an-admins-file-reader)) |
-| `query <name> <type> … [at <paths>]` / `query strict` | `queryParams`, `queryStrict` | the query parameters the site takes and their types (`int`, `number`, `word`, `id`, `list`, `text`, `any`, `/regex/`); only `text` and the unknown ones go to the attack patterns; `strict`: anything else 404 ([known parameters](known-parameters.md)) |
+| `unblock [<what>] at <paths> [for <addresses>]` | `blockExceptions` | blocked paths let through at some paths only (an admin's file reader) ([access rules](RSF02-03-access-rules.md#exceptions-an-admins-file-reader)) |
+| `query <name> <type> … [at <paths>]` / `query strict` | `queryParams`, `queryStrict` | the query parameters the site takes and their types (`int`, `number`, `word`, `id`, `list`, `text`, `any`, `/regex/`); only `text` and the unknown ones go to the attack patterns; `strict`: anything else 404 ([known parameters](RSF02-05-known-parameters.md)) |
 | `cache-path <paths>` | `cacheable.paths` | what a cache may keep; `any`: every path (default) |
 | `cache-query <names>` | `cacheable.query` | parameters a cached URL may have; `any` (default), `none` |
-| `limit <name> <n>/<unit> [challenge-at <n>] [on-demand] [on-exceeded challenge] [at <paths>]` | `budgets` | units `s`, `sec`, `min`, `hour`, `day`, also `20/10s`; `on-exceeded challenge`: past the limit the check that frees the counter instead of a pause ([budgets](budgets.md#past-the-limit-a-pause-or-earn-it-back)); `at <paths>` (or inside a `match` block): only requests there count ([an area's budget](budgets.md#a-budget-for-one-area)) |
-| `post-origin same [missing check\|allow\|refuse] [except <paths>]` / `post-origin except <paths>` | `postOrigin` | forms (POST, PUT, PATCH, DELETE) only from the website's own pages: `Origin`, else `Referer`; another website 403, neither the browser check ([forms from the website](forms-from-the-website.md)) |
-| `backend <paths>` | `backend` | the editors' area: its forms counted apart in the statistics, one entry per area ([forms in the statistics](statistics.md#forms-sent-from-where-how-they-ended)); inside a `match` block without paths |
+| `limit <name> <n>/<unit> [challenge-at <n>] [on-demand] [on-exceeded challenge] [at <paths>]` | `budgets` | units `s`, `sec`, `min`, `hour`, `day`, also `20/10s`; `on-exceeded challenge`: past the limit the check that frees the counter instead of a pause ([budgets](RSF03-01-budgets.md#past-the-limit-a-pause-or-earn-it-back)); `at <paths>` (or inside a `match` block): only requests there count ([an area's budget](RSF03-01-budgets.md#a-budget-for-one-area)) |
+| `post-origin same [missing check\|allow\|refuse] [except <paths>]` / `post-origin except <paths>` | `postOrigin` | forms (POST, PUT, PATCH, DELETE) only from the website's own pages: `Origin`, else `Referer`; another website 403, neither the browser check ([forms from the website](RSF02-04-forms-from-the-website.md)) |
+| `backend <paths>` | `backend` | the editors' area: its forms counted apart in the statistics, one entry per area ([forms in the statistics](RSF06-03-statistics.md#forms-sent-from-where-how-they-ended)); inside a `match` block without paths |
 | `api-path <paths>` | `challenge.apiPaths` | the site's API: a check there is JSON with a header, not a page |
 | `no-limit <name>` | `budgets` | switch a budget off, the default one too |
-| `challenge <paths> [max-age <duration>]` | `challenge.alwaysPaths`, `challenge.alwaysMaxAge` | always check the browser there; `max-age 5m`: a pass from the last five minutes there ([modes](modes.md)) |
-| `monitor <rule>` | `monitorRules` | before `block`, `restrict`, `allow`, `limit`, `challenge`, `ban`, `feed`, `query strict`: logged as it would decide, not enforced ([modes](modes.md)) |
-| `stats-group "<name>" <websites>` | `ext.stats.groups` | websites of one customer, read together and each on its own; counted apart without naming them in `stats-hosts`; above the site blocks ([groups](statistics.md#groups-websites-per-customer)) |
-| `dashboard-access "<principal>"\|* sha256:<hash> [until <day>]` | `dashboardAccess` | who may open the dashboard: the admin (`*`) or a principal (a customer's group in the statistics); only the token's hash (`bin/request-shield access-token`); above the site blocks ([who sees what](statistics.md#who-sees-what-tokens-a-login-signed-links)) |
-| `stats-skip <paths>` | `ext.stats.skip` | not in the statistics when they pass (a map proxy's tiles); refused or checked they are counted; protected all the same ([statistics](statistics.md#paths-that-are-not-counted-stats-skip)) |
+| `challenge <paths> [max-age <duration>]` | `challenge.alwaysPaths`, `challenge.alwaysMaxAge` | always check the browser there; `max-age 5m`: a pass from the last five minutes there ([modes](RSF05-03-modes.md)) |
+| `monitor <rule>` | `monitorRules` | before `block`, `restrict`, `allow`, `limit`, `challenge`, `ban`, `feed`, `query strict`: logged as it would decide, not enforced ([modes](RSF05-03-modes.md)) |
+| `stats-group "<name>" <websites>` | `ext.stats.groups` | websites of one customer, read together and each on its own; counted apart without naming them in `stats-hosts`; above the site blocks ([groups](RSF06-03-statistics.md#groups-websites-per-customer)) |
+| `dashboard-access "<principal>"\|* sha256:<hash> [until <day>]` | `dashboardAccess` | who may open the dashboard: the admin (`*`) or a principal (a customer's group in the statistics); only the token's hash (`bin/request-shield access-token`); above the site blocks ([who sees what](RSF06-03-statistics.md#who-sees-what-tokens-a-login-signed-links)) |
+| `stats-skip <paths>` | `ext.stats.skip` | not in the statistics when they pass (a map proxy's tiles); refused or checked they are counted; protected all the same ([statistics](RSF06-03-statistics.md#paths-that-are-not-counted-stats-skip)) |
 | `challenge-exempt <paths>` | `challenge.exemptPaths` | never challenge there (APIs, feeds) |
-| `exempt <addresses or ranges> [until <day>[T<hh:mm>]]` | `exempt.ips` | never counted and never checked, still refused for blocked paths and attack patterns ([IP lists](ip-lists.md)) |
-| `deny <addresses or ranges> [until <day>[T<hh:mm>]]` | `deny` | kept out: 403 before every other check ([IP lists](ip-lists.md)) |
-| `feed <name> [<https-url>] deny\|check\|count\|ban-signal <n> [at <paths>] [format <f>] [wide-ok]` | `feeds` | a public blocklist, fetched by `request-shield feeds … update`; above the site blocks ([feeds](blocklist-feeds.md)) |
-| `ban after <n> <signal> in <time> for <time>` | `bans` | a client past `<n>` signals (`limits`, `refusals`, `checks`, a budget's name) is answered only 429 for a while; above the site blocks ([IP lists](ip-lists.md#bans)) |
-| `crawlers <kind> allow\|check\|block` / `crawler <ID> allow\|check\|block` | `crawlerPolicy` | what the site does with verified crawlers, by kind (`search`, `ai-search`, `ai-user`, `ai-training`) or one by one ([known crawlers](known-crawlers.md)) |
+| `exempt <addresses or ranges> [until <day>[T<hh:mm>]]` | `exempt.ips` | never counted and never checked, still refused for blocked paths and attack patterns ([IP lists](RSF01-02-ip-lists.md)) |
+| `deny <addresses or ranges> [until <day>[T<hh:mm>]]` | `deny` | kept out: 403 before every other check ([IP lists](RSF01-02-ip-lists.md)) |
+| `feed <name> [<https-url>] deny\|check\|count\|ban-signal <n> [at <paths>] [format <f>] [wide-ok]` | `feeds` | a public blocklist, fetched by `request-shield feeds … update`; above the site blocks ([feeds](RSF01-03-blocklist-feeds.md)) |
+| `ban after <n> <signal> in <time> for <time>` | `bans` | a client past `<n>` signals (`limits`, `refusals`, `checks`, a budget's name) is answered only 429 for a while; above the site blocks ([IP lists](RSF01-02-ip-lists.md#bans)) |
+| `crawlers <kind> allow\|check\|block` / `crawler <ID> allow\|check\|block` | `crawlerPolicy` | what the site does with verified crawlers, by kind (`search`, `ai-search`, `ai-user`, `ai-training`) or one by one ([known crawlers](RSF01-04-known-crawlers.md)) |
 | `crawler <kind> ua /<pattern>/ [dns <suffixes>] [ranges <lists>]` | `crawlers` | a crawler of the site's own, verified by DNS or an address list (`ranges ./ours.json`) |
-| `expect <METHOD> <address> <outcome> [by <ID>] [from <address>] [with pass] [times <n>]` | — | an example of what the rules decide, below the rule it is about; decided by `request-shield test`, never by a request ([examples](rule-examples.md)) |
+| `expect <METHOD> <address> <outcome> [by <ID>] [from <address>] [with pass] [times <n>]` | — | an example of what the rules decide, below the rule it is about; decided by `request-shield test`, never by a request ([examples](RSF05-04-rule-examples.md)) |
 | `set <key> <value>` | any other setting | see below |
 | `include <path or glob>` | — | further rule files, relative to this one |
 
@@ -146,7 +146,7 @@ match regex ^/api/ {
   block's: `restrict to …`, `allow <METHODS>`, `challenge`, `challenge-exempt`,
   `cache-path`, `block` (the whole area), `unblock [<ID>] [for <addresses>]`
   (an exception there), `query <name> <type> …`, `limit <name> <rate> …`
-  (a budget that counts this area only, [budgets](budgets.md#a-budget-for-one-area)),
+  (a budget that counts this area only, [budgets](RSF03-01-budgets.md#a-budget-for-one-area)),
   and `replace [ID] <one of these>`.
 - A block is exactly the rules written out with the path — the same settings,
   the same cost per request; the rules page shows each rule's area.
@@ -299,8 +299,8 @@ before the site's own rules — the same format, with IDs and descriptions:
 |---|---|---|
 | `rules/scanners.rules` | `SCAN-HIDDEN`, `SCAN-BACKUP`, `SCAN-TEST`, `SCAN-DBTOOL`, `SCAN-CGI` | always read |
 | `rules/wordpress.rules` | `WP-FOLDERS`, `WP-SCRIPTS` | `include @wordpress` (or `block @wordpress`), for sites that are not WordPress |
-| `rules/crawlers.rules` | `CRAWL-GOOGLE`, `CRAWL-GPTBOT`, … (19) | always read: the [known crawlers](known-crawlers.md), with their address lists in `rules/crawlers/` |
-| `rules/tracking.rules` | `TRACK-UTM`, `TRACK-GOOGLE`, `TRACK-MICROSOFT`, `TRACK-META`, `TRACK-SOCIAL`, `TRACK-MAIL`, `TRACK-OTHER` | `include @tracking`: the marketing tags as known parameters ([known parameters](known-parameters.md#the-marketing-tags-tracking)) |
+| `rules/crawlers.rules` | `CRAWL-GOOGLE`, `CRAWL-GPTBOT`, … (19) | always read: the [known crawlers](RSF01-04-known-crawlers.md), with their address lists in `rules/crawlers/` |
+| `rules/tracking.rules` | `TRACK-UTM`, `TRACK-GOOGLE`, `TRACK-MICROSOFT`, `TRACK-META`, `TRACK-SOCIAL`, `TRACK-MAIL`, `TRACK-OTHER` | `include @tracking`: the marketing tags as known parameters ([known parameters](RSF02-05-known-parameters.md#the-marketing-tags-tracking)) |
 
 `unblock @scanners` takes back all of a shipped file's blocks, `unblock
 [SCAN-CGI]` one. PHP array settings get the same blocks from `Config`; a test
@@ -318,31 +318,31 @@ keeps both the same.
 | `cookie`, `solution-cookie` | cookie names |
 | `bind-user-agent`, `search-engines`, `debug-header`, `strip-untrusted-forwarded` | `on` / `off` (`search-engines off`: no crawler is recognised) |
 | `dns-lookups` | new DNS lookups a minute to verify search engines, for all requests together (default 30; `0`: none — a DMZ without DNS) |
-| `app-challenge` | `on`: the site may ask for the check with the header `X-RS-Check: 1` ([docs](app-challenges.md)) |
+| `app-challenge` | `on`: the site may ask for the check with the header `X-RS-Check: 1` ([docs](RSF03-04-app-challenges.md)) |
 | `ipv6-prefix`, `max-uri`, `max-query-parameters`, `max-header-bytes` | numbers |
-| `challenge-logo` | an SVG file (relative to the rule file) for the middle of the check page's ring, checked strictly ([how it looks](browser-challenge.md#how-it-looks)) |
-| `widget-path`, `widget-difficulty` | the browser check inside a form: its endpoint (`/request-shield`; unset: off) and difficulty ([docs](browser-check-in-the-form.md)) |
+| `challenge-logo` | an SVG file (relative to the rule file) for the middle of the check page's ring, checked strictly ([how it looks](RSF03-02-browser-challenge.md#how-it-looks)) |
+| `widget-path`, `widget-difficulty` | the browser check inside a form: its endpoint (`/request-shield`; unset: off) and difficulty ([docs](RSF03-03-browser-check-in-the-form.md)) |
 | `home` | a path (`/`) or an address: the shield's own pages (404, a pause, the check page) link to it, "To the home page" |
 | `language` | `auto` (default: the visitor's browser language among those there are texts for, else English) or a code: `de`, `en` |
 | `text.<key>`, `text.<lang>.<key>` | what visitors read (the rest of the line): for every language, or for one — `set text.de.title Einen Moment, bitte`. Keys: `title`, `text`, `noscript`, `nocookies`, `failed`, `try-again` (`%s` = seconds), `bad-request`, `no-access`, `not-found`, `not-allowed`, `too-long`, `too-many`, `too-large`, `error`. English and German are built in; another language comes with its texts (`text.fr.title …`) |
-| `mode` | `off`, `monitor`, `enforce` (default), `strict` ([modes](modes.md)) |
-| `crawler-verify` | `both` (default), `ranges` (the published address lists only: no DNS, for a DMZ), `dns` ([known crawlers](known-crawlers.md)) |
-| `log`, `log-level`, `log-ip`, `log-max-size` | [the log](log-and-rule-ids.md) |
-| `stats` | `off` (default), `on`, or the parts: `requests`, `crawlers`, `not-found`, `bots` ([statistics](statistics.md)) |
-| `dashboard-path` | where the statistics pages live: `/rs` (default) gives the statistics under `/rs/stats/` (`overview`, `visitors`, `protection`, `sites`) and `/rs/waf/rules`, `/rs/waf/live`, `/rs/waf/lists`; something in front is fine (`/admin/rs`); the shield serves these pages itself -- a `restrict` rule (`restrict **/rs/** to <addresses>`) or a login must cover them, `check` warns otherwise ([statistics](statistics.md#the-statistics-page)) |
+| `mode` | `off`, `monitor`, `enforce` (default), `strict` ([modes](RSF05-03-modes.md)) |
+| `crawler-verify` | `both` (default), `ranges` (the published address lists only: no DNS, for a DMZ), `dns` ([known crawlers](RSF01-04-known-crawlers.md)) |
+| `log`, `log-level`, `log-ip`, `log-max-size` | [the log](RSF05-05-log-and-rule-ids.md) |
+| `stats` | `off` (default), `on`, or the parts: `requests`, `crawlers`, `not-found`, `bots` ([statistics](RSF06-03-statistics.md)) |
+| `dashboard-path` | where the statistics pages live: `/rs` (default) gives the statistics under `/rs/stats/` (`overview`, `visitors`, `protection`, `sites`) and `/rs/waf/rules`, `/rs/waf/live`, `/rs/waf/lists`; something in front is fine (`/admin/rs`); the shield serves these pages itself -- a `restrict` rule (`restrict **/rs/** to <addresses>`) or a login must cover them, `check` warns otherwise ([statistics](RSF06-03-statistics.md#the-statistics-page)) |
 | `stats-hours`, `stats-days`, `stats-months`, `stats-flush` | days the hours are kept (7), days the day totals are kept (400, then summed into months), months kept (0: for good), seconds between writes to disk with APCu (60) |
 | `site-from` | which name picks a site block: `server-name` (the default, the web server's) or `host` (the Host header) — [site blocks](#site-blocks-rules-per-website) |
-| `plugin` (a rule, not `set`) | `plugin Vendor\Package\MyPlugin [from <file>]`: a [plugin](plugins.md), told what was decided and how a request ended; `from` names the file that holds the class, relative to the rule file, for a site without Composer (loaded when the rules are compiled and when the shield makes its plugins); the statistics need none (`set stats on`); a class that is an [extension](plugins.md#extensions-words-and-settings-of-their-own) brings words and `set` keys of its own, known from its `plugin` line on |
+| `plugin` (a rule, not `set`) | `plugin Vendor\Package\MyPlugin [from <file>]`: a [plugin](RSF06-04-plugins.md), told what was decided and how a request ended; `from` names the file that holds the class, relative to the rule file, for a site without Composer (loaded when the rules are compiled and when the shield makes its plugins); the statistics need none (`set stats on`); a class that is an [extension](RSF06-04-plugins.md#extensions-words-and-settings-of-their-own) brings words and `set` keys of its own, known from its `plugin` line on |
 | `dashboard-session` | how long a login to the dashboard lasts (`8h`; 1 minute to 30 days) |
 | `stats-path` | where the statistics plugin's pages live (default `<dashboard-path>/stats`): `…/sites`, `/overview`, `/visitors`, `/protection` below it; the core's stay at `<dashboard-path>/waf/` |
-| `stats-hosts` | the websites with statistics of their own: names, `*.domain`, `host` (the host rule's), `sites` (the site blocks'); any other name counts as "other hosts" ([statistics per website](statistics.md#statistics-per-website)) |
+| `stats-hosts` | the websites with statistics of their own: names, `*.domain`, `host` (the host rule's), `sites` (the site blocks'); any other name counts as "other hosts" ([statistics per website](RSF06-03-statistics.md#statistics-per-website)) |
 | `stats-depth` | folder levels a section's views are counted for exactly, 1 to 4 (2: `/news/`, `/news/2026/`; 3 where a language takes the first level: `/de/news/2026/`) |
-| `crawler-log`, `crawler-log-kinds`, `crawler-log-days`, `crawler-log-query` | one log per known crawler and day: its directory, the kinds logged, days kept (30), whether the query is kept ([statistics](statistics.md#one-log-per-crawler-optional)) |
-| `lists-dir` | where the list files `allow.rules` and `deny.rules` live (default `<store-dir>/lists`); they hold only `deny` and `exempt` lines ([IP lists](ip-lists.md#the-list-files)) |
-| `feeds-max-age` | a fetched list older than this is not used (`3d`; at least `1h`) ([feeds](blocklist-feeds.md)) |
-| `ban-keep` | `memory` (default) or `file`: a ban also as a file in store-dir, so it survives a restart of APCu ([live and lists](live-and-lists.md#bans-that-survive-a-restart-set-ban-keep-file)) |
-| `live`, `live-keep` | `on`: the live view from memory, with full addresses (APCu); how long an entry stays (1h; 1m to 1d) ([live and lists](live-and-lists.md)) |
-| `ban-growth`, `ban-max` | each ban within a day this many times as long (2), at most (`1d`) ([IP lists](ip-lists.md#bans)) |
+| `crawler-log`, `crawler-log-kinds`, `crawler-log-days`, `crawler-log-query` | one log per known crawler and day: its directory, the kinds logged, days kept (30), whether the query is kept ([statistics](RSF06-03-statistics.md#one-log-per-crawler-optional)) |
+| `lists-dir` | where the list files `allow.rules` and `deny.rules` live (default `<store-dir>/lists`); they hold only `deny` and `exempt` lines ([IP lists](RSF01-02-ip-lists.md#the-list-files)) |
+| `feeds-max-age` | a fetched list older than this is not used (`3d`; at least `1h`) ([feeds](RSF01-03-blocklist-feeds.md)) |
+| `ban-keep` | `memory` (default) or `file`: a ban also as a file in store-dir, so it survives a restart of APCu ([live and lists](RSF06-02-live-and-lists.md#bans-that-survive-a-restart-set-ban-keep-file)) |
+| `live`, `live-keep` | `on`: the live view from memory, with full addresses (APCu); how long an entry stays (1h; 1m to 1d) ([live and lists](RSF06-02-live-and-lists.md)) |
+| `ban-growth`, `ban-max` | each ban within a day this many times as long (2), at most (`1d`) ([IP lists](RSF01-02-ip-lists.md#bans)) |
 | `recheck` | how often the files are checked for changes, see below |
 
 `${NAME}` is an environment variable, `${NAME:-default}` one that may be unset.
@@ -366,7 +366,7 @@ changes.
 Every rule remembers its ID and where it was written (`SITE-10` in
 `site.rules:12`, `ext/shop/settings/request-shield.rules:2`, `SCAN-BACKUP` in
 `built-in scanners.rules:11`), and every
-decision names it ([rule IDs](log-and-rule-ids.md)).
+decision names it ([rule IDs](RSF05-05-log-and-rule-ids.md)).
 
 ## Cost and changes
 
@@ -419,7 +419,7 @@ secret.
 - `include` stays below the including file unless an absolute path is given.
 - Access rules match the path as the application routes it (decoded, `//` and
   `/./` collapsed, any case), so `//admin` or `/%61dmin` do not slip past
-  `restrict /admin/**` ([access rules](access-rules.md)).
+  `restrict /admin/**` ([access rules](RSF02-03-access-rules.md)).
 
 ## Compatibility
 

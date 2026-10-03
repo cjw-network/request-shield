@@ -149,7 +149,7 @@ a school, a mobile carrier's network. One bot there would ban everyone behind
 it. Hence: off by default, only clear signals, short durations that grow only
 for repeat offenders, `monitor ban` first, 429 with the time to wait (never a
 silent 403), and the dashboard's list of active bans. Behind a load balancer the
-client address must be right ([trusted proxies](../features/trusted-proxies.md)),
+client address must be right ([trusted proxies](../features/RSF01-01-trusted-proxies.md)),
 or the balancer would be the one counted — which the shield refuses for
 trusted proxies anyway.
 
@@ -165,7 +165,7 @@ trusted proxies anyway.
 | bans switched on | one store lookup per request (APCu ~0.2 µs, the file store ~1–2 µs); counting only when a limit, refusal or unsolved check happens |
 | a banned client | that lookup and a short answer — nothing else runs |
 
-Measured once built (PHP 8.4, OPcache; [details](../features/ip-lists.md#cost)):
+Measured once built (PHP 8.4, OPcache; [details](../features/RSF01-02-ip-lists.md#cost)):
 5,000 deny ranges +0.3–2 µs with APCu; bans on +0.5–1 µs with APCu and +3–6 µs
 with the file store (one stat per request for the address's ban).
 
@@ -231,4 +231,4 @@ As built, beyond the design above:
   compiled file again (2 s). Now one sorted table in a few strings (`IpTable`):
   loading the settings costs the same with a million entries as with none, a
   lookup 2–3 µs; building 200,000 takes 2 s, once, while the other requests
-  keep the last settings ([cost](../features/ip-lists.md#big-lists)).
+  keep the last settings ([cost](../features/RSF01-02-ip-lists.md#big-lists)).

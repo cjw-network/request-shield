@@ -1,4 +1,4 @@
-# RSF3.4 The site asks for the browser check
+# RSF03-04 The site asks for the browser check
 
 ## What it does
 
@@ -72,7 +72,7 @@ what you entered is sent."* (in their language).
 
 Better still for forms: the check **inside the form**, while the visitor
 types — no check page at all, files included
-([the browser check inside the form](browser-check-in-the-form.md)).
+([the browser check inside the form](RSF03-03-browser-check-in-the-form.md)).
 
 ## Details
 

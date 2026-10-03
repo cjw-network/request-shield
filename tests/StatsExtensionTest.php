@@ -27,7 +27,7 @@ function statsExtSettings(string $text, ?string $site = null, array $more = []):
 }
 
 return [
-    'RSF6.3 offered by the bootstrap: a rule file\'s stats words compile to the slot, and StatsPlugin joins the plugins' => function (): void {
+    'RSF06-03 offered by the bootstrap: a rule file\'s stats words compile to the slot, and StatsPlugin joins the plugins' => function (): void {
         same(StatsExtension::class, Vocabulary::extension('stats'), 'the bootstrap names it, the registry offers it on the first lookup');
         $s = statsExtSettings("set stats requests pages\nset stats-flush 30s\nset stats-hosts a.example\nstats-skip /x/**\nmatch /app/** {\n  stats-skip\n}\n");
         $skip = ['#^/x(?:/.*)?$#', '#^/app(?:/.*)?$#'];
@@ -46,14 +46,14 @@ return [
         same(['dir' => "$dir/logs/crawlers", 'kinds' => ['ai-training'], 'days' => 14, 'query' => false], StatsExtension::of($log)['crawlerLog']);
         same([false, [StatsPlugin::class]], [StatsExtension::of($log)['enabled'], $log->plugins], 'the crawler log alone needs the plugin too');
     },
-    'RSF6.3 set stats off: nothing counted, no plugin; the defaults when nothing is set' => function (): void {
+    'RSF06-03 set stats off: nothing counted, no plugin; the defaults when nothing is set' => function (): void {
         $off = statsExtSettings("set stats on\nset stats off\n");
         same([false, []], [StatsExtension::of($off)['enabled'], $off->plugins]);
         same(StatsExtension::defaults(), StatsExtension::of(statsExtSettings('')), 'an empty rule file: the defaults, compiled');
         same(StatsExtension::defaults(), StatsExtension::of(Settings::from([])), 'an empty array: the same');
         same(false, StatsExtension::defaults()['enabled']);
     },
-    'RSF6.3 inside a site block: stats-hosts is about the server; the other keys are the website\'s' => function (): void {
+    'RSF06-03 inside a site block: stats-hosts is about the server; the other keys are the website\'s' => function (): void {
         // Checked when the website's block is read (the base skips the blocks, as for the core's server-wide keys).
         try {
             statsExtSettings("host a.example\nsite a.example {\n  set stats-hosts a.example\n}\n", 'a.example');
@@ -64,7 +64,7 @@ return [
         $s = statsExtSettings("host a.example b.example\nset stats on\nsite b.example {\n  set stats-depth 3\n}\n", 'b.example');
         same([true, 3], [StatsExtension::of($s)['enabled'], StatsExtension::of($s)['depth']], 'the base\'s values and its own');
     },
-    'RSF6.3 mistakes keep their messages: a part, a host name, a kind, a depth' => function (): void {
+    'RSF06-03 mistakes keep their messages: a part, a host name, a kind, a depth' => function (): void {
         rulesFail(['site.rules' => "set stats everything\n"], 'site.rules:1', 'stats is on, off or what to count: requests, crawlers, not-found, bots, pages, forms -- not "everything"');
         rulesFail(['site.rules' => "set stats-hosts a_b.de\n"], 'site.rules:1', 'stats-hosts takes website names (www.example.org, *.example.org), host or sites -- not "a_b.de"');
         rulesFail(['site.rules' => "set crawler-log-kinds robots\n"], 'site.rules:1', 'crawler-log-kinds takes kinds of crawler (search, ai-search, ai-user, ai-training), not "robots"');
@@ -80,7 +80,7 @@ return [
             }
         }
     },
-    'RSF6.3 from a PHP array: the defaults around what is given; a group\'s websites are counted apart too' => function (): void {
+    'RSF06-03 from a PHP array: the defaults around what is given; a group\'s websites are counted apart too' => function (): void {
         $s = Settings::from(['ext' => ['stats' => ['enabled' => true]]]);
         same(['enabled' => true] + StatsExtension::defaults(), StatsExtension::of($s));
         same([StatsPlugin::class], $s->plugins);
@@ -91,7 +91,7 @@ return [
         $round = Settings::import(eval('return ' . var_export($g->export(), true) . ';'));
         same(serialize($g), serialize($round), 'export/import keep the slot and the plugin');
     },
-    'RSF6.3 the core carries none of it: no stats property in Settings, no stats key in RuleFile' => function (): void {
+    'RSF06-03 the core carries none of it: no stats property in Settings, no stats key in RuleFile' => function (): void {
         $settings = (string) file_get_contents(__DIR__ . '/../src/Settings.php');
         foreach (['statsEnabled', 'statsHours', 'statsDays', 'statsParts', 'statsFlush', 'statsMonths', 'statsDepth', 'statsHosts', 'statsSkip', 'crawlerLogDir', 'crawlerLogKinds', 'crawlerLogDays', 'crawlerLogQuery', 'STATS_PARTS'] as $name) {
             truthy(strpos($settings, '$' . $name) === false && strpos($settings, '->' . $name) === false && strpos($settings, '::' . $name) === false, "Settings.php still has $name");
@@ -104,7 +104,7 @@ return [
         truthy(!in_array('stats-skip', RuleFile::coreWords(), true), 'stats-skip is not a core word');
         same(['stats-skip'], array_values(array_intersect(Vocabulary::known()['words'], ['stats-skip'])), 'but the extension\'s');
     },
-    'RSF6.3 a passing request pays nothing for the shipped extension: the bootstrap loads no registry class (ADR 0008)' => function (): void {
+    'RSF06-03 a passing request pays nothing for the shipped extension: the bootstrap loads no registry class (ADR 0008)' => function (): void {
         // A fresh CLI process: after bootstrap.php, the extension is named (the constant) but nothing of it is loaded;
         // the first lookup loads and offers it. The autoloader's matter: the source tree's bootstrap also when the
         // suite runs against the single file (which declares its classes, cheaply, from OPcache).
@@ -119,7 +119,7 @@ return [
         same([[], [StatsExtension::class], ['stats' => StatsExtension::class], true], $got, 'loaded after the bootstrap: none; named: the stats extension; after the first lookup: offered and loaded');
         truthy(!is_subclass_of(StatsExtension::class, \CjwNetwork\RequestShield\Plugin::class), 'the extension itself is no plugin: it is never on the request path');
     },
-    'RSF6.3 a Composer install without bootstrap.php: the autoload file names the shipped extension, so set stats on is known there too' => function (): void {
+    'RSF06-03 a Composer install without bootstrap.php: the autoload file names the shipped extension, so set stats on is known there too' => function (): void {
         if (!is_file(dirname(__DIR__) . '/vendor/autoload.php')) {
             skip('no vendor/autoload.php (composer install)');
         }

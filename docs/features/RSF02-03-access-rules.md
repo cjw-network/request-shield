@@ -1,4 +1,4 @@
-# RSF2.3 Access rules: paths by address, methods by path
+# RSF02-03 Access rules: paths by address, methods by path
 
 ## What it does
 
@@ -47,7 +47,7 @@ As PHP settings: `'blockExceptions' => [['paths' => ['#^/admin/files(?:/.*)?$#i'
   reader is exactly where `../../config.php` is tried — nor `restrict`, the
   budgets or the browser check.
 - **Without `for` the exception is for everyone.** `bin/request-shield check`
-  warns about it, and the [rules page](active-rules-page.md) marks it; use it
+  warns about it, and the [rules page](RSF06-01-active-rules-page.md) marks it; use it
   only where the application itself admits nobody but admins.
 - Matched on the path as the application routes it, like the other access
   rules; the exceptions are looked at only once a block matched, so a normal
@@ -57,13 +57,13 @@ As PHP settings: `'blockExceptions' => [['paths' => ['#^/admin/files(?:/.*)?$#i'
 
 ## Details
 
-- **The client address** is the one a [trusted proxy](trusted-proxies.md)
+- **The client address** is the one a [trusted proxy](RSF01-01-trusted-proxies.md)
   vouches for (`X-Forwarded-For` from `trust`ed addresses only), otherwise the
   peer — never a header anyone could send.
 - **The path as the application routes it** (`Request::matchPath()`):
   percent-decoded, `//` and `/./` collapsed; the patterns a rule file writes
   ignore case. So `//admin/`, `/%61dmin/`, `/ADMIN/` and `/./admin/` are all
-  `/admin/`. (`/../` never gets this far: it is a [hard reject](hard-rejects.md).)
+  `/admin/`. (`/../` never gets this far: it is a [hard reject](RSF02-01-hard-rejects.md).)
 - `allow` also adds the methods to `method` (allowed at all); methods without
   an `allow` line are not restricted by path.
 - Several `restrict` lines are independent; the first whose paths match

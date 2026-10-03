@@ -1,4 +1,4 @@
-# RSF3.3 The browser check inside the form
+# RSF03-03 The browser check inside the form
 
 ## What it does
 
@@ -21,7 +21,7 @@ set widget-path /request-shield          # the endpoint: /request-shield/challen
 ```
 
 and where the form arrives, as for any form the site wants checked
-([the site asks for the check](app-challenges.md)):
+([the site asks for the check](RSF03-04-app-challenges.md)):
 
 ```php
 Shield::active()?->requirePass();        // the answer from the form counts
