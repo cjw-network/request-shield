@@ -13,6 +13,7 @@ namespace CjwNetwork\RequestShield\Rule;
 use CjwNetwork\RequestShield\Challenge\Crawlers;
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Settings;
 
 /**
  * Known crawlers a site refuses (crawlers ai-training block, crawler
@@ -34,5 +35,14 @@ final class CrawlerRule implements Rule
             return null;
         }
         return Decision::reject(403, 'crawler');
+    }
+
+    public function explain(Decision $d, Request $request, Settings $s): ?string
+    {
+        if ($d->reason !== 'crawler') {
+            return null;
+        }
+        $id = $this->crawlers->claims((string) $request->header('user-agent'));
+        return $id === null ? null : ($s->origin('crawlerPolicy', $id) ?? $s->origin('crawlerPolicy', $this->crawlers->kind($id)) ?? $id);
     }
 }

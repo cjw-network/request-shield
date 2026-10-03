@@ -12,6 +12,7 @@ namespace CjwNetwork\RequestShield\Rule;
 
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Settings;
 
 /**
  * Attack patterns in the query string and the headers -- SQL injection, XSS,
@@ -69,5 +70,14 @@ final class ContentRule implements Rule
             }
         }
         return null;
+    }
+
+    public function explain(Decision $d, Request $request, Settings $s): ?string
+    {
+        if ($d->reason !== 'attack') {
+            return null;
+        }
+        $p = self::matched($s->contentRules, $s->blockExceptions, null, $request);
+        return $p === null ? null : $s->ruleName('contentRules', $p, 'contentRules');
     }
 }

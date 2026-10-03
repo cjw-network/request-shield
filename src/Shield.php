@@ -686,94 +686,38 @@ final class Shield
     }
 
     /**
-     * The rule behind a decision: where it was written ("site.rules:12",
-     * "default @scanners.backups"), the setting for PHP array settings
-     * ("blockedPaths[3]"), "built-in" for the checks every site has
-     * (sizes, path encoding), or null when no single rule decided (allow).
-     * Runs the matching again, so it is meant for decisions that stopped or
-     * flagged a request, not for every one.
+     * The rule behind a decision, as the log and the pages name it: asked from
+     * the chain's rules (Rule::explain(), 0031 C.2); what no rule produces --
+     * the always-checked paths, a "check" feed, the application's own check --
+     * is named here.
      */
     public function explain(Decision $d, Request $request): ?string
     {
         $s = $this->settings;
-        $name = static function (string $setting, string $what, string $fallback) use ($s): string {
-            $origin = $s->origin($setting, $what) ?? $fallback;
-            return preg_replace('/[^\x21-\x7e ]/', '?', $origin) ?? $fallback;
-        };
-        $first = static function (array $patterns, string $path): ?int {
-            foreach ($patterns as $i => $p) {
-                if (is_string($p) && @preg_match($p, $path) === 1) {
-                    return (int) $i;
-                }
-            }
-            return null;
-        };
         switch ($d->reason) {
-            case 'feed':
-                return $this->feedHit($request, $d->action === Decision::CHALLENGE ? 'check' : 'deny');
-            case 'denied':
-                // The entry of the deny list that holds the address.
-                $id = $s->denyTable === [] ? null : IpTable::find($request->clientIp, $s->denyTable);
-                return $id === null ? 'deny' : (preg_replace('/[^\x21-\x7e ]/', '?', $id) ?? 'deny');
-            case 'blocked path':
-                $i = null;
-                foreach ($s->blockedPaths as $n => $p) {
-                    if (@preg_match($p, strtolower(rawurldecode($request->path))) === 1 && BlockedPathRule::excepted($s->blockExceptions, $p, $request) === null) {
-                        $i = $n;
-                        break;
-                    }
-                }
-                return $i === null ? null : $name('blockedPaths', $s->blockedPaths[$i], Config::setName($s->blockedPaths[$i]) ?? "blockedPaths[$i]");
-            case 'restricted':
-                foreach ($s->restricted as $n => $r) {
-                    $i = $first($r['paths'], $request->matchPath());
-                    if ($i !== null) {
-                        return $name('restricted', $r['paths'][$i], "restricted[$n]");
+            case 'app':
+                return 'application';
+            case 'always':
+                foreach ($s->challenge->alwaysPaths as $i => $p) {
+                    if (@preg_match($p, $request->path) === 1) {
+                        return $s->ruleName('challenge.alwaysPaths', $s->challenge->alwaysPaths[$i], "challenge.alwaysPaths[$i]");
                     }
                 }
                 return null;
-            case 'method not allowed here':
-                return $s->origin('methodPathsFirst', $request->method) !== null
-                    ? $name('methodPathsFirst', $request->method, "methodPaths.$request->method")
-                    : $name('methodPaths', $request->method, "methodPaths.$request->method");
-            case 'method':
-                // Refused: not in the methods; passed uncached: a POST is never cached.
-                return $d->action === Decision::REJECT ? $name('methods', '*', 'methods') : 'built-in';
-            case 'banned':
-                // A ban's mark keeps no rule (the log names it when it is set); with one ban rule, that one.
-                $bans = array_values(array_unique(array_column($s->bans, 'rule')));
-                return count($bans) === 1 ? $bans[0] : null;
-            case 'cross-site':
-            case 'origin missing':
-                return $name('postOrigin', '*', 'postOrigin');
-            case 'host':
-                return $name('hosts', '*', 'hosts');
-            case 'app':
-                return 'application';
-            case 'crawler':
-                $id = $this->crawlers()->claims((string) $request->header('user-agent'));
-                return $id === null ? null : ($s->origin('crawlerPolicy', $id) ?? $s->origin('crawlerPolicy', $this->crawlers()->kind($id)) ?? $id);
-            case 'unknown parameter':
-                return $name('query', 'strict', 'queryStrict');
-            case 'attack':
-                $p = ContentRule::matched($s->contentRules, $s->blockExceptions, null, $request);
-                return $p === null ? null : $name('contentRules', $p, 'contentRules');
-            case 'always':
-                $i = $first($s->challenge->alwaysPaths, $request->path);
-                return $i === null ? null : $name('challenge.alwaysPaths', $s->challenge->alwaysPaths[$i], "challenge.alwaysPaths[$i]");
-            case 'query parameter':
-                return $name('cacheable.query', '*', 'cacheable.query');
-            case 'path not cacheable':
-                return $name('cacheable.paths', '*', 'cacheable.paths');
-            case 'uri length':
-            case 'query parameters':
-            case 'header size':
-            case 'path encoding':
-            case 'path traversal':
-                return 'built-in';
         }
+        foreach ($this->rules as $rule) {
+            $name = $rule->explain($d, $request, $s);
+            if ($name !== null) {
+                return $name;
+            }
+        }
+        // A "check" feed is decide()'s own step after the chain (the deny feeds are FeedRule's).
+        if ($d->reason === 'feed') {
+            return $this->feedHit($request, $d->action === Decision::CHALLENGE ? 'check' : 'deny');
+        }
+        // A budget the site counts itself (on-demand, consume()): no step of the chain.
         if (isset($s->budgets[$d->reason])) {
-            return $name('budgets', $d->reason, "budgets.$d->reason");
+            return $s->ruleName('budgets', $d->reason, "budgets.$d->reason");
         }
         return null;
     }

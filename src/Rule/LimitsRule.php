@@ -12,6 +12,7 @@ namespace CjwNetwork\RequestShield\Rule;
 
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Settings;
 
 /** Sizes no page request needs: a very long URI, very many parameters, huge headers. */
 final class LimitsRule implements Rule
@@ -36,5 +37,10 @@ final class LimitsRule implements Rule
             return Decision::reject(431, 'header size');
         }
         return null;
+    }
+
+    public function explain(Decision $d, Request $request, Settings $s): ?string
+    {
+        return in_array($d->reason, ['uri length', 'query parameters', 'header size'], true) ? 'built-in' : null;
     }
 }

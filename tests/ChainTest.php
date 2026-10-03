@@ -54,4 +54,28 @@ return [
         same('skip', $states['cache'] ?? null, 'the steps after it: not checked');
         same('SCAN-HIDDEN', $trace['rule'], 'the rule behind it');
     },
+    'explain(): each rule names its own decisions and no other (0031 C.2); the shield asks the chain, and names what no rule produces' => function (): void {
+        $s = Settings::from(['hosts' => ['a.example'], 'methods' => ['GET', 'POST'], 'restricted' => [['paths' => ['#^/admin#'], 'ips' => ['192.0.2.0/24']]],
+            'budgets' => ['requests' => ['limit' => 100, 'window' => 60]], 'challenge' => ['alwaysPaths' => ['#^/login$#']]]);
+        $shield = new Shield($s, new MemoryStore());
+        $req = Inspector::request('GET', 'https://a.example/.env', '203.0.113.7');
+        $blocked = \CjwNetwork\RequestShield\Decision::reject(404, 'blocked path');
+        $own = [];
+        foreach ($shield->rules() as $rule) {
+            $name = $rule->explain($blocked, $req, $s);
+            if ($name !== null) {
+                $own[] = get_class($rule);
+            }
+        }
+        same([\CjwNetwork\RequestShield\Rule\BlockedPathRule::class], $own, 'exactly one rule claims "blocked path"');
+        same('SCAN-HIDDEN', $shield->explain($blocked, $req), 'and names the shipped rule');
+        same('built-in', $shield->explain(\CjwNetwork\RequestShield\Decision::reject(414, 'uri length'), $req), 'a fixed check: built-in');
+        same('methods', $shield->explain(\CjwNetwork\RequestShield\Decision::reject(405, 'method'), $req), 'a refused method: the methods setting');
+        same('built-in', $shield->explain(\CjwNetwork\RequestShield\Decision::allowUncached('method'), $req), 'a POST never cached: built-in (the cache rule\'s, not the method rule\'s)');
+        same('restricted[0]', $shield->explain(\CjwNetwork\RequestShield\Decision::reject(403, 'restricted'), Inspector::request('GET', 'https://a.example/admin/x', '203.0.113.7')), 'the restricted area');
+        same('budgets.requests', $shield->explain(\CjwNetwork\RequestShield\Decision::throttle('requests', 10), $req), 'a budget: by its name');
+        same('challenge.alwaysPaths[0]', $shield->explain(\CjwNetwork\RequestShield\Decision::challenge('always'), Inspector::request('GET', 'https://a.example/login', '203.0.113.7')), 'the always-checked path: no rule\'s, the shield\'s own');
+        same('application', $shield->explain(\CjwNetwork\RequestShield\Decision::challenge('app'), $req), 'the site asked');
+        same(null, $shield->explain(\CjwNetwork\RequestShield\Decision::allowUncached('unknown url'), $req), 'nothing to name');
+    },
 ];

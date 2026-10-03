@@ -12,6 +12,7 @@ namespace CjwNetwork\RequestShield\Rule;
 
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Settings;
 
 /**
  * Addresses on a public blocklist named "deny" (feed …, proposal 0025): 403
@@ -28,5 +29,14 @@ final class FeedRule implements Rule
     public function check(Request $request, float $now): ?Decision
     {
         return ($this->lookup)($request, 'deny') !== null ? Decision::reject(403, 'feed') : null;
+    }
+
+    public function explain(Decision $d, Request $request, Settings $s): ?string
+    {
+        if ($d->reason !== 'feed') {
+            return null;
+        }
+        $hit = ($this->lookup)($request, $d->action === Decision::CHALLENGE ? 'check' : 'deny');
+        return is_string($hit) ? $hit : null;
     }
 }

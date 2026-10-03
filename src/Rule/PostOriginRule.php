@@ -13,6 +13,7 @@ namespace CjwNetwork\RequestShield\Rule;
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\IpAddress;
 use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Settings;
 
 /**
  * Forms only from the website itself (post-origin same, proposal 0028): a
@@ -104,5 +105,10 @@ final class PostOriginRule implements Rule
             }
         }
         return false;
+    }
+
+    public function explain(Decision $d, Request $request, Settings $s): ?string
+    {
+        return $d->reason === 'cross-site' || $d->reason === 'origin missing' ? $s->ruleName('postOrigin', '*', 'postOrigin') : null;
     }
 }

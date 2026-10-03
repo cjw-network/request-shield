@@ -1210,6 +1210,16 @@ final class Settings
         return $this->origins[$setting][$what] ?? null;
     }
 
+    /**
+     * The rule's name for the log and the pages: where the setting was written
+     * (its ID or file:line), else $fallback -- printable characters only.
+     */
+    public function ruleName(string $setting, string $what, string $fallback): string
+    {
+        $origin = $this->origin($setting, $what) ?? $fallback;
+        return preg_replace('/[^\x21-\x7e ]/', '?', $origin) ?? $fallback;
+    }
+
     // ── Compiled: checked once, then loaded from OPcache ──────────────────
 
     /** Deny entries kept as they were written, for the pages; the rest only in the table. */

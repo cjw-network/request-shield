@@ -13,6 +13,7 @@ namespace CjwNetwork\RequestShield\Rule;
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\IpAddress;
 use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Settings;
 
 /**
  * Paths that are only ever asked for by scanners (repository metadata,
@@ -69,6 +70,19 @@ final class BlockedPathRule implements Rule
                 if (@preg_match($p, $request->matchPath()) === 1) {
                     return $i;
                 }
+            }
+        }
+        return null;
+    }
+
+    public function explain(Decision $d, Request $request, Settings $s): ?string
+    {
+        if ($d->reason !== 'blocked path') {
+            return null;
+        }
+        foreach ($s->blockedPaths as $n => $p) {
+            if (@preg_match($p, strtolower(rawurldecode($request->path))) === 1 && self::excepted($s->blockExceptions, $p, $request) === null) {
+                return $s->ruleName('blockedPaths', $p, \CjwNetwork\RequestShield\Config::setName($p) ?? "blockedPaths[$n]");
             }
         }
         return null;

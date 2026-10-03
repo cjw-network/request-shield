@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Each rule names its own decisions** (0031 step C.2): `Rule::explain()`
+  gives the rule behind a decision (the ID or file:line it was written at,
+  `built-in` for a fixed check) and null for any other; `Shield::explain()`
+  asks the chain's rules and names only what no rule produces (an
+  always-checked path, a `check` feed, the application's own check, a budget
+  the site counts itself). The log and the pages read as before.
 - **The rule chain is one list** (0031 step C.1): `Shield::chain()` returns
   the steps the shield checks, in order, each with a key and a stage
   (`Rule\Step`, derived from the rules when a trace or a page asks -- a

@@ -12,6 +12,7 @@ namespace CjwNetwork\RequestShield\Rule;
 
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Settings;
 
 /**
  * The definition of what may be cached. A request outside it is not refused
@@ -61,6 +62,19 @@ final class CacheableRule implements Rule
                 }
             }
             return Decision::allowUncached('path not cacheable');
+        }
+        return null;
+    }
+
+    public function explain(Decision $d, Request $request, Settings $s): ?string
+    {
+        switch ($d->reason) {
+            case 'query parameter':
+                return $s->ruleName('cacheable.query', '*', 'cacheable.query');
+            case 'path not cacheable':
+                return $s->ruleName('cacheable.paths', '*', 'cacheable.paths');
+            case 'method':
+                return $d->action === Decision::REJECT ? null : 'built-in';     // a POST is never cached (the refusal is MethodRule's)
         }
         return null;
     }

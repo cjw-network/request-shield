@@ -12,6 +12,7 @@ namespace CjwNetwork\RequestShield\Rule;
 
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Settings;
 
 /**
  * Known query parameters and their types (proposal 0009): the cheapest check
@@ -175,5 +176,10 @@ final class QueryRule implements Rule
                 return true;
         }
         return strncmp($type, '#', 1) === 0 && @preg_match($type, $value) === 1;
+    }
+
+    public function explain(Decision $d, Request $request, Settings $s): ?string
+    {
+        return $d->reason === 'unknown parameter' ? $s->ruleName('query', 'strict', 'queryStrict') : null;
     }
 }

@@ -13,6 +13,7 @@ namespace CjwNetwork\RequestShield\Rule;
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\IpAddress;
 use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Settings;
 
 /**
  * Paths only some addresses may open -- an admin area, an internal API:
@@ -37,6 +38,22 @@ final class RestrictedPathRule implements Rule
                         return Decision::reject(403, 'restricted');
                     }
                     break;
+                }
+            }
+        }
+        return null;
+    }
+
+    public function explain(Decision $d, Request $request, Settings $s): ?string
+    {
+        if ($d->reason !== 'restricted') {
+            return null;
+        }
+        $path = $request->matchPath();
+        foreach ($s->restricted as $n => $r) {
+            foreach ($r['paths'] as $i => $p) {
+                if (@preg_match($p, $path) === 1) {
+                    return $s->ruleName('restricted', $r['paths'][$i], "restricted[$n]");
                 }
             }
         }

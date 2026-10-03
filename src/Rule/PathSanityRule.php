@@ -12,6 +12,7 @@ namespace CjwNetwork\RequestShield\Rule;
 
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Settings;
 
 /**
  * Paths no browser sends: a NUL byte, a broken %-escape, a ".." segment
@@ -37,5 +38,10 @@ final class PathSanityRule implements Rule
             }
         }
         return null;
+    }
+
+    public function explain(Decision $d, Request $request, Settings $s): ?string
+    {
+        return $d->reason === 'path encoding' || $d->reason === 'path traversal' ? 'built-in' : null;
     }
 }

@@ -13,6 +13,7 @@ namespace CjwNetwork\RequestShield\Rule;
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\IpAddress;
 use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Store\Store;
 
 /**
@@ -34,5 +35,15 @@ final class BanRule implements Rule
             return null;
         }
         return Decision::throttle('banned', max(1, $until - (int) $now));
+    }
+
+    public function explain(Decision $d, Request $request, Settings $s): ?string
+    {
+        if ($d->reason !== 'banned') {
+            return null;
+        }
+        // A ban's mark keeps no rule (the log names it when it is set); with one ban rule, that one.
+        $bans = array_values(array_unique(array_column($s->bans, 'rule')));
+        return count($bans) === 1 ? (preg_replace('/[^\x21-\x7e ]/', '?', $bans[0]) ?? $bans[0]) : null;
     }
 }

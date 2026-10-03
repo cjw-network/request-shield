@@ -13,6 +13,7 @@ namespace CjwNetwork\RequestShield\Rule;
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\IpAddress;
 use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Store\Store;
 
 /**
@@ -79,5 +80,10 @@ final class BudgetRule implements Rule
             return Decision::challenge($this->name, ($count - $this->challengeAt) / $span);
         }
         return null;
+    }
+
+    public function explain(Decision $d, Request $request, Settings $s): ?string
+    {
+        return $d->reason === $this->name && isset($s->budgets[$this->name]) ? $s->ruleName('budgets', $this->name, "budgets.$this->name") : null;
     }
 }

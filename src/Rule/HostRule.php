@@ -12,6 +12,7 @@ namespace CjwNetwork\RequestShield\Rule;
 
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Settings;
 
 /**
  * Only the site's own hosts: "example.org", or "*.example.org" for every
@@ -40,5 +41,10 @@ final class HostRule implements Rule
             }
         }
         return Decision::reject(404, 'host');
+    }
+
+    public function explain(Decision $d, Request $request, Settings $s): ?string
+    {
+        return $d->reason === 'host' ? $s->ruleName('hosts', '*', 'hosts') : null;
     }
 }

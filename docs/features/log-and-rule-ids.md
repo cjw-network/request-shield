@@ -1,5 +1,7 @@
 # The log and rule IDs
 
+Which rule a decision names is the rule's own answer (`Rule::explain()`, 0031 C.2): the shield asks the chain, so a rule added to it names itself in the log and on the pages.
+
 ## Rule IDs: which rule decided
 
 Every decision that stopped or flagged a request names the rule behind it —

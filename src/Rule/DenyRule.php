@@ -14,6 +14,7 @@ use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\IpAddress;
 use CjwNetwork\RequestShield\IpTable;
 use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Settings;
 
 /**
  * Addresses kept out (deny, the deny list): 403 before every other check --
@@ -30,5 +31,15 @@ final class DenyRule implements Rule
     public function check(Request $request, float $now): ?Decision
     {
         return IpTable::find($request->clientIp, $this->table) !== null ? Decision::reject(403, 'denied') : null;
+    }
+
+    public function explain(Decision $d, Request $request, Settings $s): ?string
+    {
+        if ($d->reason !== 'denied') {
+            return null;
+        }
+        // The entry of the deny list that holds the address.
+        $id = $s->denyTable === [] ? null : \CjwNetwork\RequestShield\IpTable::find($request->clientIp, $s->denyTable);
+        return $id === null ? 'deny' : (preg_replace('/[^\x21-\x7e ]/', '?', $id) ?? 'deny');
     }
 }
