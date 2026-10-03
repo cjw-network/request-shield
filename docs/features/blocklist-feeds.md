@@ -1,4 +1,4 @@
-# Public blocklists (feeds)
+# RSF1.3 Public blocklists (feeds)
 
 From [proposal 0025](../proposals/0025-blocklist-feeds.md).
 

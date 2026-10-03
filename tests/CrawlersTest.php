@@ -71,7 +71,7 @@ function crawlerSettle(Settings $s, string $ip, string $ua): Decision
 }
 
 return [
-    'the shipped list: the crawlers, their kinds and how each is verified; the generated rules/crawlers.php is current' => function (): void {
+    'RSF1.4 the shipped list: the crawlers, their kinds and how each is verified; the generated rules/crawlers.php is current' => function (): void {
         $s = Settings::from([]);
         same(['search' => 8, 'ai-search' => 4, 'ai-user' => 3, 'ai-training' => 4], array_count_values(array_column($s->crawlers, 'kind')), 'by kind');
         foreach ($s->crawlers as $id => $x) {
@@ -87,7 +87,7 @@ return [
             truthy(CrawlerLists::parse((string) file_get_contents($f)) !== null, basename($f) . ' is a valid list');
         }
     },
-    'one expression names the crawler -- and names close to each other are told apart' => function (): void {
+    'RSF1.4 one expression names the crawler -- and names close to each other are told apart' => function (): void {
         $c = Crawlers::of(Settings::from([]));
         $cases = [
             GOOGLEBOT => 'CRAWL-GOOGLE',
@@ -108,7 +108,7 @@ return [
             same($id, $c->claims((string) $ua), (string) $ua);
         }
     },
-    'verified by the address, never the name: address lists (IPv4, IPv6), DNS, crawler-verify for a DMZ' => function (): void {
+    'RSF1.4 verified by the address, never the name: address lists (IPv4, IPv6), DNS, crawler-verify for a DMZ' => function (): void {
         $dnsCalls = 0;
         $reverse = function (string $ip) use (&$dnsCalls) {
             $dnsCalls++;
@@ -138,7 +138,7 @@ return [
         $dnsCalls = 0;
         truthy(!$guarded->verified('203.0.113.66', 'CRAWL-GOOGLE') && $dnsCalls === 0, 'no DNS lookups left (dns-lookups): not verified, at once');
     },
-    'what a site does with a verified crawler: allow (never checked), check, block (403); one that only claims the name is an ordinary visitor, noted' => function (): void {
+    'RSF1.4 what a site does with a verified crawler: allow (never checked), check, block (403); one that only claims the name is an ordinary visitor, noted' => function (): void {
         $pace = "set secret test-secret-0123456789abcdef0123456789abcdef\nlimit requests 100/min challenge-at 0\nchallenge /\n";
         same(Decision::ALLOW, crawlerSettle(crawlerSettings($pace), ANTHROPIC_IP, CLAUDEBOT)->action, 'allow: through where everyone is checked');
         $fake = crawlerSettle(crawlerSettings($pace), '198.51.100.9', CLAUDEBOT);
@@ -161,7 +161,7 @@ return [
         $r = crawlerReq(ANTHROPIC_IP, CLAUDEBOT);
         same(Decision::THROTTLE, $shield->settle($shield->decide($r, 1000.0), $r, 1000.0)['decision']->action, 'past the limit: 429, never the check');
     },
-    'the log notes a claimed name; the rules page counts it and lists the crawlers' => function (): void {
+    'RSF1.4 the log notes a claimed name; the rules page counts it and lists the crawlers' => function (): void {
         $dir = sys_get_temp_dir() . '/rshield-crawl-log-' . getmypid() . '-' . mt_rand();
         mkdir($dir);
         try {
@@ -182,7 +182,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'rule files: a site\'s own crawler, its own address list; policies; the mistakes' => function (): void {
+    'RSF1.4 rule files: a site\'s own crawler, its own address list; policies; the mistakes' => function (): void {
         $dir = crawlerDir(['site.rules' => "[SITE-BOT] crawler ai-search ua /MyBot/ dns .example.org ranges bots.json   # our own\n", 'bots.json' => '{"prefixes": ["192.0.2.0/24"]}']);
         try {
             $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
@@ -216,7 +216,7 @@ return [
             }
         }
     },
-    'updating the address lists: checked, a shrunken list refused, nothing written on failure; the newer list wins when compiled' => function (): void {
+    'RSF1.4 updating the address lists: checked, a shrunken list refused, nothing written on failure; the newer list wins when compiled' => function (): void {
         same(['prefixes' => ['192.0.2.0/24', '2001:db8::/32'], 'source' => null, 'created' => '2026-09-01', 'fetched' => null],
             CrawlerLists::parse('{"creationTime": "2026-09-01", "prefixes": [{"ipv4Prefix": "192.0.2.0/24"}, {"ipv6Prefix": "2001:db8::/32"}]}'), 'the operators\' format');
         same(null, CrawlerLists::parse('{"prefixes": ["192.0.2.0/24", "999.1.1.1/8"]}'), 'one bad entry: not trusted');
@@ -271,7 +271,7 @@ return [
             exec('rm -rf ' . escapeshellarg($site));
         }
     },
-    'bin: crawlers lists them, update-crawler-lists --check says whether rules/crawlers.php is current' => function (): void {
+    'RSF1.4 bin: crawlers lists them, update-crawler-lists --check says whether rules/crawlers.php is current' => function (): void {
         if (!function_exists('exec')) {
             skip('no exec');
         }

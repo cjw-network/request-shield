@@ -3,30 +3,40 @@
 - **Explained** — for site owners, in plain words:
   [the parts and their switches](explained/parts.md) ·
   [the browser check](explained/browser-check.md)
-- **Features** — what each part does, use cases, configuration, cost, limits:
-  [trusted proxies](features/trusted-proxies.md) ·
-  [hard rejects](features/hard-rejects.md) ·
-  [cacheable definition](features/cacheable-definition.md) ·
-  [budgets and stores](features/budgets.md) ·
-  [browser challenge](features/browser-challenge.md) ·
-  [access rules](features/access-rules.md) ·
-  [rule files](features/rule-files.md) ·
-  [forms only from the website itself (`post-origin`)](features/forms-from-the-website.md) ·
-  [examples next to the rules (`expect`, `request-shield test`)](features/rule-examples.md) ·
-  [log and rule IDs](features/log-and-rule-ids.md) ·
-  [active rules page](features/active-rules-page.md) ·
-  [the site asks for the check](features/app-challenges.md) ·
-  [the check inside the form](features/browser-check-in-the-form.md) ·
-  [known query parameters](features/known-parameters.md) ·
-  [modes: monitor and strict](features/modes.md) ·
-  [IP lists and automatic bans](features/ip-lists.md) ·
-  [the live view and the lists in the dashboard](features/live-and-lists.md) ·
-  [public blocklists (feeds)](features/blocklist-feeds.md) ·
-  [known crawlers](features/known-crawlers.md) ·
-  [statistics](features/statistics.md) ·
-  [plugins](features/plugins.md) ·
-  [settings](features/settings.md) ·
-  [the single file](features/single-file.md)
+- **Features** — what each part does, use cases, configuration, cost, limits;
+  each has an id `RSF<group>.<n>` (in the order the shield asks its
+  questions; `php tests/run.php RSF2.6` runs one feature's tests):
+
+  | Id | Question | Feature |
+  |---|---|---|
+  | RSF1.1 | Who is asking | [trusted proxies](features/trusted-proxies.md) |
+  | RSF1.2 | Who is asking | [IP lists and automatic bans](features/ip-lists.md) |
+  | RSF1.3 | Who is asking | [public blocklists (feeds)](features/blocklist-feeds.md) |
+  | RSF1.4 | Who is asking | [known crawlers](features/known-crawlers.md) |
+  | RSF2.1 | What is asked | [hard rejects](features/hard-rejects.md) |
+  | RSF2.2 | What is asked | blocked paths (scanners) -- in [rule files](features/rule-files.md#the-built-in-rules) for now |
+  | RSF2.3 | What is asked | [access rules](features/access-rules.md) |
+  | RSF2.4 | What is asked | [forms only from the website itself (`post-origin`)](features/forms-from-the-website.md) |
+  | RSF2.5 | What is asked | [known query parameters](features/known-parameters.md) |
+  | RSF2.6 | What is asked | attack patterns -- in [rule files](features/rule-files.md#the-built-in-rules) for now |
+  | RSF3.1 | How often | [budgets and stores](features/budgets.md) |
+  | RSF3.2 | How often | [browser challenge](features/browser-challenge.md) |
+  | RSF3.3 | How often | [the check inside the form](features/browser-check-in-the-form.md) |
+  | RSF3.4 | How often | [the site asks for the check](features/app-challenges.md) |
+  | RSF4.1 | What a cache may keep | [cacheable definition](features/cacheable-definition.md) |
+  | RSF4.2 | What a cache may keep | cache keys without tracking (proposal 0020) |
+  | RSF5.1 | Operating | [rule files](features/rule-files.md) |
+  | RSF5.2 | Operating | [settings](features/settings.md) |
+  | RSF5.3 | Operating | [modes: monitor and strict](features/modes.md) |
+  | RSF5.4 | Operating | [examples next to the rules (`expect`, `request-shield test`)](features/rule-examples.md) |
+  | RSF5.5 | Operating | [log and rule IDs](features/log-and-rule-ids.md) |
+  | RSF5.6 | Operating | error pages (proposal 0030) |
+  | RSF5.7 | Operating | [the single file](features/single-file.md) |
+  | RSF6.1 | Watching & connecting | [active rules page](features/active-rules-page.md) |
+  | RSF6.2 | Watching & connecting | [the live view and the lists in the dashboard](features/live-and-lists.md) |
+  | RSF6.3 | Watching & connecting | [statistics](features/statistics.md) |
+  | RSF6.4 | Watching & connecting | [plugins](features/plugins.md) |
+  | RSF6.5 | Watching & connecting | API (plugin, planned) |
 - **Privacy** — what the shield processes about visitors, feature by feature,
   and the GDPR: [privacy and the GDPR](privacy.md)
 - **For AI agents** — [llms.txt](../llms.txt) is the entry;

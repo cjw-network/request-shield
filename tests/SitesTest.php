@@ -41,7 +41,7 @@ function sitesDir(): string
 }
 
 return [
-    'reading: the base for every website, a site block added to it -- each website its own settings' => function (): void {
+    'RSF5.1 reading: the base for every website, a site block added to it -- each website its own settings' => function (): void {
         $dir = sitesDir();
         try {
             $base = Settings::from(RuleFile::read(["$dir/main.rules"])['config']);
@@ -60,7 +60,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'which website: the exact name, *.<rest> (one label), default; case, port and a trailing dot do not matter' => function (): void {
+    'RSF5.1 which website: the exact name, *.<rest> (one label), default; case, port and a trailing dot do not matter' => function (): void {
         $dir = sitesDir();
         try {
             $s = Settings::from(RuleFile::read(["$dir/main.rules"])['config']);
@@ -75,7 +75,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'which name decides: the web server\'s (server-name) whatever Host says; with site-from host the Host, X-Forwarded-Host only from a trusted proxy' => function (): void {
+    'RSF5.1 which name decides: the web server\'s (server-name) whatever Host says; with site-from host the Host, X-Forwarded-Host only from a trusted proxy' => function (): void {
         $dir = sitesDir();
         try {
             $s = Settings::from(RuleFile::read(["$dir/main.rules"])['config']);
@@ -90,7 +90,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'mistakes in site blocks name their line' => function (): void {
+    'RSF5.1 mistakes in site blocks name their line' => function (): void {
         $dir = sitesDir();
         try {
             $cases = [
@@ -124,7 +124,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'loading: every website compiled with the base; a site\'s settings taken with the base\'s check; an included file noticed with the main file' => function (): void {
+    'RSF5.1 loading: every website compiled with the base; a site\'s settings taken with the base\'s check; an included file noticed with the main file' => function (): void {
         $dir = sitesDir();
         try {
             $run = static function () use ($dir): string {
@@ -150,7 +150,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'the real path: one rule file, three websites -- each request gets its website\'s rules; check lists them, trace takes the website from the address' => function (): void {
+    'RSF5.1 the real path: one rule file, three websites -- each request gets its website\'s rules; check lists them, trace takes the website from the address' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -188,7 +188,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-'budgets: the base\'s count across every website; one written in a site block counts on that website only -- equal names in two blocks never share a counter' => function (): void {
+'RSF5.1 budgets: the base\'s count across every website; one written in a site block counts on that website only -- equal names in two blocks never share a counter' => function (): void {
         $dir = sitesDir();
         try {
             file_put_contents("$dir/budgets.rules", "set store memory\n[BASE-PACE] limit requests 5/min\n"

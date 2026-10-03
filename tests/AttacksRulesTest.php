@@ -53,7 +53,7 @@ function attacksRuleId(Settings $s, string $uri, array $server = []): ?string
 }
 
 return [
-    'attacks: every rule blocks what it names (payloads after the OWASP CRS regression tests)' => function (): void {
+    'RSF2.6 attacks: every rule blocks what it names (payloads after the OWASP CRS regression tests)' => function (): void {
         $s = attacksRules();
         // [uri, server, expected rule ID]; the ID is what explain() and the log name.
         $cases = [
@@ -121,7 +121,7 @@ return [
             same($id, attacksRuleId($s, $uri, $server), "the refusal of $uri is named");
         }
     },
-    'attacks: the known exploit paths are 404 -- and their rule is named' => function (): void {
+    'RSF2.6 attacks: the known exploit paths are 404 -- and their rule is named' => function (): void {
         $s = attacksRules();
         $paths = [
             '/eval-stdin.php' => 'ATK-EXPLOIT',               // PHPUnit RCE (CVE-2017-9841)
@@ -143,7 +143,7 @@ return [
         // A blocked path wins over an attack pattern: 404, not 403.
         same('reject blocked path', attacksDecide($s, '/.env?a=1%20union%20select%202'));
     },
-    'attacks: a real visitor\'s request passes (the benign side)' => function (): void {
+    'RSF2.6 attacks: a real visitor\'s request passes (the benign side)' => function (): void {
         $s = attacksRules();
         $uris = [
             '/', '/news/2026/what-s-new', '/?a=1&b=2', '/?next=/login',
@@ -190,7 +190,7 @@ return [
         $d = attacksDecide($s, '/', ['HTTP_ACCEPT_LANGUAGE' => 'de-DE,de;q=0.9,en;q=0.8', 'HTTP_COOKIE' => 'sid=secret']);
         truthy(strncmp($d, 'allow', 5) === 0, 'an ordinary browser header refused: ' . $d);
     },
-    'attacks: disguises do not help -- decoded twice, lower case, comments out' => function (): void {
+    'RSF2.6 attacks: disguises do not help -- decoded twice, lower case, comments out' => function (): void {
         $s = attacksRules();
         foreach ([
             '/?id=1%20UnIoN/**/SeLeCt%202',          // SQL comments become a space
@@ -206,7 +206,7 @@ return [
         // not "union"); that is the documented limit of the normalisation.
         truthy(strncmp(attacksDecide($s, '/?id=1%20un/**/ion'), 'allow', 5) === 0, 'un/**/ion is not union');
     },
-    'attacks: taken back and replaced like every other rule' => function (): void {
+    'RSF2.6 attacks: taken back and replaced like every other rule' => function (): void {
         // One rule by its ID; the rest stay.
         $s = attacksRules("unblock [ATK-XSS-URL@1]\n");
         truthy(strncmp(attacksDecide($s, '/?u=javascript:alert(1)'), 'allow', 5) === 0, 'javascript: open');
@@ -230,7 +230,7 @@ return [
         same('reject attack', attacksDecide($s, '/', ['HTTP_USER_AGENT' => 'sqlmap/1.7']), 'kept');
         truthy(strncmp(attacksDecide($s, '/', ['HTTP_USER_AGENT' => 'nuclei']), 'allow', 5) === 0, 'the rest of the list is gone with the rule');
     },
-    'attacks: trace, the rules page, check and show see them' => function (): void {
+    'RSF2.6 attacks: trace, the rules page, check and show see them' => function (): void {
         $s = attacksRules();
         $find = static function (array $steps, string $check): array {
             foreach ($steps as $st) {
@@ -285,7 +285,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'attacks: the file itself -- namespace, version, IDs, descriptions' => function (): void {
+    'RSF2.6 attacks: the file itself -- namespace, version, IDs, descriptions' => function (): void {
         $s = attacksRules();
         same('2026.09.1', $s->origins['versions']['ATK'] ?? null, 'the set has a version');
         truthy(isset($s->origins['versions']['SCAN']), 'the scanner set is still there');

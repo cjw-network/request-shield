@@ -395,7 +395,7 @@ never reassigned (gaps allowed).
 | **RSF2 What is asked** | the request's shape and target | RSF2.1 hard rejects · RSF2.2 blocked paths (scanners) · RSF2.3 access rules · RSF2.4 forms from the website (post-origin) · RSF2.5 known parameters · RSF2.6 attack patterns |
 | **RSF3 How often** | pace and proof | RSF3.1 budgets & pace · RSF3.2 browser check · RSF3.3 the check in the form · RSF3.4 the site asks for the check |
 | **RSF4 What a cache may keep** | cache hygiene | RSF4.1 cacheable definition · RSF4.2 cache keys without tracking (0020) |
-| **RSF5 Operating** | writing and checking rules | RSF5.1 rule files · RSF5.2 settings · RSF5.3 modes · RSF5.4 examples next to the rules · RSF5.5 log & rule ids · RSF5.6 error pages (0030) |
+| **RSF5 Operating** | writing and checking rules | RSF5.1 rule files · RSF5.2 settings · RSF5.3 modes · RSF5.4 examples next to the rules · RSF5.5 log & rule ids · RSF5.6 error pages (0030) · RSF5.7 the single file & releases (added in F.1: phase E made it a feature) |
 | **RSF6 Watching & connecting** | what the shield does, and how others reach it | RSF6.1 rules page · RSF6.2 live & lists · RSF6.3 statistics (plugin) · RSF6.4 plugins & extensions · RSF6.5 API (plugin) |
 
 A feature **exists** only when all of these are there, under its id — and

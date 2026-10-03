@@ -1,4 +1,4 @@
-# Access rules: paths by address, methods by path
+# RSF2.3 Access rules: paths by address, methods by path
 
 ## What it does
 

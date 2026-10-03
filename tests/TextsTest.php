@@ -11,7 +11,7 @@ use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Texts;
 
 return [
-    'the language: the browser\'s, among those there are texts for; else English' => function (): void {
+    'RSF3.2 the language: the browser\'s, among those there are texts for; else English' => function (): void {
         same('de', Texts::language('auto', 'de-DE,de;q=0.9,en;q=0.8'));
         same('en', Texts::language('auto', 'en-US,en;q=0.9,de;q=0.8'));
         same('de', Texts::language('auto', 'fr-FR,fr;q=0.9,de;q=0.7,en;q=0.5'), 'no French texts: the next the browser takes');
@@ -22,7 +22,7 @@ return [
         same('fr', Texts::language('auto', 'fr-FR,fr;q=0.9', ['fr.title' => 'Un instant']), 'a language the site has texts for');
         same('de', Texts::language('de', 'en-US'), 'fixed by the site');
     },
-    'the texts: the site\'s for the language, the site\'s for all, built in, English' => function (): void {
+    'RSF3.2 the texts: the site\'s for the language, the site\'s for all, built in, English' => function (): void {
         $de = Texts::all('de');
         same('Einen Moment, bitte', $de['title']);
         same('de', $de['lang']);
@@ -36,7 +36,7 @@ return [
             truthy(isset(Texts::BUILT_IN['de'][$key], Texts::BUILT_IN['en'][$key]), "every text in German and English: $key");
         }
     },
-    'rule files: set language, set text.<lang>.<key>; errors name file and line' => function (): void {
+    'RSF3.2 rule files: set language, set text.<lang>.<key>; errors name file and line' => function (): void {
         $dir = sys_get_temp_dir() . '/rshield-texts-' . getmypid() . '-' . mt_rand();
         mkdir($dir);
         try {
@@ -57,7 +57,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'the pages in the language: the check page, a pause, "not found"' => function (): void {
+    'RSF3.2 the pages in the language: the check page, a pause, "not found"' => function (): void {
         $challenge = ['algorithm' => 'SHA-256', 'challenge' => str_repeat('a', 64), 'maxnumber' => 1000, 'salt' => 's', 'signature' => str_repeat('b', 64)];
         $page = ChallengePage::render($challenge, 'rss', false, Texts::all('de'));
         truthy(strpos($page, '<html lang="de">') !== false && strpos($page, 'Einen Moment, bitte') !== false && strpos($page, 'Bitte aktivieren Sie JavaScript') !== false, 'the check page in German');

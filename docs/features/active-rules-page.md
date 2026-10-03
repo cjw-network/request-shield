@@ -1,4 +1,4 @@
-# The active rules page
+# RSF6.1 The active rules page
 
 ## What it does
 

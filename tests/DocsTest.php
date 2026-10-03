@@ -30,6 +30,28 @@ function docsLinks(string $markdown): array
 }
 
 return [
+    'feature ids: every feature page begins with its id, the docs index lists it under that id; the runner runs one feature by its id (0031 F.1)' => function (): void {
+        $index = (string) file_get_contents(dirname(__DIR__) . '/docs/README.md');
+        foreach (glob(dirname(__DIR__) . '/docs/features/*.md') ?: [] as $f) {
+            $h1 = (string) strtok((string) file_get_contents($f), "\n");
+            truthy(preg_match('/^# (RSF\d+\.\d+) /', $h1, $m) === 1, basename($f) . ": the title begins with its id: $h1");
+            truthy(preg_match('/\| ' . preg_quote($m[1], '/') . ' \|[^\n]*\(features\/' . preg_quote(basename($f), '/') . '\)/', $index) === 1, basename($f) . ": docs/README.md lists it as {$m[1]}");
+        }
+        if (!function_exists('exec')) {
+            skip('no exec');
+        }
+        // Exactly the tests whose names begin with the id: counted in the files themselves.
+        $named = 0;
+        foreach (glob(__DIR__ . '/*Test.php') ?: [] as $f) {
+            $named += preg_match_all("/^ *'RSF2\\.4 /m", (string) file_get_contents($f));
+        }
+        exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/run.php') . ' RSF2.4 2>&1', $out, $code);
+        $text = implode("\n", $out);
+        truthy($named >= 3, "tests named RSF2.4: $named");
+        truthy($code === 0 && preg_match('/PASS - (\d+) passed, 0 failed, (\d+) skipped/', $text, $n) === 1 && (int) $n[1] + (int) $n[2] === $named, "run.php RSF2.4 runs exactly those $named: " . $text);
+        exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/run.php') . ' RSF26 2>&1', $none, $code);
+        same([1, true], [$code, strpos(implode("\n", $none), 'no test has the id RSF26') !== false], 'an id without tests fails, never passes in silence');
+    },
     'proposals: one number each, none twice, every one linked from docs/README.md' => function (): void {
         $dir = docsRoot() . '/docs/proposals';
         $index = (string) file_get_contents(docsRoot() . '/docs/README.md');

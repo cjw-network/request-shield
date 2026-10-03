@@ -1,4 +1,4 @@
-# The browser challenge (proof of work)
+# RSF3.2 The browser challenge (proof of work)
 
 *In plain words, for site owners: [the browser check, explained](../explained/browser-check.md).*
 

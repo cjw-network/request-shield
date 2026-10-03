@@ -50,7 +50,7 @@ function cookieValue(array $cookies, string $name): ?string
 }
 
 return [
-    'proof of work: a solution verifies; tampering, expiry and another client do not' => function (): void {
+    'RSF3.2 proof of work: a solution verifies; tampering, expiry and another client do not' => function (): void {
         $pow = new ProofOfWork(SECRET);
         $c = $pow->create('203.0.113.7', 2000, 2000);
         same('SHA-256', $c['algorithm']);
@@ -68,7 +68,7 @@ return [
         truthy(!$pow->verify(rtrim(strtr(base64_encode(json_encode($wrong)), '+/', '-_'), '='), '203.0.113.7', 1000.0), 'extended expiry');
         truthy(!$pow->verify('garbage', '203.0.113.7', 1000.0), 'garbage');
     },
-    'pass cookie: bound to client and User-Agent, expires, cannot be forged' => function (): void {
+    'RSF3.2 pass cookie: bound to client and User-Agent, expires, cannot be forged' => function (): void {
         $p = new PassCookie(SECRET);
         $v = $p->issue('203.0.113.7', 'UA', 5000);
         truthy($p->valid($v, '203.0.113.7', 'UA', 4000.0), 'valid');
@@ -84,7 +84,7 @@ return [
         truthy(!$p->valid('2.' . base_convert('5000', 10, 36) . '.' . explode('.', $v)[2] . '.' . str_repeat('A', 22), '203.0.113.7', 'UA', 4000.0), 'a wrong MAC');
         truthy((new PassCookie(SECRET, false))->valid((new PassCookie(SECRET, false))->issue('b', 'UA1', 5000), 'b', 'UA2', 1.0), 'User-Agent binding can be off');
     },
-    'secret: made once, kept, shared' => function (): void {
+    'RSF3.2 secret: made once, kept, shared' => function (): void {
         $dir = sys_get_temp_dir() . '/rshield-secret-' . getmypid() . '-' . mt_rand();
         $a = Secret::resolve(null, $dir);
         same(64, strlen($a));
@@ -93,7 +93,7 @@ return [
         same(str_repeat('s', 40), Secret::resolve(str_repeat('s', 40), $dir), 'a configured one wins');
         exec('rm -rf ' . escapeshellarg($dir));
     },
-    'gate: page, then solution -> pass cookie, then pass -> through' => function (): void {
+    'RSF3.2 gate: page, then solution -> pass cookie, then pass -> through' => function (): void {
         $gate = new Gate(ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 3000]]), SECRET);
         $challenged = Decision::challenge('requests', 0.0);
         $base = Decision::allow();
@@ -115,7 +115,7 @@ return [
         same(Decision::ALLOW, $r['decision']->action, 'pass: through as the checks decided');
         same(Decision::CHALLENGE, $gate->resolve($challenged, $base, creq('/other', ['rsp' => $pass], 'GET', '198.51.100.1'), 1500.0)['decision']->action, 'the pass is for one client only');
     },
-    'gate: difficulty grows with the level; POST is throttled; exempt paths pass' => function (): void {
+    'RSF3.2 gate: difficulty grows with the level; POST is throttled; exempt paths pass' => function (): void {
         $gate = new Gate(ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 5000], 'exemptPaths' => ['#^/api/#']]), SECRET);
         $r = $gate->resolve(Decision::challenge('requests', 1.0), Decision::allow(), creq('/'), 1.0);
         preg_match('/var RS=(\{.*?\});\(function/s', $r['page'], $m);
@@ -123,20 +123,20 @@ return [
         same(Decision::THROTTLE, $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', [], 'POST'), 1.0)['decision']->action);
         same(Decision::ALLOW, $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/api/x'), 1.0)['decision']->action);
     },
-    'gate: a solution buys one pass, not one per replay' => function (): void {
+    'RSF3.2 gate: a solution buys one pass, not one per replay' => function (): void {
         $gate = new Gate(ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 1000]]), SECRET, null, 64, new MemoryStore());
         $c = (new ProofOfWork(SECRET))->create('203.0.113.7', 1000, 2000);
         $solved = creq('/', ['rss' => solveInPhp($c)]);
         same(Decision::ALLOW_UNCACHED, $gate->resolve(Decision::challenge('requests'), Decision::allow(), $solved, 1000.0)['decision']->action, 'first use');
         same(Decision::CHALLENGE, $gate->resolve(Decision::challenge('requests'), Decision::allow(), $solved, 1010.0)['decision']->action, 'replayed');
     },
-    'gate: a wrong solution gets a new challenge and loses its cookie' => function (): void {
+    'RSF3.2 gate: a wrong solution gets a new challenge and loses its cookie' => function (): void {
         $gate = new Gate(ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 1000]]), SECRET);
         $r = $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', ['rss' => 'bogus']), 1.0);
         same(Decision::CHALLENGE, $r['decision']->action);
         same('', cookieValue($r['cookies'], 'rss'));
     },
-    'search engines: a verified crawler passes, a fake one does not' => function (): void {
+    'RSF1.4 search engines: a verified crawler passes, a fake one does not' => function (): void {
         $cache = [];
         $engines = new SearchEngines(SearchEngines::defaults(),
             function ($k) use (&$cache) { return $cache[$k] ?? null; },
@@ -156,7 +156,7 @@ return [
         $fake = $gate->resolve(Decision::challenge('requests'), Decision::allow(), creq('/', [], 'GET', '6.6.6.6', $bot), 1.0)['decision'];
         same([Decision::CHALLENGE, 'CRAWL-GOOGLE'], [$fake->action, $fake->claimed], 'a fake one: checked, and noted');
     },
-    'shield: budget -> challenge -> solved -> through, cacheability kept' => function (): void {
+    'RSF3.1 shield: budget -> challenge -> solved -> through, cacheability kept' => function (): void {
         $dir = sys_get_temp_dir() . '/rshield-ch-' . getmypid() . '-' . mt_rand();
         $shield = new Shield(['storeDir' => $dir, 'challenge' => ['secret' => SECRET, 'searchEngines' => false, 'difficulty' => ['min' => 1000, 'max' => 2000]],
             'cacheable' => ['query' => []], 'budgets' => ['requests' => ['limit' => 100, 'window' => 60, 'challengeAt' => 3]]], new MemoryStore());
@@ -175,12 +175,12 @@ return [
         same('query parameter', $r['decision']->reason, 'with a pass, the cacheable definition still counts');
         exec('rm -rf ' . escapeshellarg($dir));
     },
-    'the page escapes what it embeds' => function (): void {
+    'RSF3.2 the page escapes what it embeds' => function (): void {
         $page = ChallengePage::render(['algorithm' => 'SHA-256', 'challenge' => 'x', 'maxnumber' => 1, 'salt' => '</script><b>', 'signature' => 's'], 'rs', false, ['title' => '<i>T</i>']);
         truthy(strpos($page, '</script><b>') === false, 'no raw </script> from the data');
         truthy(strpos($page, '&lt;i&gt;T&lt;/i&gt;') !== false, 'texts escaped');
     },
-    'alwaysPaths: challenged whatever the budget says, until the client holds a pass' => function (): void {
+    'RSF3.2 alwaysPaths: challenged whatever the budget says, until the client holds a pass' => function (): void {
         $dir = sys_get_temp_dir() . '/rshield-always-' . getmypid() . '-' . mt_rand();
         $shield = new Shield(['storeDir' => $dir, 'budgets' => ['requests' => ['limit' => 1000, 'window' => 60]],
             'challenge' => ['secret' => SECRET, 'searchEngines' => false, 'alwaysPaths' => ['#^/login$#'], 'difficulty' => ['min' => 1000, 'max' => 1000]]], new MemoryStore());
@@ -201,7 +201,7 @@ return [
         same(Decision::ALLOW_UNCACHED, $shield->settle($shield->decide($postWithPass, 5.0), $postWithPass, 5.0)['decision']->action, 'a POST with the pass: through, uncached');
         exec('rm -rf ' . escapeshellarg($dir));
     },
-    'gate, asked for by the application: fresh passes, exempt paths do not count, a form comes back' => function (): void {
+    'RSF3.4 gate, asked for by the application: fresh passes, exempt paths do not count, a form comes back' => function (): void {
         $c = ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 3000], 'exemptPaths' => ['#^/api/#'], 'passTtl' => 3600]);
         $gate = new Gate($c, SECRET);
         $app = Decision::challenge('app');
@@ -226,7 +226,7 @@ return [
         $lost = $gate->resolve($app, $base, creq('/upload', [], 'POST'), 1.0, ['forced' => true, 'resend' => false]);
         truthy(strpos((string) $lost['page'], 'Please go back and send the form again') !== false && strpos((string) $lost['page'], 'id="resend"') === false, 'a form that cannot come back: asked to send it again');
     },
-    'the fields that come back: as PHP read them; not with files, not too large' => function (): void {
+    'RSF3.4 the fields that come back: as PHP read them; not with files, not too large' => function (): void {
         $fields = new ReflectionMethod(\CjwNetwork\RequestShield\Shield::class, 'resendFields');
         $fields->setAccessible(true);
         $req = creq('/comment?x=1', [], 'POST');
@@ -245,7 +245,7 @@ return [
             [$_POST, $_FILES] = [$post, $files];
         }
     },
-    'the check inside the form: the answer from a form field, the task, the setting, the placeholder' => function (): void {
+    'RSF3.3 the check inside the form: the answer from a form field, the task, the setting, the placeholder' => function (): void {
         $c = ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 3000], 'widgetPath' => '/request-shield', 'widgetDifficulty' => 2000]);
         $gate = new Gate($c, SECRET, null, 64, new \CjwNetwork\RequestShield\Store\MemoryStore());      // a store: an answer counts once
         $task = $gate->widgetTask(creq('/request-shield/challenge'), 1.0);
@@ -288,7 +288,7 @@ return [
             same(0, $code, 'widget.js is valid JavaScript: ' . implode("\n", $out));
         }
     },
-    'a spent budget: no pass gets past it, only its own solution -- which starts the counter again, twice as hard each time' => function (): void {
+    'RSF3.1 a spent budget: no pass gets past it, only its own solution -- which starts the counter again, twice as hard each time' => function (): void {
         $store = new \CjwNetwork\RequestShield\Store\MemoryStore();
         $c = ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 5000], 'exemptPaths' => ['#^/api/#']]);
         $gate = new Gate($c, SECRET, null, 64, $store);
@@ -346,7 +346,7 @@ return [
         same(Decision::THROTTLE, $gate->resolve($spent, Decision::allow(), creq('/x', [], 'POST'), 7.0, $earn)['decision']->action, 'a POST whose form cannot come back: a pause');
         same(30, $gate->resolve($spent, Decision::allow(), creq('/x', [], 'POST'), 7.0, $earn)['decision']->retryAfter, 'as long as the budget says');
     },
-    'decisions: a spent budget outranks a plain check; the budget rule gives it only when asked' => function (): void {
+    'RSF3.1 decisions: a spent budget outranks a plain check; the budget rule gives it only when asked' => function (): void {
         same(true, Decision::challenge('requests')->stricter(Decision::spent('posts', 5))->spent);
         same(true, Decision::spent('posts', 5)->stricter(Decision::challenge('requests'))->spent);
         same(Decision::THROTTLE, Decision::spent('posts', 5)->stricter(Decision::throttle('x', 5))->action);
@@ -361,7 +361,7 @@ return [
         same(Decision::THROTTLE, $pause->check($req, 1.0)->action, 'by default a pause');
         truthy($earn->check($req, 1.0)->spent, 'on-exceeded challenge: the check that frees the counter');
     },
-    'stores: reset forgets a key\'s count' => function (): void {
+    'RSF3.1 stores: reset forgets a key\'s count' => function (): void {
         $dir = sys_get_temp_dir() . '/rshield-reset-' . getmypid() . '-' . mt_rand();
         $stores = ['memory' => new \CjwNetwork\RequestShield\Store\MemoryStore(), 'file' => new \CjwNetwork\RequestShield\Store\FileStore($dir, 0.0)];
         if (\CjwNetwork\RequestShield\Store\ApcuStore::usable()) {
@@ -377,7 +377,7 @@ return [
         }
         exec('rm -rf ' . escapeshellarg($dir));
     },
-    'DNS lookups for search engines: at most so many a minute -- a flood of fake crawlers does not wait for DNS' => function (): void {
+    'RSF1.4 DNS lookups for search engines: at most so many a minute -- a flood of fake crawlers does not wait for DNS' => function (): void {
         $calls = 0;
         // DNS that does not answer (a DMZ): every lookup waits, then fails.
         $slow = function (string $ip) use (&$calls) { $calls++; usleep(20000); return false; };

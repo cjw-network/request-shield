@@ -34,12 +34,12 @@ function releaseCheck(string $tag, string $version, string $changelog): array
 const RELEASE_LOG = "# Changelog\n\n## [Unreleased]\n\n## [1.2.0] — 2026-10-04\n\n### Added\n- **One thing.**\n\n## [1.1.0] — 2026-09-01\n\n### Fixed\n- An older one.\n";
 
 return [
-    'a tag is released when Shield::VERSION and the changelog name it; the section becomes the notes' => function (): void {
+    'RSF5.7 a tag is released when Shield::VERSION and the changelog name it; the section becomes the notes' => function (): void {
         [$said, $code, $notes] = releaseCheck('v1.2.0', '1.2.0', RELEASE_LOG);
         same(0, $code, $said);
         same("### Added\n- **One thing.**\n", $notes, 'the section, without its heading and without the next one');
     },
-    'refused: not vX.Y.Z, another version in the code, no section, an empty one' => function (): void {
+    'RSF5.7 refused: not vX.Y.Z, another version in the code, no section, an empty one' => function (): void {
         foreach ([
             ['1.2.0', '1.2.0', RELEASE_LOG, 'is not vX.Y.Z'],
             ['v1.2', '1.2.0', RELEASE_LOG, 'is not vX.Y.Z'],
@@ -53,7 +53,7 @@ return [
             same(null, $notes, 'no notes written');
         }
     },
-    'the release workflow: on v* tags, actions pinned by commit, built twice and compared, the suite against the file, checksums, attestation, the release environment' => function (): void {
+    'RSF5.7 the release workflow: on v* tags, actions pinned by commit, built twice and compared, the suite against the file, checksums, attestation, the release environment' => function (): void {
         $yml = (string) file_get_contents(dirname(__DIR__) . '/.github/workflows/release.yml');
         truthy(preg_match("/^on:\n  push:\n    tags: \['v\*'\]/m", $yml) === 1, 'triggered by a v* tag only');
         preg_match_all('/^\s*(?:-\s+)?uses:\s*(\S+)/m', $yml, $m);

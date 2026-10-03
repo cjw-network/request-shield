@@ -49,7 +49,7 @@ function shippedEmbedded(): string
 const SHIPPED_SITE = "host a.example\ninclude @wordpress @tracking\n[OWN-CLAUDE] crawler ai-user ua /Claude-Own/ ranges anthropic\n";
 
 return [
-    'in the repository: the sets, the feed catalog and the address lists are read from rules/; a name never leaves the directory' => function (): void {
+    'RSF5.7 in the repository: the sets, the feed catalog and the address lists are read from rules/; a name never leaves the directory' => function (): void {
         if (rsSingle() !== null) {
             skip('the suite runs against the single file, whose data is embedded (SingleFileTest checks it)');
         }
@@ -68,7 +68,7 @@ return [
         same(RuleFile::shippedReady(), Shipped::crawlers(), 'and what the shipped set compiles to (the single file builds them so)');
         truthy(strpos((string) Shipped::starter('plain'), 'set mode monitor') !== false && Shipped::starter('../plain') === null && Shipped::starter('nothing') === null, 'the starters for init');
     },
-    'embedded (the single file): nothing is read from rules/, the same rules compile to the same settings, the file itself is watched' => function (): void {
+    'RSF5.7 embedded (the single file): nothing is read from rules/, the same rules compile to the same settings, the file itself is watched' => function (): void {
         if (!function_exists('exec')) {
             skip('no exec');
         }

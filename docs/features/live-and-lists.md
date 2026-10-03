@@ -1,4 +1,4 @@
-# The live view and the lists in the dashboard
+# RSF6.2 The live view and the lists in the dashboard
 
 From [proposal 0026](../proposals/0026-live-view-and-lists.md). Two pages beside
 the statistics, under `dashboard-path`: `/rs/waf/live` and `/rs/waf/lists`.

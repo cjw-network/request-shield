@@ -34,7 +34,7 @@ return [
             same(3, count($out), 'nothing more without a rule file');
         }
     },
-    'the tool is the class Cli: Cli::main($argv) runs it without the script, as the single file will (0031 E.2)' => function (): void {
+    'RSF5.1 the tool is the class Cli: Cli::main($argv) runs it without the script, as the single file will (0031 E.2)' => function (): void {
         if (!function_exists('exec')) {
             skip('no exec');
         }
@@ -66,7 +66,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'the extensions\' commands (0031 D.1): the statistics\' stats is one, run from the table; the usage lists it with the plugin\'s own line' => function (): void {
+    'RSF5.1 the extensions\' commands (0031 D.1): the statistics\' stats is one, run from the table; the usage lists it with the plugin\'s own line' => function (): void {
         $commands = \CjwNetwork\RequestShield\Stats\StatsExtension::commands();
         same(['stats'], array_keys($commands));
         truthy(is_subclass_of($commands['stats'], \CjwNetwork\RequestShield\Cli\Command::class), 'a Cli\\Command');

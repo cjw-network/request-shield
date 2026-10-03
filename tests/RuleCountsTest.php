@@ -27,7 +27,7 @@ function countsSettings(string $rules): Settings
 }
 
 return [
-    'hooks: a plugin with the capability is recorded when the rules are compiled; one without is not; the statistics plugin has it when the statistics are on' => function (): void {
+    'RSF6.4 hooks: a plugin with the capability is recorded when the rules are compiled; one without is not; the statistics plugin has it when the statistics are on' => function (): void {
         same([], countsSettings("host a.example\n")->hooks, 'no plugin: no hook');
         $s = countsSettings("host a.example\nplugin CjwNetwork\\RequestShield\\Tests\\CountingPlugin\n");
         same(['ruleCounts' => [CountingPlugin::class]], $s->hooks, 'recorded by instanceof, by hook name');
@@ -38,7 +38,7 @@ return [
         same($s->hooks, $round->hooks, 'the hooks travel with the compiled settings');
         same(['ruleCounts' => ['Acme\\Shield\\RefusalAlert']], countsSettings("plugin Acme\\Shield\\RefusalAlert\n")->hooks === [] ? ['ruleCounts' => ['Acme\\Shield\\RefusalAlert']] : [], 'a class that is not there is recorded nowhere (check warns about the plugin)');
     },
-    'Counts::rules(): the plugins\' numbers added up; a failing plugin is left out; nothing on the request path asks' => function (): void {
+    'RSF6.4 Counts::rules(): the plugins\' numbers added up; a failing plugin is left out; nothing on the request path asks' => function (): void {
         Vocabulary::forget();
         try {
             Vocabulary::offer(RsTestExtension::class);
@@ -55,7 +55,7 @@ return [
             Vocabulary::offer(\CjwNetwork\RequestShield\Stats\StatsExtension::class);
         }
     },
-    'the rules and setup page knows no plugin by name: src/Report has no StatsReport' => function (): void {
+    'RSF6.4 the rules and setup page knows no plugin by name: src/Report has no StatsReport' => function (): void {
         foreach (['RulesPage.php', 'SetupPage.php'] as $f) {
             $code = (string) file_get_contents(dirname(__DIR__) . '/src/Report/' . $f);
             truthy(strpos($code, 'StatsReport::') === false && strpos($code, 'StatsPage::') === false && strpos($code, "Report\\\\StatsPage") === false, "$f asks Counts, not the statistics: no StatsReport::/StatsPage:: call");

@@ -21,7 +21,7 @@ function postOriginExamples(string $text): void
 }
 
 return [
-    'the website\'s own names: the host rule\'s, *.domain one label; Origin first, else Referer; "null" is nothing' => static fn () => postOriginExamples(<<<'RULES'
+    'RSF2.4 the website\'s own names: the host rule\'s, *.domain one label; Origin first, else Referer; "null" is nothing' => static fn () => postOriginExamples(<<<'RULES'
 host www.example.org example.org *.shop.example
 method GET HEAD POST PUT DELETE
 [F-ORIGIN] post-origin same
@@ -41,7 +41,7 @@ expect DELETE /contact header Origin:https://evil.example                   403
 expect GET /contact header Origin:https://evil.example                      answered   # not a form
 RULES),
 
-    'neither header: the check by default (a pass gets through), allow, or refuse' => function (): void {
+    'RSF2.4 neither header: the check by default (a pass gets through), allow, or refuse' => function (): void {
         postOriginExamples(<<<'RULES'
 [F-ORIGIN] post-origin same
 expect POST /contact             check
@@ -51,7 +51,7 @@ RULES);
         postOriginExamples("[F-ORIGIN] post-origin same missing refuse\nexpect POST /contact 403\n");
     },
 
-    'never for the exceptions, the API, addresses let in; without a host rule the name the request was sent to' => static fn () => postOriginExamples(<<<'RULES'
+    'RSF2.4 never for the exceptions, the API, addresses let in; without a host rule the name the request was sent to' => static fn () => postOriginExamples(<<<'RULES'
 api-path /api/**
 exempt 192.0.2.50
 [F-ORIGIN] post-origin same
@@ -65,7 +65,7 @@ expect POST /contact from 192.0.2.50 header Origin:https://evil.example   answer
 expect POST /contact header Origin:https://evil.example            403 by F-ORIGIN
 RULES),
 
-    'in a site block: that website\'s names; monitor post-origin: logged, not enforced; switched on in test' => function (): void {
+    'RSF2.4 in a site block: that website\'s names; monitor post-origin: logged, not enforced; switched on in test' => function (): void {
         postOriginExamples(<<<'RULES'
 site shop.example www.shop.example {
   [S-ORIGIN] post-origin same
@@ -84,7 +84,7 @@ RULES);
         }
     },
 
-    'PHP settings, the reasons, the rule named; the trace says why' => function (): void {
+    'RSF2.4 PHP settings, the reasons, the rule named; the trace says why' => function (): void {
         $s = Settings::from(['hosts' => ['www.example.org'], 'postOrigin' => ['missing' => 'check', 'except' => ['#^/pay/#']]]);
         same(['missing' => 'check', 'except' => ['#^/pay/#']], $s->postOrigin, 'from a PHP array');
         same(null, Settings::from([])->postOrigin, 'off by default');
@@ -109,7 +109,7 @@ RULES);
         }
     },
 
-    'post-origin in a rule file: mistakes name the line; except alone switches nothing on' => function (): void {
+    'RSF2.4 post-origin in a rule file: mistakes name the line; except alone switches nothing on' => function (): void {
         rulesFail(['site.rules' => "post-origin\n"], 'site.rules:1', 'post-origin same');
         rulesFail(['site.rules' => "post-origin other\n"], 'site.rules:1', 'post-origin same');
         rulesFail(['site.rules' => "post-origin same missing maybe\n"], 'site.rules:1', 'missing check|allow|refuse');

@@ -54,7 +54,7 @@ function accessCookie(array $g): string
 }
 
 return [
-    'dashboard-access: * or a group, by a token\'s hash; until; mistakes named -- the rule file never holds a token' => function (): void {
+    'RSF6.1 dashboard-access: * or a group, by a token\'s hash; until; mistakes named -- the rule file never holds a token' => function (): void {
         $dir = accessDir();
         try {
             $s = accessSettings($dir, '[ACC-OLD] dashboard-access "Customer B" sha256:' . str_repeat('a', 64) . " until 2020-01-01\n"
@@ -87,7 +87,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'the gate: the form, a wrong token counted, a right one a signed cookie -- the address without it; the cookie then; tampered, ended or its token gone: asked again' => function (): void {
+    'RSF6.1 the gate: the form, a wrong token counted, a right one a signed cookie -- the address without it; the cookie then; tampered, ended or its token gone: asked again' => function (): void {
         $dir = accessDir();
         try {
             $s = accessSettings($dir);
@@ -129,7 +129,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'a signed link from the customer\'s panel: opens its group, then the address without it -- expired, too long, forged or for no group: refused; ten wrong tries: 429' => function (): void {
+    'RSF6.1 a signed link from the customer\'s panel: opens its group, then the address without it -- expired, too long, forged or for no group: refused; ten wrong tries: 429' => function (): void {
         $dir = accessDir();
         try {
             $s = accessSettings($dir);
@@ -162,7 +162,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'JSON for a program: Authorization: Bearer <token> -- no cookie; wrong: 401' => function (): void {
+    'RSF6.1 JSON for a program: Authorization: Bearer <token> -- no cookie; wrong: 401' => function (): void {
         $dir = accessDir();
         try {
             $s = accessSettings($dir);
@@ -176,7 +176,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'a customer sees only its own: its group\'s websites, no Rules & setup, no server overview, no other group -- whatever address it asks for' => function (): void {
+    'RSF6.1 a customer sees only its own: its group\'s websites, no Rules & setup, no server overview, no other group -- whatever address it asks for' => function (): void {
         $dir = accessDir();
         try {
             $s = accessSettings($dir);
@@ -207,7 +207,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'end to end: a server asks, the token by the form, the cookie, the customer\'s page -- and nothing of the others' => function (): void {
+    'RSF6.1 end to end: a server asks, the token by the form, the cookie, the customer\'s page -- and nothing of the others' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }

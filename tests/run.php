@@ -3,7 +3,7 @@
  * Runs every tests/*Test.php. Each returns an array of name => closure; a
  * closure passes when it returns without an exception.
  *
- *   php tests/run.php [filter]
+ *   php tests/run.php [filter]      a part of "File > test name", or a feature id (RSF2.6, RSF2)
  */
 
 declare(strict_types=1);
@@ -116,7 +116,10 @@ if ($isolate) {
 foreach ($tests as $file => $set) {
     foreach ($set as $name => $test) {
         $label = basename($file, '.php') . ' > ' . $name;
-        if ($filter !== '' && stripos($label, $filter) === false) {
+        // A feature id (RSF2.6, or a group: RSF2) runs exactly that feature's tests, by
+        // their names' beginning (0031 F.1); anything else is a part of "File > name".
+        $byId = preg_match('/^RSF\d+(\.\d+)*$/', $filter) === 1;
+        if ($filter !== '' && ($byId ? preg_match('/^' . preg_quote($filter, '/') . '[ .]/', (string) $name) !== 1 : stripos($label, $filter) === false)) {
             continue;
         }
         if ($only !== null) {
@@ -137,6 +140,12 @@ foreach ($tests as $file => $set) {
 if ($only !== null) {
     echo "@@RESULT $pass $fail $skipped\n";        // the parent adds them up
     exit(0);
+}
+// A feature id that matched no test proves nothing: a typo (RSF26) or a feature
+// without tests must not pass in silence.
+if (preg_match('/^RSF\d+(\.\d+)*$/', $filter) === 1 && $pass + $fail + $skipped === 0) {
+    echo "  FAIL  no test has the id $filter\n";
+    $fail++;
 }
 // In CI a skipped test is a failure unless the job is meant to lack something
 // (TESTS_FAIL_ON_SKIP=1): a test that did not run proves nothing.

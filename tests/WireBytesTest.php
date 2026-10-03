@@ -77,7 +77,7 @@ function withWireServer(callable $body): void
 }
 
 return [
-    'the pass cookie: at most 48 bytes with its name, today and in 2100' => function (): void {
+    'RSF3.2 the pass cookie: at most 48 bytes with its name, today and in 2100' => function (): void {
         $p = new PassCookie(str_repeat('s', 48));
         foreach ([time() + 3600, 4102444800 + 3600] as $expires) {     // 2100-01-01 is 7 base36 digits
             $v = $p->issue('203.0.113.7', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36', $expires);
@@ -85,7 +85,7 @@ return [
             truthy(strlen(Gate::cookie('rsp', $v, 3600, true)) <= WIRE_SET_COOKIE_MAX, 'Set-Cookie: ' . Gate::cookie('rsp', $v, 3600, true) . ' is ' . strlen(Gate::cookie('rsp', $v, 3600, true)) . ' bytes');
         }
     },
-    'the check page: the plain and the gzipped size, with and without a form to send again' => function (): void {
+    'RSF3.2 the check page: the plain and the gzipped size, with and without a form to send again' => function (): void {
         $task = (new ProofOfWork(str_repeat('s', 48)))->create('203.0.113.7', 500000, 2000000000);
         $page = ChallengePage::render($task, 'rss', true);
         truthy(strlen($page) <= WIRE_PAGE_MAX, 'the page is ' . strlen($page) . ' bytes');
@@ -93,7 +93,7 @@ return [
         $resend = ChallengePage::render($task, 'rss', true, [], ['action' => '/comment', 'fields' => [['comment', 'Hello world'], ['token', 'abc']]]);
         truthy(strlen((string) gzencode($resend, 6)) <= WIRE_RESEND_PAGE_GZIP_MAX, 'the page with a form is ' . strlen((string) gzencode($resend, 6)) . ' bytes gzipped');
     },
-    'on the wire: a pass carries no X-RS header and no cookie; the check page and the pass answer stay within their header budgets' => function (): void {
+    'RSF3.2 on the wire: a pass carries no X-RS header and no cookie; the check page and the pass answer stay within their header budgets' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }

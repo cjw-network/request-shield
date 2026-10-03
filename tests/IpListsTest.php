@@ -45,7 +45,7 @@ function listsRun(Shield $shield, Request $r, float $now): Decision
 }
 
 return [
-    'the store remembers until when: mark() and marked() -- memory, files, APCu' => function (): void {
+    'RSF1.2 the store remembers until when: mark() and marked() -- memory, files, APCu' => function (): void {
         $dir = listsDir();
         try {
             $stores = ['memory' => new MemoryStore(), 'files' => new FileStore("$dir/files")];
@@ -67,7 +67,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'rule files: deny [until], exempt until, ban, the list files (only list lines) -- mistakes name their line' => function (): void {
+    'RSF1.2 rule files: deny [until], exempt until, ban, the list files (only list lines) -- mistakes name their line' => function (): void {
         $dir = listsDir();
         try {
             $tomorrow = date('Y-m-d', time() + 86400);
@@ -116,7 +116,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'the table: ranges and single addresses, IPv4 and IPv6, edges, overlaps -- the same answers as the range check, at random' => function (): void {
+    'RSF1.2 the table: ranges and single addresses, IPv4 and IPv6, edges, overlaps -- the same answers as the range check, at random' => function (): void {
         $t = IpTable::build([[['203.0.113.0/24', '192.0.2.7'], 'A'], [['2001:db8::/48'], 'B'], [['198.51.100.0/22'], 'C'], [['198.51.101.0/24'], 'D']]);
         same(['A', 'A', 'A', 'B', 'B', null, null], [IpTable::find('203.0.113.0', $t), IpTable::find('203.0.113.255', $t), IpTable::find('192.0.2.7', $t),
             IpTable::find('2001:db8::1', $t), IpTable::find('2001:db8:0:ffff:ffff:ffff:ffff:ffff', $t), IpTable::find('2001:db9::', $t), IpTable::find('nonsense', $t)], 'edges of each range');
@@ -137,7 +137,7 @@ return [
         }
         same(['4' => '', '6' => '', 'ids' => ''], IpTable::build([]), 'nothing');
     },
-    'kept out: 403 before every other check, named by its entry -- thousands of entries, about as quick' => function (): void {
+    'RSF1.2 kept out: 403 before every other check, named by its entry -- thousands of entries, about as quick' => function (): void {
         $dir = listsDir();
         try {
             $s = listsSettings($dir, "[SITE-D1] deny 203.0.113.0/24\n");
@@ -164,7 +164,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'let in (exempt): never counted, never checked -- still refused for what only attackers ask for' => function (): void {
+    'RSF1.2 let in (exempt): never counted, never checked -- still refused for what only attackers ask for' => function (): void {
         $dir = listsDir();
         try {
             $s = listsSettings($dir, "exempt 192.0.2.50\nchallenge **/login\n");
@@ -175,7 +175,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'bans: after the signals, nothing but 429 -- longer each time, at most ban-max; never exempt, a trusted proxy or a verified crawler' => function (): void {
+    'RSF1.2 bans: after the signals, nothing but 429 -- longer each time, at most ban-max; never exempt, a trusted proxy or a verified crawler' => function (): void {
         $dir = listsDir();
         try {
             $s = listsSettings($dir, "exempt 192.0.2.50\ntrust 192.0.2.1\nset ban-growth 2\nset ban-max 25m\n[SITE-SCAN] ban after 3 refusals in 5m for 10m\n");
@@ -218,7 +218,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'bans: the signals -- past a limit, a check page not solved, a budget the site counts; one ban for every website' => function (): void {
+    'RSF1.2 bans: the signals -- past a limit, a check page not solved, a budget the site counts; one ban for every website' => function (): void {
         $dir = listsDir();
         try {
             $s = listsSettings($dir, "set secret " . str_repeat('k', 40) . "\n[SITE-PACE] limit requests 2/min\n[SITE-LOGINS] limit logins 2/min on-demand\n"
@@ -250,7 +250,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'watched first: "monitor ban" and mode monitor ban nobody and write monitor-ban to the log' => function (): void {
+    'RSF1.2 watched first: "monitor ban" and mode monitor ban nobody and write monitor-ban to the log' => function (): void {
         $dir = listsDir();
         try {
             foreach (["set log $dir/a.log\nset log-level all\n[W-SCAN] monitor ban after 2 refusals in 5m for 10m\n" => "$dir/a.log",
@@ -267,7 +267,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'the compiled settings are built again when a list entry ends' => function (): void {
+    'RSF1.2 the compiled settings are built again when a list entry ends' => function (): void {
         $dir = listsDir();
         try {
             file_put_contents("$dir/site.rules", "set store-dir $dir/store\ndeny 203.0.113.7 until " . date('Y-m-d', time() + 86400) . "\n");
@@ -286,7 +286,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'while one request rebuilds the settings, the others keep the last ones -- no stampede' => function (): void {
+    'RSF1.2 while one request rebuilds the settings, the others keep the last ones -- no stampede' => function (): void {
         $dir = listsDir();
         try {
             file_put_contents("$dir/site.rules", "set store-dir $dir/store\ndeny 203.0.113.7 until " . date('Y-m-d', time() + 86400) . "\n");
@@ -309,7 +309,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'a big list file: the fast path and the usual one side by side, mistakes named by their line; the compiled settings stay small' => function (): void {
+    'RSF1.2 a big list file: the fast path and the usual one side by side, mistakes named by their line; the compiled settings stay small' => function (): void {
         $dir = listsDir();
         try {
             mkdir("$dir/store/lists", 0750, true);
@@ -346,7 +346,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'the command line: deny, allow, unlist, lists -- with their guards; the list written whole' => function (): void {
+    'RSF1.2 the command line: deny, allow, unlist, lists -- with their guards; the list written whole' => function (): void {
         $dir = listsDir();
         try {
             file_put_contents("$dir/site.rules", "set store-dir $dir/store\ntrust 10.0.0.1\n");
@@ -378,7 +378,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'the real path: a scanner banned after its refusals, everywhere on the site, with Retry-After' => function (): void {
+    'RSF1.2 the real path: a scanner banned after its refusals, everywhere on the site, with Retry-After' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }

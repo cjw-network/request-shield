@@ -1,4 +1,4 @@
-# Trusted proxies and client identity
+# RSF1.1 Trusted proxies and client identity
 
 ## What it does
 

@@ -1,4 +1,4 @@
-# Known query parameters
+# RSF2.5 Known query parameters
 
 ## What it does
 

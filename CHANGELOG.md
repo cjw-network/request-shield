@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Feature ids** (0031 step F.1): every feature page's title begins with
+  its id `RSF<group>.<n>` (`# RSF2.3 Access rules …`), `docs/README.md` lists
+  the features as a table by id -- the five without a page of their own yet
+  (RSF2.2, RSF2.6, RSF4.2, RSF5.6, RSF6.5) named where they are documented
+  or planned -- and every feature's tests begin with its id.
+  `php tests/run.php RSF2.6` runs exactly that feature's tests, `RSF2` its
+  group. RSF5.7 is new: the single file and its releases.
 - **The guides for agents** (0031 step E.7): `docs/llm/install.md` (find
   the places, download and verify, `init`, the shield's own directory for the
   PHP user, switch it on and see that it is on, see it work, report),

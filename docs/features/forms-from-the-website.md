@@ -1,4 +1,4 @@
-# Forms only from the website itself: `post-origin`
+# RSF2.4 Forms only from the website itself: `post-origin`
 
 ## What it does
 

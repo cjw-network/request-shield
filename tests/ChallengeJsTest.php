@@ -10,7 +10,7 @@ use CjwNetwork\RequestShield\Challenge\ProofOfWork;
  */
 
 return [
-    'the page script solves a PHP challenge, and PHP accepts it' => function (): void {
+    'RSF3.2 the page script solves a PHP challenge, and PHP accepts it' => function (): void {
         if (nodeBinary() === null) {
             skip('no node on this machine');
         }
@@ -24,7 +24,7 @@ return [
             truthy(preg_match('/^[A-Za-z0-9_-]+$/', $payload) === 1, 'cookie-safe characters only (no +, /, =)');
         }
     },
-    'the page script reports an unsolvable challenge instead of looping' => function (): void {
+    'RSF3.2 the page script reports an unsolvable challenge instead of looping' => function (): void {
         if (nodeBinary() === null) {
             skip('no node on this machine');
         }
@@ -35,7 +35,7 @@ return [
         same(null, $payload);
         same(-1, $n);
     },
-    'the check page stops a loop -- not checks passed before, other pages, time gone by' => function (): void {
+    'RSF3.2 the check page stops a loop -- not checks passed before, other pages, time gone by' => function (): void {
         $node = nodeBinary();
         if ($node === null) {
             skip('no node on this machine');

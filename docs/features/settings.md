@@ -1,4 +1,4 @@
-# Settings, checked once
+# RSF5.2 Settings, checked once
 
 ## What it does
 

@@ -1,4 +1,4 @@
-# Plugins
+# RSF6.4 Plugins
 
 The core of request-shield is a mini web application firewall: it checks every
 request, decides, answers what it refuses itself, and logs. Everything beyond

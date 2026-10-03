@@ -54,7 +54,7 @@ function formSend(Settings $s, string $method, string $path, array $headers = []
 }
 
 return [
-    'each form: sent, from which page of the website, how it ended -- another website only by its host' => function (): void {
+    'RSF6.3 each form: sent, from which page of the website, how it ended -- another website only by its host' => function (): void {
         $dir = sitesStatsDir();
         try {
             $s = formSettings($dir, "[F-ORIGIN] post-origin same\n");
@@ -92,7 +92,7 @@ return [
         }
     },
 
-    'the editors\' area (backend <paths>): one entry per area, not per address; the API and plain pages are no forms' => function (): void {
+    'RSF6.3 the editors\' area (backend <paths>): one entry per area, not per address; the API and plain pages are no forms' => function (): void {
         $dir = sitesStatsDir();
         try {
             $s = formSettings($dir, "api-path /api/**\n[F-BACKEND] backend /admin/**\nmatch /redaktion/** {\n  backend\n}\n");
@@ -114,7 +114,7 @@ return [
         }
     },
 
-    'several websites read together: each form with its website in front' => function (): void {
+    'RSF6.3 several websites read together: each form with its website in front' => function (): void {
         $dir = sitesStatsDir();
         try {
             file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset stats on\nset stats-hosts a.de b.de\nexempt none\n");
@@ -135,7 +135,7 @@ return [
         }
     },
 
-    'backend in a rule file: in a match block without paths; mistakes name the line' => function (): void {
+    'RSF6.3 backend in a rule file: in a match block without paths; mistakes name the line' => function (): void {
         rulesFail(['site.rules' => "match /a/** {\n  backend /b\n}\n"], 'site.rules:2', 'backend takes no paths');
         rulesFail(['site.rules' => "backend regex (\n"], 'site.rules:1', 'not a valid regular expression');
         same([], Settings::from([])->backend, 'none by default');

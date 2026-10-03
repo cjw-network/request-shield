@@ -36,7 +36,7 @@ function logoRefused(string $svg, string $part): void
 }
 
 return [
-    'the page: a ring that fills, a dot circling a plain shield, a smile and a calm "!" ready -- no motion for those who ask for none' => function (): void {
+    'RSF3.2 the page: a ring that fills, a dot circling a plain shield, a smile and a calm "!" ready -- no motion for those who ask for none' => function (): void {
         $page = ChallengePage::render(PAGE_TASK, 'rss', false);
         truthy(strpos($page, '<svg id="r" viewBox="0 0 120 120"') !== false, 'the ring');
         truthy(strpos($page, '<circle id="b" class="f"') !== false, 'its arc, filled by the progress');
@@ -51,7 +51,7 @@ return [
         truthy(strlen($page) < 10000, 'still small: ' . strlen($page) . ' bytes');
         truthy(strpos(ChallengePage::render(PAGE_TASK, 'rss', false, [], ['action' => '/x', 'fields' => []]), '<form id="resend"') !== false, 'a form to send again: as before');
     },
-    'a site\'s own logo: checked, inlined in the middle, its IDs kept apart from the page\'s' => function (): void {
+    'RSF3.2 a site\'s own logo: checked, inlined in the middle, its IDs kept apart from the page\'s' => function (): void {
         $svg = '<?xml version="1.0"?><!-- made by hand --><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" width="200" class="big">'
             . '<defs><linearGradient id="m"><stop offset="0" stop-color="#f00"/></linearGradient></defs>'
             . '<rect id="b" width="10" height="10" fill="url(#m)"/><use href="#b"/></svg>';
@@ -77,7 +77,7 @@ return [
         }
         same(null, ChallengeSettings::from([])->logo, 'none: the plain shield');
     },
-    'a logo that could run or load something is refused, with the setting named' => function (): void {
+    'RSF3.2 a logo that could run or load something is refused, with the setting named' => function (): void {
         $cases = [
             ['<svg viewBox="0 0 1 1"><script>x()</script></svg>', '<script>'],
             ['<svg viewBox="0 0 1 1"><foreignObject><div/></foreignObject></svg>', '<foreignObject>'],
@@ -109,7 +109,7 @@ return [
             truthy(strpos($e->getMessage(), 'challenge.logo: cannot read') === 0, $e->getMessage());
         }
     },
-    'rule files: set challenge-logo, relative to the file; a refused logo names its line; a changed logo is noticed' => function (): void {
+    'RSF3.2 rule files: set challenge-logo, relative to the file; a refused logo names its line; a changed logo is noticed' => function (): void {
         $dir = sys_get_temp_dir() . '/rshield-logo-rules-' . getmypid() . '-' . mt_rand();
         mkdir($dir);
         try {

@@ -33,7 +33,7 @@ function sinkRequest(string $path = '/wp-login.php'): Request
 }
 
 return [
-    'hooks: a plugin with the capability is recorded as a sink; Live is a Sink itself' => function (): void {
+    'RSF6.4 hooks: a plugin with the capability is recorded as a sink; Live is a Sink itself' => function (): void {
         $dir = ruleDir([]);
         try {
             $s = sinkSettings("plugin CjwNetwork\\RequestShield\\Tests\\SinkPlugin\n", $dir);
@@ -44,7 +44,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'Log::note(): the record reaches the log file, the live view and the plugin sinks' => function (): void {
+    'RSF6.4 Log::note(): the record reaches the log file, the live view and the plugin sinks' => function (): void {
         $dir = ruleDir([]);
         try {
             $s = sinkSettings("set log $dir/shield.log\nset live on\nplugin CjwNetwork\\RequestShield\\Tests\\SinkPlugin\n", $dir);
@@ -59,7 +59,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'a sink that throws is left out for that request and noted once a minute; the log and the live view are written all the same; monitor is passed on' => function (): void {
+    'RSF6.4 a sink that throws is left out for that request and noted once a minute; the log and the live view are written all the same; monitor is passed on' => function (): void {
         Vocabulary::forget();
         $dir = ruleDir([]);
         try {
@@ -83,7 +83,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'end to end: a failing sink changes nothing for the visitor -- the refusal stands, the log is written' => function (): void {
+    'RSF6.4 end to end: a failing sink changes nothing for the visitor -- the refusal stands, the log is written' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }

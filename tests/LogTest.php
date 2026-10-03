@@ -13,12 +13,12 @@ function logDir(): string
 }
 
 return [
-    'addresses are anonymised to their network, written as one: IPv4 /24, IPv6 /48' => function (): void {
+    'RSF5.5 addresses are anonymised to their network, written as one: IPv4 /24, IPv6 /48' => function (): void {
         same('198.51.100.0/24', Log::mask('198.51.100.7'));
         same('2001:db8:1::/48', Log::mask('2001:db8:1:2:3::5'));
         same('-', Log::mask('not an address'));
     },
-    'levels: stop, flag, all, off' => function (): void {
+    'RSF5.5 levels: stop, flag, all, off' => function (): void {
         $d = [Decision::allow(), Decision::allowUncached('x'), Decision::challenge('x'), Decision::throttle('x', 5), Decision::reject(404, 'x')];
         $row = static fn (string $level): array => array_map(static fn (Decision $x): bool => Log::wants($level, $x), $d);
         same([false, false, true, true, true], $row('stop'));
@@ -26,7 +26,7 @@ return [
         same([true, true, true, true, true], $row('all'));
         same([false, false, false, false, false], $row('off'));
     },
-    'a line: address first, decision, rule, the full URL, user agent -- nothing forged' => function (): void {
+    'RSF5.5 a line: address first, decision, rule, the full URL, user agent -- nothing forged' => function (): void {
         $dir = logDir();
         try {
             $s = Settings::from(['log' => ['file' => "$dir/shield.log"]]);
@@ -51,7 +51,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'one rotation when it gets large' => function (): void {
+    'RSF5.5 one rotation when it gets large' => function (): void {
         $dir = logDir();
         try {
             $s = Settings::from(['log' => ['file' => "$dir/shield.log", 'maxSize' => 4096]]);
@@ -65,7 +65,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'settings: a wrong level or ip is an error; off writes nothing' => function (): void {
+    'RSF5.5 settings: a wrong level or ip is an error; off writes nothing' => function (): void {
         foreach ([['level' => 'verbose'], ['ip' => 'half'], ['file' => '']] as $wrong) {
             try {
                 Settings::from(['log' => $wrong]);

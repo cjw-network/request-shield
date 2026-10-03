@@ -58,7 +58,7 @@ function withServer(array $config, callable $body): void
 }
 
 return [
-    'protect(): passes, marks, rejects, strips and throttles' => function (): void {
+    'RSF2.1 protect(): passes, marks, rejects, strips and throttles' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -90,7 +90,7 @@ return [
             truthy(($last['retry'] ?? 0) >= 1, 'Retry-After sent');
         });
     },
-    'protect(): flood -> challenge page -> the script solves it -> pass cookie -> through' => function (): void {
+    'RSF3.2 protect(): flood -> challenge page -> the script solves it -> pass cookie -> through' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
@@ -131,7 +131,7 @@ return [
             same(429, $get('GET', '/page', $ua + ['Cookie' => $rs['cookie'] . '=' . $payload])['status'], 'the same solution again: a new challenge');
         });
     },
-    'protect(): content rules refuse an attack pattern before the application runs' => function (): void {
+    'RSF2.6 protect(): content rules refuse an attack pattern before the application runs' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }

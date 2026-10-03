@@ -15,7 +15,7 @@ use CjwNetwork\RequestShield\Store\MemoryStore;
  */
 
 return [
-    'chain(): every step in order, with key and stage; inactive steps have no rule; the hot path runs exactly the active rules' => function (): void {
+    'RSF6.1 chain(): every step in order, with key and stage; inactive steps have no rule; the hot path runs exactly the active rules' => function (): void {
         $s = Settings::from(['hosts' => ['a.example'], 'restricted' => [['paths' => ['#^/admin#'], 'ips' => ['192.0.2.0/24']]],
             'budgets' => ['requests' => ['limit' => 100, 'window' => 60], 'searches' => ['limit' => 5, 'window' => 60, 'onDemand' => true]]]);
         $chain = (new Shield($s, new MemoryStore()))->chain();
@@ -39,7 +39,7 @@ return [
             truthy($st->rule === $shield->rules()[$i], "$st->key: the very same rule object");
         }
     },
-    'the inspector walks the chain: one row per step with its key, then the browser check -- the same for an installation with everything on' => function (): void {
+    'RSF6.1 the inspector walks the chain: one row per step with its key, then the browser check -- the same for an installation with everything on' => function (): void {
         $s = Settings::from(['hosts' => ['a.example'], 'budgets' => ['requests' => ['limit' => 100, 'window' => 60]]]);
         $trace = (new Inspector($s, new MemoryStore()))->trace(Inspector::request('GET', 'https://a.example/page', '203.0.113.7'));
         $chainKeys = array_map(static fn (Step $st): string => $st->key, (new Shield($s, new MemoryStore()))->chain());
@@ -54,7 +54,7 @@ return [
         same('skip', $states['cache'] ?? null, 'the steps after it: not checked');
         same('SCAN-HIDDEN', $trace['rule'], 'the rule behind it');
     },
-    'explain(): each rule names its own decisions and no other (0031 C.2); the shield asks the chain, and names what no rule produces' => function (): void {
+    'RSF6.1 explain(): each rule names its own decisions and no other (0031 C.2); the shield asks the chain, and names what no rule produces' => function (): void {
         $s = Settings::from(['hosts' => ['a.example'], 'methods' => ['GET', 'POST'], 'restricted' => [['paths' => ['#^/admin#'], 'ips' => ['192.0.2.0/24']]],
             'budgets' => ['requests' => ['limit' => 100, 'window' => 60]], 'challenge' => ['alwaysPaths' => ['#^/login$#']]]);
         $shield = new Shield($s, new MemoryStore());
@@ -78,7 +78,7 @@ return [
         same('application', $shield->explain(\CjwNetwork\RequestShield\Decision::challenge('app'), $req), 'the site asked');
         same(null, $shield->explain(\CjwNetwork\RequestShield\Decision::allowUncached('unknown url'), $req), 'nothing to name');
     },
-    'a rule provider (0031 C.3): its step after its stage, its rule decides and names itself, the trace shows it; a throwing rule says nothing; a wrong step is left out' => function (): void {
+    'RSF6.1 a rule provider (0031 C.3): its step after its stage, its rule decides and names itself, the trace shows it; a throwing rule says nothing; a wrong step is left out' => function (): void {
         \CjwNetwork\RequestShield\Rules\Vocabulary::forget();
         $dir = ruleDir([]);
         try {

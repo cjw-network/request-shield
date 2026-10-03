@@ -1,4 +1,4 @@
-# IP lists and automatic bans
+# RSF1.2 IP lists and automatic bans
 
 From [proposal 0013](../proposals/0013-ip-lists.md).
 

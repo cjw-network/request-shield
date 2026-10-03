@@ -1,4 +1,4 @@
-# The cacheable definition
+# RSF4.1 The cacheable definition
 
 `Request::cacheKey()` (0031 C.4) names the answer for an HTTP cache: scheme and host in lower case, the path as the application routes it, the parameters sorted -- nothing of the client; whether the answer may be kept is the decision's (`cacheable()`). A cache is a plugin with the `Handler` capability ([plugins](plugins.md#capabilities-what-a-plugin-can-do-for-the-pages)).
 
