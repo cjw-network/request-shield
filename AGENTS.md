@@ -11,6 +11,10 @@ controller) and decides whether a request reaches it and may be cached.
 Entry points: `src/Shield.php` (`protect()`, `protectFile()`), `bootstrap.php`.
 Settings: `src/Config.php` (defaults) → `src/Settings.php` (checked, compiled).
 
+**Ongoing restructuring:** the plan is `docs/proposals/0031-robust-core-plugins.md`;
+the current state and the next step are in `docs/proposals/0031-steps.md`
+(it has a resume prompt). Finish a step, tick it there, commit both together.
+
 ## Rules
 
 - **Correct and fast, always.** Every change: tests (`php tests/run.php`), a
