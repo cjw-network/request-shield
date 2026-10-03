@@ -79,7 +79,7 @@ the model you trust most there, not fast mode.
 
 ### Phase B — Decoupling
 - [x] **B.1** `Settings::$ext/$hooks/$routes` as the last constructor parameters, `FORMAT` bump, round-trip test. `9c7bc27`
-- [x] **B.2** `Extension` interface + `Rules\Vocabulary` (word/set/offer); `RuleFile` asks the registry before the "unknown" throw; test extension `rs-test` with `set fail-at <stage>`. `(this commit; hash follows)`
+- [x] **B.2** `Extension` interface + `Rules\Vocabulary` (word/set/offer); `RuleFile` asks the registry before the "unknown" throw; test extension `rs-test` with `set fail-at <stage>`. `1c5c4a6`
 - [ ] **B.3** Stats vocabulary out of `RuleFile`/`Settings`; `StatsExtension` registers it; the plugin reads `ext.stats.*` — stats tests unchanged and green.
 - [ ] **B.4** `Shield.php:506` removed; `StatsExtension::compile()` appends `StatsPlugin`; the `check` warning moves into `Extension::check()`.
 - [ ] **B.5** Routes registry; `dashboardOnly()` without `Frame`; `Frame::links/isPage/pageFor/TABS` from `$s->routes`; stats declares its pages.
