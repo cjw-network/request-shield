@@ -1,6 +1,6 @@
 # ADR 0007 — An error in the shield lets the request pass
 
-- Status: proposed (2026-10-03; accepted with [0031](../proposals/0031-robust-core-plugins.md) step A.2/A.3)
+- Status: accepted (2026-10-03; [0031](../proposals/0031-robust-core-plugins.md) steps A.2 and A.3)
 
 ## Context
 

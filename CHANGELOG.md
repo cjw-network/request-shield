@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   marker in the store directory), so a broken deploy is one line a minute,
   not one per visitor. Before, a throwing hook or store was a 500 for the
   visitor. `tests/RobustnessTest.php`.
+- **A rule file that does not compile never takes the site down** (0031 step
+  A.3): on the request path the last good compiled settings stay in force
+  (one line a minute in the error log, a `.failed` marker until the file
+  changes); at a first install the shield runs switched off and says so; a
+  compiled settings file cut short is deleted and compiled anew.
+  `Settings::load()` for tools still throws; `check` is where a mistake is an
+  error ([docs](docs/features/settings.md#when-the-rules-cannot-be-compiled)).
 - **`request-shield version [site.rules]`** (0031 step A.1): the library's
   version (`Shield::VERSION`, `0.4.0-dev` on main) and build, PHP, whether
   APCu is there, the shipped rule sets' versions; with a rule file also the

@@ -25,9 +25,11 @@ function withFailing(string $rules, string $known, callable $body): void
     $dir = sys_get_temp_dir() . '/rs-robust-' . getmypid() . '-' . mt_rand();
     mkdir("$dir/docroot", 0700, true);
     file_put_contents("$dir/docroot/index.php", '<?php echo "ok " . ($_SERVER["REQUEST_SHIELD"] ?? "-");');
-    file_put_contents("$dir/site.rules", str_replace('__DIR__', $dir, $rules));
+    // recheck 0: the built-in server has APCu (its SAPI is not "cli" to APCu), and with
+    // APCu the shield looks at the rule files only every 10 s -- here every request must.
+    file_put_contents("$dir/site.rules", "set recheck 0\n" . str_replace('__DIR__', $dir, $rules));
     file_put_contents("$dir/prepend.php", '<?php require ' . var_export(dirname(__DIR__) . '/bootstrap.php', true) . ";\n"
-        . '\CjwNetwork\RequestShield\Shield::protectFile(' . var_export("$dir/site.rules", true) . ', ' . $known . ');');
+        . '\CjwNetwork\RequestShield\Shield::protectFile(' . var_export("$dir/site.rules", true) . ', ' . $known . ', ' . var_export("$dir/cache", true) . ');');
     $port = freePort();
     $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=/nonexistent exec %s -d auto_prepend_file=%s -d log_errors=1 -d error_log=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
         escapeshellarg(PHP_BINARY), escapeshellarg("$dir/prepend.php"), escapeshellarg("$dir/php-errors.log"), $port, escapeshellarg("$dir/docroot")), [], $pipes);
@@ -103,12 +105,89 @@ return [
             // The rules are written before the directory exists; point them at it now.
             mkdir("$dir/ro", 0500);
             file_put_contents("$dir/site.rules", str_replace('__RO__', "$dir/ro", (string) file_get_contents("$dir/site.rules")));
+            usleep(1100000);                             // a new second: mtime and size tell the rewrite apart
             for ($i = 0; $i < 5; $i++) {
                 $r = $get('/');
                 same(200, $r['status'], "request $i passes: the limit cannot be counted, so it does not bite");
             }
             same('', trim((string) @file_get_contents("$dir/php-errors.log")), 'no error for the visitor and none in the log');
         });
+    },
+    'RSF5.5 a rule file broken after a good compile: the last good rules stay in force, one line in the log, the fix is picked up' => function (): void {
+        if (!function_exists('proc_open')) {
+            skip('no proc_open');
+        }
+        withFailing("set store file\nset store-dir __DIR__/store\nset debug-header on\nblock /secret/**\n", 'null', function (callable $get, string $dir): void {
+            same(404, $get('/secret/x')['status'], 'the good rules compiled and decide');
+            file_put_contents("$dir/site.rules", "set recheck 0\nset store file\nset store-dir $dir/store\nset debug-header on\nblock /secret/**\nset mode sideways   # a typo in a deploy\n");
+            for ($i = 0; $i < 3; $i++) {
+                same(404, $get('/secret/x')['status'], "request $i: the last good rules still refuse");
+                same(200, $get('/')['status'], "request $i: the site still answers");
+            }
+            $log = (string) @file_get_contents("$dir/php-errors.log");
+            same(1, preg_match_all('/the rules cannot be compiled -- the last good ones stay in force: .*mode/', $log), "one line, naming the mistake:\n$log");
+            truthy(is_file(glob("$dir/cache/settings-*.failed")[0] ?? ''), 'the marker that keeps the next requests from compiling again');
+            // The fix: the block is gone, so the path must pass -- proof that the new file was compiled.
+            file_put_contents("$dir/site.rules", "set recheck 0\nset store file\nset store-dir $dir/store\nset debug-header on\n");
+            same(200, $get('/secret/x')['status'], 'the fixed rules are compiled and in force');
+            same([], glob("$dir/cache/settings-*.failed"), 'the marker is gone');
+        });
+    },
+    'RSF5.5 a rule file broken at first install: the shield runs switched off, the site answers, the log says why' => function (): void {
+        if (!function_exists('proc_open')) {
+            skip('no proc_open');
+        }
+        withFailing("set store file\nset store-dir __DIR__/store\nhots example.org\n", 'null', function (callable $get, string $dir): void {
+            for ($i = 0; $i < 3; $i++) {
+                $r = $get('/');
+                same(200, $r['status'], "request $i: the site answers");
+                same('ok allow', $r['body'], 'switched off: a plain allow');
+            }
+            $log = (string) @file_get_contents("$dir/php-errors.log");
+            same(1, preg_match_all('/the rules cannot be compiled -- the shield runs switched off until they are fixed: .*did you mean "host"/', $log), "one line for the first failure:\n$log");
+            same([], glob("$dir/cache/settings-*.php"), 'nothing compiled');
+            truthy(glob("$dir/cache/settings-*.failed") !== [], 'the marker');
+        });
+    },
+    'RSF5.5 a compiled settings file cut short: the next request compiles anew, no error reaches the visitor' => function (): void {
+        if (!function_exists('proc_open')) {
+            skip('no proc_open');
+        }
+        withFailing("set store file\nset store-dir __DIR__/store\nblock /secret/**\n", 'null', function (callable $get, string $dir): void {
+            same(404, $get('/secret/x')['status'], 'compiled');
+            $compiled = glob("$dir/cache/settings-*.php")[0] ?? '';
+            $whole = (int) filesize($compiled);
+            // Cut inside the array, as a full disk would: not even parseable.
+            file_put_contents($compiled, substr((string) file_get_contents($compiled), 0, intdiv($whole, 2)));
+            same(404, $get('/secret/x')['status'], 'decided all the same -- from the rule file');
+            same(200, $get('/')['status']);
+            same($whole, (int) filesize($compiled), 'the compiled file is whole again');
+            // Cut so that it parses, but the array is short: the constructor would not take it.
+            $php = (string) file_get_contents($compiled);
+            $cut = strrpos($php, "'challenge' =>");
+            file_put_contents($compiled, substr($php, 0, (int) $cut) . ");\n");
+            same(404, $get('/secret/x')['status'], 'decided all the same');
+            same($whole, (int) filesize($compiled), 'compiled anew');
+            same('', trim((string) @file_get_contents("$dir/php-errors.log")), 'nothing for the log: nothing was wrong with the rules');
+        });
+    },
+    'RSF5.5 compiled settings of another format are not taken: compiled anew' => function (): void {
+        $dir = sys_get_temp_dir() . '/rs-fmt-' . getmypid() . '-' . mt_rand();
+        mkdir($dir, 0700, true);
+        try {
+            file_put_contents("$dir/site.rules", "set store memory\nhost example.org\n");
+            $s = CjwNetwork\RequestShield\Settings::load("$dir/site.rules", "$dir/cache");
+            same(['example.org'], $s->hosts);
+            $compiled = glob("$dir/cache/settings-*.php")[0] ?? '';
+            $php = (string) file_get_contents($compiled);
+            truthy(preg_match("/'format' => (\\d+),/", $php, $m) === 1, 'the format is in the file');
+            file_put_contents($compiled, str_replace("'format' => {$m[1]},", "'format' => 1,", str_replace("'example.org'", "'stale.example'", $php)));
+            $s = CjwNetwork\RequestShield\Settings::load("$dir/site.rules", "$dir/cache");
+            same(['example.org'], $s->hosts, 'the stale file of another format was not used');
+            truthy(strpos((string) file_get_contents($compiled), "'format' => {$m[1]},") !== false, 'written anew in the current format');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
     },
     'RSF5.5 the file store and the secret on an unwritable directory do not throw' => function (): void {
         $dir = sys_get_temp_dir() . '/rs-ro-unit-' . getmypid() . '-' . mt_rand();

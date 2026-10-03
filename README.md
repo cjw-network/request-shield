@@ -86,8 +86,9 @@ application, and whether the answer may be cached.
   without APCu. PHP ≥ 8.0 (the Red Hat Enterprise Linux 9 baseline).
 - **Fail safe:** whatever breaks inside the shield — a store it cannot write,
   an adapter's hook that throws — the request reaches the application, marked
-  uncached, and PHP's error log gets one line a minute. The shield's own
-  answers (a refusal, the check page) are not affected
+  uncached, and PHP's error log gets one line a minute. A rule file that does
+  not compile after a deploy leaves the last good rules in force. The shield's
+  own answers (a refusal, the check page) are not affected
   ([ADR 0007](docs/adr/0007-fail-safe-pass-through.md)).
 
 It turns an expensive request (framework, database, rendering: 100–200 ms) into

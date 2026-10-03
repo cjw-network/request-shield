@@ -1276,38 +1276,145 @@ final class Settings
      *
      * @param list<string> $sources
      * @param ?string $site a site block (siteFor() names it); null: the base
+     * @param bool $failSafe never throw (the request path, see loadFor()): a file that does not compile
+     *   leaves the last good compiled settings in force, or, without any, the shield switched off
      * @throws \InvalidArgumentException for a setting of the wrong type (Rules\RuleFileException: with file and line)
      * @throws \RuntimeException when the file cannot be read
      */
-    public static function load(string $file, ?string $cacheDir = null, array $sources = [], ?string $site = null): self
+    public static function load(string $file, ?string $cacheDir = null, array $sources = [], ?string $site = null, bool $failSafe = false): self
     {
         $cacheDir ??= rtrim(sys_get_temp_dir(), '/') . '/request-shield';
         $key = hash(PHP_VERSION_ID >= 80100 ? 'xxh128' : 'md5', $file . "\0" . implode("\0", $sources));
         if ($site !== null) {
-            return self::loadSite($file, $cacheDir, $sources, $site, $key);
+            return self::loadSite($file, $cacheDir, $sources, $site, $key, $failSafe);
         }
         $compiled = $cacheDir . '/settings-' . $key . '.php';
-        // No is_file() first: a stat costs more than everything else here, and
-        // an include of a missing file just returns false.
-        $e = @include $compiled;
-        // Written by write() below, so trusted beyond its format and file.
-        if (is_array($e) && ($e['format'] ?? 0) === self::FORMAT && ($e['file'] ?? '') === $file) {
+        $e = self::compiled($compiled, $file);
+        if ($e !== null) {
             /** @var array{seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, settings: array<string, mixed>} $e */
             if (($e['env'] === [] || self::sameEnv($e['env'])) && self::inForce($e['settings']) && self::fresh($e['seen'], $e['recheck'], $key)) {
                 self::$checked[$key] = $e['seen'];
-                return self::import($e['settings']);
+                return self::imported($e['settings'], $compiled) ?? self::tryBuild($file, $cacheDir, $sources, $key, null, $failSafe);
+            }
+            if ($failSafe && self::stillBroken($cacheDir, $key)) {
+                return self::imported($e['settings'], $compiled) ?? self::off($cacheDir, $file);     // as they were when they last failed: the last good ones
             }
             $lock = self::lock($cacheDir, $key);
             if ($lock === null) {
-                return self::import($e['settings']);        // another request is building them: the last ones meanwhile
+                return self::imported($e['settings'], $compiled) ?? self::tryBuild($file, $cacheDir, $sources, $key, null, $failSafe);     // another request is building them: the last ones meanwhile
             }
             try {
-                return self::build($file, $cacheDir, $sources, $key);
+                return self::tryBuild($file, $cacheDir, $sources, $key, $e['settings'], $failSafe);
             } finally {
                 self::unlock($lock);
             }
         }
-        return self::build($file, $cacheDir, $sources, $key);
+        if ($failSafe && self::stillBroken($cacheDir, $key)) {
+            return self::off($cacheDir, $file);
+        }
+        return self::tryBuild($file, $cacheDir, $sources, $key, null, $failSafe);
+    }
+
+    /**
+     * The compiled settings in a file: the array when it is this file's and
+     * of this format, else null. A file that cannot even be parsed (cut short
+     * by a full disk) is deleted, so the next request compiles anew. No
+     * is_file() first: a stat costs more than everything else here, and an
+     * include of a missing file just returns false.
+     *
+     * @return array<mixed>|null
+     */
+    private static function compiled(string $path, string $file): ?array
+    {
+        try {
+            $e = @include $path;
+        } catch (\Throwable $t) {
+            @unlink($path);
+            return null;
+        }
+        // Written by write() below, so trusted beyond its format and file.
+        return is_array($e) && ($e['format'] ?? 0) === self::FORMAT && ($e['file'] ?? '') === $file ? $e : null;
+    }
+
+    /**
+     * import(), or null when the compiled array does not fit the constructor
+     * (a file cut short inside the array): it is deleted and built anew.
+     *
+     * @param array<string, mixed> $settings
+     */
+    private static function imported(array $settings, string $path): ?self
+    {
+        try {
+            return self::import($settings);
+        } catch (\TypeError $t) {
+            @unlink($path);
+            return null;
+        }
+    }
+
+    /**
+     * build() -- and when the rule files cannot be compiled (a mistake in
+     * them, a file that cannot be read), the site stays up (ADR 0007): the
+     * last good compiled settings stay in force, or, without any, the shield
+     * runs switched off. Noted in the error log once a minute; a marker keeps
+     * the next requests from compiling again until a source changes.
+     *
+     * @param list<string> $sources
+     * @param array<string, mixed>|null $last the last good compiled settings (export()), if any
+     * @param bool $failSafe on the request path (loadFor()): never throw; a tool's load(): do
+     */
+    private static function tryBuild(string $file, string $cacheDir, array $sources, string $key, ?array $last, bool $failSafe): self
+    {
+        if (!$failSafe) {
+            return self::build($file, $cacheDir, $sources, $key);     // a tool (check, the tests): a mistake is an error
+        }
+        try {
+            $s = self::build($file, $cacheDir, $sources, $key);
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            self::markBroken($cacheDir, $key, $file);
+            Failure::note('settings', 'the rules cannot be compiled -- ' . ($last !== null ? 'the last good ones stay in force' : 'the shield runs switched off until they are fixed')
+                . ': ' . $e->getMessage(), $cacheDir);
+            return ($last !== null ? self::imported($last, $cacheDir . '/settings-' . $key . '.php') : null) ?? self::from(['mode' => 'off']);
+        }
+        @unlink($cacheDir . '/settings-' . $key . '.failed');
+        return $s;
+    }
+
+    /** The shield switched off because the rules never compiled: said again, once a minute. */
+    private static function off(string $cacheDir, string $file): self
+    {
+        Failure::note('settings', "the rules in $file still cannot be compiled -- the shield runs switched off until they are fixed (request-shield check $file says why)", $cacheDir);
+        return self::from(['mode' => 'off']);
+    }
+
+    /**
+     * Remembers that the sources, as they are now, do not compile: their
+     * mtime and size, so the next requests see at one stat per file whether
+     * anything changed.
+     */
+    private static function markBroken(string $cacheDir, string $key, string $file): void
+    {
+        // The main file: it is what changes on a fix (an included file that
+        // changes alone is seen on the main file's next change, or by reload).
+        clearstatcache();
+        $seen = [$file => [(int) @filemtime($file), (int) @filesize($file)]];
+        self::write($cacheDir . '/settings-' . $key . '.failed', "<?php\n// cjw-network/request-shield: these rules did not compile; checked again when they change.\nreturn " . var_export(['seen' => $seen], true) . ";\n");
+    }
+
+    /** Whether the sources are still exactly as they were when they last failed to compile. */
+    private static function stillBroken(string $cacheDir, string $key): bool
+    {
+        $m = @include $cacheDir . '/settings-' . $key . '.failed';
+        if (!is_array($m) || !is_array($m['seen'] ?? null) || $m['seen'] === []) {
+            return false;
+        }
+        clearstatcache();
+        foreach ($m['seen'] as $path => $stat) {
+            if (!is_array($stat) || (int) @filemtime($path) !== ($stat[0] ?? null) || (int) @filesize($path) !== ($stat[1] ?? null)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -1322,14 +1429,23 @@ final class Settings
     {
         $cacheDir ??= rtrim(sys_get_temp_dir(), '/') . '/request-shield';
         $key = hash(PHP_VERSION_ID >= 80100 ? 'xxh128' : 'md5', $file . "\0" . implode("\0", $sources));
-        $e = @include $cacheDir . '/settings-' . $key . '.php';
-        if (is_array($e) && ($e['format'] ?? 0) === self::FORMAT && ($e['file'] ?? '') === $file) {
+        $compiled = $cacheDir . '/settings-' . $key . '.php';
+        $e = self::compiled($compiled, $file);
+        if ($e !== null) {
             /** @var array{seen: array<string, array{0: int, 1: int}>, env: array<string, string|null>, recheck: int, settings: array{sites: array<string, string>, siteFrom: string, trustedProxies: list<string>}} $e */
             if (($e['env'] === [] || self::sameEnv($e['env'])) && self::inForce($e['settings']) && self::fresh($e['seen'], $e['recheck'], $key)) {
                 self::$checked[$key] = $e['seen'];
                 $raw = $e['settings'];
                 $site = $raw['sites'] === [] ? null : self::pick($raw['sites'], $raw['siteFrom'], $raw['trustedProxies'], $server);
-                return $site === null ? self::import($raw) : self::loadSite($file, $cacheDir, $sources, $site, $key);
+                if ($site !== null) {
+                    return self::loadSite($file, $cacheDir, $sources, $site, $key, true);
+                }
+                return self::imported($raw, $compiled) ?? self::tryBuild($file, $cacheDir, $sources, $key, null, true);
+            }
+            if (self::stillBroken($cacheDir, $key)) {
+                /** @var array<string, mixed> $raw */
+                $raw = $e['settings'];
+                return self::imported($raw, $compiled) ?? self::off($cacheDir, $file);     // as they were when they last failed: the last good ones
             }
             $lock = self::lock($cacheDir, $key);
             if ($lock === null) {
@@ -1345,16 +1461,21 @@ final class Settings
                 return self::import($raw);
             }
             try {
-                $base = self::build($file, $cacheDir, $sources, $key);
+                /** @var array<string, mixed> $last */
+                $last = $e['settings'];
+                $base = self::tryBuild($file, $cacheDir, $sources, $key, $last, true);
             } finally {
                 self::unlock($lock);
             }
             $site = $base->siteFor($server);
-            return $site === null ? $base : self::loadSite($file, $cacheDir, $sources, $site, $key);
+            return $site === null ? $base : self::loadSite($file, $cacheDir, $sources, $site, $key, true);
         }
-        $base = self::build($file, $cacheDir, $sources, $key);
+        if (self::stillBroken($cacheDir, $key)) {
+            return self::off($cacheDir, $file);
+        }
+        $base = self::tryBuild($file, $cacheDir, $sources, $key, null, true);
         $site = $base->siteFor($server);
-        return $site === null ? $base : self::loadSite($file, $cacheDir, $sources, $site, $key);
+        return $site === null ? $base : self::loadSite($file, $cacheDir, $sources, $site, $key, true);
     }
 
     /** @var array<string, array<string, array{0: int, 1: int}>> base key => the sources its last check found unchanged, this request */
@@ -1367,20 +1488,23 @@ final class Settings
      *
      * @param list<string> $sources
      */
-    private static function loadSite(string $file, string $cacheDir, array $sources, string $site, string $key): self
+    private static function loadSite(string $file, string $cacheDir, array $sources, string $site, string $key, bool $failSafe): self
     {
         if (!isset(self::$checked[$key])) {
-            self::load($file, $cacheDir, $sources);         // the base, checked: its sources are the site's
+            self::load($file, $cacheDir, $sources, null, $failSafe);         // the base, checked: its sources are the site's
         }
         $compiled = $cacheDir . '/settings-' . $key . '-' . hash('crc32b', $site) . '.php';
-        $e = @include $compiled;
+        $e = self::compiled($compiled, $file);
         if (self::isSite($e, $file, $site, $key)) {
             /** @var array{settings: array<string, mixed>} $e */
-            return self::import($e['settings']);
+            $s = self::imported($e['settings'], $compiled);
+            if ($s !== null) {
+                return $s;
+            }
         }
         // Missing, or from other sources: every website built again with the base.
-        $base = self::build($file, $cacheDir, $sources, $key);
-        $e = @include $compiled;
+        $base = self::tryBuild($file, $cacheDir, $sources, $key, null, $failSafe);
+        $e = self::compiled($compiled, $file);
         if (self::isSite($e, $file, $site, $key)) {
             /** @var array{settings: array<string, mixed>} $e */
             return self::import($e['settings']);

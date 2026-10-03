@@ -575,9 +575,6 @@ final class Shield
         return $this->plugins = $made;
     }
 
-    /** @var array<string, int> the cause (what failed, and the message) => when it was last noted, this process */
-    private static array $failed = [];
-
     /**
      * Where failed() keeps "already noted" across requests and workers: the
      * site's store directory; null before any settings were made (the
@@ -586,39 +583,10 @@ final class Shield
      */
     private static string|false|null $failedDir = null;
 
-    /**
-     * Something failed: noted in PHP's error log, once a minute per cause --
-     * the visitor never sees it. Across requests and workers too (APCu, else
-     * a marker file in the store directory): a broken deploy is one line a
-     * minute, not one a visitor.
-     */
+    /** Something failed and the request went on: noted once a minute per cause (Failure). */
     private static function failed(string $what, string $message): void
     {
-        $now = time();
-        $cause = hash('crc32b', $what . '|' . substr($message, 0, 200));
-        if ($now - (self::$failed[$cause] ?? 0) < 60) {
-            return;
-        }
-        self::$failed[$cause] = $now;
-        $dir = self::$failedDir ?? rtrim(sys_get_temp_dir(), '/') . '/request-shield';
-        if ($dir !== false) {
-            if (function_exists('apcu_enabled') && apcu_enabled()) {
-                if (!apcu_add('rshield:failed:' . hash('crc32b', $dir) . ':' . $cause, $now, 60)) {
-                    return;
-                }
-            } else {
-                $marker = $dir . '/failed-' . $cause;
-                $last = @filemtime($marker);
-                if ($last !== false && $now - $last < 60) {
-                    return;
-                }
-                if (!is_dir($dir)) {
-                    @mkdir($dir, 0700, true);
-                }
-                @touch($marker);
-            }
-        }
-        error_log('request-shield: ' . $message);
+        Failure::note($what, $message, self::$failedDir);
     }
 
     /** A plugin that failed. */
