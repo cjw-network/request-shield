@@ -73,7 +73,7 @@ the model you trust most there, not fast mode.
 - [x] **A3.4** `HostingTiersTest` S2 and "same requests, same decisions at S0/S1/S2"; CI leg "minimal hosting" (`TESTS_HOSTING=minimal` → `serverPhp()` restricts every server a test starts); README cost table names the tiers; ADR 0013 accepted. `1d892d2`
 
 ### Phase A2 — Bytes
-- [x] **A2.1** Headers `X-Request-Shield*` → `X-RS*` (`X-RS`, `X-RS-Monitor`, `X-RS-Check`, `X-RS-Access`) in code, tests, demos, docs; internal headers removed before output (test). `(this commit; hash follows)`
+- [x] **A2.1** Headers `X-Request-Shield*` → `X-RS*` (`X-RS`, `X-RS-Monitor`, `X-RS-Check`, `X-RS-Access`) in code, tests, demos, docs; internal headers removed before output (test). `f7873a2`
 - [ ] **A2.2** Cookie names `rsp/rss/rsd`; pass cookie v2 (`2.<expires base36>.<tag b64url 11>.<mac b64url 22>`), `v1` removed — `ChallengeTest`/`ChallengeJsTest` adjusted.
 - [ ] **A2.3** `tests/WireBytesTest.php` (cookie ≤ 48 B, no `X-RS*` on a pass without debug, header-block limit, challenge page gzip limit); bytes in the bench; a bytes line in `browser-challenge.md`.
 
