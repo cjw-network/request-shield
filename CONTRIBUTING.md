@@ -34,12 +34,17 @@ things come first: **it must be right, and it must be fast.**
    built file too:
    `php build/single-file.php && php build/single-file.php --edition=stats`, then
    `REQUEST_SHIELD_ENTRY=$PWD/build/out/request-shield.php php tests/run.php`
-   (CI leg `single`). A test that starts a server or the command line takes
+   (CI legs with "single file" in their name). A test that starts a server or the command line takes
    them from `rsEntry()` and `rsCli()` (`tests/helpers.php`), never from
    `bootstrap.php` or `bin/request-shield` directly. A source file holds declarations
    only -- no code at its top level, or the build refuses. The shipped data is
    read through `Rules\Shipped` only, nothing else names `rules/`.
-8. **Fail safe.** When the shield is unsure (a store that cannot be written,
+8. **What CI runs** depends on the event (`build/ci-plan.php`): a pull request
+   3 legs (PHP 8.0 file store, 8.4 APCu, 8.4 APCu against the single file)
+   plus minimal hosting and static analysis; a push to main 14; nightly and
+   by hand all 24 and a check that two builds are byte-identical. Run the
+   other legs locally when a change depends on the PHP version.
+9. **Fail safe.** When the shield is unsure (a store that cannot be written,
    an index that may be stale), it lets the request through rather than
    blocking a real user; only clear cases are refused.
 

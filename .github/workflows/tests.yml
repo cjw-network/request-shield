@@ -4,20 +4,39 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: '23 3 * * *'      # nightly: every leg, and the determinism check
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  # Which legs this event runs (0031 E.4): a pull request 3, a push to main 14,
+  # nightly and by hand all 24. build/ci-plan.php decides; tests/CiPlanTest.php
+  # holds it to those numbers.
+  plan:
+    name: Plan the legs
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+      - id: plan
+        run: echo "matrix=$(php build/ci-plan.php '${{ github.event_name }}')" >> "$GITHUB_OUTPUT"
+
   tests:
-    name: PHP ${{ matrix.php }}${{ matrix.apcu && ' + APCu' || ' (file store)' }}
+    name: PHP ${{ matrix.php }}${{ matrix.apcu && ' + APCu' || ' (file store)' }}${{ matrix.entry == 'single' && ', single file' || '' }}
+    needs: plan
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        php: ['8.0', '8.1', '8.2', '8.3', '8.4', '8.5']
-        apcu: [true, false]
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v7
 
@@ -34,7 +53,7 @@ jobs:
           node-version: '22'
 
       - name: Syntax check (PHP ${{ matrix.php }})
-        run: find src plugins tests bench config examples bootstrap.php -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+        run: find src plugins tests bench build config examples bootstrap.php -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
 
       - name: The single file builds, and PHP ${{ matrix.php }} reads it
         run: |
@@ -43,13 +62,23 @@ jobs:
           php -l build/out/request-shield.php > /dev/null
           php -l build/out/request-shield-stats.php > /dev/null
 
-      - name: Tests
+      - name: Tests (source tree)
+        if: matrix.entry == 'source'
         env:
           # With APCu every test must run; without it the APCu store test is skipped on purpose.
           TESTS_FAIL_ON_SKIP: ${{ matrix.apcu && '1' || '0' }}
         run: php tests/run.php
 
+      # Against the built file (0031 E.3). Skips are expected: the demos show the
+      # source tree's integration, ShippedTest needs the source tree's Shipped.
+      - name: Tests (against the single file)
+        if: matrix.entry == 'single'
+        env:
+          REQUEST_SHIELD_ENTRY: ${{ github.workspace }}/build/out/request-shield.php
+        run: php tests/run.php
+
       - name: Cost of a passing request (smoke benchmark)
+        if: matrix.entry == 'source'
         run: php -d opcache.file_update_protection=0 bench/overhead.php 20000
 
   # Shared hosting at its most restrictive (ADR 0013, tier S1): the servers the
@@ -78,35 +107,23 @@ jobs:
           TESTS_HOSTING: minimal
         run: php tests/run.php
 
-  # The suite against the built single file (0031 E.3): REQUEST_SHIELD_ENTRY
-  # makes the runner, the end-to-end servers and the command line use
-  # build/out/request-shield.php (with request-shield-stats.php) instead of
-  # bootstrap.php. Skips are expected here: the demos show the source tree's
-  # integration, and ShippedTest's cases need the source tree's Shipped.
-  single:
-    name: PHP 8.4 + APCu, against the single file
+  # Nightly and by hand: two builds of every edition, byte for byte the same
+  # (proposal 0002: the release builds twice and compares, too).
+  determinism:
+    name: The single file, built twice, is the same
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: 'apcu, pcntl'
-          ini-values: 'apc.enable_cli=1, opcache.enable_cli=1, opcache.file_update_protection=0'
           coverage: none
           tools: none
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-
-      - name: Build the single file
+      - name: Build each edition twice and compare
         run: |
-          php build/single-file.php --build=ci
-          php build/single-file.php --edition=stats --build=ci
-
-      - name: Tests against the file
-        env:
-          REQUEST_SHIELD_ENTRY: ${{ github.workspace }}/build/out/request-shield.php
-        run: php tests/run.php
+          for edition in mini stats; do
+            php build/single-file.php --edition=$edition --out=/tmp/a-$edition.php --build=ci
+            php build/single-file.php --edition=$edition --out=/tmp/b-$edition.php --build=ci
+            cmp /tmp/a-$edition.php /tmp/b-$edition.php
+          done

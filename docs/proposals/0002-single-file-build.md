@@ -176,7 +176,9 @@ file: they require `bootstrap.php`, whose own search starts the shield, so a
 prepended file would always pre-empt them; they show the source tree's
 integration. `RuleFileTest`'s library update edits the embedded set in a copy
 of the file. CI: the leg `single` (PHP 8.4, APCu) and `php -l` of the built
-file in every leg of the matrix; the `plan` job follows in E.4.
+file in every leg of the matrix. **E.4:** the `plan` job (`build/ci-plan.php`)
+gives a pull request 3 legs, a push to main 14 (2 of them single), nightly
+all 24 and the determinism check (every edition built twice, `cmp`).
 
 ### The bootstrap block — and the fix in `bootstrap.php`
 

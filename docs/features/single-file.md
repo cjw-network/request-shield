@@ -75,8 +75,9 @@ The runner, the end-to-end servers and the command-line tests then use the
 built file (with the statistics file beside it) instead of `bootstrap.php`
 and `bin/request-shield`. The demos and `ShippedTest` skip there: the demos
 show the source tree's integration, and `ShippedTest` needs the source
-tree's `Shipped`. CI runs this as the leg `single`, and checks the built file
-with `php -l` on every PHP version.
+tree's `Shipped`. CI runs it on PHP 8.4 with APCu for every pull request, on
+8.0 and 8.4 for a push to main, on every leg nightly, and checks the built
+file with `php -l` on every PHP version it runs.
 
 ## Cost
 

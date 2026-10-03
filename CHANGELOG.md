@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **CI plans its legs per event** (0031 step E.4): a `plan` job asks
+  `build/ci-plan.php` -- a pull request runs 3 legs (PHP 8.0 file store, 8.4
+  APCu, 8.4 APCu against the single file) plus minimal hosting, a push to main
+  14, nightly and by hand all 24 plus a check that two builds of every edition
+  are byte-identical. `tests/CiPlanTest.php` holds the numbers.
 - **The suite runs against the single file** (0031 step E.3):
   `REQUEST_SHIELD_ENTRY=<built request-shield.php> php tests/run.php` loads
   the built file (and the statistics file beside it) instead of
