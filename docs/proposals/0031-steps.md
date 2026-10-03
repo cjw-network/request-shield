@@ -114,7 +114,7 @@ the model you trust most there, not fast mode.
 - [x] **F.2** `tests/FeatureContractTest.php` (docs ↔ demo ↔ tests ↔ Vocabulary, `.demo-exempt`) — first with an exception list that F.6 empties. `78fcdc0`
 - [x] **F.3** Parser: `# demo:`/`# try:` markers, `ua "…"`, quoted headers; `Examples` returns status + headers. `8f508c8`
 - [x] **F.4** `Report/DemoSite` + `ExamplesPage`, server-side `/__answer`; `examples/demo/index.php` → 3 lines + `pages.php`; `examples/exponential` on the same base; `DemoTest` iterates groups. `bd9a4d0`
-- [x] **F.5** CLI `examples --markdown|--html|--coverage`, `vocabulary`; `docs/tools/sync-examples.php`, `gen-reference.php`, `docs/reference/*` generated; `--check` in CI. `HASH-F5`
+- [x] **F.5** CLI `examples --markdown|--html|--coverage`, `vocabulary`; `docs/tools/sync-examples.php`, `gen-reference.php`, `docs/reference/*` generated; `--check` in CI. `4f2cffe`
 - [ ] **F.6** Close the gaps: trust, post-origin, feeds (`feed … from <file>`), strict, sites, `@attacks` with `expect`, crawlers, lists/bans — one commit per feature; empty the exception list from F.2.
 - [ ] **F.7** `docs/diagrams/*.dg` + `docs/tools/diagram.php`; Pages export of the recorded demo (`pages.yml`).
 - [ ] **F.8** `docs/glossary.md`, `docs/for/{admins,hosters,editors,customers,developers}.md` (each a diagram + a scenario), `CONTRIBUTING.md` section "plain language", `tests/DocsStyleTest.php` (diagram required, glossary links) — first with an exception list that F.9 empties.
