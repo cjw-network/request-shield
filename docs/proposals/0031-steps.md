@@ -93,7 +93,7 @@ the model you trust most there, not fast mode.
 - [x] **C.1** `Step` + `Shield::chain()`; `Inspector::trace()` iterates `chain()`. `ef5af20`
 - [x] **C.2** `explain()` cases into the rule classes (`Step::explain`). `6a0f9f8`
 - [x] **C.3** `SetupPage` from `chain()`; `RuleProvider` hook (stages, `stricter()` only, a throw → pass) — RobustnessTest case 1 through the public API. `96127bb`
-- [x] **C.4** `Handler` hook for passing requests (`protect()` after `settle()`), `Response` class, `Request::cacheKey()`. `(this commit; hash follows)`
+- [x] **C.4** `Handler` hook for passing requests (`protect()` after `settle()`), `Response` class, `Request::cacheKey()`. `a46cafd`
 
 ### Phase D — CLI + namespace
 - [ ] **D.1** `bin/request-shield` as a dispatch table + `Extension::commands()`; `stats` into the plugin.
