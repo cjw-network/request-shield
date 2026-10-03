@@ -64,7 +64,8 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
             'x.parts' => 'Counted: %s; ', 'x.apcu' => 'in APCu, written to disk every %s — after the answer, nobody waits.', 'x.files' => 'one line appended to a file per request; the hour summed up after the answer.',
             'x.statsOff' => 'Statistics: off.', 'x.noFile' => 'built into the settings (no rule file)', 'x.line' => 'line',
             'l.deny' => 'Denied', 'l.feed' => 'Lists', 'l.ban' => 'Banned', 'l.method' => 'Kind', 'l.size' => 'Size', 'l.sanity' => 'Disguise', 'l.host' => 'Name', 'l.blocked' => 'Blocked', 'l.methodPaths' => 'Forms', 'l.restricted' => 'Areas',
-            'l.crawlers' => 'Crawlers', 'l.query' => 'Params', 'l.attacks' => 'Attacks', 'l.cache' => 'Cache', 'l.budgets' => 'Pace', 'l.check' => 'Check',
+            'l.crawlers' => 'Crawlers', 'l.query' => 'Params', 'l.attacks' => 'Attacks', 'l.cache' => 'Cache', 'l.budgets' => 'Pace', 'l.check' => 'Check', 'l.origin' => 'Origin',
+            's.origin' => 'Where forms come from', 'd.origin' => 'forms only from the website\'s own pages (post-origin same); without Origin and Referer: %s', 'd.plugin' => 'a plugin\'s own rule', 'a.plugin' => 'what the plugin decides',
             'try' => 'Rule tester', 'tryIntro' => 'Enter an address (a full URL or a path) and the visitor\'s IP: every step shows what it makes of it, and which rule decides. Nothing is counted; the pace uses the visitor\'s real counters.',
             'tryUrl' => 'Address', 'tryIp' => 'Visitor\'s address (IP)', 'tryKind' => 'Kind of request', 'tryUa' => 'User-Agent (optional)', 'tryButton' => 'Test',
             'tryResult' => 'This visitor %s.', 'tryRule' => 'Decided by', 'tryWatched' => 'Watched: it %s.',
@@ -105,6 +106,7 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
             'x.statsOff' => 'Statistik: aus.', 'x.noFile' => 'in den Einstellungen eingebaut (keine Regeldatei)', 'x.line' => 'Zeile',
             'l.deny' => 'Sperrliste', 'l.feed' => 'Listen', 'l.ban' => 'Sperre', 'l.method' => 'Art', 'l.size' => 'Größe', 'l.sanity' => 'Tarnung', 'l.host' => 'Name', 'l.blocked' => 'Gesperrt', 'l.methodPaths' => 'Formulare', 'l.restricted' => 'Bereiche',
             'l.crawlers' => 'Crawler', 'l.query' => 'Parameter', 'l.attacks' => 'Angriffe', 'l.cache' => 'Cache', 'l.budgets' => 'Tempo', 'l.check' => 'Check',
+            'l.origin' => 'Herkunft', 's.origin' => 'Woher Formulare kommen', 'd.origin' => 'Formulare nur von den eigenen Seiten der Website (post-origin same); ohne Origin und Referer: %s', 'd.plugin' => 'eine eigene Regel eines Plugins', 'a.plugin' => 'was das Plugin entscheidet',
             'try' => 'Regeltester', 'tryIntro' => 'Eine Adresse eingeben (ganze URL oder Pfad) und die IP des Besuchers: jeder Schritt zeigt, was er daraus macht und welche Regel entscheidet. Nichts wird gezählt; das Tempo nutzt die echten Zähler des Besuchers.',
             'tryUrl' => 'Adresse', 'tryIp' => 'Adresse des Besuchers (IP)', 'tryKind' => 'Art der Anfrage', 'tryUa' => 'User-Agent (optional)', 'tryButton' => 'Testen',
             'tryResult' => 'Dieser Besucher %s.', 'tryRule' => 'Entschieden von', 'tryWatched' => 'Beobachtet: er %s.',
@@ -146,28 +148,52 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
         $verify = ['ranges' => $t['k.ranges'], 'dns' => $t['k.dnsV'], 'both' => $t['k.both']][$s->crawlerVerify] ?? $s->crawlerVerify;
         $so = self::stats($s);
         $client = $f('d.client', $s->trustedProxies === [] ? '' : $f('d.proxies', implode(', ', $s->trustedProxies)), $s->ipv6Prefix, $s->exemptIps === [] ? '' : $f('d.exempt', implode(', ', $s->exemptIps)));
-        // The checks, in the order the shield runs them: key, on, what it answers, how it is set.
-        $steps = [
-            ['deny', $s->denyTable !== [], $t['a.403'], $s->denyCount === 0 ? $t['d.none'] : $f('d.deny', $s->denyCount, $s->listsUntil > 0 ? $f('d.next', date($lang === 'de' ? 'd.m.Y H:i' : 'Y-m-d H:i', $s->listsUntil)) : '')],
-            ['feed', $s->feeds !== [], $t['a.403'], $s->feeds === [] ? $t['d.none'] : implode('; ', array_map(static fn (array $x): string => $x['name'] . ' (' . $x['action']
+        // The checks, as the chain has them (Shield::chain(), 0031 C.3): per step key its words --
+        // on, what it answers, how it is set; a plugin's step gets its own description.
+        $info = [
+            'deny' => ['deny', $s->denyTable !== [], $t['a.403'], $s->denyCount === 0 ? $t['d.none'] : $f('d.deny', $s->denyCount, $s->listsUntil > 0 ? $f('d.next', date($lang === 'de' ? 'd.m.Y H:i' : 'Y-m-d H:i', $s->listsUntil)) : '')],
+            'feed' => ['feed', $s->feeds !== [], $t['a.403'], $s->feeds === [] ? $t['d.none'] : implode('; ', array_map(static fn (array $x): string => $x['name'] . ' (' . $x['action']
                 . ($x['action'] === 'signal' ? ' ×' . $x['weight'] : '') . ($x['paths'] !== [] ? ', ' . count($x['paths']) . ' ' . $t['d.paths'] : '') . ': '
                 . ($x['state'] === 'in force' ? $f('d.feed', $x['count']) : $t['d.' . str_replace(' ', '', $x['state'])]) . ')', $s->feeds))],
-            ['ban', $s->bans !== [], $t['a.429'], $s->bans === [] ? $t['d.none'] : $f('d.ban', count($s->bans), $s->banGrowth, Describe::span($s->banMax, $lang))],
-            ['method', true, $t['a.405'], $f('d.method', implode(', ', $s->methods))],
-            ['size', true, $t['a.400'], $f('d.size', $s->maxUri, $s->maxQueryParameters, (int) round($s->maxHeaderBytes / 1024))],
-            ['sanity', true, '400', $t['d.sanity']],
-            ['host', $s->hosts !== [], $t['a.404'], $s->hosts === [] ? $t['d.hostAny'] : $f('d.hosts', implode(', ', $s->hosts))],
-            ['blocked', $s->blockedPaths !== [], $t['a.404'], $f('d.blocked', count($s->blockedPaths), $s->blockExceptions === [] ? '' : $f('d.exceptions', count($s->blockExceptions)))],
-            ['methodPaths', $s->methodPaths !== [], $t['a.405'], $s->methodPaths === [] ? $t['d.none'] : $f('d.methodPaths', implode(', ', array_keys($s->methodPaths)))],
-            ['restricted', $s->restricted !== [], $t['a.403'], $f('d.restricted', count($s->restricted))],
-            ['crawlers', $s->crawlers !== [], $t['a.403'], $s->crawlers === [] ? $t['d.none'] : $f('d.crawlers', count($s->crawlers), $verify)],
-            ['query', $s->queryParams !== [] || $s->queryStrict, $s->queryStrict ? $t['a.404'] : $t['a.pass'], $f('d.query', count($s->queryParams), $s->queryStrict ? $t['d.strict'] : $t['d.loose'])],
-            ['attacks', $s->contentRules !== [], $t['a.403'], $f('d.attacks', $patterns, count($s->contentRules))],
-            ['cache', true, $t['a.pass'], ($s->cacheablePaths === null ? $t['d.cacheAll'] : $f('d.cachePaths', count($s->cacheablePaths))) . $f('d.cacheQ', $query)],
-            ['budgets', $s->budgets !== [], $t['a.check'], $f('d.budgets', count($s->budgets), $list($budgets))],
-            ['check', true, $t['a.page'], $f('d.check', Describe::span($s->challenge->passTtl, $lang), $s->challenge->alwaysPaths === [] ? '' : $f('d.alwaysAt', count($s->challenge->alwaysPaths)))
-                . ($s->challenge->widgetPath !== null ? $f('d.widget', $s->challenge->widgetPath) : '')],
+            'ban' => ['ban', $s->bans !== [], $t['a.429'], $s->bans === [] ? $t['d.none'] : $f('d.ban', count($s->bans), $s->banGrowth, Describe::span($s->banMax, $lang))],
+            'method' => ['method', true, $t['a.405'], $f('d.method', implode(', ', $s->methods))],
+            'limits' => ['size', true, $t['a.400'], $f('d.size', $s->maxUri, $s->maxQueryParameters, (int) round($s->maxHeaderBytes / 1024))],
+            'path' => ['sanity', true, '400', $t['d.sanity']],
+            'host' => ['host', $s->hosts !== [], $t['a.404'], $s->hosts === [] ? $t['d.hostAny'] : $f('d.hosts', implode(', ', $s->hosts))],
+            'blocked' => ['blocked', $s->blockedPaths !== [], $t['a.404'], $f('d.blocked', count($s->blockedPaths), $s->blockExceptions === [] ? '' : $f('d.exceptions', count($s->blockExceptions)))],
+            'method-path' => ['methodPaths', $s->methodPaths !== [], $t['a.405'], $s->methodPaths === [] ? $t['d.none'] : $f('d.methodPaths', implode(', ', array_keys($s->methodPaths)))],
+            'post-origin' => ['origin', $s->postOrigin !== null, $t['a.403'], $s->postOrigin === null ? $t['d.none'] : $f('d.origin', $s->postOrigin['missing'])],
+            'restricted' => ['restricted', $s->restricted !== [], $t['a.403'], $f('d.restricted', count($s->restricted))],
+            'crawlers' => ['crawlers', $s->crawlers !== [], $t['a.403'], $s->crawlers === [] ? $t['d.none'] : $f('d.crawlers', count($s->crawlers), $verify)],
+            'query' => ['query', $s->queryParams !== [] || $s->queryStrict, $s->queryStrict ? $t['a.404'] : $t['a.pass'], $f('d.query', count($s->queryParams), $s->queryStrict ? $t['d.strict'] : $t['d.loose'])],
+            'content' => ['attacks', $s->contentRules !== [], $t['a.403'], $f('d.attacks', $patterns, count($s->contentRules))],
+            'cache' => ['cache', true, $t['a.pass'], ($s->cacheablePaths === null ? $t['d.cacheAll'] : $f('d.cachePaths', count($s->cacheablePaths))) . $f('d.cacheQ', $query)],
+            'budgets' => ['budgets', $s->budgets !== [], $t['a.check'], $f('d.budgets', count($s->budgets), $list($budgets))],
         ];
+        /** @var list<array{0: string, 1: bool, 2: string, 3: string, 4: string, 5: string}> $steps key, on, answers, what, label, name */
+        $steps = [];
+        $budgetsShown = false;
+        foreach ((new \CjwNetwork\RequestShield\Shield($s, $o['store'] ?? new \CjwNetwork\RequestShield\Store\MemoryStore()))->chain() as $st) {
+            $key = strncmp($st->key, 'budget:', 7) === 0 ? 'budgets' : $st->key;
+            if ($key === 'budgets') {
+                if ($budgetsShown) {
+                    continue;                           // every budget in one step, as the chain runs them together
+                }
+                $budgetsShown = true;
+            }
+            if (isset($info[$key])) {
+                [$k, $on, $answers, $what] = $info[$key];
+                $steps[] = [$k, $on, $answers, $what, $t['l.' . $k], $t['s.' . $k]];
+            } else {
+                $steps[] = [$st->key, $st->active(), $t['a.plugin'], $t['d.plugin'], $st->key, $st->describe];     // a plugin's step (RuleProvider): it may refuse or tighten
+            }
+        }
+        if (!$budgetsShown) {
+            [$k, $on, $answers, $what] = $info['budgets'];
+            $steps[] = [$k, $on, $answers, $what, $t['l.' . $k], $t['s.' . $k]];
+        }
+        $steps[] = ['check', true, $t['a.page'], $f('d.check', Describe::span($s->challenge->passTtl, $lang), $s->challenge->alwaysPaths === [] ? '' : $f('d.alwaysAt', count($s->challenge->alwaysPaths)))
+            . ($s->challenge->widgetPath !== null ? $f('d.widget', $s->challenge->widgetPath) : ''), $t['l.check'], $t['s.check']];
         // After the checks: what the log and the statistics write, and when.
         $after = [$s->logFile === null ? $t['x.logOff'] : $t['x.log.' . $s->logLevel]];
         if ($so['enabled']) {
@@ -177,14 +203,14 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
             $after[] = $t['x.statsOff'];
         }
         $h .= '<section class="card" id="way"><h2>' . $e($t['way']) . '</h2><p class="note">' . $e($t['wayIntro']) . '</p>'
-            . '<div class="diagram">' . Diagram::setup(array_values(array_map(static fn (array $st): array => ['label' => $t['l.' . $st[0]], 'name' => $t['s.' . $st[0]], 'on' => $st[1], 'what' => $st[3], 'stops' => $st[2] !== $t['a.pass'], 'feeds' => $st[0] === 'crawlers' && $so['enabled']], $steps)),
+            . '<div class="diagram">' . Diagram::setup(array_map(static fn (array $st): array => ['label' => $st[4], 'name' => $st[5], 'on' => $st[1], 'what' => $st[3], 'stops' => $st[2] !== $t['a.pass'], 'feeds' => $st[0] === 'crawlers' && $so['enabled']], $steps),
                 ['request' => $t['x.request'], 'before' => $t['x.before'], 'site' => $t['x.site'], 'siteSub' => $t['x.siteSub'], 'answer' => $t['x.answer'], 'answerSub' => $t['x.answerSub'],
                 'after' => $t['x.after'], 'lines' => $after, 'feeds' => $t['x.feeds']]) . '</div><ol class="way">';
         $item = static fn (string $id, string $mark, bool $on, string $name, string $answers, string $what): string => '<li id="' . $id . '" class="' . ($on ? 'on' : 'off') . '"><span class="step">' . $e($mark) . '</span><div><b>' . $e($name) . '</b> <span class="state">' . $e($on ? $t['on'] : $t['off']) . '</span>'
             . ($answers !== '' ? ' <span class="note">· ' . $e($t['answers'] . ' ' . $answers) . '</span>' : '') . '<br><span class="note">' . $what . '</span></div></li>';
         $h .= $item('step-before', '›', true, $t['x.beforeName'], '', $e($client));
-        foreach ($steps as $i => [$key, $on, $answers, $what]) {
-            $h .= $item('step-' . ($i + 1), (string) ($i + 1), $on, $t['s.' . $key], $answers, $e($what));
+        foreach ($steps as $i => [$key, $on, $answers, $what, , $name]) {
+            $h .= $item('step-' . ($i + 1), (string) ($i + 1), $on, $name, $answers, $e($what));
         }
         $h .= $item('step-after', '›', $s->logFile !== null || $so['enabled'], $t['x.after'], '', implode('<br>', array_map($e, $after)));
         $h .= '</ol></section>';

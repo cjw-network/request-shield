@@ -22,6 +22,7 @@ use CjwNetwork\RequestShield\Rule\ContentRule;
 use CjwNetwork\RequestShield\Rule\CrawlerRule;
 use CjwNetwork\RequestShield\Rule\DenyRule;
 use CjwNetwork\RequestShield\Rule\FeedRule;
+use CjwNetwork\RequestShield\Rule\Guarded;
 use CjwNetwork\RequestShield\Rule\HostRule;
 use CjwNetwork\RequestShield\Rule\LimitsRule;
 use CjwNetwork\RequestShield\Rule\MethodPathRule;
@@ -166,6 +167,74 @@ final class Shield
                 $this->rules[] = $this->budgetRule($budget);
             }
         }
+        if (($s->hooks['ruleProvider'] ?? []) !== []) {
+            $this->provided($s);                    // the plugins' own rules, after their stage's (0031 C.3)
+        }
+    }
+
+    /**
+     * The rules the plugins with RuleProvider add (0031 C.3): each step after
+     * the last step of its stage, never before the lists, its rule behind a
+     * guard (a throw says nothing). A provider that throws, or a step at the
+     * wrong place, is left out and noted once a minute. Only when a provider
+     * is recorded: a shield without one never gets here.
+     */
+    private function provided(Settings $s): void
+    {
+        $steps = Step::fromRules($this->rules);
+        $core = [];
+        foreach ($steps as $st) {
+            $core[$st->key] = true;
+        }
+        foreach ($s->hooks['ruleProvider'] ?? [] as $class) {
+            if (!class_exists($class) || !is_subclass_of($class, RuleProvider::class)) {
+                continue;
+            }
+            try {
+                $added = (new $class($s))->rules($s, $this->store);
+            } catch (\Throwable $e) {
+                self::failed('rules', "$class failed to provide its rules, none added: " . $e->getMessage());
+                continue;
+            }
+            foreach ($added as $st) {
+                if ($st->rule === null || $st->key === '' || isset($core[$st->key]) || $st->stage === 'lists' || !in_array($st->stage, Step::STAGES, true)) {
+                    self::failed('rules', "$class provided a step the chain cannot take (a rule, a key of its own, a stage after the lists) -- left out");
+                    continue;
+                }
+                $core[$st->key] = true;
+                $guarded = new Step($st->key, $st->stage, new Guarded($st->rule, $st->key), $st->describe);
+                // After the last step of its stage; a stage with no step yet (no budgets): at the end.
+                $at = count($steps);
+                foreach ($steps as $i => $existing) {
+                    if ($existing->stage === $st->stage) {
+                        $at = $i + 1;
+                    }
+                }
+                array_splice($steps, $at, 0, [$guarded]);
+            }
+        }
+        // The table must have every core rule (ChainTest guards it); should it not,
+        // keep the constructor's list and append the provided rules -- never drop a check.
+        $derived = [];
+        $own = [];
+        foreach ($steps as $st) {
+            if ($st->rule !== null) {
+                $derived[] = $st->rule;
+                if ($st->rule instanceof Guarded) {
+                    $own[] = $st->rule;
+                }
+            }
+        }
+        if (array_values(array_filter($derived, static fn (Rule $r): bool => !$r instanceof Guarded)) !== $this->rules) {
+            self::failed('rules', 'the chain table lags behind the shield: the plugins\' rules run after the core\'s, in the order given');
+            $this->steps = null;
+            foreach ($own as $rule) {
+                $this->rules[] = $rule;
+            }
+            return;
+        }
+        $this->steps = $steps;
+        $this->rules = $derived;
     }
 
     /**

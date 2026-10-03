@@ -73,6 +73,28 @@ return [
             @unlink((string) $log);
         }
     },
+    'RSF5.5 a plugin\'s rule that throws (RuleProvider, 0031 C.3): through the public API the request passes as if the rule said nothing -- not as a shield error -- and the error log hears it once' => function (): void {
+        $server = $_SERVER;
+        $_SERVER = ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/forbidden', 'HTTP_HOST' => 'example.org', 'REMOTE_ADDR' => '198.51.100.7', 'SERVER_PROTOCOL' => 'HTTP/1.1'] + $_SERVER;
+        unset($_SERVER['REQUEST_SHIELD']);
+        $log = tempnam(sys_get_temp_dir(), 'rs-log-');
+        $errorLog = ini_set('error_log', (string) $log);
+        \CjwNetwork\RequestShield\Rules\Vocabulary::forget();
+        try {
+            \CjwNetwork\RequestShield\Rules\Vocabulary::offer(\CjwNetwork\RequestShield\Tests\RsTestExtension::class);
+            $config = ['store' => 'memory', 'plugins' => [\CjwNetwork\RequestShield\Tests\RulesPlugin::class], 'ext' => ['rs-test' => ['failAt' => 'rules']]];
+            $d = Shield::protect($config);
+            same(Decision::ALLOW, $d->action, 'let through -- the rule said nothing, nothing else is wrong with the request');
+            same(true, $d->cacheable(), 'and cacheable: it is no shield error, the other rules decided as always');
+            truthy(strpos((string) file_get_contents((string) $log), 'the rule test-provider failed and said nothing: the provided rule failed, as asked (') !== false, 'the error log names the rule: ' . (string) file_get_contents((string) $log));
+        } finally {
+            \CjwNetwork\RequestShield\Rules\Vocabulary::forget();
+            \CjwNetwork\RequestShield\Rules\Vocabulary::offer(\CjwNetwork\RequestShield\StatsExtension::class);
+            $_SERVER = $server;
+            ini_set('error_log', (string) $errorLog);
+            @unlink((string) $log);
+        }
+    },
     'RSF5.5 the real path: the site answers although the shield throws; its own refusals still stand; the error log hears it once' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');

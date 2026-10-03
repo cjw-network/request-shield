@@ -92,7 +92,7 @@ the model you trust most there, not fast mode.
 ### Phase C — Rule chain
 - [x] **C.1** `Step` + `Shield::chain()`; `Inspector::trace()` iterates `chain()`. `ef5af20`
 - [x] **C.2** `explain()` cases into the rule classes (`Step::explain`). `6a0f9f8`
-- [ ] **C.3** `SetupPage` from `chain()`; `RuleProvider` hook (stages, `stricter()` only, a throw → pass) — RobustnessTest case 1 through the public API.
+- [x] **C.3** `SetupPage` from `chain()`; `RuleProvider` hook (stages, `stricter()` only, a throw → pass) — RobustnessTest case 1 through the public API. `(this commit; hash follows)`
 - [ ] **C.4** `Handler` hook for passing requests (`protect()` after `settle()`), `Response` class, `Request::cacheKey()`.
 
 ### Phase D — CLI + namespace
@@ -137,10 +137,11 @@ the model you trust most there, not fast mode.
 
 ## Status
 
-- **Last step done:** C.2
-- **Next step:** C.3
+- **Last step done:** C.3
+- **Next step:** C.4
 - **Open owner questions:** see the proposal's last section.
 - **Deviations from the plan:** none open. (B.3 kept `stats-group`, `stats-access`, `stats-session`, `stats-path` in the core for a while; B.5 moved `stats-path`, B.7 the rest -- as the proposal's B.3 row says.)
+- **Finding from C.3:** provided steps are inserted in `Shield::provided()` only when `hooks['ruleProvider']` is set (a shield without one never derives the chain early); the chain is then the source of the hot path's rule list. `Rule\Guarded` wraps a provided rule (a throw in `check()` or `explain()` says nothing, `Shield::failed()` hears it). The RobustnessTest case for a throwing provided rule goes through `Shield::protect()`: the request passes cacheable -- a plugin's broken rule is not a shield error. `SetupPage`'s way comes from `chain()` now and gained the post-origin step (StatsTest counted 16, now 17). Checks ran one after another (memory pressure on this machine). Reviewed with the code-review skill, no workflow.
 - **Finding from C.2:** `explain()` is on the `Rule` interface (not a closure on `Step`, as the plan sketched): the rule that produced a decision knows its reasons, so a rule provider's rule (C.3) names itself the same way. `Settings::ruleName()` is the one sanitised origin lookup. Kept in `Shield::explain()`: `always`, `app`, a `check` feed (decide()'s own steps) and the on-demand budgets (no step of the chain -- the first version dropped them and ModesTest caught it). Reviewed with the code-review skill, no workflow.
 - **Finding from C.1:** a first version built `Step` objects in the constructor and cost the compiled-settings setup 4 µs per request (8.5 → 12.7); the committed version keeps the constructor's inline rule list (zero extra cost) and derives the steps when asked (`Step::fromRules()` over `Step::table()`, the one table of key, stage, rule class and words; inactive stages get a null rule so the inspector can name them). `ChainTest` guards that the table's order is the constructor's, rule object for rule object. The inspector keeps its words per step key (a `switch`), the budgets and the cache keep their own tries (nothing counted, no `$known`), unknown keys (a rule provider's, C.3) get a plain outcome. The always-check (`challenge <paths>`) is not a step: `decide()` handles it after the loop, the inspector appends it. Reviewed with the code-review skill, no workflow.
 - **Finding from B.10:** the hook is a callable where the class has no settings (`PageHook::asker()` into `Gate` and `Responder`), `PageHook::ask()` where it has (`Access`); the first plugin that answers wins, null means the shield's page. The check page's context is exactly `ChallengePage::render()`'s inputs, so a plugin can wrap the shield's page. Three hook kinds are recorded now (`ruleCounts`, `sink`, `pages`); `RuleProvider` and `Handler` come with phase C. Reviewed with the code-review skill, no workflow.

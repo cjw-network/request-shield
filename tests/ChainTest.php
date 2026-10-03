@@ -78,4 +78,56 @@ return [
         same('application', $shield->explain(\CjwNetwork\RequestShield\Decision::challenge('app'), $req), 'the site asked');
         same(null, $shield->explain(\CjwNetwork\RequestShield\Decision::allowUncached('unknown url'), $req), 'nothing to name');
     },
+    'a rule provider (0031 C.3): its step after its stage, its rule decides and names itself, the trace shows it; a throwing rule says nothing; a wrong step is left out' => function (): void {
+        \CjwNetwork\RequestShield\Rules\Vocabulary::forget();
+        $dir = ruleDir([]);
+        try {
+            \CjwNetwork\RequestShield\Rules\Vocabulary::offer(\CjwNetwork\RequestShield\Tests\RsTestExtension::class);
+            @mkdir($dir, 0700, true);
+            $compile = static function (string $rules) use ($dir): Settings {
+                file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nhost a.example\n" . $rules);
+                return Settings::from(\CjwNetwork\RequestShield\Rules\RuleFile::read(["$dir/site.rules"])['config']);
+            };
+            $s = $compile("plugin CjwNetwork\\RequestShield\\Tests\\RulesPlugin\n");
+            same(['ruleProvider' => [\CjwNetwork\RequestShield\Tests\RulesPlugin::class]], $s->hooks, 'recorded as a provider');
+            $shield = new Shield($s, new MemoryStore());
+            $keys = array_map(static fn (Step $st): string => $st->key, $shield->chain());
+            same(array_search('restricted', $keys, true) + 1, array_search('test-provider', $keys, true), 'after the last step of its stage (paths)');
+            same('paths', $shield->chain()[array_search('test-provider', $keys, true)]->stage);
+            truthy($shield->chain()[array_search('test-provider', $keys, true)]->rule instanceof \CjwNetwork\RequestShield\Rule\Guarded, 'behind the guard');
+            $forbidden = Inspector::request('GET', 'https://a.example/forbidden', '203.0.113.7');
+            $d = $shield->decide($forbidden, 1000.0);
+            same([403, 'test-provider'], [$d->status, $d->reason], 'its rule decides');
+            same('TEST-PROVIDER', $shield->explain($d, $forbidden), 'and names itself (Rule::explain through the guard)');
+            same('allow', $shield->decide(Inspector::request('GET', 'https://a.example/page', '203.0.113.7'), 1000.0)->action, 'any other address: nothing to say');
+            $trace = (new Inspector($s, new MemoryStore()))->trace($forbidden);
+            $row = array_values(array_filter($trace['steps'], static fn (array $r): bool => $r['key'] === 'test-provider'))[0] ?? null;
+            same(['stop', 'TEST-PROVIDER', 'The test provider\'s rule'], [$row['state'] ?? null, $row['rule'] ?? null, $row['check'] ?? null], 'the trace: its row, stopped, with its name');
+            // A rule that throws: nothing said, the request passes, one line in PHP's error log.
+            $failing = $compile("plugin CjwNetwork\\RequestShield\\Tests\\RulesPlugin\nset fail-at rules\n");
+            $log = ini_set('error_log', "$dir/php-errors.log");
+            try {
+                $d = (new Shield($failing, new MemoryStore()))->decide($forbidden, 1000.0);
+            } finally {
+                ini_set('error_log', (string) $log);
+            }
+            same('allow', $d->action, 'the throwing rule says nothing: the request passes');
+            truthy(strpos((string) @file_get_contents("$dir/php-errors.log"), 'the rule test-provider failed and said nothing: the provided rule failed, as asked (') !== false, 'noted: ' . (string) @file_get_contents("$dir/php-errors.log"));
+            // A step at the lists stage, or a provider that throws: left out, noted; the chain is the core's.
+            foreach (["rs-test-mark stage:lists\n", "rs-test-mark provider:throws\n"] as $bad) {
+                $log = ini_set('error_log', "$dir/php-errors-$bad.log");
+                try {
+                    $out = new Shield($compile("plugin CjwNetwork\\RequestShield\\Tests\\RulesPlugin\n" . $bad), new MemoryStore());
+                } finally {
+                    ini_set('error_log', (string) $log);
+                }
+                same(false, in_array('test-provider', array_map(static fn (Step $st): string => $st->key, $out->chain()), true), "left out: $bad");
+                same(16, count($out->chain()), 'the core\'s steps only');
+            }
+        } finally {
+            \CjwNetwork\RequestShield\Rules\Vocabulary::forget();
+            \CjwNetwork\RequestShield\Rules\Vocabulary::offer(\CjwNetwork\RequestShield\StatsExtension::class);
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
 ];

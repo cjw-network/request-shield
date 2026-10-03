@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The RuleProvider capability** (0031 step C.3): a plugin adds rules of
+  its own to the chain -- steps with a key, a stage (never before the lists)
+  and a rule; the shield puts each after its stage's steps, the trace and the
+  rules page show it like any other, `Rule::explain()` names it. A provided
+  rule can only tighten; one that throws says nothing for that request and
+  is noted once a minute, a provider that throws adds nothing. The rules page
+  draws "the way" from the chain (the post-origin step was missing there).
+  Compiled settings format 48.
 - **Each rule names its own decisions** (0031 step C.2): `Rule::explain()`
   gives the rule behind a decision (the ID or file:line it was written at,
   `built-in` for a fixed check) and null for any other; `Shield::explain()`
