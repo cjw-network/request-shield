@@ -46,6 +46,11 @@ or in PHP settings: `'plugins' => [Acme\Shield\RefusalAlert::class]`. The class
 must be loadable (Composer, or your own autoloader before the shield runs). The
 statistics need no line: `set stats on` (or `set crawler-log …`) brings them.
 
+Without Composer, name the file that holds the class: `plugin Acme\Shield\RefusalAlert from plugins/refusal-alert.php`
+(relative to the rule file). The compiler loads it when the rules are compiled (an
+extension's words are known from that line on), the shield only when it makes its
+plugins -- a request without plugins loads nothing. The statistics plugin lives in
+its own namespace, `CjwNetwork\RequestShield\Stats` (`plugins/stats/src`, 0031 D.2).
 `bin/request-shield check` warns about a plugin it cannot find, or that is no
 `Plugin`.
 
@@ -106,7 +111,7 @@ it adds words and `set` keys to the rule file, checks them when the rules are
 compiled, and what it checked lands in the compiled settings, in a slot of
 its own (`$settings->ext[<id>]`); the core never reads that slot. A request
 pays nothing for an extension (ADR 0008). The statistics are the first
-shipped extension (`plugins/stats/src/StatsExtension.php`: `set stats …`,
+shipped extension (`plugins/stats/src/StatsExtension.php` (namespace `CjwNetwork\RequestShield\Stats`): `set stats …`,
 `stats-hosts`, `stats-skip`, the `crawler-log` keys, compiled into
 `ext.stats`); the bootstrap names it, so no `plugin` line is needed. A class
 or a directory may be both: the statistics are one extension
@@ -237,7 +242,7 @@ the core).
 ## The statistics plugin: a plugin with pages of its own
 
 `plugins/stats/` — `StatsPlugin` (counting, the crawler logs), `Stats` (the
-counters), `Report\StatsReport`, `Report\StatsPage`, `Report\VisitorsPage`. For
+counters), `Stats\Report\StatsReport`, `Stats\Report\StatsPage`, `Stats\Report\VisitorsPage` (namespace `CjwNetwork\RequestShield\Stats`, 0031 D.2). For
 now in this repository and loaded by the same autoloader; a package of its own
 (`cjw-network/request-shield-stats`) when the interface has settled.
 

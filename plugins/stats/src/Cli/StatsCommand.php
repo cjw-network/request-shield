@@ -8,11 +8,14 @@
 
 declare(strict_types=1);
 
-namespace CjwNetwork\RequestShield\Cli;
+namespace CjwNetwork\RequestShield\Stats\Cli;
 
-use CjwNetwork\RequestShield\Report\StatsReport;
-use CjwNetwork\RequestShield\Stats;
-use CjwNetwork\RequestShield\StatsExtension;
+use CjwNetwork\RequestShield\Cli\Command;
+use CjwNetwork\RequestShield\Cli\Context;
+use CjwNetwork\RequestShield\Extension;
+use CjwNetwork\RequestShield\Stats\Report\StatsReport;
+use CjwNetwork\RequestShield\Stats\Stats;
+use CjwNetwork\RequestShield\Stats\StatsExtension;
 
 /**
  * `request-shield stats <main.rules>`: what the counters (set stats on) say

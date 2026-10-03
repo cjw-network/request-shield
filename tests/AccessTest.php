@@ -3,13 +3,13 @@
 declare(strict_types=1);
 
 use CjwNetwork\RequestShield\Access;
-use CjwNetwork\RequestShield\Report\StatsPage;
+use CjwNetwork\RequestShield\Stats\Report\StatsPage;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Rules\RuleFileException;
 use CjwNetwork\RequestShield\Settings;
-use CjwNetwork\RequestShield\Stats;
-use CjwNetwork\RequestShield\StatsExtension;
+use CjwNetwork\RequestShield\Stats\Stats;
+use CjwNetwork\RequestShield\Stats\StatsExtension;
 use CjwNetwork\RequestShield\Store\MemoryStore;
 
 /** Who may read the statistics (proposal 0023, phase 4). */
@@ -218,7 +218,7 @@ return [
         file_put_contents("$dir/docroot/index.php", '<?php
 require ' . var_export($boot, true) . ';
 use CjwNetwork\RequestShield\{Access, Request, Settings};
-use CjwNetwork\RequestShield\Report\StatsPage;
+use CjwNetwork\RequestShield\Stats\Report\StatsPage;
 $s = Settings::load(' . var_export("$dir/site.rules", true) . ', ' . var_export("$dir/cache", true) . ');
 $r = Request::fromServer($_SERVER);
 $g = Access::gate($s, $r, $_GET, $_POST);

@@ -8,11 +8,13 @@
 
 declare(strict_types=1);
 
-namespace CjwNetwork\RequestShield;
+namespace CjwNetwork\RequestShield\Stats;
 
+use CjwNetwork\RequestShield\Extension;
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Rules\RuleFileException;
 use CjwNetwork\RequestShield\Rules\Vocabulary;
+use CjwNetwork\RequestShield\Settings;
 
 /**
  * The statistics' own settings, as an extension (0031 B.3, ADR 0008): the

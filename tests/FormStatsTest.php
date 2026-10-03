@@ -8,14 +8,14 @@ declare(strict_types=1);
  */
 
 use CjwNetwork\RequestShield\Decision;
-use CjwNetwork\RequestShield\Report\StatsReport;
-use CjwNetwork\RequestShield\Report\VisitorsPage;
+use CjwNetwork\RequestShield\Stats\Report\StatsReport;
+use CjwNetwork\RequestShield\Stats\Report\VisitorsPage;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Seen;
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Shield;
-use CjwNetwork\RequestShield\StatsPlugin;
+use CjwNetwork\RequestShield\Stats\StatsPlugin;
 use CjwNetwork\RequestShield\Store\MemoryStore;
 
 const FORMS_T0 = 1790856000;    // 2026-10-02 12:00 UTC

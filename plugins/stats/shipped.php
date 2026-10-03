@@ -15,5 +15,5 @@
 declare(strict_types=1);
 
 if (!defined('REQUEST_SHIELD_EXTENSIONS')) {
-    define('REQUEST_SHIELD_EXTENSIONS', ['CjwNetwork\\RequestShield\\StatsExtension']);
+    define('REQUEST_SHIELD_EXTENSIONS', ['CjwNetwork\\RequestShield\\Stats\\StatsExtension']);
 }

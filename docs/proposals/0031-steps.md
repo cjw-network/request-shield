@@ -97,7 +97,7 @@ the model you trust most there, not fast mode.
 
 ### Phase D — CLI + namespace
 - [x] **D.1** `bin/request-shield` as a dispatch table + `Extension::commands()`; `stats` into the plugin. `16e7999`
-- [ ] **D.2** `plugins/stats/src` → `CjwNetwork\RequestShield\Stats\`; `composer.json`/`bootstrap.php`/`phpstan.neon.dist` adjusted; `plugin … from <file>`.
+- [x] **D.2** `plugins/stats/src` → `CjwNetwork\RequestShield\Stats\`; `composer.json`/`bootstrap.php`/`phpstan.neon.dist` adjusted; `plugin … from <file>`. `(this commit; hash follows)`
 - [ ] **D.3** `docs/features/plugins.md` rewritten around `Extension`; ADRs 0008/0009 accepted.
 
 ### Phase E — Single file
@@ -137,10 +137,11 @@ the model you trust most there, not fast mode.
 
 ## Status
 
-- **Last step done:** D.1
-- **Next step:** D.2
+- **Last step done:** D.2
+- **Next step:** D.3
 - **Open owner questions:** see the proposal's last section.
 - **Deviations from the plan:** D.1 -- the dispatch table in `bin/request-shield` holds the extensions' commands (`Extension::commands()`, `Cli\Command`, `Cli\Context`); the core's own commands stay the `if` blocks they are. Turning them into command classes moves 600 lines for no change in behaviour; it pays when the single file assembles the CLI (E.2), and is noted there. (B.3 kept `stats-group`, `stats-access`, `stats-session`, `stats-path` in the core for a while; B.5 moved `stats-path`, B.7 the rest -- as the proposal's B.3 row says.)
+- **Finding from D.2:** the move was scripted: every unqualified core class a moved file names got a `use` line (calls, type hints, `implements`, relative `Store\…` references needed a second pass); the bootstrap's autoloader maps the `Stats\` prefix to plugins/stats/src, composer.json the same (`composer dump-autoload` on a dev machine). `plugin … from` records `pluginFiles` (class => absolute path), watched like a rule file; `Settings::compiledExt()` loads a file before it records the hooks, `Shield::plugins()` before `class_exists()`. Checks ran one after another. Reviewed with the code-review skill, no workflow.
 - **Finding from D.1:** the stats block was the only CLI code outside PHPStan's paths; moved into the plugin it surfaced three typing gaps (`StatsReport::build()` returned `forms`/`backend` without declaring them, with the finished shape `VisitorsPage` already declared). `Cli\Context` carries the common options as parsed by the script (`days`, `json`, `period`, `feed`, `test`, `list`, …); a command parses nothing itself. Checks ran one after another. Reviewed with the code-review skill, no workflow.
 - **Finding from C.4:** the handler runs in `Shield::run()` after the dashboard route and before the app-challenge watch; it asks the plugin instances `Shield::plugins()` already made (one `instanceof` per plugin, only when `hooks['handler']` is set). The `Response` class from B.6 serves it; `Request::cacheKey()` sorts the raw pairs byte-wise after re-encoding (`a%5Bb%5D=1` before `a=2`). The five hooks are complete now (`ruleCounts`, `sink`, `pages`, `ruleProvider`, `handler`). Checks ran one after another. Reviewed with the code-review skill, no workflow.
 - **Finding from C.3:** provided steps are inserted in `Shield::provided()` only when `hooks['ruleProvider']` is set (a shield without one never derives the chain early); the chain is then the source of the hot path's rule list. `Rule\Guarded` wraps a provided rule (a throw in `check()` or `explain()` says nothing, `Shield::failed()` hears it). The RobustnessTest case for a throwing provided rule goes through `Shield::protect()`: the request passes cacheable -- a plugin's broken rule is not a shield error. `SetupPage`'s way comes from `chain()` now and gained the post-origin step (StatsTest counted 16, now 17). Checks ran one after another (memory pressure on this machine). Reviewed with the code-review skill, no workflow.

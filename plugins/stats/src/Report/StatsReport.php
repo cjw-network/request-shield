@@ -8,12 +8,12 @@
 
 declare(strict_types=1);
 
-namespace CjwNetwork\RequestShield\Report;
+namespace CjwNetwork\RequestShield\Stats\Report;
 
 use CjwNetwork\RequestShield\Settings;
-use CjwNetwork\RequestShield\Stats;
-use CjwNetwork\RequestShield\StatsExtension;
-use CjwNetwork\RequestShield\StatsPlugin;
+use CjwNetwork\RequestShield\Stats\Stats;
+use CjwNetwork\RequestShield\Stats\StatsExtension;
+use CjwNetwork\RequestShield\Stats\StatsPlugin;
 
 /**
  * The counters (Stats) of the last days, summed up for people and for code:

@@ -8,7 +8,10 @@
 
 declare(strict_types=1);
 
-namespace CjwNetwork\RequestShield;
+namespace CjwNetwork\RequestShield\Stats;
+
+use CjwNetwork\RequestShield\Seen;
+use CjwNetwork\RequestShield\Settings;
 
 /**
  * Counters for the dashboard (proposals 0012, 0014): how many requests the
@@ -104,7 +107,7 @@ final class Stats
      */
     public static function of(Settings $s, ?string $site = null): self
     {
-        $apcu = $s->store === 'apcu' || ($s->store === 'auto' && Store\ApcuStore::usable());
+        $apcu = $s->store === 'apcu' || ($s->store === 'auto' && \CjwNetwork\RequestShield\Store\ApcuStore::usable());
         $dir = $s->storeDir . '/stats' . ($site === null ? '' : '/hosts/' . str_replace('*', '+', $site));
         $o = StatsExtension::of($s);
         $stats = new self($dir, $apcu, $o['hours'], $o['days'], $o['crawlerLog']['dir'], $o['crawlerLog']['days'], $o['flush'], $o['months']);

@@ -8,7 +8,7 @@
 
 declare(strict_types=1);
 
-namespace CjwNetwork\RequestShield\Report;
+namespace CjwNetwork\RequestShield\Stats\Report;
 
 /**
  * "Visitors & pages" (proposal 0022, phase 1): one calm page -- six numbers,

@@ -89,7 +89,7 @@ return [
             truthy(strpos((string) file_get_contents((string) $log), 'the rule test-provider failed and said nothing: the provided rule failed, as asked (') !== false, 'the error log names the rule: ' . (string) file_get_contents((string) $log));
         } finally {
             \CjwNetwork\RequestShield\Rules\Vocabulary::forget();
-            \CjwNetwork\RequestShield\Rules\Vocabulary::offer(\CjwNetwork\RequestShield\StatsExtension::class);
+            \CjwNetwork\RequestShield\Rules\Vocabulary::offer(\CjwNetwork\RequestShield\Stats\StatsExtension::class);
             $_SERVER = $server;
             ini_set('error_log', (string) $errorLog);
             @unlink((string) $log);

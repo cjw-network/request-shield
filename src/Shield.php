@@ -708,6 +708,9 @@ final class Shield
         $made = [];
         foreach ($s->plugins as $class) {
             try {
+                if (!class_exists($class) && isset($s->pluginFiles[$class]) && is_file($s->pluginFiles[$class])) {
+                    require_once $s->pluginFiles[$class];   // plugin … from <file> (0031 D.2): only here, only with plugins
+                }
                 $plugin = class_exists($class) && is_subclass_of($class, Plugin::class) ? new $class($s) : null;
             } catch (\Throwable $e) {
                 $plugin = null;

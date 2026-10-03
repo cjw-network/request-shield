@@ -142,7 +142,7 @@ if ($path === '/search') {
     // A pretend hosting panel: Customer A's own menu. Its "Statistics" item is a
     // signed link made here, on the panel's server, with the shield's secret
     // (Access::link()): no token in it, valid ten minutes, Customer A's websites only.
-    $stats = \CjwNetwork\RequestShield\Report\StatsPage::links($shield->settings);
+    $stats = \CjwNetwork\RequestShield\Stats\Report\StatsPage::links($shield->settings);
     $link = $url($stats['sites'] ?? $stats['site']) . '?' . \CjwNetwork\RequestShield\Access::link($shield->settings, 'Customer A', 600);
     header('Content-Type: text/html; charset=utf-8');
     header('Cache-Control: no-store');

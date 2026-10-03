@@ -126,7 +126,7 @@ return [
             }
         } finally {
             \CjwNetwork\RequestShield\Rules\Vocabulary::forget();
-            \CjwNetwork\RequestShield\Rules\Vocabulary::offer(\CjwNetwork\RequestShield\StatsExtension::class);
+            \CjwNetwork\RequestShield\Rules\Vocabulary::offer(\CjwNetwork\RequestShield\Stats\StatsExtension::class);
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },

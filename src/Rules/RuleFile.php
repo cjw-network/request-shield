@@ -703,11 +703,40 @@ final class RuleFile
                 $this->restrict($args, $at);
                 return;
             case 'plugin':
-                // plugin Vendor\Package\MyPlugin: told what was decided (proposal 0023).
+                // plugin Vendor\Package\MyPlugin [from <file>]: told what was decided (proposal 0023);
+                // "from" names the file that holds the class (relative to this rule file) for a site
+                // without Composer -- loaded when the rules are compiled and, per request, only when
+                // the shield makes its plugins (0031 D.2).
+                $from = null;
+                $written = null;
+                if (count($args) === 3 && $args[1] === 'from') {
+                    if ($args[2] === '') {
+                        throw new RuleFileException("$at: plugin <class> from <file> -- the file is missing");
+                    }
+                    $written = $args[2];
+                    $from = $written[0] === '/' ? $written : dirname($file) . '/' . $written;
+                    $args = [$args[0]];
+                }
                 if (count($args) !== 1 || !preg_match('/^\\\\?[A-Za-z_][A-Za-z0-9_]*(\\\\[A-Za-z_][A-Za-z0-9_]*)*$/', $args[0])) {
-                    throw new RuleFileException("$at: plugin takes one class name, such as Vendor\\Package\\MyPlugin");
+                    throw new RuleFileException("$at: plugin takes one class name, such as Vendor\\Package\\MyPlugin, and may add \"from <file>\"");
                 }
                 $class = ltrim($args[0], '\\');
+                if ($from !== null) {
+                    $files = (array) $this->get('pluginFiles');
+                    $files[$class] = $from;
+                    $this->put('pluginFiles', $files);
+                    if (!class_exists($class)) {
+                        if (is_file($from)) {
+                            require_once $from;
+                            $stat = self::stat($from);
+                            if ($stat !== null) {
+                                $this->seen[$from] = $stat;         // a changed plugin file is noticed like a changed rule file
+                            }
+                        } else {
+                            $this->warnings[] = "$at: plugin $class from $written -- the file $from is not there; the plugin is left out until it is";
+                        }
+                    }
+                }
                 if (class_exists($class) && is_subclass_of($class, Extension::class)) {
                     // An extension: its words and settings are known from here on
                     // (ADR 0008). It runs per request only if it is a Plugin too.

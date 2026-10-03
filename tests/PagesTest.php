@@ -71,7 +71,7 @@ return [
             truthy(strpos((new Responder())->body(Decision::reject(404, 'blocked path'), null, [], null, PageHook::asker($core), pagesRequest()), '<h1>') !== false, 'null from the plugin: the shield\'s page');
         } finally {
             Vocabulary::forget();
-            Vocabulary::offer(\CjwNetwork\RequestShield\StatsExtension::class);
+            Vocabulary::offer(\CjwNetwork\RequestShield\Stats\StatsExtension::class);
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
@@ -91,7 +91,7 @@ return [
             truthy(strpos((string) @file_get_contents("$dir/php-errors.log"), 'PagesPlugin failed to draw the error page, the shield\'s own went out: the pages plugin failed, as asked (' . $s->storeDir . ')') !== false, 'noted');
         } finally {
             Vocabulary::forget();
-            Vocabulary::offer(\CjwNetwork\RequestShield\StatsExtension::class);
+            Vocabulary::offer(\CjwNetwork\RequestShield\Stats\StatsExtension::class);
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },

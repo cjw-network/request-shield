@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-use CjwNetwork\RequestShield\Report\StatsPage;
-use CjwNetwork\RequestShield\Report\StatsReport;
+use CjwNetwork\RequestShield\Stats\Report\StatsPage;
+use CjwNetwork\RequestShield\Stats\Report\StatsReport;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Rules\RuleFileException;
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Shield;
-use CjwNetwork\RequestShield\Stats;
+use CjwNetwork\RequestShield\Stats\Stats;
 use CjwNetwork\RequestShield\Store\MemoryStore;
 
 /** Statistics per website (proposal 0023, phase 2). */
@@ -114,7 +114,7 @@ return [
             $closed = gmdate('YmdH', SITES_T0);
             truthy(!is_file("$dir/store/stats/hosts/b.de/rolled-$closed"), 'not yet');
             // An hour later, a request for a.de only.
-            $tended = new ReflectionProperty(\CjwNetwork\RequestShield\StatsPlugin::class, 'tended');
+            $tended = new ReflectionProperty(\CjwNetwork\RequestShield\Stats\StatsPlugin::class, 'tended');
             $tended->setAccessible(true);
             $tended->setValue(null, -1);
             sitesCount(new Shield($s, new MemoryStore()), 'a.de', '/', SITES_T0 + 3600);

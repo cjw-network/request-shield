@@ -5,8 +5,8 @@ declare(strict_types=1);
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Rules\Vocabulary;
 use CjwNetwork\RequestShield\Settings;
-use CjwNetwork\RequestShield\StatsExtension;
-use CjwNetwork\RequestShield\StatsPlugin;
+use CjwNetwork\RequestShield\Stats\StatsExtension;
+use CjwNetwork\RequestShield\Stats\StatsPlugin;
 
 /**
  * The statistics' settings as an extension (0031 B.3/B.4): the stats words
@@ -108,10 +108,10 @@ return [
         // A fresh CLI process: after bootstrap.php, the extension is named (the constant) but nothing of it is loaded;
         // the first lookup loads and offers it.
         $code = 'require ' . var_export(dirname(__DIR__) . '/bootstrap.php', true) . ';'
-            . ' $loaded = array_values(array_intersect(get_declared_classes(), ["CjwNetwork\\RequestShield\\StatsExtension", "CjwNetwork\\RequestShield\\Extension", "CjwNetwork\\RequestShield\\Rules\\Vocabulary"]));'
+            . ' $loaded = array_values(array_intersect(get_declared_classes(), ["CjwNetwork\\RequestShield\\Stats\\StatsExtension", "CjwNetwork\\RequestShield\\Extension", "CjwNetwork\\RequestShield\\Rules\\Vocabulary"]));'
             . ' $named = defined("REQUEST_SHIELD_EXTENSIONS") ? constant("REQUEST_SHIELD_EXTENSIONS") : null;'
             . ' $offered = \CjwNetwork\RequestShield\Rules\Vocabulary::extensions();'
-            . ' echo json_encode([$loaded, $named, $offered, class_exists("CjwNetwork\\RequestShield\\StatsExtension", false)]);';
+            . ' echo json_encode([$loaded, $named, $offered, class_exists("CjwNetwork\\RequestShield\\Stats\\StatsExtension", false)]);';
         exec(escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg($code) . ' 2>&1', $out, $exit);
         $got = json_decode(implode("\n", $out), true);
         same(0, $exit, implode("\n", $out));

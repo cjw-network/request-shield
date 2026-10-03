@@ -96,7 +96,7 @@ the pages. `StatsPage::links($settings)` still returns the addresses (for a
 menu), `StatsPage::viewFor($settings, $path)` which view a path is (capitals
 and a trailing slash do not matter).
 
-`Report\StatsPage::render()` prints the page, in **views** with tabs between them —
+`Stats\Report\StatsPage::render()` prints the page, in **views** with tabs between them —
 the overview (`'view' => 'all'`) and two for different people: **Visitors & pages** (`'view' => 'site'`, the
 default — for editors, [proposal 0022](../proposals/0022-visitors-page.md) phase 1: six numbers, each with its
 change against the period before — page views by people, requests by people,
@@ -479,7 +479,7 @@ and is masked like the log's addresses (`claimed=CRAWL-…` in the line).
 
 ```php
 $shield->record($request, $decision, $rule, $now);          // after decide()/settle(), for code that runs them itself (protect() does it)
-$report = CjwNetwork\RequestShield\Report\StatsReport::build($settings, null, 7);   // the numbers, and 'sentences'
+$report = CjwNetwork\\RequestShield\\Stats\\Report\\StatsReport::build($settings, null, 7);   // the numbers, and 'sentences'
 echo json_encode($report);
 ```
 

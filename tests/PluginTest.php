@@ -10,8 +10,8 @@ use CjwNetwork\RequestShield\Rules\RuleFileException;
 use CjwNetwork\RequestShield\Seen;
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Shield;
-use CjwNetwork\RequestShield\Stats;
-use CjwNetwork\RequestShield\StatsPlugin;
+use CjwNetwork\RequestShield\Stats\Stats;
+use CjwNetwork\RequestShield\Stats\StatsPlugin;
 use CjwNetwork\RequestShield\Store\MemoryStore;
 
 /** Plugins (proposal 0023): the core tells them what it decided and how a request ended. */

@@ -79,7 +79,7 @@ return [
             truthy(strpos($errors, 'SinkPlugin failed, the record went to the others: the sink failed, as asked (' . $s->storeDir . ')') !== false, 'noted in PHP\'s error log: ' . $errors);
         } finally {
             Vocabulary::forget();
-            Vocabulary::offer(\CjwNetwork\RequestShield\StatsExtension::class);
+            Vocabulary::offer(\CjwNetwork\RequestShield\Stats\StatsExtension::class);
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },

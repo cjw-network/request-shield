@@ -23,13 +23,11 @@ declare(strict_types=1);
 
 spl_autoload_register(static function (string $class): void {
     if (strncmp($class, 'CjwNetwork\\RequestShield\\', 25) === 0) {
-        // The core, then the statistics plugin that comes with it (plugins/stats).
-        $name = str_replace('\\', '/', substr($class, 25)) . '.php';
-        foreach ([__DIR__ . '/src/', __DIR__ . '/plugins/stats/src/'] as $dir) {
-            if (is_file($dir . $name)) {
-                require $dir . $name;
-                return;
-            }
+        // The core (src/); the statistics plugin in its own namespace (plugins/stats/src, 0031 D.2).
+        $stats = strncmp($class, 'CjwNetwork\\RequestShield\\Stats\\', 31) === 0;
+        $file = ($stats ? __DIR__ . '/plugins/stats/src/' : __DIR__ . '/src/') . str_replace('\\', '/', substr($class, $stats ? 31 : 25)) . '.php';
+        if (is_file($file)) {
+            require $file;
         }
     }
 });
@@ -39,7 +37,7 @@ spl_autoload_register(static function (string $class): void {
 // and offers them the first time the rules are compiled (class_exists(), so a
 // build without plugins/stats has none); a passing request loads no class for it.
 if (!defined('REQUEST_SHIELD_EXTENSIONS')) {
-    define('REQUEST_SHIELD_EXTENSIONS', ['CjwNetwork\\RequestShield\\StatsExtension']);
+    define('REQUEST_SHIELD_EXTENSIONS', ['CjwNetwork\\RequestShield\\Stats\\StatsExtension']);
 }
 
 (static function (): void {

@@ -6,7 +6,7 @@ use CjwNetwork\RequestShield\Report\Counts;
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Rules\Vocabulary;
 use CjwNetwork\RequestShield\Settings;
-use CjwNetwork\RequestShield\StatsPlugin;
+use CjwNetwork\RequestShield\Stats\StatsPlugin;
 use CjwNetwork\RequestShield\Tests\CountingPlugin;
 use CjwNetwork\RequestShield\Tests\RsTestExtension;
 
@@ -52,7 +52,7 @@ return [
             same([], Counts::rules(countsSettings("host a.example\n"), 7, 1000.0), 'no hook: nothing asked');
         } finally {
             Vocabulary::forget();
-            Vocabulary::offer(\CjwNetwork\RequestShield\StatsExtension::class);
+            Vocabulary::offer(\CjwNetwork\RequestShield\Stats\StatsExtension::class);
         }
     },
     'the rules and setup page knows no plugin by name: src/Report has no StatsReport' => function (): void {

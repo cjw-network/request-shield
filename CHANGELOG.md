@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The statistics plugin in its own namespace, and plugins from a file**
+  (0031 step D.2): `plugins/stats/src` is `CjwNetwork\RequestShield\Stats\…`
+  (`Stats\StatsExtension`, `Stats\StatsPlugin`, `Stats\Report\StatsPage`, …;
+  composer.json and the bootstrap's autoloader map it); `plugin <class> from
+  <file>` names the file that holds a plugin for a site without Composer --
+  loaded when the rules are compiled and when the shield makes its plugins, a
+  file that is not there is a warning (`check` names it) and the plugin is
+  left out. Compiled settings format 50.
 - **The extensions' commands** (0031 step D.1): `Extension::commands()`
   names the commands an extension adds to `bin/request-shield` (name => a
   `Cli\Command` with `usage()` and `run(Cli\Context)`); the script runs them

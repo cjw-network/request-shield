@@ -51,7 +51,7 @@ return [
         }
     },
     'the extensions\' commands (0031 D.1): the statistics\' stats is one, run from the table; the usage lists it with the plugin\'s own line' => function (): void {
-        $commands = \CjwNetwork\RequestShield\StatsExtension::commands();
+        $commands = \CjwNetwork\RequestShield\Stats\StatsExtension::commands();
         same(['stats'], array_keys($commands));
         truthy(is_subclass_of($commands['stats'], \CjwNetwork\RequestShield\Cli\Command::class), 'a Cli\\Command');
         truthy(strncmp($commands['stats']::usage(), 'request-shield stats <main.rules>', 33) === 0, 'its usage line: ' . $commands['stats']::usage());

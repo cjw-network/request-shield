@@ -8,12 +8,14 @@
 
 declare(strict_types=1);
 
-namespace CjwNetwork\RequestShield\Report;
+namespace CjwNetwork\RequestShield\Stats\Report;
 
+use CjwNetwork\RequestShield\Access;
+use CjwNetwork\RequestShield\Report\SetupPage;
 use CjwNetwork\RequestShield\Routes;
 use CjwNetwork\RequestShield\Settings;
-use CjwNetwork\RequestShield\Stats;
-use CjwNetwork\RequestShield\StatsExtension;
+use CjwNetwork\RequestShield\Stats\Stats;
+use CjwNetwork\RequestShield\Stats\StatsExtension;
 use CjwNetwork\RequestShield\Texts;
 
 /**
@@ -138,7 +140,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         $sortDefault = $view === 'shield' ? 'blocked' : 'views';
         $sort = in_array($o['sort'] ?? $sortDefault, $sorts, true) ? ($o['sort'] ?? $sortDefault) : $sortDefault;
         // stats-hosts: one website's numbers, or all added up (no "site").
-        $site = is_string($o['site'] ?? null) && \CjwNetwork\RequestShield\Stats::known($s, $o['site']) ? $o['site'] : null;
+        $site = is_string($o['site'] ?? null) && \CjwNetwork\RequestShield\Stats\Stats::known($s, $o['site']) ? $o['site'] : null;
         if ($who !== '*') {
             $site = StatsExtension::siteFor($s, $who, $site);
         }
@@ -250,7 +252,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
                 $opts .= StatsExtension::of($s)['groups'] !== [] ? '</optgroup>' : '';
             }
             if ($who === '*') {
-                $opts .= $option(\CjwNetwork\RequestShield\Stats::OTHER, $t['otherHosts']);
+                $opts .= $option(\CjwNetwork\RequestShield\Stats\Stats::OTHER, $t['otherHosts']);
             } else {
                 $opts = (string) preg_replace('#^<option value=""[^>]*>[^<]*</option>#', '', $opts);    // a customer: no "all websites"
             }
@@ -435,7 +437,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
                 $prev = array_values(self::filled(StatsReport::periods($s, $o['stats'] ?? null, gmdate('Ymd', $a - $span), gmdate('Ymd', $a - 86400), $by, $site), $a - $span, $a - 86400, $by));
             }
             $soon = null;
-            foreach (isset($o['stats']) ? [$o['stats']] : \CjwNetwork\RequestShield\Stats::all($s, $site) as $one) {
+            foreach (isset($o['stats']) ? [$o['stats']] : \CjwNetwork\RequestShield\Stats\Stats::all($s, $site) as $one) {
                 $m = $one->lastMinutes(5, (float) $now);
                 $soon = $m === null ? $soon : (int) $soon + $m;
             }
@@ -500,13 +502,13 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
                 $grouped[$name] = true;
             }
         }
-        $rest = array_diff_key($x['sites'], $grouped, [\CjwNetwork\RequestShield\Stats::OTHER => 1]);
+        $rest = array_diff_key($x['sites'], $grouped, [\CjwNetwork\RequestShield\Stats\Stats::OTHER => 1]);
         uasort($rest, $views);
         foreach ($rest as $name => $r) {
             $h .= self::sitesRow((string) $name, $r, $href((string) $name), 'ssite top', '', ...$ctx);
         }
-        if (isset($x['sites'][\CjwNetwork\RequestShield\Stats::OTHER])) {
-            $h .= self::sitesRow($t['otherShort'], $x['sites'][\CjwNetwork\RequestShield\Stats::OTHER], $href(\CjwNetwork\RequestShield\Stats::OTHER), 'sother', '', ...$ctx);
+        if (isset($x['sites'][\CjwNetwork\RequestShield\Stats\Stats::OTHER])) {
+            $h .= self::sitesRow($t['otherShort'], $x['sites'][\CjwNetwork\RequestShield\Stats\Stats::OTHER], $href(\CjwNetwork\RequestShield\Stats\Stats::OTHER), 'sother', '', ...$ctx);
         }
         return $h . '</tbody></table></div></section>';
     }
@@ -556,7 +558,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         if ($site === null) {
             return $t['allSites'];
         }
-        if ($site === \CjwNetwork\RequestShield\Stats::OTHER) {
+        if ($site === \CjwNetwork\RequestShield\Stats\Stats::OTHER) {
             return $t['otherHosts'];
         }
         if (strncmp($site, 'group:', 6) === 0 && isset(StatsExtension::of($s)['groups'][substr($site, 6)])) {

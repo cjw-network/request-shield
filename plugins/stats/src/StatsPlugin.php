@@ -8,7 +8,17 @@
 
 declare(strict_types=1);
 
-namespace CjwNetwork\RequestShield;
+namespace CjwNetwork\RequestShield\Stats;
+
+use CjwNetwork\RequestShield\Decision;
+use CjwNetwork\RequestShield\Log;
+use CjwNetwork\RequestShield\Plugin;
+use CjwNetwork\RequestShield\Request;
+use CjwNetwork\RequestShield\Routes;
+use CjwNetwork\RequestShield\RuleCounts;
+use CjwNetwork\RequestShield\Seen;
+use CjwNetwork\RequestShield\Settings;
+use CjwNetwork\RequestShield\Shield;
 
 /**
  * The statistics, as a plugin of the shield (proposal 0023): counts what the
