@@ -107,7 +107,7 @@ the model you trust most there, not fast mode.
 - [x] **E.4** `tests.yml` with a `plan` job (PR: 3 legs + minimal hosting; main: 14; nightly: all). `57e02de`
 - [x] **E.5** `release.yml`: build×2 + cmp, suite against the file, `SHA256SUMS`, minisign + attestation, release assets; environment `release`, tag ruleset; public key in `SECURITY.md`/`Shipped::PUBKEY`. — without the signature (moved to H.2a by the owner, 2026-10-04). `f86aa47`
 - [x] **E.6** `verify`, `self-update` (CLI only, signature mandatory where `sodium` exists), `init --app=…` + `rules/starter/`. `ad7109d`
-- [x] **E.7** `docs/llm/install.md`, `write-rules.md`, `check.md`; the install prompt followed literally in a container (log in `docs/llm/install-dryrun.md`). `HASH-E7`
+- [x] **E.7** `docs/llm/install.md`, `write-rules.md`, `check.md`; the install prompt followed literally in a container (log in `docs/llm/install-dryrun.md`). `6a1c0a8`
 
 ### Phase F — Feature contract
 - [ ] **F.1** RSF ids in every `docs/features/*.md` H1 and the `docs/README.md` table; test names with ids (a pure renaming commit).
