@@ -50,7 +50,7 @@ taken over -- headers, methods, answers --, no code (theirs is GPL).
 -- Varnish/FOS (`xkey`, `X-Cache-Tags`, `PURGE`, `PURGEKEYS`; Ibexa and Exponential Platform speak it), LiteSpeed
 (`X-LiteSpeed-*`, in the answer), and the CDNs' tag headers (read, never
 purged by request). Legacy (Exponential 6) sends nothing; it gains from purge by
-address and from roles by cookie (below).
+address and from roles told by an adapter (below).
 
 ## Proposed
 
@@ -99,36 +99,86 @@ files left behind are cleaned up as expired (4.).
 
 ### 3. Roles: one page per role, not none for everyone with a login
 
-Today a login cookie skips the cache. Proposed, two ways, both off unless
-switched on:
+Today a login cookie skips the cache. A page per role needs one thing the
+shield cannot forge-proof read from the request alone: **which role this
+visitor has**. Three ways were weighed:
 
-- **By cookie** (`set http-cache-vary-cookies _lscache_vary X-Magento-Vary`):
-  the value of the named cookies goes into the key. The CMS plugins that set
-  such a role cookie (LiteSpeed's, Magento's) then get one page per role;
-  an answer's `X-LiteSpeed-Vary: cookie=…` adds a cookie for that answer.
-  A site without such a cookie keeps skipping logins -- Exponential 6 (legacy), until
-  it sets one (a small legacy extension: a cookie with a hash of the user's
-  roles, at login).
-- **By user context hash** (`set http-cache-user-context on`, for Ibexa,
-  Exponential Platform and every FOSHttpCache site; the header's name is
-  `X-User-Context-Hash`, or `set http-cache-user-hash-header X-User-Hash` for
-  Exponential): for a visitor with a session cookie
-  (`http-cache-session-cookie eZSESSID`), the shield asks the application
-  once -- `GET /_fos_user_context_hash`, `Accept:
-  application/vnd.fos.user-context-hash`, only the session cookie and
-  `Authorization` -- and keeps the answer's `X-User-Context-Hash` in APCu for
-  its `max-age` (Ibexa: 600 s) per session. An answer that says `Vary:
-  X-User-Context-Hash` is kept under the hash. A visitor that sends the hash
-  or that `Accept` itself is refused (as Ibexa's VCL does: 400). The lookup
-  fails or times out → the cache is skipped for this request (fail safe).
-  Anonymous visitors: one lookup without cookies, kept for all of them.
-  The kept hashes carry the tags of their answer (`ez-user-context-hash`),
-  so the CMS's purge on a change of roles empties them too. Before a page
-  that varies by the hash leaves, its `Vary` on it goes and it becomes
-  `private` -- as Exponential's `AppCache` does, so no cache behind the
-  shield keeps one role's page for another.
-- Without APCu the hash is not kept and roles stay off (a lookup per request
-  costs more than it saves) -- `check` says so.
+- **A role cookie** (`_lscache_vary`, `X-Magento-Vary`): the CMS plugin sets
+  a cookie whose value names the role, and the cache keys by it. **Not
+  proposed:** the cookie is the visitor's own -- whoever learns or guesses
+  the value an editor's browser sends (it is the same for every editor)
+  sets it in their own browser and gets the editors' pages from the cache,
+  without signing in. The cache would trust the client with the one thing
+  it must not.
+- **The PHP session, read before the application:** not possible in general
+  -- the shield runs before the application has registered its session
+  handler (a database, Redis), and opening the session itself would lock it
+  and send its own cookie. WordPress has no PHP session at all: its login
+  cookie (`wordpress_logged_in_…`: user, expiry, token, a MAC) is checked
+  against keys in `wp-config.php` and a token in the database.
+- **The application tells the shield, in the same PHP process** -- proposed.
+  The shield and the application share the process and the store (APCu).
+  While the application runs, it knows the user; an adapter (a WordPress
+  plugin, an Exponential extension, a Symfony bundle) says so with one call:
+
+  ```php
+  Shield::active()?->cacheContext($roleKey);   // e.g. a hash of the user's roles, "editor+author"
+  ```
+
+  The shield keeps `MAC(secret, the session cookie's value) → $roleKey` in
+  APCu for `http-cache-context-ttl` (default 10 minutes, refreshed on every
+  request the application runs). On the next request it computes the MAC of
+  the cookie the visitor sends and finds the role -- before the application
+  starts. **Nothing to forge:** the key is the session cookie itself, the
+  credential; whoever has it *is* that user. An unknown cookie (a new login,
+  a forged value, a session ended elsewhere) finds nothing: the application
+  runs, as today, and its adapter registers the role for the next one.
+  Logging out removes the entry (`Shield::active()?->forgetContext()` in the
+  logout hook); a change of roles purges the tag `rs-context` or lets the
+  entries run out.
+
+Which cookie is the session: `set http-cache-session-cookie
+wordpress_logged_in_* eZSESSID* PHPSESSID`. Only an answer the application
+marks as **the same for everyone with this role** is kept per role -- `Vary:
+X-User-Hash` / `X-User-Context-Hash` (FOSHttpCache applications send it), or
+the adapter's `cacheContext(..., shared: true)` for the page. Every other
+answer to a signed-in visitor is not kept, as today. This matters: a
+WordPress page for a signed-in user usually carries **nonces** (the admin
+bar, the REST API's `wpApiSettings.nonce`) bound to that user and session --
+kept for a role, the next editor's forms would fail. The WordPress adapter
+therefore marks a page only for the roles a site names (a members' area for
+`subscriber`, say) and only when no nonce was made during it
+(`wp_create_nonce` is filterable: the adapter notices one).
+
+For Ibexa and Exponential Platform the adapter (a bundle) does the same with
+the hash FOSHttpCache already computes -- no extra request. Without an
+adapter they can still use the lookup:
+
+- **By the user context hash request** (`set http-cache-user-context on`;
+  the header `X-User-Context-Hash`, or `set http-cache-user-hash-header
+  X-User-Hash` for Exponential Platform): for a visitor with a session
+  cookie the shield asks the application once -- `GET
+  /_fos_user_context_hash`, `Accept: application/vnd.fos.user-context-hash`,
+  only the session cookie and `Authorization` -- and keeps the hash in APCu,
+  keyed by the MAC of the cookie as above, for its `max-age` (600 s). A
+  visitor that sends the hash or that `Accept` itself is refused (as the
+  VCLs do: 400). The lookup fails or times out → the cache is skipped for
+  this request (fail safe). The kept hashes carry the tags of their answer
+  (`ez-user-context-hash`), so the CMS's purge on a change of roles empties
+  them too.
+
+In both ways, before a page that varies by role leaves, its `Vary` on the
+hash goes and it becomes `private` -- as Exponential's `AppCache` does, so no
+cache behind the shield and no browser keeps one role's page for another.
+Without APCu roles stay off -- `check` says so.
+
+**Why adapters:** the role is the application's knowledge; one call from an
+adapter gives it to the shield safely and without an extra request. That is
+the strongest reason yet for the CMS adapters of 0031 phase I (WordPress,
+Exponential, Symfony/Ibexa, Drupal): installed as a plugin from the CMS's own
+directory, they bring the cache per role, the purges on publish (the
+adapter calls the shield's purge directly -- no `PURGE` request needed) and
+the check in the forms, and they are how most sites will find the shield.
 
 ### 4. Memory first, the disk when needed, and cleaning up by itself
 
@@ -190,7 +240,10 @@ headers then go to the real cache, unchanged -- that is the exchange.
   more than now.
 - On, a miss: reading the tag headers from `headers_list()`, writing the
   counters' state.
-- Roles by hash: one application request per session per `max-age`.
+- Roles by an adapter: one `apcu_fetch` and one MAC per request with a
+  session cookie; nothing extra for the application.
+- Roles by the hash request: one application request per session per
+  `max-age`.
 
 ## Open questions for the owner
 
@@ -199,9 +252,11 @@ headers then go to the real cache, unchanged -- that is the exchange.
    work, memory is what makes the cache worth having.
 2. **`BAN` with patterns** (Magento, older Varnish): leave out, or keep a tag
    index for it?
-3. **Exponential:** a small legacy extension that sets a role cookie and
-   purges by address on publish -- in this repository (`examples/`), or not
-   at all?
+3. **Adapters first?** Roles by `cacheContext()` need an adapter per CMS.
+   Proposed: the core call and the cache's side with the tags (1, 2, 4), then
+   the WordPress adapter (0031 I.3) as the first that uses it -- the widest
+   reach -- and Exponential 6's legacy extension (I.2) next. The role cookie
+   is dropped.
 4. **The CDN tag headers** (`Surrogate-Key`, `Cache-Tag`): only read, or also
    left in the answer for a CDN in front of the shield?
 5. **Exponential Platform first?** Its dialect (`xkey`, `PURGE` + `key`,

@@ -30,7 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   eZ Publish legacy / Exponential, LiteSpeed (`X-LiteSpeed-*`), Varnish,
   Magento and the CDNs send to their caches; proposed: read their tags,
   accept their purges (in the answer, `PURGE`, `PURGEKEYS`), one page per
-  role (a role cookie, the user context hash), answers in APCu with the
+  role (told by a CMS adapter in the same PHP process, or the user context
+  hash; a role cookie is refused as forgeable), answers in APCu with the
   disk only when needed, cleaning up by itself -- so a site can switch to a
   Varnish later without changing the application; and how it replaces
   Exponential Platform's `AppCache` (its `xkey` tags, `PURGE` with `key`,
