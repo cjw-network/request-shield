@@ -381,8 +381,8 @@ $decision = CjwNetwork\RequestShield\Shield::current();   // what the shield dec
 </main>
 <script>
 // "Show the answer": the row decided on the server (/__answer) with the live rules
-// and store -- nothing counted: the status and headers the visitor gets, the
-// verdict and the steps. The address is the example's, not necessarily yours.
+// and store -- nothing counted: the request as the browser sends it, the status and
+// headers the visitor gets, the cookies the shield sets or needs, the verdict and the steps. The address is the example's, not necessarily yours.
 document.querySelectorAll('button.peek').forEach(function (b) {
   b.addEventListener('click', function () {
     var row = b.parentNode.parentNode.nextElementSibling, out = row.querySelector('pre');
@@ -390,9 +390,12 @@ document.querySelectorAll('button.peek').forEach(function (b) {
     out.textContent = '…';
     fetch(b.getAttribute('data-answer'), { cache: 'no-store', credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (a) {
       if (a.error) { out.textContent = a.error; return; }
-      var text = 'HTTP ' + a.status + ' -- ' + a.verdict + (a.rule ? ' (' + a.rule + ')' : '') + '\nfrom ' + a.from + '\n';
-      a.headers.forEach(function (h) { text += h + '\n'; });
-      text += '\n' + a.steps.join('\n');
+      // The request as the browser sends it, the answer the shield gives, what it does with
+      // cookies, and why -- in that order.
+      var text = '── Request (from ' + a.from + ')\n' + (a.request || []).join('\n') + '\n\n'
+        + '── Answer\nHTTP/1.1 ' + a.status + (a.statusText ? ' ' + a.statusText : '') + '\n' + a.headers.join('\n') + '\n\n'
+        + '── Cookies\n' + (a.cookies || []).join('\n') + '\n\n'
+        + '── Why: ' + a.verdict + (a.rule ? ' (' + a.rule + ')' : '') + '\n' + a.steps.join('\n');
       out.textContent = text;
     }, function (err) { out.textContent = 'failed: ' + err; });
   });

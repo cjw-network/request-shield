@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **The demo's "Show the answer" shows the request and the answer**: the
+  request as the browser sends it (request line, Host, the row's headers, the
+  User-Agent, the pass cookie for a row "with pass", how often it is sent),
+  the answer's status line and the headers the shield sends, and what it does
+  with cookies -- none, a pass sent along, or the browser check, which needs
+  cookies and leads to the pass cookie `rsp` (technically necessary, no
+  tracking) -- then why, step by step.
 - **Use case: a developer hardens the application, and tests it**
   (`docs/use-cases/harden-and-test.md`): a rule file next to the code -- known
   parameters, `query strict`, `allow POST`, `post-origin`, `restrict`, a pace

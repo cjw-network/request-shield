@@ -252,6 +252,16 @@ function demoGroup(array $g, string $prefix): void
         if ((int) $r['times'] === 1) {
             $a = json_decode($get('GET', '/__answer?n=' . $r['n'])['body'], true);
             truthy(is_array($a) && isset($a['outcome']) && $ok((string) $a['outcome'], is_string($a['watched'] ?? null) ? $a['watched'] : null), "row {$r['n']}: the page's own answer agrees: " . json_encode($a));
+            // The request as the browser sends it, the answer's status line, and what happens with cookies.
+            $path = (string) preg_replace('#^https?://[^/]+#', '', (string) $r['url']);
+            truthy(strpos((string) ($a['request'][0] ?? ''), strtoupper((string) $r['method']) . ' ') === 0 && strpos((string) ($a['request'][0] ?? ''), $path) !== false, "row {$r['n']}: the request line: " . json_encode($a['request'] ?? null));
+            truthy(is_string($a['statusText'] ?? null) && ($a['cookies'] ?? []) !== [], "row {$r['n']}: the status line and the cookies");
+            if ($a['outcome'] === 'check') {
+                truthy(strpos(implode("\n", $a['cookies']), 'Set-Cookie: rsp=') !== false, "row {$r['n']}: the check names the pass cookie it leads to");
+            }
+            if ($r['pass']) {
+                truthy(preg_grep('/^Cookie: rsp=/', (array) $a['request']) !== [], "row {$r['n']}: a pass goes with the request");
+            }
         }
     };
     $trust = ['REQUEST_SHIELD_DEMO_TRUST' => '127.0.0.1'];

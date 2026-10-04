@@ -19,8 +19,11 @@ test` decides the very same lines, so the page cannot promise what the rules
 do not do. The page numbers them — 1.1, 1.2, … — and each number is a link to
 its row (`…/demo/#t3-2`), so a row can be named in a conversation or an
 issue. **Show the answer** decides the row on the server, with the live rules
-and store and nothing counted (`/__answer?n=3.2`): status, headers, verdict
-and the steps, for the row's own address. The site's pages are in
+and store and nothing counted (`/__answer?n=3.2`), for the row's own address:
+the request as the browser sends it (with the pass cookie, for a row "with
+pass"), the answer's status and the headers the shield sends, what it does
+with cookies -- the browser check needs them, and leads to the pass cookie
+`rsp`, technically necessary -- and why, step by step. The site's pages are in
 `pages.php`, the integration in `index.php`. Among the rows:
 
 | Link | What happens |
