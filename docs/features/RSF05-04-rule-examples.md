@@ -109,6 +109,16 @@ and the headers the visitor would get: 200 and the site's own headers when it
 passes, else the shield's status and its header lines (`Cache-Control:
 no-store`, `Retry-After`, `Allow` …).
 
+## The recorded page: `examples --html`
+
+`request-shield examples site.rules --html --out=examples.html` writes every
+demo group as a page that needs no server: each row with what `test` decided
+for it. The docs' screenshots are taken from it
+(`php docs/tools/screenshots.php`, a headless Chrome), so every row on them
+was decided by the rules:
+
+![The recorded demo page: per feature its id, what it shows, and a table of requests with what the rules decide and what test recorded, each with a check mark](../screenshots/examples.png)
+
 ## `request-shield test`
 
 ```bash

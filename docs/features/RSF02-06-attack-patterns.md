@@ -103,6 +103,8 @@ The patterns are compiled with the rules; nothing is read per request.
 
 What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
 
+![The demo's attack patterns as request-shield examples --html records them: script and disguised SQL in the search refused with 403 by their rule, a search that only looks alike answered](../screenshots/examples-RSF02-06.png)
+
 <!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
 **RSF02-06 · Attack patterns**
 

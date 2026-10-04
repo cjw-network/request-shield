@@ -184,6 +184,23 @@ return [
         }
         same(DIAGRAM_GAPS, $without, 'the pages without a picture are exactly DIAGRAM_GAPS (0031 F.9 empties it)');
     },
+    'the docs\' screenshots come from the demo: each a PNG that docs/tools/screenshots.php writes from request-shield examples --html, each shown by a page' => function (): void {
+        $tool = (string) file_get_contents(dirname(__DIR__) . '/docs/tools/screenshots.php');
+        truthy(strpos($tool, "' examples ' . escapeshellarg(\"\$root/examples/demo/request-shield.rules\")") !== false && strpos($tool, '--html') !== false, 'the tool records the demo');
+        $shots = glob(styleDocs() . '/screenshots/*.png') ?: [];
+        truthy(count($shots) >= 3, 'the screenshots');
+        $docs = '';
+        foreach (glob(styleDocs() . '/{*,*/*}.md', GLOB_BRACE) ?: [] as $f) {
+            $docs .= (string) file_get_contents($f);
+        }
+        foreach ($shots as $png) {
+            $name = basename($png);
+            same("\x89PNG", substr((string) file_get_contents($png, false, null, 0, 4), 0, 4), "$name is a PNG");
+            truthy(strpos($tool, $name === 'examples.png' ? '/docs/screenshots/examples.png' : '/docs/screenshots/examples-$id.png') !== false
+                && ($name === 'examples.png' || strpos($tool, "'" . substr($name, 9, 8) . "'") !== false), "$name is written by the tool");
+            truthy(strpos($docs, "](../screenshots/$name)") !== false, "$name is shown by a page");
+        }
+    },
     'docs for people: one page per role, each with its diagram, what to do and a typical day; the docs index and the glossary are linked' => function (): void {
         $index = (string) file_get_contents(styleDocs() . '/README.md');
         foreach (['admins', 'hosters', 'editors', 'customers', 'developers'] as $role) {

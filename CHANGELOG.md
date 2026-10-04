@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The docs' screenshots come from the demo** (0031 step F.9, part 4):
+  `docs/tools/screenshots.php` records the demo with `request-shield examples
+  --html` and takes the pictures with a headless Chrome -- the recorded page on
+  the examples page, attack patterns and budgets on theirs.
 - **No page without a diagram** (0031 step F.9, part 3): the 17 feature pages
   and 5 use cases that had no picture got one, drawn from text in
   `docs/diagrams/`; `DocsStyleTest`'s list of pages without one is empty.

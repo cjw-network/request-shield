@@ -115,6 +115,8 @@ several servers counts per server unless they share the store directory.
 
 What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
 
+![The demo's pace as request-shield examples --html records it: the 21st request in a minute gets the check by DEMO-PACE, 20 still get the page](../screenshots/examples-RSF03-01.png)
+
 <!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
 **RSF03-01 · Budgets and pace**
 
