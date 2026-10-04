@@ -5,7 +5,7 @@
  * @copyright Copyright (C) 2026 JAC Systeme GmbH, CJW Network
  * @license MIT, see LICENSE
  *
- *   php build/single-file.php [--edition=mini|stats|waf|api] [--out=<file>] [--build=<id>]
+ *   php build/single-file.php [--edition=mini|stats|api|waf] [--out=<file>] [--build=<id>]
  *
  * Builds one edition as one PHP file (proposal 0002, 0031 E.2): the classes
  * of the edition's directories, each in its own `namespace X { … }` block,
@@ -30,7 +30,7 @@ const ROOT = __DIR__ . '/..';
  * edition the others load on top of. An edition that cannot be built yet says
  * why ("later").
  *
- * @var array<string, array{file?: string, dirs?: list<string>, core?: bool, about?: string, minify?: list<string>, later?: string}>
+ * @var array<string, array{file?: string, dirs?: list<string>, core?: bool, about?: string, minify?: list<string>, later?: string, load?: string}>
  */
 const EDITIONS = [
     'mini' => [
@@ -45,9 +45,16 @@ const EDITIONS = [
         'dirs' => ['plugins/stats/src'],
         'core' => false,
         'about' => 'the statistics plugin, loaded after request-shield.php',
+        'load' => 'the statistics are switched on in the rules (set stats on)',
     ],
     'waf' => ['later' => 'the dashboard\'s pages (src/Report, Access) are still part of the mini edition; 0031 step G.3 moves them into plugins/waf, then this edition is built from there'],
-    'api' => ['later' => 'the API plugin (plugins/api) comes with 0031 step G.0'],
+    'api' => [
+        'file' => 'request-shield-api.php',
+        'dirs' => ['plugins/api/src'],
+        'core' => false,
+        'about' => 'the API plugin, loaded after request-shield.php',
+        'load' => 'the API is on below <dashboard-path>/api/v1, guarded like the dashboard (set api off, set api-write on)',
+    ],
 ];
 
 /** The header comment's install guide: what an agent that has only the file needs to know. */
@@ -347,7 +354,7 @@ namespace {
     // The shipped extensions, by name (as bootstrap.php): a statistics file loaded
     // before the rules are compiled is offered; without it, nothing is loaded.
     if (!defined('REQUEST_SHIELD_EXTENSIONS')) {
-        define('REQUEST_SHIELD_EXTENSIONS', ['CjwNetwork\\RequestShield\\Stats\\StatsExtension']);
+        define('REQUEST_SHIELD_EXTENSIONS', ['CjwNetwork\\RequestShield\\Stats\\StatsExtension', 'CjwNetwork\\RequestShield\\Api\\ApiExtension']);
     }
     (static function (): void {
         if (defined('REQUEST_SHIELD_DONE')) {
@@ -455,7 +462,7 @@ if ($e['core'] ?? false) {
 $head = "<?php\n/**\n * cjw-network/request-shield $version -- $edition: {$e['about']}.\n"
     . " * One file, built by build/single-file.php (build: $build) from the repository's sources; do not edit.\n *\n"
     . " * @copyright Copyright (C) 2026 JAC Systeme GmbH, CJW Network\n * @license MIT, see https://github.com/cjw-network/request-shield/blob/main/LICENSE\n *\n"
-    . (($e['core'] ?? false) ? GUIDE . "\n" : " * Load it after request-shield.php; the statistics are switched on in the rules (set stats on).\n")
+    . (($e['core'] ?? false) ? GUIDE . "\n" : " * Load it after request-shield.php; " . ($e['load'] ?? '') . ".\n")
     . " */\n\ndeclare(strict_types=1);\n\n";
 $file = $head . $guard . "\n" . implode("\n", $blocks) . (($e['core'] ?? false) ? "\n" . tail() : '');
 

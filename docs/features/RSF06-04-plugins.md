@@ -78,7 +78,7 @@ alert-to ops@example.org
 - **Offered, then known.** `plugin <class>` offers an extension for the rest
   of the reading; the shipped ones are only named (the constant
   `REQUEST_SHIELD_EXTENSIONS`: `bootstrap.php` defines it right after the
-  autoloader; with Composer, `plugins/stats/shipped.php` does, loaded through
+  autoloader; with Composer, `plugins/shipped.php` does, loaded through
   the package's autoload `files`) and the registry (`Rules\Vocabulary`) loads
   and offers them on its first lookup, when the rules are compiled -- a class
   that is not there is skipped, and a passing request, which never consults

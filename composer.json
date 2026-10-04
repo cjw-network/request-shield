@@ -40,10 +40,11 @@
     "autoload": {
         "psr-4": {
             "CjwNetwork\\RequestShield\\Stats\\": "plugins/stats/src/",
+            "CjwNetwork\\RequestShield\\Api\\": "plugins/api/src/",
             "CjwNetwork\\RequestShield\\": "src/"
         },
         "files": [
-            "plugins/stats/shipped.php"
+            "plugins/shipped.php"
         ]
     },
     "bin": [

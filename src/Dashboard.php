@@ -98,16 +98,29 @@ final class Dashboard
         $homeLabel = $request->host;
         $admin = self::restricted($s, $path);
         $own = Access::headers($s);
+        $api = $route['key'] === 'api';
         if (!$admin && !Access::enabled($s)) {
+            if ($api) {
+                return self::problem(403, 'Forbidden', 'The API is not set up: a restrict rule for ' . $s->dashboardPath . '/** or a login (dashboard-access) is needed.', $own);
+            }
             // Nobody guards this page: refused, and check says what to do.
             return Response::html(403, self::plain($request, $lang, 'This page is not set up: a restrict rule for ' . $s->dashboardPath . '/** or a login (dashboard-access) is needed.',
                 'Diese Seite ist nicht eingerichtet: eine restrict-Regel für ' . $s->dashboardPath . '/** oder ein Login (dashboard-access) fehlt.'), $own);
         }
         $gate = Access::gate($s, $request, $get, $post, ['admin' => $admin, 'lang' => $lang, 'home' => $home, 'homeLabel' => $homeLabel]);
+        if ($gate['who'] === null && $api) {
+            // A program gets JSON, never the login form (RFC 9457).
+            return self::problem($gate['status'], $gate['status'] === 429 ? 'Too many requests' : 'Unauthorized',
+                $gate['status'] === 429 ? 'Too many wrong tokens from this address: wait a minute.' : 'Send a token: Authorization: Bearer <token> (request-shield access-token).',
+                [...array_values(array_filter($gate['headers'], static fn (string $h): bool => stripos($h, 'Set-Cookie:') !== 0)), ...($gate['status'] === 401 ? ['WWW-Authenticate: Bearer'] : [])]);
+        }
         if ($gate['who'] === null) {
             return new Response($gate['status'], array_merge(['Content-Type: text/html; charset=utf-8'], $gate['headers']), (string) $gate['body']);
         }
         $who = $gate['who'];
+        if ($route['role'] === 'admin' && $who !== '*' && $api) {
+            return self::problem(403, 'Forbidden', 'This endpoint is the administrator\'s.', $gate['headers']);
+        }
         if ($route['role'] === 'admin' && $who !== '*') {
             return Response::html(403, self::plain($request, $lang, 'This page is the administrator\'s.', 'Diese Seite ist dem Administrator vorbehalten.'), $gate['headers']);
         }
@@ -119,6 +132,17 @@ final class Dashboard
         $ctx = ['who' => $who, 'prefix' => $prefix, 'get' => $get, 'post' => $post, 'method' => $request->method, 'lang' => $lang,
             'accept' => $request->header('accept-language'), 'links' => $links, 'ip' => $request->clientIp, 'home' => $home, 'homeLabel' => $homeLabel, 'ruleFile' => $ruleFile];
         return $page::serve($s, $request, $route, $ctx)->withHeaders($gate['headers']);
+    }
+
+    /**
+     * A problem for a program (RFC 9457): the API's answer when it cannot answer.
+     *
+     * @param list<string> $headers
+     */
+    private static function problem(int $status, string $title, string $detail, array $headers = []): Response
+    {
+        return new Response($status, ['Content-Type: application/problem+json; charset=utf-8', 'X-Content-Type-Options: nosniff', ...$headers],
+            (string) json_encode(['type' => 'about:blank', 'title' => $title, 'status' => $status, 'detail' => $detail], JSON_UNESCAPED_SLASHES));
     }
 
     /** A short page of the shield's own: one sentence, in the reader's language. */

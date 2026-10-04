@@ -11,6 +11,7 @@
     <projectFiles>
         <directory name="src"/>
         <directory name="plugins/stats/src"/>
+        <directory name="plugins/api/src"/>
         <file name="bootstrap.php"/>
         <ignoreFiles>
             <directory name="vendor"/>

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The API, part 1: the host** (0031 step G.0, RSF06-05): `plugins/api` serves
+  the shield's data as JSON below `<dashboard-path>/api/v1`, guarded like the
+  dashboard (a restrict rule, or `Authorization: Bearer <token>`); every answer
+  is `{data, meta: {version, generated, tier}}` with an ETag on the data, every
+  problem RFC 9457 JSON -- never the login form. `GET /status` and
+  `GET /openapi.json` to start; `Api::call()` answers in the same process what
+  HTTP answers. `set api off`, `set api-write on` (writes, off by default),
+  `set api-origins` (CORS, none by default); `check` says what keeps a script
+  from it where one may call it. An extension adds endpoints as an
+  `ApiProvider`. `request-shield api <main.rules> "GET /status"` calls one;
+  the edition `request-shield-api.php` is built, released and self-updated with
+  the others. The shipped extensions are named in `plugins/shipped.php`.
 - **Every feature is reachable from where it shows** (0031 step F.9, part 5):
   on Rules & setup every step of the way and every group of settings has the
   `?` of its feature; `request-shield test` with a failure links how examples

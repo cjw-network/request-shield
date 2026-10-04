@@ -12,6 +12,7 @@ usage: request-shield check|show|reload <main.rules> [--source=<glob>]...
        request-shield access-token <main.rules> "<principal>"|'*'
        request-shield feeds <main.rules> [list|update|export] [--force] [--format=plain|nginx|nftables|ipset] [--write=<file>]
        request-shield stats <main.rules> [--days=7 | --from=YYYY-MM-DD --to=YYYY-MM-DD] [--by=day|week|month|year] [--crawler=<ID>] [--path=/news/] [--sort=views|blocked|refused|checked|throttled] [--site=<name>|--group=<name>] [--json]
+       request-shield api <main.rules> "GET|POST </path>" [--<param>=<value>]... | --openapi
        request-shield deny|allow <main.rules> <address|range> [--for=7d | --until=2026-10-07[T15:30]] [--reason="…"] [--force]
        request-shield unlist <main.rules> <address|range>
        request-shield lists <main.rules>
