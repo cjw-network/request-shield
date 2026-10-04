@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **Proposal 0037 named values** (Draft): `addresses office 192.0.2.0/24 …`,
+  `paths admin /admin/** …`, `agents`, `hosts` -- written once, used bare in
+  every rule (`restrict admin to office`, `exempt office`, `expect … from
+  office`), resolved when the rules are compiled.
 - **Error pages, part 2: the site's own page** (proposal 0030, 0031 step
   G.1, RSF05-06): `set error-page 404 errors/404.html`, `4xx` for every status
   the shield refuses with, `{lang}` in the name for one per language, also in
