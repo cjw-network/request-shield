@@ -1,0 +1,8 @@
+# RSF01-01: whose X-Forwarded-For is believed.
+title X-Forwarded-For is believed only from a trusted proxy; from anyone else it is removed, and the direct address counts
+row  lb:box "Your load balancer" "a trusted proxy" | shield:warnbox "request-shield" "reads right to left" | client:okbox "The visitor's address" "its bucket: IPv4, IPv6 /64"
+row  other:box "Anyone else" "X-Forwarded-For: made up" | stripped:nobox "Headers removed" "the direct address counts"
+arrow lb -> shield "X-Forwarded-For"
+arrow shield -> client "believed" go
+arrow other -> stripped "not trusted"
+note The application sees the same address, scheme and host as the shield.

@@ -9,6 +9,8 @@ names the key — and, with `Shield::protectFile()` or `bootstrap.php`,
 OPcache serves from memory, and rebuilt when the settings file's mtime or size
 changes.
 
+![The settings are checked once and kept compiled; a request reads nothing, and what the hosting allows sets the tier](../diagrams/settings.svg)
+
 ## Use cases
 
 - Every request on a busy site: settings cost about 8 µs instead of 10–11 µs,

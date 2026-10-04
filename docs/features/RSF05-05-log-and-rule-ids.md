@@ -2,6 +2,8 @@
 
 Which rule a decision names is the rule's own answer (`Rule::explain()`, 0031 C.2): the shield asks the chain, so a rule added to it names itself in the log and on the pages.
 
+![Every refusal names the rule that decided, by its ID: in the log, on the pages and in the debug header](../diagrams/log-and-rule-ids.svg)
+
 ## Rule IDs: which rule decided
 
 Every decision that stopped or flagged a request names the rule behind it —

@@ -1,0 +1,10 @@
+# RSF05-01: from rule files to the compiled settings.
+title The shipped sets, the site's own rule file and its includes are read in order and compiled once; every server reads the result on its next check
+row  shipped:box "Shipped sets" "@scanners, @attacks …" | own:box "Your rule file" "one rule per line" | lists:box "List files" "deny, exempt" | compile:warnbox "Checked, compiled" "once, for OPcache"
+row  bad:nobox "A mistake" "file and line; the last good rules stay" | servers:okbox "Every server" "reads it on its next check"
+arrow shipped -> own
+arrow own -> lists
+arrow lists -> compile
+arrow compile -> servers "fine" go
+arrow compile -> bad "a mistake"
+note request-shield check names the first mistake before a deploy; show prints the rules in effect.

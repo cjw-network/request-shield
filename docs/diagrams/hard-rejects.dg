@@ -1,0 +1,10 @@
+# RSF02-01: the cheapest checks first.
+title Requests no browser sends are refused before the site starts, cheapest check first, stopping at the first that fails
+row  req:box "A request" | method:warnbox "Method" "405" | size:warnbox "Sizes" "414, 400, 431" | path:warnbox "Broken, disguised" "400" | host:warnbox "Website name" "404"
+row  site:okbox "The other checks" "then your site"
+arrow req -> method
+arrow method -> size
+arrow size -> path
+arrow path -> host
+arrow host -> site "all fine" go
+note A refused request is never counted, and never reaches the site or a cache.

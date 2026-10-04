@@ -1,0 +1,9 @@
+# RSF03-04: the site asks for the check.
+title The site asks for the check where it knows best; with a pass nothing happens, without one the check comes and the form is sent again by itself
+row  form:box "A comment is sent" "POST" | ask:warnbox "requirePass()" "the site's code asks" | save:okbox "The comment is saved"
+row  check:warnbox "The check page" "no pass yet" | again:okbox "Sent again" "nothing typed is lost"
+arrow form -> ask
+arrow ask -> save "a pass" go
+arrow ask -> check "no pass"
+arrow check -> again "solved" go
+note A page can ask too: the response header X-RS-Check: 1 shows the check instead of the page.

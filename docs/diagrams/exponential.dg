@@ -1,0 +1,8 @@
+# use case: an Exponential site.
+title An Exponential site gets three rule files and one line in config.php; the shield answers scanners, floods and stray forms before the kernel starts
+row  req:box "Requests" "scanners, scrapers, bots" | shield:warnbox "request-shield" "exponential*.rules" | kernel:okbox "Exponential" "only the rest"
+row  refused:nobox "Refused or slowed" "settings/site.ini, node counting"
+arrow req -> shield
+arrow shield -> kernel "real visitors" go
+arrow shield -> refused "the junk"
+note The kernel spends 20 to 150 ms on each request; the shield a few microseconds.

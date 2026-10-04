@@ -1,0 +1,8 @@
+# RSF06-01: rules & setup, and the tester.
+title The rules page shows every rule in plain words with how often it decided, and the tester shows what happens to any address, step by step
+row  addr:box "An address to try" "GET /wp-login.php" | steps:warnbox "Every check, in order" "✓ fine, ✕ refused here" | verdict:okbox "One sentence" "who decides, and why"
+row  rules:box "Every rule" "its ID, its line, its count" | settings:box "Every setting" "the secret only as set"
+arrow addr -> steps "nothing counted"
+arrow steps -> verdict go
+arrow verdict -> rules "links to its row"
+note The same check on the command line: request-shield trace site.rules "GET https://…".

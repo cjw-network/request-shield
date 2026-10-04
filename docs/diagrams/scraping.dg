@@ -1,0 +1,9 @@
+# use case: scrapers and bots.
+title A scraper fast enough to cross the threshold gets the browser check; people pass it once an hour, search engines are never checked
+row  scraper:box "A scraper" "thousands of pages" | budget:warnbox "Past the threshold" "challenge-at" | check:warnbox "The browser check" "harder the faster"
+row  people:okbox "People" "once an hour, a moment" | google:okbox "Search engines" "verified, never checked"
+arrow scraper -> budget
+arrow budget -> check go
+arrow check -> people "solved"
+arrow budget -> google "verified crawler"
+note IPv6 clients are counted per /64: rotating inside it does not help.

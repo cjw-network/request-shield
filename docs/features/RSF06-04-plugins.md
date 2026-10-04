@@ -6,6 +6,8 @@ that is a plugin's: the statistics, metrics, alerts, exports, pages in the
 site's look, an HTTP cache, rules of a site's own. Two interfaces carry it,
 resolved at two different times ([ADR 0008](../adr/0008-extension-points-resolved-at-compile-time.md)):
 
+![An extension adds words to the rule file when it is compiled; a plugin hears every decision and the end of every request, and may only tighten](../diagrams/plugins.svg)
+
 | | `Extension` | `Plugin` |
 |---|---|---|
 | **When** | when the rules are compiled (static methods) | per request (one object, `new X($settings)`) |

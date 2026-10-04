@@ -4,6 +4,8 @@
 addresses (or rotates through an IPv6 /64). Blocking by address hits office
 networks behind one NAT; a CAPTCHA annoys everyone.
 
+![A scraper fast enough to cross the threshold gets the browser check; people pass it once an hour, search engines are never checked](../diagrams/scraping.svg)
+
 **With the shield:** a request budget with `challengeAt`. Past it, a client
 solves an invisible proof of work once per hour (`passTtl`); a person sees
 "one moment, please" for a fraction of a second. A scraper has to run

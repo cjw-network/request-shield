@@ -1,0 +1,10 @@
+# RSF01-02: kept out, let in, banned.
+title An address kept out gets 403 before every other check; one let in is never counted; one that keeps knocking is banned for a while
+row  req:box "A request" "from an address" | deny:warnbox "Kept out?" "deny, list files" | ban:warnbox "Banned?" "ban rules" | rest:okbox "The other checks" "exempt: never counted"
+row  refused:nobox "403" "the log names the entry" | wait:nobox "429" "Retry-After, longer each time"
+arrow req -> deny
+arrow deny -> ban "no"
+arrow ban -> rest "no" go
+arrow deny -> refused "yes"
+arrow ban -> wait "yes"
+note An address let in is still refused for blocked paths and attack patterns.

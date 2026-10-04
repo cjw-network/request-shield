@@ -5,6 +5,8 @@ page per URL and host. Someone requests `/?x=1`, `/?x=2`, … or sends made-up
 `X-Forwarded-Host` headers: each is a miss (a render) and a new entry that
 pushes real pages out.
 
+![Made-up parameters and hosts reach the site but are never stored; the cache keeps only real pages](../diagrams/cache-pollution.svg)
+
 **With the shield:**
 
 ```php

@@ -1,0 +1,8 @@
+# RSF06-02: the live view and the lists.
+title The live view shows what is stopped right now and why; one click keeps an address out, with a comment, on every server
+row  log:box "The log or live memory" | live:warnbox "Live view" "newest first, every few seconds" | lists:okbox "The lists" "keep out, let in, until"
+row  servers:okbox "Every server" "reads the lists on its next check"
+arrow log -> live
+arrow live -> lists "keep out" go
+arrow lists -> servers go
+note Changes are sent with a token and logged; bans show next to the entries.

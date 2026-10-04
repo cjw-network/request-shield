@@ -4,6 +4,8 @@
 or a small flood hits it; every request boots the framework and the database,
 and the hosting account's PHP workers are gone within seconds.
 
+![On shared hosting a flood from one address gets the browser check, then a pause, before the framework and the database start](../diagrams/dos-guard.svg)
+
 **With the shield:**
 
 1. Put `request-shield/` outside the document root, copy

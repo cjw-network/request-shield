@@ -22,6 +22,8 @@ the shield checks it (one hash, one HMAC), sets a **pass cookie** and lets the
 request through. With the pass cookie the client is not challenged again until
 it expires (the hard `limit` still applies).
 
+![A visitor without a pass gets a small task; a real browser solves it in a moment and holds a pass for an hour](../diagrams/browser-challenge.svg)
+
 - **Difficulty grows** from `difficulty.min` at the threshold to
   `difficulty.max` at the limit (`maxnumber`; the browser needs `maxnumber / 2`
   hashes on average: about 0.1–0.25 s at the threshold).

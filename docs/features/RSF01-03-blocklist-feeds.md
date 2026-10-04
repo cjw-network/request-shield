@@ -8,6 +8,8 @@ Public lists of addresses that attack, send spam or run botnets, used with
 care. A cron job fetches the lists a rule file names, and each list gets **its
 own action**:
 
+![Cron fetches the public blocklists the rules name; each list gets its own action, searched with the deny list in microseconds](../diagrams/blocklist-feeds.svg)
+
 | Action | What a request from the list gets |
 |---|---|
 | `deny` | 403, right after the deny list (the reason `feed`, the log names the rule) |

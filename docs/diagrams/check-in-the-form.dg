@@ -1,0 +1,8 @@
+# RSF03-03: the check while the visitor types.
+title The box in the form checks the browser while the visitor types; the form, files included, goes straight through
+row  type:box "The visitor types" "first input" | box:warnbox "The box" "fetches a task, solves it" | send:okbox "The form is sent" "with the answer, files too"
+row  site:okbox "Your site" "never sees the answer"
+arrow type -> box
+arrow box -> send "✓ checked" go
+arrow send -> site "the shield takes the answer out" go
+note Without JavaScript the form is sent without an answer, and the check page comes as before.

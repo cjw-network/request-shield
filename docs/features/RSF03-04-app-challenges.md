@@ -7,6 +7,8 @@ page that is always checked). With this, **the site decides too** — the CMS,
 a plugin, a template — at the moment it knows best: a comment is sent, a
 profile form is opened, a post looks like spam.
 
+![The site asks for the check where it knows best; with a pass nothing happens, without one the check comes and the form is sent again by itself](../diagrams/app-challenges.svg)
+
 Two ways, for two moments:
 
 | When | How | Without a pass |

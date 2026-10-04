@@ -5,6 +5,8 @@
 Each rule can have examples next to it, in the rule file itself: an address,
 and what the shield should do with it.
 
+![An expect line next to a rule says what should happen to one request; request-shield test decides each on a fresh store and says which fails](../diagrams/rule-examples.svg)
+
 ```text
 [EXP-SYSVIEW] block regex (?i)/content/view(/|$)          # pages by node number
 expect GET /content/view/full/2        404                # what it refuses

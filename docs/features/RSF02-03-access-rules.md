@@ -4,6 +4,8 @@
 
 Two rules that close doors before the application opens them:
 
+![An admin area only for the office's addresses, and a form only where the site expects one; everyone else is turned away before the site starts](../diagrams/access-rules.svg)
+
 - **`restrict <paths> to <addresses or ranges>`** — an admin area or an
   internal API only for some addresses; everyone else gets **403**.
 - **`allow <METHODS> <paths>`** — a method only where the site expects it: a

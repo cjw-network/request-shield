@@ -9,6 +9,8 @@ Says which answers a page cache may keep. A request outside the definition is
 second ago — but answered as `allow-uncached`: the application renders it, and
 no cache stores it. So random paths and parameters can never fill a cache.
 
+![Every request inside the definition may be kept by a cache; a made-up path or parameter is answered too, but never kept](../diagrams/cacheable.svg)
+
 - `cacheable.query`: the query parameter names a cacheable URL may carry
   (`null`: any, `[]`: none).
 - `cacheable.paths`: regular expressions a cacheable path matches (`null`: any).

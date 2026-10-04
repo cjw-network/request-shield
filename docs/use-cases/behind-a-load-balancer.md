@@ -5,6 +5,8 @@ comes from the balancer's address. Without configuration all visitors share
 one budget (and one gets everyone throttled), and the application trusts
 whatever `X-Forwarded-*` a client sends.
 
+![Behind a balancer every request comes from its address; with trust the shield counts each visitor by the address the balancer forwards](../diagrams/load-balancer.svg)
+
 **With the shield:**
 
 ```php

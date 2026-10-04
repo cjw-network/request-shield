@@ -11,30 +11,7 @@ declare(strict_types=1);
  */
 
 /** Pages without a picture yet: 0031 F.9 gives each one and empties the list. */
-const DIAGRAM_GAPS = [
-    'features/RSF01-01-trusted-proxies.md',
-    'features/RSF01-02-ip-lists.md',
-    'features/RSF01-03-blocklist-feeds.md',
-    'features/RSF02-01-hard-rejects.md',
-    'features/RSF02-03-access-rules.md',
-    'features/RSF02-04-forms-from-the-website.md',
-    'features/RSF03-02-browser-challenge.md',
-    'features/RSF03-03-browser-check-in-the-form.md',
-    'features/RSF03-04-app-challenges.md',
-    'features/RSF04-01-cacheable-definition.md',
-    'features/RSF05-01-rule-files.md',
-    'features/RSF05-02-settings.md',
-    'features/RSF05-04-rule-examples.md',
-    'features/RSF05-05-log-and-rule-ids.md',
-    'features/RSF06-01-active-rules-page.md',
-    'features/RSF06-02-live-and-lists.md',
-    'features/RSF06-04-plugins.md',
-    'use-cases/behind-a-load-balancer.md',
-    'use-cases/exponential.md',
-    'use-cases/page-cache-pollution.md',
-    'use-cases/scraping-and-bots.md',
-    'use-cases/shared-hosting-dos-guard.md',
-];
+const DIAGRAM_GAPS = [];
 
 /** The longest sentence a page for people may have, in words. */
 const LONGEST_SENTENCE = 30;

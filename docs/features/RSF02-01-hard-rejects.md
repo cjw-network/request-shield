@@ -5,6 +5,8 @@
 Refuses requests no browser sends before the application starts, cheapest
 check first, stopping at the first that fails:
 
+![Requests no browser sends are refused before the site starts, cheapest check first, stopping at the first that fails](../diagrams/hard-rejects.svg)
+
 | Check | Answer | Setting |
 |---|---|---|
 | method not allowed | 405 | `methods` |

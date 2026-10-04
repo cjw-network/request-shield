@@ -2,6 +2,8 @@
 
 ## What it does
 
+![A form is accepted only when the browser says it was sent from one of the website's own pages](../diagrams/post-origin.svg)
+
 ```text
 [F-ORIGIN]   post-origin same                                   # forms only from this website's pages
 [F-ORIGIN-X] post-origin except /pay/notify /sso/**             # payment callbacks and single sign-on post from elsewhere

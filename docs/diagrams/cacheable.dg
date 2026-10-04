@@ -1,0 +1,9 @@
+# RSF04-01: what a cache may keep.
+title Every request inside the definition may be kept by a cache; a made-up path or parameter is answered too, but never kept
+row  req:box "GET /news/?page=2" | def:warnbox "Inside the definition?" "cache-path, cache-query" | keep:okbox "May be kept" "by any cache"
+row  odd:box "GET /news/?x=8f3a" "made up" | nokeep:nobox "Answered, not kept" "Cache-Control: no-store"
+arrow req -> def
+arrow def -> keep "yes" go
+arrow odd -> def
+arrow def -> nokeep "no"
+note Nothing is refused: the definition may lag behind the site, a page published a second ago still works.

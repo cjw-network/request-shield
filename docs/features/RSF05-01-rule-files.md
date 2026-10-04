@@ -9,6 +9,8 @@ the same OPcache-served PHP file the settings use. A rule file is an
 alternative to the PHP settings array, not a second system: it is turned into
 that array, and every value is checked the same way.
 
+![The shipped sets, the site's own rule file and its includes are read in order and compiled once; every server reads the result on its next check](../diagrams/rule-files.svg)
+
 ```text
 # site.rules
 

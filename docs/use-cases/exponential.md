@@ -7,6 +7,8 @@ posting to every address and hammering the search, password guessing on the
 login. The kernel answers each of them after 20–150 ms of PHP and database
 work.
 
+![An Exponential site gets three rule files and one line in config.php; the shield answers scanners, floods and stray forms before the kernel starts](../diagrams/exponential.svg)
+
 **With the shield:** three rule files in
 [`examples/exponential/`](../../examples/exponential/), and one line in
 Exponential's `config.php`. Every rule has an ID (`EXP-…`) and a description.

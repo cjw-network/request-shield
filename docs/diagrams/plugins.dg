@@ -1,0 +1,9 @@
+# RSF06-04: extensions at compile time, plugins per request.
+title An extension adds words to the rule file when it is compiled; a plugin hears every decision and the end of every request, and may only tighten
+row  words:box "Extension" "words, set keys, pages" | compiled:warnbox "Compiled settings" "its slot ext.<id>" | plugin:okbox "Plugin" "decided(), ended()"
+row  stats:okbox "The statistics" "the first plugin" | own:box "Your own" "alerts, metrics, a cache"
+arrow words -> compiled "when compiled"
+arrow compiled -> plugin "per request" go
+arrow plugin -> stats
+arrow plugin -> own
+note A plugin can refuse more, never less; one that fails is noted once a minute and left out.

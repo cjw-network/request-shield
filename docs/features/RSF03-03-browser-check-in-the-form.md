@@ -8,6 +8,8 @@ the answer into the form. When the form is sent, the shield finds the answer
 there and lets the form through: no check page, nothing sent twice, **files
 included**. Off unless switched on.
 
+![The box in the form checks the browser while the visitor types; the form, files included, goes straight through](../diagrams/check-in-the-form.svg)
+
 ```text
 set widget-path /request-shield          # the endpoint: /request-shield/challenge, /request-shield/widget.js
 ```

@@ -1,0 +1,9 @@
+# RSF02-04: forms only from the website's own pages.
+title A form is accepted only when the browser says it was sent from one of the website's own pages
+row  form:box "A form is sent" "POST, PUT, PATCH, DELETE" | origin:warnbox "Where from?" "Origin, else Referer" | rest:okbox "The other rules" "then your site"
+row  foreign:nobox "403" "another website" | missing:warnbox "Not said" "the browser check (default)"
+arrow form -> origin
+arrow origin -> rest "this website" go
+arrow origin -> foreign "another website"
+arrow origin -> missing "neither header"
+note Payment callbacks and single sign-on are written as exceptions: post-origin except /pay/notify.

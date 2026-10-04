@@ -1,0 +1,9 @@
+# use case: keeping a page cache clean.
+title Made-up parameters and hosts reach the site but are never stored; the cache keeps only real pages
+row  real:box "GET /?page=2" "a real page" | shield:warnbox "request-shield" "cache-query page" | cache:okbox "The page cache" "stores it"
+row  junk:box "GET /?x=1, /?x=2 …" "or a made-up host" | nostore:nobox "Answered, not stored" "or 404 for a host"
+arrow real -> shield
+arrow shield -> cache "cacheable" go
+arrow junk -> shield
+arrow shield -> nostore "made up"
+note A budget for cache misses slows down whoever makes the site render page after page.

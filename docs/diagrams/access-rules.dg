@@ -1,0 +1,10 @@
+# RSF02-03: restrict and allow.
+title An admin area only for the office's addresses, and a form only where the site expects one; everyone else is turned away before the site starts
+row  req:box "A request" "POST /admin/save" | restrict:warnbox "restrict" "the area: whose address?" | allow:warnbox "allow" "this method here?" | site:okbox "Your site"
+row  r403:nobox "403" "not from the office" | r405:nobox "405" "no form expected here"
+arrow req -> restrict
+arrow restrict -> allow "the office"
+arrow allow -> site "yes" go
+arrow restrict -> r403 "anyone else"
+arrow allow -> r405 "no"
+note The path is matched as the site routes it: //admin or /%61dmin do not get past.

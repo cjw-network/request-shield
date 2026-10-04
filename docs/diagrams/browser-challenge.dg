@@ -1,0 +1,9 @@
+# RSF03-02: the browser check, as the shield sees it.
+title A visitor without a pass gets a small task; a real browser solves it in a moment and holds a pass for an hour
+row  visitor:box "A visitor" "too fast, or a checked page" | page:warnbox "The check page" "a task, no clicking" | pass:okbox "A pass cookie" "an hour, signed"
+row  bot:nobox "A program" "no JavaScript: no pass" | site:okbox "Your page" "the same request again"
+arrow visitor -> page "no pass"
+arrow page -> pass "solved" go
+arrow page -> bot "not solved"
+arrow pass -> site "go" go
+note The task gets harder the faster a visitor asks; verified search engines are never checked.

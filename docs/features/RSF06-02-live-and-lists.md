@@ -5,6 +5,8 @@ the statistics, under `dashboard-path`: `/rs/waf/live` and `/rs/waf/lists`.
 
 ## What it does
 
+![The live view shows what is stopped right now and why; one click keeps an address out, with a comment, on every server](../diagrams/live-and-lists.svg)
+
 - **Live** (`Report\LivePage`): what the shield stops right now, one row per
   request, newest first, updated every 3 seconds. Each row shows:
   - **the website** (the host, and its site block when there are some);

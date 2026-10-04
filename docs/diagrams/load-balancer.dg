@@ -1,0 +1,9 @@
+# use case: behind a load balancer or CDN.
+title Behind a balancer every request comes from its address; with trust the shield counts each visitor by the address the balancer forwards
+row  visitors:box "Visitors" "each its own address" | lb:box "The balancer" "10.0.0.5, ends TLS" | shield:warnbox "request-shield" "trust 10.0.0.5" | app:okbox "app:8080"
+row  without:nobox "Without trust" "everyone shares one budget"
+arrow visitors -> lb
+arrow lb -> shield "X-Forwarded-For"
+arrow shield -> app "per visitor" go
+arrow shield -> without "no trust line"
+note From anyone else X-Forwarded-* are removed before the application runs.

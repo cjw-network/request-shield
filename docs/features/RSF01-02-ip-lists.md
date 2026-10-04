@@ -4,6 +4,8 @@ From [proposal 0013](../proposals/0013-ip-lists.md).
 
 ## What it does
 
+![An address kept out gets 403 before every other check; one let in is never counted; one that keeps knocking is banned for a while](../diagrams/ip-lists.svg)
+
 - **Kept out (`deny`)**: an address or a range gets **403**, checked **first**,
   before the method, the path or anything else. The answer gives no reason;
   the log names the entry that decided (`rule=LIST-D3`).

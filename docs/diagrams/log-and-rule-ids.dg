@@ -1,0 +1,9 @@
+# RSF05-05: every refusal names its rule.
+title Every refusal names the rule that decided, by its ID: in the log, on the pages and in the debug header
+row  req:box "A refused request" | rule:warnbox "The rule" "[SITE-ADMIN] or site.rules:12" | log:okbox "The log" "one line: time, address, rule"
+row  pages:okbox "The pages" "live view, statistics" | header:box "Debug header" "X-RS, if switched on"
+arrow req -> rule
+arrow rule -> log "named" go
+arrow rule -> pages
+arrow rule -> header
+note set log <file> switches the log on; log-level says how much it keeps.

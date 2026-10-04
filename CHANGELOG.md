@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **No page without a diagram** (0031 step F.9, part 3): the 17 feature pages
+  and 5 use cases that had no picture got one, drawn from text in
+  `docs/diagrams/`; `DocsStyleTest`'s list of pages without one is empty.
 - **Every page explains itself** (0031 step F.9, part 2): each page of the
   dashboard -- rules & setup, live, lists, the login, the statistics' views
   and cards -- has a `?` after its title and on every section, to the place in

@@ -5,6 +5,8 @@
 Works out who the client is, and which scheme and host it asked for, the way
 the rest of the shield (and your application) should see it:
 
+![X-Forwarded-For is believed only from a trusted proxy; from anyone else it is removed, and the direct address counts](../diagrams/trusted-proxies.svg)
+
 - `X-Forwarded-For`, `X-Forwarded-Proto` and `X-Forwarded-Host` are read **only
   when the direct peer is a trusted proxy** (your load balancer, reverse proxy
   or CDN). `X-Forwarded-For` is read right to left and stops at the first

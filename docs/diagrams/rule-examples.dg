@@ -1,0 +1,9 @@
+# RSF05-04: expect lines next to the rules.
+title An expect line next to a rule says what should happen to one request; request-shield test decides each on a fresh store and says which fails
+row  rule:box "A rule" "[SITE-ADMIN] restrict …" | expect:box "Its examples" "expect GET /admin/ … 403" | test:warnbox "request-shield test" "each on a fresh store"
+row  pass:okbox "All pass" "exit 0, deploy" | fail:nobox "One fails" "exit 1, with what it got"
+arrow rule -> expect
+arrow expect -> test
+arrow test -> pass "as written" go
+arrow test -> fail "not as written"
+note The demo's examples are its rows; a rule without an example is named.

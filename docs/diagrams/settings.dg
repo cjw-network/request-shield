@@ -1,0 +1,10 @@
+# RSF05-02: settings checked once, and the tiers.
+title The settings are checked once and kept compiled; a request reads nothing, and what the hosting allows sets the tier
+row  rules:box "Rule file or PHP array" | check:warnbox "Checked once" "every key, every value" | compiled:okbox "Compiled settings" "a PHP file, OPcache"
+row  s2:okbox "Tier S2" "APCu: counters in memory" | s1:okbox "Tier S1" "a writable folder" | s0:warnbox "Tier S0" "nothing to write: compiled per request"
+arrow rules -> check
+arrow check -> compiled "fine" go
+arrow compiled -> s2
+arrow compiled -> s1
+arrow compiled -> s0
+note request-shield check names the tier a hosting gives; no feature fails without its tier, it switches off and says so.

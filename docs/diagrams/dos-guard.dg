@@ -1,0 +1,9 @@
+# use case: a small DoS guard on shared hosting.
+title On shared hosting a flood from one address gets the browser check, then a pause, before the framework and the database start
+row  flood:box "A flood" "from one address" | count:warnbox "Counted in files" "no APCu needed" | check:warnbox "Past 120 a minute" "the browser check" | wait:nobox "Past 300" "429, please wait"
+row  site:okbox "Your site" "the PHP workers stay free"
+arrow flood -> count
+arrow count -> check
+arrow check -> wait
+arrow count -> site "below the limit" go
+note Every refused request costs well under 0.1 ms instead of a page of the framework.

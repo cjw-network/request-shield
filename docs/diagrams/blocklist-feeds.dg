@@ -1,0 +1,10 @@
+# RSF01-03: public lists, fetched by cron, each with its action.
+title Cron fetches the public blocklists the rules name; each list gets its own action, searched with the deny list in microseconds
+row  lists:box "Public lists" "DROP, DShield, Tor …" | cron:warnbox "feeds update" "cron, pull only" | table:okbox "One sorted table" "with the deny list"
+row  deny:nobox "deny" "403" | check:warnbox "check" "the browser check" | count:box "count" "only logged"
+arrow lists -> cron
+arrow cron -> table "your network taken out" go
+arrow table -> deny
+arrow table -> check
+arrow table -> count
+note Nothing about the visitors leaves the server; a list that shrank to less than half is kept.
