@@ -21,7 +21,7 @@ namespace CjwNetwork\RequestShield\Report;
 final class LogTail
 {
     /**
-     * @return array{rows: list<array{time: int, client: string, action: string, status: int, reason: string, rule: ?string, claimed: ?string, method: string, url: string, agent: string}>, cursor: string, skipped: int}
+     * @return array{rows: list<array{time: int, client: string, action: string, status: int, reason: string, rule: ?string, claimed: ?string, method: string, url: string, agent: string, ref?: ?string}>, cursor: string, skipped: int}
      */
     public static function read(string $file, ?string $cursor, int $maxBytes = 65536): array
     {

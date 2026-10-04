@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **Error pages, part 3: the reference** (proposal 0030, 0031 step G.1,
+  RSF05-06): every refusal the shield answers with its page gets eight random
+  characters (`7KQ2-M4XD`) -- on the page with the time, in the JSON and in
+  the log line (`ref=…`, read back by the live view and the API). A visitor
+  sends it, support finds the one line; the page never says which rule.
 - **Proposal 0037 named values** (Draft): `addresses office 192.0.2.0/24 …`,
   `paths admin /admin/** …`, `agents`, `hosts` -- written once, used bare in
   every rule (`restrict admin to office`, `exempt office`, `expect … from

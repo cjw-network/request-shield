@@ -128,7 +128,7 @@ final class LivePage implements \CjwNetwork\RequestShield\RoutePage
     /**
      * One log line as a row: website, what happened, why, where from.
      *
-     * @param array{time: int, client: string, action: string, status: int, reason: string, rule: ?string, claimed: ?string, method: string, url: string, agent: string} $r
+     * @param array{time: int, client: string, action: string, status: int, reason: string, rule: ?string, claimed: ?string, method: string, url: string, agent: string, ref?: ?string} $r
      * @param array<string, string> $notes list entry ID => its comment
      * @param array<string, string> $links the dashboard's pages: rules (a rule's line), lists (a list entry)
      * @return array<string, mixed>

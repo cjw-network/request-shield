@@ -1050,6 +1050,10 @@ paths:
                               type: "string"
                             agent:
                               type: "string"
+                            ref:
+                              type:
+                                - "string"
+                                - "null"
                   meta:
                     $ref: "#/components/schemas/Meta"
         default:

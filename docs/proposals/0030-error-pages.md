@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Accepted** 2026-10-02 (decisions below: the recommendations); to be built in the phases below |
+| Status | **Implemented** 2026-10-04 (0031 step G.1): all three phases -- [error pages](../features/RSF05-06-error-pages.md). Deviation: a sentence's text key is `not-found-text` (`set text.de.not-found-text …`), not `not-found.text` -- the language is the part before the last dot |
 | Proposed | 2026-10-02 |
 | Affects | the shield's own answers (`Responder`: 400, 403, 404, 405, 414, 429, 431), the texts (`set text.…`), rule files (new setting `error-page`), the log (a reference), the demos |
 

@@ -57,14 +57,14 @@ return [
         truthy(in_array('Content-Type: application/json; charset=utf-8', $headers, true) && in_array('Retry-After: 30', $headers, true) && !preg_grep('/^Content-Security-Policy/', $headers), implode(' | ', $headers));
         same(['status' => 404, 'error' => 'not found'], ErrorPage::json(Decision::reject(404, 'x')));
     },
-    'RSF05-06 end to end: a scanner\'s request gets the page with its CSP, a program the JSON -- from the real server' => function (): void {
+    'RSF05-06 end to end: a scanner\'s request gets the page with its CSP and a reference, a program the JSON -- the same references in the log' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }
         $dir = sys_get_temp_dir() . '/rs-err-' . getmypid() . '-' . mt_rand();
         mkdir("$dir/docroot", 0700, true);
         file_put_contents("$dir/docroot/index.php", '<?php echo "the site";');
-        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\napi-path /api/**\n");
+        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset log $dir/shield.log\napi-path /api/**\n");
         $port = freePort();
         $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
             escapeshellarg("$dir/site.rules"), serverPhp(), escapeshellarg(rsEntry()), $port, escapeshellarg("$dir/docroot")), [], $pipes);
@@ -82,8 +82,15 @@ return [
             };
             [$status, $headers, $body] = $get('/index.php/.env', ['Accept-Language' => 'de']);
             truthy($status === 404 && strpos($body, 'Diese Adresse gibt es hier nicht.') !== false && strpos($headers, "Content-Security-Policy: default-src 'none'") !== false, "$status $headers");
+            // The reference: on the page, and the same in the log line (0030 phase 3).
+            truthy(preg_match('#<p class="ref">Referenz ([2-9A-Z]{4}-[2-9A-Z]{4}) · \d\d:\d\d UTC</p>#', $body, $ref) === 1, 'a reference on the page: ' . $body);
             [$status, $headers, $body] = $get('/index.php/api/.env', ['Accept' => 'application/json']);
-            truthy($status === 404 && json_decode($body, true) === ['status' => 404, 'error' => 'not found'] && strpos($headers, 'application/json') !== false, "$status $body");
+            $json = (array) json_decode($body, true);
+            truthy($status === 404 && ($json['error'] ?? null) === 'not found' && preg_match('/^[2-9A-Z]{4}-[2-9A-Z]{4}$/', (string) ($json['reference'] ?? '')) === 1 && strpos($headers, 'application/json') !== false, "$status $body");
+            $log = (string) @file_get_contents("$dir/shield.log");
+            truthy(strpos($log, ' ref=' . ($ref[1] ?? '?') . ' "GET ') !== false && strpos($log, ' ref=' . ($json['reference'] ?? '?') . ' ') !== false, 'the same references in the log: ' . $log);
+            $lines = array_values(array_filter(array_map([\CjwNetwork\RequestShield\Report\LogStats::class, 'parse'], explode("\n", trim($log)))));
+            same([$ref[1] ?? null, 'SCAN-HIDDEN'], [$lines[0]['ref'] ?? null, $lines[0]['rule'] ?? null], 'read back from the log, the rule untouched by it: ' . json_encode($lines[0] ?? null));
         } finally {
             proc_terminate($proc);
             proc_close($proc);

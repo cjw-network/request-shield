@@ -35,6 +35,17 @@ language, how long to wait after too many requests, and the way home.
 
 The status code and the headers stay what they were: only the body changed.
 
+## The reference
+
+Every refusal the shield answers with its page gets a reference: eight
+random characters, `7KQ2-M4XD`. It stands on the page with the time
+("Reference 7KQ2-M4XD · 14:31 UTC"), in the JSON (`"reference"`) and in the
+log line (`ref=7KQ2-M4XD`, [the log](RSF05-05-log-and-rule-ids.md#the-log)).
+A visitor who writes "I got an error" sends the reference; support finds the
+one line with the rule, the address and the reason -- without the page
+telling anyone which rule it was. A site's own page shows it with
+`{reference}`. The check page has none: it is no refusal.
+
 ## Use cases
 
 - **A link from an old newsletter** to an address a rule refuses: the
@@ -80,7 +91,7 @@ site shop.example {
 | | |
 |---|---|
 | a passing request | nothing |
-| a refusal, the shield's own page | a few string replacements |
+| a refusal, the shield's own page | a few string replacements, one random reference |
 | a refusal, the site's page | the same: the page is in the compiled settings |
 | compiling the rules | each `error-page` file read once |
 

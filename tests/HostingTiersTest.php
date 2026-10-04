@@ -144,7 +144,8 @@ return [
             $out = [];
             foreach ($ask as $uri) {
                 $r = $get($uri);
-                $out[$uri] = $r['status'] . ' ' . $r['body'];
+                // The refusal page's reference is random (0030): the same page otherwise.
+                $out[$uri] = $r['status'] . ' ' . preg_replace('#Reference [2-9A-Z]{4}-[2-9A-Z]{4} · \d\d:\d\d UTC#', 'Reference …', $r['body']);
             }
             return $out;
         };

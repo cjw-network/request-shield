@@ -48,10 +48,10 @@ final class Log
      * A decision for the log (when its level wants it) and the live view's
      * memory (set live on: anything that stopped or checked a request).
      */
-    public static function note(Settings $s, Request $request, Decision $d, ?string $rule, float $now, bool $monitor = false): void
+    public static function note(Settings $s, Request $request, Decision $d, ?string $rule, float $now, bool $monitor = false, ?string $reference = null): void
     {
         if ($s->logFile !== null && self::wants($s->logLevel, $d)) {
-            self::write($s, $request, $d, $rule, $now, $monitor);
+            self::write($s, $request, $d, $rule, $now, $monitor, $reference);
         }
         // The sinks (0031 B.9): the live view first, then the plugins with the capability
         // ($s->hooks['sink'], recorded when the rules were compiled). One that throws is
@@ -86,12 +86,12 @@ final class Log
         return $out;
     }
 
-    public static function write(Settings $s, Request $request, Decision $d, ?string $rule, ?float $now = null, bool $monitor = false): void
+    public static function write(Settings $s, Request $request, Decision $d, ?string $rule, ?float $now = null, bool $monitor = false, ?string $reference = null): void
     {
         if ($s->logFile === null) {
             return;
         }
-        self::append($s->logFile, self::line($s, $request, $d, $rule, $now, $monitor), $s->logMaxSize);
+        self::append($s->logFile, self::line($s, $request, $d, $rule, $now, $monitor, null, true, $reference), $s->logMaxSize);
     }
 
     /**
@@ -99,7 +99,8 @@ final class Log
      * full, or as given), decision, status, reason, rule, what was asked
      * (full URL, or without its query), User-Agent.
      */
-    public static function line(Settings $s, Request $request, Decision $d, ?string $rule, ?float $now = null, bool $monitor = false, ?string $ip = null, bool $query = true): string
+    public static function line(Settings $s, Request $request, Decision $d, ?string $rule, ?float $now = null, bool $monitor = false, ?string $ip = null, bool $query = true,
+        ?string $reference = null): string
     {
         $uri = $query ? $request->rawUri : strtok($request->rawUri, '?');
         return date('c', (int) ($now ?? time())) . ' '
@@ -107,6 +108,7 @@ final class Log
             . ($monitor ? 'monitor-' : '') . $d->action . ' ' . $d->status . ' "' . self::clean($d->reason, 60) . '"'
             . ($rule !== null ? ' rule=' . self::clean($rule, 120) : '')
             . ($d->claimed !== null ? ' claimed=' . self::clean($d->claimed, 60) : '')
+            . ($reference !== null ? ' ref=' . self::clean($reference, 20) : '')        // the refusal page's reference (0030)
             . ' "' . self::clean($request->method, 10) . ' ' . self::clean($request->scheme . '://' . $request->host . $uri, 300) . '"'
             . ' "' . self::clean((string) $request->header('user-agent'), 150) . "\"\n";
     }

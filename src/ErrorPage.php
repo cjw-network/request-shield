@@ -173,4 +173,21 @@ final class ErrorPage
             '{wait}' => (string) max(0, $d->retryAfter), '{home}' => $e($home ?? '/'), '{lang}' => $e($t['lang'] ?? 'en'), '{reference}' => $e($reference ?? ''),
         ]);
     }
+
+    /** Letters and digits that cannot be mistaken for each other when read aloud or typed (no 0/O, 1/I/L, U). */
+    private const REFERENCE = '23456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+    /**
+     * A reference for one refusal (0030): eight random characters, "7KQ2-M4XD"
+     * -- on the page, in the JSON and in the log line (ref=…), so "I got an
+     * error at 14:31" becomes one line in the log. It means nothing without the log.
+     */
+    public static function reference(): string
+    {
+        $out = '';
+        for ($i = 0; $i < 8; $i++) {
+            $out .= self::REFERENCE[random_int(0, strlen(self::REFERENCE) - 1)] . ($i === 3 ? '-' : '');
+        }
+        return $out;
+    }
 }

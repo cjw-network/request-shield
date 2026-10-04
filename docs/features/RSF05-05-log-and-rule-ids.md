@@ -44,7 +44,7 @@ decision, status, reason, rule, the request with its **full URL**, the
 User-Agent:
 
 ```text
-2026-09-29T08:41:03+02:00 198.51.100.0/24 reject 404 "blocked path" rule=SCAN-HIDDEN "GET https://www.example.org/.env" "Mozilla/5.0 ..."
+2026-09-29T08:41:03+02:00 198.51.100.0/24 reject 404 "blocked path" rule=SCAN-HIDDEN ref=7KQ2-M4XD "GET https://www.example.org/.env" "Mozilla/5.0 ..."
 2026-09-29T08:41:07+02:00 198.51.100.0/24 challenge 429 "requests" rule=SITE-PACE "GET https://www.example.org/news?page=4711" "python-requests/2.32"
 2026-09-29T08:41:09+02:00 2001:db8:1::/48 reject 403 "restricted" rule=SITE-10 "GET https://www.example.org//admin/" "curl/8.5"
 ```

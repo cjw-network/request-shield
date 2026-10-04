@@ -26,7 +26,7 @@ final class Log implements ApiService
         'rows' => ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['time', 'client', 'action', 'status', 'reason', 'rule', 'method', 'url'], 'properties' => [
             'time' => ['type' => 'integer'], 'client' => ['type' => 'string'], 'action' => ['type' => 'string'], 'status' => ['type' => 'integer'],
             'reason' => ['type' => 'string'], 'rule' => ['type' => ['string', 'null']], 'claimed' => ['type' => ['string', 'null']],
-            'method' => ['type' => 'string'], 'url' => ['type' => 'string'], 'agent' => ['type' => 'string'],
+            'method' => ['type' => 'string'], 'url' => ['type' => 'string'], 'agent' => ['type' => 'string'], 'ref' => ['type' => ['string', 'null']],
         ]]],
     ]];
 

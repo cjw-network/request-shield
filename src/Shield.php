@@ -395,6 +395,7 @@ final class Shield
         $rule = null;
         $watched = null;
         $would = null;
+        $reference = null;
         if ($s->mode === 'monitor' && !$decision->passes()) {
             $would = $decision;
             // Monitor: decided and counted, logged as it would be -- and let through,
@@ -404,7 +405,10 @@ final class Shield
             $settled = ['decision' => $decision, 'cookies' => $settled['cookies'], 'page' => null, 'json' => null, 'passed' => false];
         } elseif ($decision->action !== Decision::ALLOW || $s->logLevel === 'all') {
             $rule = $shield->explain($decision, $request);
-            Log::note($s, $request, $decision, $rule, $now);
+            // A refusal the shield answers with its page (not the check page): a reference
+            // on the page and in the log line (0030) -- made only then.
+            $reference = !$decision->passes() && $settled['page'] === null && ($settled['json'] ?? null) === null ? ErrorPage::reference() : null;
+            Log::note($s, $request, $decision, $rule, $now, false, $reference);
         }
         if ($s->monitor !== null && $decision->passes() && $watched === null) {
             // Rules marked "monitor": what they would decide, for the log.
@@ -440,7 +444,7 @@ final class Shield
             $c = $s->challenge;
             (new Responder())->send($decision, $request, $s->debugHeader, $settled['page'], $rule,
                 Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts), $c->home, PageHook::asker($s),
-                $c->logo, $settled['page'] === null && $shield->isApi($request), null, $s->errorPages);
+                $c->logo, $settled['page'] === null && $shield->isApi($request), $reference, $s->errorPages);
             exit;
         }
         // The dashboard's own pages (0031 B.6): a route is answered here, before the
@@ -1153,8 +1157,9 @@ final class Shield
     {
         $s = $this->settings;
         $rule = $this->explain($d, $request);
+        $reference = $page === null && $json === null ? ErrorPage::reference() : null;      // a refusal page's reference (0030)
         if ($log) {
-            Log::note($s, $request, $d, $rule, $now);
+            Log::note($s, $request, $d, $rule, $now, false, $reference);
         }
         while ($echo && ob_get_level() > 0) {
             ob_end_clean();                 // nothing of the application's page
@@ -1172,9 +1177,9 @@ final class Shield
         if ($page === null && $this->isApi($request)) {
             // A program: the refusal as JSON (0030).
             $responder->headers($d, $s->debugHeader, $rule, false, true);
-            $body = $request->method === 'HEAD' ? '' : json_encode(ErrorPage::json($d), JSON_UNESCAPED_SLASHES) . "\n";
+            $body = $request->method === 'HEAD' ? '' : json_encode(ErrorPage::json($d, $reference), JSON_UNESCAPED_SLASHES) . "\n";
         } else {
-            [$body, $builtIn] = $responder->page($d, $page, $texts, $c->home, PageHook::asker($s), $request, $c->logo, null, $s->errorPages);
+            [$body, $builtIn] = $responder->page($d, $page, $texts, $c->home, PageHook::asker($s), $request, $c->logo, $reference, $s->errorPages);
             $responder->headers($d, $s->debugHeader, $rule, $builtIn);
             $body = $request->method === 'HEAD' ? '' : $body;
         }
