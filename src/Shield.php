@@ -439,7 +439,8 @@ final class Shield
         if (!$decision->passes()) {
             $c = $s->challenge;
             (new Responder())->send($decision, $request, $s->debugHeader, $settled['page'], $rule,
-                Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts), $c->home, PageHook::asker($s));
+                Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts), $c->home, PageHook::asker($s),
+                $c->logo, $settled['page'] === null && $shield->isApi($request));
             exit;
         }
         // The dashboard's own pages (0031 B.6): a route is answered here, before the
@@ -1168,8 +1169,15 @@ final class Shield
         $c = $s->challenge;
         $texts = Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts);
         $responder = new Responder();
-        $responder->headers($d, $s->debugHeader, $rule);
-        $body = $request->method === 'HEAD' ? '' : $responder->body($d, $page, $texts, $c->home, PageHook::asker($s), $request);
+        if ($page === null && $this->isApi($request)) {
+            // A program: the refusal as JSON (0030).
+            $responder->headers($d, $s->debugHeader, $rule, false, true);
+            $body = $request->method === 'HEAD' ? '' : json_encode(ErrorPage::json($d), JSON_UNESCAPED_SLASHES) . "\n";
+        } else {
+            [$body, $builtIn] = $responder->page($d, $page, $texts, $c->home, PageHook::asker($s), $request, $c->logo);
+            $responder->headers($d, $s->debugHeader, $rule, $builtIn);
+            $body = $request->method === 'HEAD' ? '' : $body;
+        }
         if ($echo) {
             echo $body;
         }

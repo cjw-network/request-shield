@@ -63,13 +63,13 @@ return [
         truthy(strpos($page, '<html lang="de">') !== false && strpos($page, 'Einen Moment, bitte') !== false && strpos($page, 'Bitte aktivieren Sie JavaScript') !== false, 'the check page in German');
         $r = Request::fromServer(['REQUEST_URI' => '/', 'REQUEST_METHOD' => 'GET']);
         ob_start();
-        (new Responder())->send(Decision::throttle('requests', 7), $r, false, null, null, Texts::all('de', ['de.try-again' => 'Noch %s Sekunden – 100 % sicher.']));
+        (new Responder())->send(Decision::throttle('requests', 7), $r, false, null, null, Texts::all('de', ['de.too-many-text' => 'Noch %s Sekunden – 100 % sicher.']));
         $html = (string) ob_get_clean();
         truthy(strpos($html, '<h1>Zu viele Anfragen</h1>') !== false, $html);
         truthy(strpos($html, 'Noch 7 Sekunden – 100 % sicher.') !== false, 'a "%" of the site\'s own does no harm');
         ob_start();
         (new Responder())->send(Decision::reject(404, 'blocked path'), $r);
-        truthy(strpos((string) ob_get_clean(), '<h1>Not Found</h1>') !== false, 'English without texts');
+        truthy(strpos($nf = (string) ob_get_clean(), '<h1>Not found</h1>') !== false && strpos($nf, '<p>This address does not exist here.</p>') !== false, 'English without texts: the title and its sentence');
         ob_start();
         (new Responder())->send(Decision::reject(403, 'restricted'), $r, false, null, null, Texts::all('de'), '/start?a=1&b="2"');
         truthy(strpos((string) ob_get_clean(), '<a href="/start?a=1&amp;b=&quot;2&quot;">Zur Startseite</a>') !== false, 'a link home, escaped');

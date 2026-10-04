@@ -25,7 +25,7 @@ namespace CjwNetwork\RequestShield;
  */
 interface Pages
 {
-    /** The refusal page: ctx status, decision, reason, retryAfter, texts (the visitor's language), lang, home, request. */
+    /** The refusal page: ctx status, decision, reason, retryAfter, texts (the visitor's language), lang, home, request, reference (the code the log names it by, 0030; null without one). */
     public const ERROR = 'error';
 
     /** The browser check: ctx challenge (the task), field (the solution cookie's name), secure, texts, lang, resend, home, logo, about (the check in plain words, for visitors: a URL, or null with set docs-url off). */

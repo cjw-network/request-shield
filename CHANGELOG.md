@@ -13,6 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **Error pages, part 1: the shield's own page** (proposal 0030, 0031 step G.1,
+  RSF05-06): a refusal the shield answers itself gets the check page's frame --
+  a quiet ring with a `:-(` drawn in SVG, or the site's logo (`set
+  challenge-logo`), a title and one sentence in the visitor's language (English
+  and German built in, each replaceable: `set text.de.not-found-text …`), how
+  long to wait after too many requests, the way home. It never says why.
+  Inline CSS and SVG, no script, nothing loaded, and a CSP that keeps it so
+  (`default-src 'none' … frame-ancestors 'none'`); a site's own page (the
+  Pages hook) and the check page get none of the shield's. A program
+  (`api-path`, a request that asks for or sends JSON) gets
+  `{"status", "error", "retryAfter"}` instead. The titles in English are
+  plainer now ("Not found", "No access", "Not here").
 - **The replay: your own clicks as a test** (proposal 0016, first part;
   RSF05-04): `request-shield replay <main.rules> <recording>` sends requests
   known to be good through the rules -- a session recorded as a HAR file (the

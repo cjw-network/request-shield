@@ -24,7 +24,8 @@ final class Texts
 {
     /** The keys a site can set. */
     public const KEYS = ['title', 'text', 'noscript', 'nocookies', 'failed', 'try-again', 'sending', 'send-again', 'resend-lost', 'back', 'home', 'widget-checking', 'widget-checked', 'widget-failed', 'spent', 'about',
-        'bad-request', 'no-access', 'not-found', 'not-allowed', 'too-long', 'too-many', 'too-large', 'error'];
+        'bad-request', 'no-access', 'not-found', 'not-allowed', 'too-long', 'too-many', 'too-large', 'error',
+        'bad-request-text', 'no-access-text', 'not-found-text', 'not-allowed-text', 'too-long-text', 'too-many-text', 'too-large-text', 'error-text', 'reference'];
 
     public const BUILT_IN = [
         'en' => [
@@ -44,14 +45,24 @@ final class Texts
             'widget-failed' => 'Your browser will be checked when you send the form.',
             'about' => 'What is this check?',
             'spent' => 'You sent many requests in a short time. After a quick check of your browser you can go on.',
-            'bad-request' => 'Bad Request',
-            'no-access' => 'Forbidden',
-            'not-found' => 'Not Found',
-            'not-allowed' => 'Method Not Allowed',
-            'too-long' => 'URI Too Long',
-            'too-many' => 'Too Many Requests',
-            'too-large' => 'Request Header Fields Too Large',
+            'bad-request' => 'Bad request',
+            'no-access' => 'No access',
+            'not-found' => 'Not found',
+            'not-allowed' => 'Not here',
+            'too-long' => 'Address too long',
+            'too-many' => 'Too many requests',
+            'too-large' => 'Request too large',
             'error' => 'Error',
+            // The error pages' sentences (0030): what to do, never why.
+            'bad-request-text' => 'The address could not be read.',
+            'no-access-text' => 'This address is not open to you.',
+            'not-found-text' => 'This address does not exist here.',
+            'not-allowed-text' => 'This kind of request is not taken at this address.',
+            'too-long-text' => 'The address is longer than this site takes.',
+            'too-many-text' => 'Please wait %s seconds, then try again.',
+            'too-large-text' => 'The request carries more than this site takes.',
+            'error-text' => 'This request could not be answered.',
+            'reference' => 'Reference',
         ],
         'de' => [
             'title' => 'Einen Moment, bitte',
@@ -78,6 +89,15 @@ final class Texts
             'too-many' => 'Zu viele Anfragen',
             'too-large' => 'Anfrage zu groß',
             'error' => 'Fehler',
+            'bad-request-text' => 'Die Adresse konnte nicht gelesen werden.',
+            'no-access-text' => 'Diese Adresse ist für Sie nicht geöffnet.',
+            'not-found-text' => 'Diese Adresse gibt es hier nicht.',
+            'not-allowed-text' => 'Diese Art von Anfrage wird unter dieser Adresse nicht angenommen.',
+            'too-long-text' => 'Die Adresse ist länger, als diese Website annimmt.',
+            'too-many-text' => 'Bitte warten Sie %s Sekunden und versuchen Sie es dann noch einmal.',
+            'too-large-text' => 'Die Anfrage ist größer, als diese Website annimmt.',
+            'error-text' => 'Diese Anfrage konnte nicht beantwortet werden.',
+            'reference' => 'Referenz',
         ],
     ];
 
@@ -147,6 +167,22 @@ final class Texts
      */
     public static function status(int $status, array $texts): string
     {
-        return $texts[self::STATUS[$status] ?? 'error'] ?? 'Error';
+        return $texts[self::key($status)] ?? 'Error';
+    }
+
+    /**
+     * A status's sentence for the error page (0030): what to do, never why.
+     *
+     * @param array<string, string> $texts
+     */
+    public static function sentence(int $status, array $texts): string
+    {
+        return $texts[self::key($status) . '-text'] ?? $texts['error-text'] ?? '';
+    }
+
+    /** The key of a status's texts: not-found, too-many …; error for any other. */
+    public static function key(int $status): string
+    {
+        return self::STATUS[$status] ?? 'error';
     }
 }
