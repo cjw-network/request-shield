@@ -31,7 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   cache of its own (200, 301, 308; no cookie set, not private, within
   `http-cache-max-object`) for `s-maxage`, `max-age` or `http-cache-ttl`, and
   answers the next request for them before the application runs (`Age`,
-  `X-RS-Cache: hit`, 304 for a known ETag). Visitors with a login cookie, an
+  `X-RS-Cache: hit`, 304 for a known ETag) -- only on the host names
+  `http-cache-hosts` lists, only whole answers (not what `ob_clean()` threw
+  away, not one ended early, not one encoded by the application), and it
+  cleans up expired answers by itself. Visitors with a login cookie, an
   `Authorization` header or a form are never served from it; harmless cookies
   (`http-cache-cookies`: analytics, the shield's pass) do not count.
   `request-shield cache <rules> purge [--path=…] | expired` and the API's

@@ -152,7 +152,7 @@ final class Reference
             'value' => 'where the pages\' `?` links and the command line\'s hints point: the docs\' folder, the repository\'s by default; a copy of your own (`https://docs.example.org/request-shield`, `/docs`), or `off` for no links -- the one-sentence explanations stay ([rules and setup](RSF06-01-active-rules-page.md))'],
         ['keys' => ['api', 'api-write', 'api-origins'], 'label' => '`api`, `api-write`, `api-origins`',
             'value' => 'the API below `<dashboard-path>/api/v1`: `api` on (default) or off; `api-write` on for the endpoints that change something (off by default); `api-origins` the websites whose pages may call it from a browser (CORS) ([the API](RSF06-05-api.md))'],
-        ['keys' => ['http-cache', 'http-cache-ttl', 'http-cache-cookies', 'http-cache-max-object', 'http-cache-dir'], 'label' => '`http-cache`, `http-cache-ttl`, `http-cache-cookies`, `http-cache-max-object`, `http-cache-dir`',
+        ['keys' => ['http-cache', 'http-cache-hosts', 'http-cache-ttl', 'http-cache-cookies', 'http-cache-max-object', 'http-cache-dir'], 'label' => '`http-cache`, `http-cache-hosts`, `http-cache-ttl`, `http-cache-cookies`, `http-cache-max-object`, `http-cache-dir`',
             'value' => 'the HTTP cache: `http-cache` on or off (default); how long an answer is kept when it says nothing (`5m`); the cookies that do not make a page someone\'s own (default: analytics, the pass); the largest answer kept (`1M`); where (default `<store-dir>/http-cache`) ([the HTTP cache](RSF04-03-http-cache.md))'],
         ['keys' => ['stats'], 'label' => '`stats`',
             'value' => '`off` (default), `on`, or the parts: `requests`, `crawlers`, `not-found`, `bots` ([statistics](RSF06-03-statistics.md))'],

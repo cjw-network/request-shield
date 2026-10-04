@@ -59,7 +59,10 @@ return [
             truthy($p->keep($c, 'https://www.example.org/a', 200, $ok, 'A'), 'a plain page');
             foreach ([[404, $ok, 'B', '404'], [200, [...$ok, 'Set-Cookie: s=1'], 'B', 'a cookie set'], [200, [...$ok, 'Cache-Control: private'], 'B', 'private'],
                 [200, [...$ok, 'Cache-Control: no-store'], 'B', 'no-store'], [200, [...$ok, 'Vary: Cookie'], 'B', 'Vary: Cookie'], [200, $ok, str_repeat('x', 1025), 'too large'],
-                [200, [...$ok, 'Cache-Control: max-age=0'], 'B', 'max-age=0']] as [$status, $h, $body, $why]) {
+                [200, [...$ok, 'Cache-Control: max-age=0'], 'B', 'max-age=0'], [200, [...$ok, 'Vary: Accept-Encoding', 'Vary: Cookie'], 'B', 'a second Vary line'],
+                [200, [...$ok, 'Cache-Control: public', 'Cache-Control: private'], 'B', 'a second Cache-Control line'], [200, [...$ok, 'Content-Encoding: gzip'], 'B', 'gzip the application made'],
+                [200, [...$ok, 'Pragma: no-cache'], 'B', 'Pragma: no-cache'], [200, [...$ok, 'Expires: Thu, 01 Jan 1970 00:00:00 GMT'], 'B', 'an Expires gone by'],
+                [200, [...$ok, "Content-Disposition: attachment; filename=\"\xe4.txt\""], 'B', 'a header that is no UTF-8']] as [$status, $h, $body, $why]) {
                 truthy(!$p->keep($c, 'https://www.example.org/b', $status, $h, $body), "not kept: $why");
             }
             truthy($p->keep($c, 'https://www.example.org/v', 200, [...$ok, 'Vary: Accept-Encoding', 'Cache-Control: public, s-maxage=10, max-age=99'], 'V'), 'Vary on encoding only');
@@ -71,8 +74,11 @@ return [
             same(null, $c->get('https://www.example.org/v', microtime(true) + 11), 'expired: gone');
             $c->put('https://www.example.org/news/1', 200, [], 'n', 60, microtime(true));
             $c->put('https://www.example.org/shop/1', 200, [], 's', 60, microtime(true));
-            same(1, $c->purge('/news/'), 'purge below a path');
-            same(['entries' => 2, 'bytes' => $c->stats()['bytes']], $c->stats(), 'a and shop/1 are left');
+            $c->put('https://www.example.org/news%3Fx', 200, [], 'q', 60, microtime(true), '/news%3Fx');
+            same(2, $c->purge('/news'), 'purge below a path, by the path kept with the answer');
+            same(2, $c->stats()['entries'], 'a and shop/1 are left (v expired above)');
+            same(1, $c->purge(null, microtime(true) + 90), 'expired: what has run out (shop/1, 60 s; a has 120 s)');
+            same(1, $c->stats()['entries'], 'a is left');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }
@@ -80,7 +86,7 @@ return [
     'RSF04-03 the handler answers a kept page before the application, with Age and its ETag -- never a request with a session, a token, a form, or one the rules made uncacheable' => function (): void {
         $dir = cacheDir();
         try {
-            $s = cacheSettings($dir, "set http-cache on\n");
+            $s = cacheSettings($dir, "set http-cache on\nset http-cache-hosts www.example.org\n");
             $p = new CachePlugin($s);
             $c = new FileCache("$dir/store/http-cache");
             $c->put(cacheReq('/a')->cacheKey(), 200, ['Content-Type: text/html', 'ETag: "e1"'], 'kept', 60, microtime(true) - 5);
@@ -93,6 +99,13 @@ return [
             same(null, $p->handle(cacheReq('/a', ['Authorization' => 'Bearer x']), Decision::allow()), 'a token');
             same(null, $p->handle(cacheReq('/a', [], 'POST'), Decision::allow()), 'a form');
             same(null, $p->handle(cacheReq('/a'), Decision::allowUncached('query parameter')), 'the rules said: not for a cache');
+            same(null, $p->handle(cacheReq('/a', ['Host' => 'www.example.org:1337']), Decision::allow()), 'a port the list does not name: links built from it must not be kept');
+            same(null, $p->handle(cacheReq('/a', ['Host' => 'made.up.example']), Decision::allow()), 'a made-up name');
+            same(null, (new CachePlugin(cacheSettings($dir, "set http-cache on\n")))->handle(cacheReq('/a'), Decision::allow()), 'no http-cache-hosts: nothing');
+            same(null, $p->handle(cacheReq('/a?x=1&x=2'), Decision::allow()), 'a parameter twice: PHP takes the last, the key sorts');
+            same(null, $p->handle(cacheReq('/a%2Fb'), Decision::allow()), 'an encoded / in the path');
+            $c->put(cacheReq('/r')->cacheKey(), 301, ['Location: /x', 'ETag: "e2"'], '', 60, microtime(true));
+            same(301, $p->handle(cacheReq('/r', ['If-None-Match' => '"e2"']), Decision::allow())->status ?? 0, 'a kept redirect stays a redirect, ETag or not');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }
@@ -107,9 +120,14 @@ return [
             file_put_contents(__DIR__ . "/../runs", "x", FILE_APPEND);
             if (strpos($_SERVER["REQUEST_URI"], "/account") !== false) { setcookie("session", "1"); }
             header("Cache-Control: public, max-age=60");
+            if (strpos($_SERVER["REQUEST_URI"], "/clean") !== false) { echo "junk"; ob_clean(); echo "real " . hrtime(true); return; }
+            if (strpos($_SERVER["REQUEST_URI"], "/cut") !== false) { echo "part "; while (ob_get_level() > 0) { ob_end_flush(); } echo "rest " . hrtime(true); return; }
+            if (strpos($_SERVER["REQUEST_URI"], "/big") !== false) { for ($i = 0; $i < 40; $i++) { echo str_repeat("x", 65536); flush(); } echo hrtime(true); return; }
+            header("Cache-Control: public, max-age=60");
             echo "page " . $_SERVER["REQUEST_URI"] . " " . hrtime(true);');
         file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset http-cache on\ncache-query page\n");
         $port = freePort();
+        file_put_contents("$dir/site.rules", "set http-cache-hosts 127.0.0.1:$port\n", FILE_APPEND);
         $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
             escapeshellarg("$dir/site.rules"), serverPhp(), escapeshellarg(rsEntry()), $port, escapeshellarg("$dir/docroot")), [], $pipes);
         for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
@@ -136,6 +154,15 @@ return [
             $get('/index.php/account');
             [$h6] = $get('/index.php/account');
             truthy(strpos($h6, 'X-RS-Cache: hit') === false, 'a page that sets a cookie: never kept');
+            [, $c1] = $get('/index.php/clean');
+            [$c2h, $c2] = $get('/index.php/clean');
+            truthy(strpos($c1, 'junk') === false && strpos($c2h, 'X-RS-Cache: hit') === false && $c1 !== $c2, "what ob_clean() threw away: never kept, nor is the answer ($c2h)");
+            $get('/index.php/cut');
+            [$k2h, $k2] = $get('/index.php/cut');
+            truthy(strpos($k2h, 'X-RS-Cache: hit') === false && strpos($k2, 'part rest') === 0, "an answer ended before the script: never kept ($k2h)");
+            $get('/index.php/big');
+            [$g2h, $g2] = $get('/index.php/big');
+            truthy(strpos($g2h, 'X-RS-Cache: hit') === false && strlen($g2) > 40 * 65536, 'larger than http-cache-max-object: never kept, and sent whole');
             exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' cache ' . escapeshellarg("$dir/site.rules") . ' purge 2>&1', $out, $code);
             truthy($code === 0 && strpos(implode("\n", $out), 'removed') === 0, implode("\n", $out));
             [$h7] = $get('/index.php?page=2');

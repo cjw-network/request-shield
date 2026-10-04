@@ -49,15 +49,27 @@ final class FileCache
             'stored' => $meta['stored'], 'expires' => $meta['expires']];
     }
 
-    /** @param list<string> $headers */
-    public function put(string $key, int $status, array $headers, string $body, int $ttl, float $now): bool
+    /**
+     * Keeps an answer; one store in a hundred also removes what has expired
+     * in one of the 256 folders, so the cache cleans up by itself.
+     *
+     * @param list<string> $headers
+     * @param string $path the address's path, for a purge below a path
+     */
+    public function put(string $key, int $status, array $headers, string $body, int $ttl, float $now, string $path = ''): bool
     {
+        if (mt_rand(1, 100) === 1) {
+            $this->sweep(sprintf('%02x', mt_rand(0, 255)), $now);
+        }
         $file = $this->path($key);
         $dir = dirname($file);
         if (!is_dir($dir) && !@mkdir($dir, 0750, true) && !is_dir($dir)) {
             return false;
         }
-        $meta = json_encode(['key' => $key, 'status' => $status, 'headers' => $headers, 'stored' => (int) $now, 'expires' => (int) $now + $ttl], JSON_UNESCAPED_SLASHES);
+        $meta = json_encode(['key' => $key, 'path' => $path, 'status' => $status, 'headers' => $headers, 'stored' => (int) $now, 'expires' => (int) $now + $ttl], JSON_UNESCAPED_SLASHES);
+        if ($meta === false) {
+            return false;           // a header that is no UTF-8: not kept, rather than a file that never reads
+        }
         $tmp = $file . '.' . bin2hex(random_bytes(4)) . '.tmp';
         if (@file_put_contents($tmp, $meta . "\n" . $body) === false) {
             return false;
@@ -71,12 +83,19 @@ final class FileCache
 
     /**
      * Removes what is kept: everything, or the addresses whose path starts
-     * with $path (/news/ -- every host). Returns how many.
+     * with $path, literally (/news/ -- every host; /news also takes
+     * /newsletter), or ($now) what has expired. Returns how many. Files a
+     * write left half done (*.tmp) go too, once they are a minute old.
      */
-    public function purge(?string $path = null, ?float $now = null): int
+    public function purge(?string $path = null, ?float $now = null, string $folder = '*'): int
     {
         $n = 0;
-        foreach ($this->files() as $file) {
+        foreach (glob(rtrim($this->dir, '/') . "/$folder/*/*.tmp") ?: [] as $tmp) {
+            if ($path === null && (int) @filemtime($tmp) < (int) ($now ?? microtime(true)) - 60) {
+                @unlink($tmp);
+            }
+        }
+        foreach ($this->files($folder) as $file) {
             if ($path !== null || $now !== null) {
                 $h = @fopen($file, 'rb');
                 $line = $h !== false ? (string) fgets($h) : '';
@@ -85,7 +104,7 @@ final class FileCache
                 }
                 $meta = json_decode($line, true);
                 $key = is_array($meta) && is_string($meta['key'] ?? null) ? $meta['key'] : '';
-                $keyPath = (string) parse_url($key, PHP_URL_PATH);
+                $keyPath = is_array($meta) && is_string($meta['path'] ?? null) && $meta['path'] !== '' ? $meta['path'] : (string) parse_url($key, PHP_URL_PATH);
                 $expired = $now !== null && is_array($meta) && is_int($meta['expires'] ?? null) && $meta['expires'] <= (int) $now;
                 if (!$expired && ($path === null || strncmp($keyPath, $path, strlen($path)) !== 0)) {
                     continue;
@@ -108,10 +127,16 @@ final class FileCache
         return ['entries' => $entries, 'bytes' => $bytes];
     }
 
-    /** @return list<string> */
-    private function files(): array
+    /** What has expired in one folder (ab: one 256th of the cache). */
+    public function sweep(string $folder, float $now): int
     {
-        return glob(rtrim($this->dir, '/') . '/*/*/*.cache') ?: [];
+        return $this->purge(null, $now, $folder);
+    }
+
+    /** @return list<string> */
+    private function files(string $folder = '*'): array
+    {
+        return glob(rtrim($this->dir, '/') . "/$folder/*/*.cache") ?: [];
     }
 
     private function path(string $key): string

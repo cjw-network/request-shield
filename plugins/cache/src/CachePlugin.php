@@ -24,18 +24,24 @@ use CjwNetwork\RequestShield\Settings;
  * application's answer is kept for the next. Only what is public: no cookie
  * but the ones set http-cache-cookies names, no Authorization, an answer
  * without Set-Cookie and without private, no-store or no-cache. The addresses
- * a cache may keep are the shield's (cache-path, cache-query): made-up ones
- * never fill it.
+ * a cache may keep are the shield's (cache-path, cache-query), on the host
+ * names http-cache-hosts lists, exactly as sent (a port is another name).
  */
 final class CachePlugin implements Plugin, Handler
 {
     /** Headers never kept: they belong to one answer, or the web server makes them. */
     private const DROP = ['set-cookie', 'date', 'age', 'x-rs', 'x-rs-monitor', 'x-rs-cache', 'content-length', 'transfer-encoding', 'connection', 'keep-alive'];
 
-    /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string} */
+    /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>} */
     private array $o;
 
     private string $body = '';
+
+    /** Something of the answer was thrown away, cut off or too large: it is not kept. */
+    private bool $spoiled = false;
+
+    /** The script has ended (the shutdown functions run before the last buffers are sent). */
+    private bool $ending = false;
 
     public function __construct(Settings $settings)
     {
@@ -52,7 +58,8 @@ final class CachePlugin implements Plugin, Handler
 
     public function handle(Request $request, Decision $decision): ?Response
     {
-        if (!$this->o['enabled'] || !$decision->cacheable() || ($request->method !== 'GET' && $request->method !== 'HEAD') || !$this->anonymous($request)) {
+        if (!$this->o['enabled'] || !$decision->cacheable() || ($request->method !== 'GET' && $request->method !== 'HEAD') || !$this->anonymous($request)
+            || !$this->ownHost($request) || !self::plainAddress($request)) {
             return null;
         }
         $key = $request->cacheKey();
@@ -62,7 +69,7 @@ final class CachePlugin implements Plugin, Handler
         if ($hit !== null) {
             $headers = [...$hit['headers'], 'Age: ' . max(0, (int) $now - $hit['stored']), 'X-RS-Cache: hit'];
             $etag = self::header($hit['headers'], 'etag');
-            if ($etag !== null && trim((string) $request->header('if-none-match')) === $etag) {
+            if ($hit['status'] === 200 && $etag !== null && trim((string) $request->header('if-none-match')) === $etag) {
                 return new Response(304, $headers, '');
             }
             return new Response($hit['status'], $headers, $request->method === 'HEAD' ? '' : $hit['body']);
@@ -71,11 +78,25 @@ final class CachePlugin implements Plugin, Handler
             return null;
         }
         header('X-RS-Cache: miss');
-        // The application's answer, caught as it is sent and kept when it is public.
-        ob_start(function (string $buffer, int $phase) use ($cache, $key): string {
-            $this->body .= $buffer;
-            if (($phase & PHP_OUTPUT_HANDLER_FINAL) !== 0) {
-                $this->keep($cache, $key, (int) http_response_code(), headers_list(), $this->body);
+        register_shutdown_function(function (): void {
+            $error = error_get_last();
+            $this->ending = true;
+            $this->spoiled = $this->spoiled || ($error !== null && ($error['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR)) !== 0);
+        });
+        // The application's answer, caught as it is sent and kept when it is public -- and whole: what
+        // the application throws away (ob_clean), an answer it ends before the script does, one larger
+        // than http-cache-max-object (not held in memory either) is not kept.
+        ob_start(function (string $buffer, int $phase) use ($cache, $key, $request): string {
+            if (($phase & PHP_OUTPUT_HANDLER_CLEAN) !== 0) {
+                $this->spoiled = true;
+            } elseif (!$this->spoiled) {
+                $this->body .= $buffer;
+                $this->spoiled = strlen($this->body) > $this->o['maxObject'];
+            }
+            if ($this->spoiled) {
+                $this->body = '';
+            } elseif (($phase & PHP_OUTPUT_HANDLER_FINAL) !== 0 && $this->ending) {
+                $this->keep($cache, $key, (int) http_response_code(), headers_list(), $this->body, $request->path);
             }
             return $buffer;
         });
@@ -84,20 +105,27 @@ final class CachePlugin implements Plugin, Handler
 
     /**
      * Keeps an answer when it may be kept by anyone: 200, 301 or 308, no
-     * cookie set, no private, no-store or no-cache, no Vary but on encoding;
-     * for its own s-maxage or max-age, else http-cache-ttl; at most
-     * http-cache-max-object bytes.
+     * cookie set, no private, no-store or no-cache (nor Pragma: no-cache, nor
+     * an Expires gone by), not encoded by the application (gzip it made would
+     * go to visitors who did not ask for it), no Vary but on encoding; for its
+     * own s-maxage or max-age, else http-cache-ttl; at most
+     * http-cache-max-object bytes. Every line of a header counts.
      *
      * @param list<string> $headers headers_list()
      */
-    public function keep(FileCache $cache, string $key, int $status, array $headers, string $body): bool
+    public function keep(FileCache $cache, string $key, int $status, array $headers, string $body, string $path = ''): bool
     {
-        if (!in_array($status, [200, 301, 308], true) || strlen($body) > $this->o['maxObject'] || self::header($headers, 'set-cookie') !== null) {
+        if (!in_array($status, [200, 301, 308], true) || strlen($body) > $this->o['maxObject'] || self::header($headers, 'set-cookie') !== null
+            || self::header($headers, 'content-encoding') !== null) {
             return false;
         }
         $cc = strtolower((string) self::header($headers, 'cache-control'));
-        if (preg_match('/\b(private|no-store|no-cache)\b/', $cc) === 1) {
+        if (preg_match('/\b(private|no-store|no-cache)\b/', $cc) === 1 || preg_match('/\bno-cache\b/i', (string) self::header($headers, 'pragma')) === 1) {
             return false;
+        }
+        $expires = self::header($headers, 'expires');
+        if ($expires !== null && strpos($cc, 'max-age') === false && (int) strtotime($expires) <= time()) {
+            return false;           // an Expires gone by (or one that is no date): not for a cache
         }
         $vary = array_filter(array_map('trim', explode(',', strtolower((string) self::header($headers, 'vary')))));
         if (array_diff($vary, ['accept-encoding']) !== []) {
@@ -114,7 +142,7 @@ final class CachePlugin implements Plugin, Handler
                 $kept[] = $h;
             }
         }
-        return $cache->put($key, $status, $kept, $body, $ttl, microtime(true));
+        return $cache->put($key, $status, $kept, $body, $ttl, microtime(true), $path);
     }
 
     /** No Authorization, and no cookie but those named harmless (analytics, the pass). */
@@ -139,14 +167,43 @@ final class CachePlugin implements Plugin, Handler
         return true;
     }
 
-    /** @param list<string> $headers */
+    /**
+     * The host name as the visitor sent it -- with its port -- on the list
+     * http-cache-hosts: an answer is kept under the name without the port, so
+     * a page an application built from a made-up Host (links, a redirect) must
+     * never be kept, and made-up names never fill the cache.
+     */
+    private function ownHost(Request $request): bool
+    {
+        $raw = $request->viaTrustedProxy && $request->header('x-forwarded-host') !== null
+            ? explode(',', (string) $request->header('x-forwarded-host'))[0] : (string) $request->header('host');
+        return in_array(strtolower(trim($raw)), $this->o['hosts'], true);
+    }
+
+    /**
+     * An address with one key for one answer: no parameter twice (PHP takes
+     * the last, the key sorts them) and no encoded "/", "?" or "#" in the
+     * path (the key holds the path decoded).
+     */
+    private static function plainAddress(Request $request): bool
+    {
+        $names = $request->queryNames();
+        return count($names) === count(array_unique($names)) && preg_match('/%(2f|3f|23)/i', $request->path) !== 1;
+    }
+
+    /**
+     * A header's value: every line of it, joined with commas (two Vary lines are one list).
+     *
+     * @param list<string> $headers
+     */
     private static function header(array $headers, string $name): ?string
     {
+        $values = [];
         foreach ($headers as $h) {
             if (strncasecmp($h, $name . ':', strlen($name) + 1) === 0) {
-                return trim(substr($h, strlen($name) + 1));
+                $values[] = trim(substr($h, strlen($name) + 1));
             }
         }
-        return null;
+        return $values === [] ? null : implode(', ', $values);
     }
 }

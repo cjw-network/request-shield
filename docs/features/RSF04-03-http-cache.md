@@ -16,9 +16,21 @@ parameters never fill it -- and never a page that may be someone's own.
 - **A miss:** the application runs as always (`X-RS-Cache: miss`); its answer
   is kept when it may be kept by anyone.
 - **Kept:** status 200, 301 or 308; no `Set-Cookie`; no `private`, `no-store`
-  or `no-cache`; no `Vary` but on the encoding; at most
-  `http-cache-max-object`. For the answer's own `s-maxage` or `max-age`, else
-  `http-cache-ttl`.
+  or `no-cache` (nor `Pragma: no-cache`, nor an `Expires` gone by); not
+  encoded by the application (`Content-Encoding`); no `Vary` but on the
+  encoding -- every line of a header counts; at most `http-cache-max-object`
+  (a larger answer is not held in memory either). For the answer's own
+  `s-maxage` or `max-age`, else `http-cache-ttl`.
+- **Only whole answers:** what the application throws away with `ob_clean()`,
+  an answer it ends before the script does (`ob_end_flush()` of every buffer,
+  `fastcgi_finish_request()`), or a fatal error -- not kept.
+- **Only the site's names:** the host as the visitor sent it, port and all,
+  must be on `http-cache-hosts`. An application that builds links or a
+  redirect from the `Host` header would otherwise keep a page made for
+  `www.example.org:1337` for everyone, and made-up names would fill the
+  cache.
+- **One key, one answer:** an address with a parameter twice (`?a=1&a=2`) or
+  an encoded `/`, `?`, `#` in its path is not kept.
 - **Never asked:** a request with a cookie that is not named harmless (a
   session, a cart, a login), with `Authorization`, a POST, or an address the
   rules found not cacheable.
@@ -39,6 +51,7 @@ parameters never fill it -- and never a page that may be someone's own.
 
 ```text
 set http-cache on
+set http-cache-hosts www.example.org example.org   # the site's names (required: nothing is kept without)
 set http-cache-ttl 5m                       # when the answer says nothing (its s-maxage or max-age wins)
 set http-cache-cookies _ga* _pk_* rsp       # cookies that do not make a page someone's own (default: analytics, the pass)
 set http-cache-max-object 1M                # the largest answer kept
@@ -56,8 +69,9 @@ php bin/request-shield cache site.rules expired            # cron: remove what h
 
 The same in the [API](RSF06-05-api.md): `GET /rs/api/v1/cache`, `POST
 /rs/api/v1/cache/purge` (a write: `set api-write on`). `request-shield check`
-warns when `http-cache` is on and every query parameter is cacheable (no
-`cache-query`).
+warns when `http-cache` is on without `http-cache-hosts`, and when every query
+parameter is cacheable (no `cache-query`). A purge below a path compares
+literally: `--path=/news` takes `/newsletter` too.
 
 ## Cost
 
@@ -71,9 +85,18 @@ warns when `http-cache` is on and every query parameter is cacheable (no
 
 - **One server's files:** several servers keep their own unless
   `http-cache-dir` is shared.
-- **No size limit on the folder:** what is kept is bounded by the site's real
-  addresses (the definition keeps made-up ones out); `cache … expired` from
-  cron removes what has run out.
+- **No size limit on the folder yet:** the definition keeps made-up paths and
+  parameters out, but a parameter it lets through takes any value
+  (`?page=1` … `?page=99999`). One store in a hundred removes what has
+  expired in a 256th of the folder; `cache … expired` from cron removes the
+  rest. A cap, and answers in APCu, are [proposal
+  0039](../proposals/0039-cache-compatible.md).
+- **Redirects are kept for everyone:** a 301 or 308 that sends visitors to
+  different places by language or device without saying `Vary` is kept as
+  the first visitor got it -- send such redirects with `Cache-Control:
+  private`.
+- **Concurrent misses** each run the application; the last one written is
+  kept.
 - **Pages that differ by language or device** (`Vary: Accept-Language`,
   `Vary: Cookie`) are not kept: one address, one answer.
 - **Not for logged-in users:** a session cookie means the site answers.
