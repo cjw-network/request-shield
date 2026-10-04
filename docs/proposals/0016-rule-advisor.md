@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Draft** -- the replay is implemented (`request-shield replay`, [examples next to the rules](../features/RSF05-04-rule-examples.md#the-replay-your-own-clicks-as-a-test)); the recording and the suggestions are not |
 | Proposed | 2026-09-30 |
 | Affects | the counters of [0012](0012-dashboard.md), modes ([0004](0004-modes-monitor-and-strict.md)), the dashboard, rule files (a file the advisor writes), the command line (`learn`) |
 

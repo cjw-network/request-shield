@@ -52,6 +52,15 @@ use CjwNetwork\RequestShield\Rules\Shipped;
  *         fresh store, with the rules switched on (monitor as enforce; as they
  *         are with --as-written); lists the site's rules without an example.
  *         Exit 0: all pass, 1: one fails, 2: a mistake in the files.
+ * replay: sends a recording of requests known to be good through the rules
+ *         -- a session clicked through in a browser or by end-to-end tests
+ *         (a HAR file), a web server's access log (its 2xx and 3xx), or a
+ *         list of addresses -- each once, on a fresh store, nothing counted,
+ *         the rules switched on as for test; says which the rules would
+ *         refuse or check, and by which rule. Static files and other
+ *         websites' addresses are left out (--all keeps the static files);
+ *         every request comes from --ip (log: each line's own address).
+ *         Exit 0: none refused, 1: one is, 2: a mistake in the files.
  * crawlers: the known crawlers, what the site does with each, and how old
  *         their address lists are. "update" fetches the operators' current
  *         lists into store-dir (cron, a deploy -- or where there is internet,
@@ -118,6 +127,8 @@ final class Cli
         // examples (0031 F.5): what to write.
         $show = ['markdown' => false, 'html' => false, 'coverage' => false, 'feature' => null];
         $testOpts = ['only' => null, 'asWritten' => false, 'junit' => null];
+        $replayAll = false;
+        $ipGiven = false;
         foreach ($args as $a) {
             if ($a === '--force') {
                 $force = true;
@@ -143,6 +154,7 @@ final class Cli
                 $ua = substr($a, 5);
             } elseif (strncmp($a, '--ip=', 5) === 0) {
                 $ip = substr($a, 5);
+                $ipGiven = true;
             } elseif (strncmp($a, '--source=', 9) === 0) {
                 $sources[] = substr($a, 9);
             } elseif (preg_match('/^--for=(\d+)(s|m|h|d|w)$/', $a, $m) === 1) {
@@ -157,6 +169,8 @@ final class Cli
                 $feedOpts['write'] = substr($a, 8);
             } elseif (strncmp($a, '--only=', 7) === 0) {
                 $testOpts['only'] = trim(substr($a, 7), '[]');
+            } elseif ($a === '--all') {
+                $replayAll = true;
             } elseif ($a === '--as-written') {
                 $testOpts['asWritten'] = true;
             } elseif (strncmp($a, '--junit=', 8) === 0) {
@@ -270,15 +284,16 @@ final class Cli
                 }
             }
         }
-        $core = ['check', 'show', 'reload', 'trace', 'test', 'examples', 'crawlers', 'feeds', 'access-token', 'deny', 'allow', 'unlist', 'lists'];
+        $core = ['check', 'show', 'reload', 'trace', 'test', 'replay', 'examples', 'crawlers', 'feeds', 'access-token', 'deny', 'allow', 'unlist', 'lists'];
         if (!in_array($command, array_merge($core, array_keys($commands)), true) || $file === null
             || ($command === 'access-token' && $what === null)
             || ($command === 'feeds' && $what !== null && !in_array($what, ['list', 'update', 'export'], true))
-            || (in_array($command, ['trace', 'deny', 'allow', 'unlist'], true) && $what === null)
+            || (in_array($command, ['trace', 'deny', 'allow', 'unlist', 'replay'], true) && $what === null)
             || ($command === 'crawlers' && $what !== null && $what !== 'update')) {
             fwrite(STDERR, "usage: request-shield check|show|reload <main.rules> [--source=<glob>]...\n"
                 . "       request-shield trace <main.rules> \"GET https://www.example.org/path\" [--ip=<address>] [--ua=<User-Agent>] [--source=<glob>]...\n"
                 . "       request-shield test <main.rules> [--source=<glob>]... [--only=<ID>] [--as-written] [--junit=<file>]\n"
+                . "       request-shield replay <main.rules> <session.har|access.log|urls.txt> [--ip=<address>|log] [--all] [--as-written] [--junit=<file>]\n"
                 . "       request-shield crawlers <main.rules> [update] [--force]\n"
                 . "       request-shield access-token <main.rules> \"<principal>\"|'*'\n"
                 . "       request-shield feeds <main.rules> [list|update|export] [--force] [--format=plain|nginx|nftables|ipset] [--write=<file>]\n"
@@ -359,6 +374,85 @@ final class Cli
             }
             fwrite(STDERR, "usage: request-shield examples <main.rules> --markdown [--feature=RSF02-06] | --html [--out=<file>] | --coverage\n");
             exit(2);
+        }
+
+        if ($command === 'replay') {
+            // Requests known to be good, through the rules (proposal 0016, the replay).
+            $source = (string) $what;
+            $text = is_file($source) ? @file_get_contents($source) : false;
+            if ($text === false) {
+                fwrite(STDERR, "request-shield: cannot read the recording $source\n");
+                exit(2);
+            }
+            try {
+                $recording = \CjwNetwork\RequestShield\Rules\Replay::read($text);
+                $config = $testOpts['asWritten'] ? RuleFile::read($files)['config'] : RuleFile::switchedOn($files);
+                $base = Settings::from($config);
+                $bySite = [];
+                $settingsFor = static function (string $host) use ($base, $files, $testOpts, &$bySite): Settings {
+                    $siteId = $host === '' || $base->sites === [] ? null : $base->siteFor(['SERVER_NAME' => $host, 'HTTP_HOST' => $host]);
+                    if ($siteId === null) {
+                        return $base;
+                    }
+                    return $bySite[$siteId] ??= Settings::from($testOpts['asWritten'] ? RuleFile::read($files, $siteId)['config'] : RuleFile::switchedOn($files, $siteId));
+                };
+                $run = \CjwNetwork\RequestShield\Rules\Replay::run($recording['requests'], $settingsFor, $ipGiven ? ($ip === 'log' ? null : $ip) : null, $replayAll);
+            } catch (\InvalidArgumentException $e) {
+                self::mistake($e->getMessage());
+                exit(2);
+            }
+            $kinds = ['pass' => 0, 'check' => 0, 'refused' => 0];
+            $left = [];
+            foreach ($run['results'] as $r) {
+                $kinds[$r['kind']]++;
+                if ($r['kind'] !== 'pass') {
+                    $left[] = $r;
+                }
+            }
+            $out = [];
+            foreach (['static' => 'static files (--all keeps them)', 'foreign' => 'of other websites'] as $k => $why) {
+                if ($run[$k] > 0) {
+                    $out[] = "{$run[$k]} $why";
+                }
+            }
+            if ($recording['skipped'] > 0) {
+                $out[] = $recording['skipped'] . ($recording['format'] === 'access log' ? ' the site answered with 4xx or 5xx' : ' not for a website');
+            }
+            echo "replay: " . basename($source) . " ({$recording['format']}): {$run['total']} requests, " . count($run['results']) . ' different'
+                . ($out !== [] ? '; left out: ' . implode(', ', $out) : '') . "\n\n";
+            usort($left, static fn (array $a, array $b): int => [$b['kind'] === 'refused', $b['count']] <=> [$a['kind'] === 'refused', $a['count']]);
+            foreach ($left as $r) {
+                $url = (string) preg_replace('#^https?://[^/]+#i', '', $r['url']);
+                echo '  ' . ($r['kind'] === 'refused' ? '✕' : '!') . ' ' . str_pad($r['method'] . ' ' . (strlen($url) > 60 ? substr($url, 0, 59) . '…' : $url), 68)
+                    . ' ' . $r['got'] . ($r['rule'] !== null ? ' by ' . $r['rule'] : '') . ($r['count'] > 1 ? "  ({$r['count']}×)" : '') . "\n";
+            }
+            echo ($left !== [] ? "\n" : '') . count($run['results']) . ' different requests: ' . $kinds['pass'] . ' pass'
+                . ($kinds['check'] > 0 ? ', ' . $kinds['check'] . ' get the browser check (a browser passes it; an end-to-end test needs a pass)' : '')
+                . ($kinds['refused'] > 0 ? ', ' . $kinds['refused'] . ' refused' : '') . ".\n";
+            if ($kinds['refused'] > 0) {
+                echo '  ' . Help::see('RSF05-04', 'the-replay-your-own-clicks-as-a-test') . "\n";
+            }
+            if ($testOpts['junit'] !== null) {
+                $xml = new \DOMDocument('1.0', 'UTF-8');
+                $xml->formatOutput = true;
+                $suite = $xml->appendChild($xml->createElement('testsuite'));
+                $suite->setAttribute('name', 'replay ' . basename($source));
+                $suite->setAttribute('tests', (string) count($run['results']));
+                $suite->setAttribute('failures', (string) $kinds['refused']);
+                foreach ($run['results'] as $r) {
+                    $case = $suite->appendChild($xml->createElement('testcase'));
+                    $case->setAttribute('classname', $r['rule'] ?? 'replay');
+                    $case->setAttribute('name', $r['method'] . ' ' . $r['url'] . ' -- ' . $r['got']);
+                    if ($r['kind'] === 'refused') {
+                        $case->appendChild($xml->createElement('failure'))->setAttribute('message', $r['got'] . ($r['rule'] !== null ? ' by ' . $r['rule'] : ''));
+                    }
+                }
+                if (@file_put_contents($testOpts['junit'], (string) $xml->saveXML()) === false) {
+                    fwrite(STDERR, "request-shield: cannot write {$testOpts['junit']}\n");
+                    exit(2);
+                }
+            }
+            exit($kinds['refused'] > 0 ? 1 : 0);
         }
 
         if ($command === 'test') {

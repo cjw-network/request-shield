@@ -75,12 +75,23 @@ framework, so whatever they refuse costs a few microseconds, not a page.
    - run: php vendor/bin/request-shield check config/request-shield.rules
    - run: php vendor/bin/request-shield test config/request-shield.rules --junit=build/request-shield.xml
    ```
-4. **One request, step by step,** when something surprises you:
+4. **Your own clicks as a test:** record someone clicking through the
+   application -- the browser's developer tools save it as a HAR file, and
+   Playwright's `recordHar` does it for the end-to-end tests -- and replay it:
+
+   ```bash
+   php vendor/bin/request-shield replay config/request-shield.rules build/session.har --junit=build/replay.xml
+   ```
+
+   It says which of your own requests the rules would refuse, and by which
+   rule: a parameter without its `query` line, a form without its `allow
+   POST`. Exit 1 when one is refused, so it goes into CI too.
+5. **One request, step by step,** when something surprises you:
 
    ```bash
    php vendor/bin/request-shield trace config/request-shield.rules "POST https://www.example.org/admin/users/delete" --ip=203.0.113.9
    ```
-5. **Deploy watched, then enforce.** `set mode monitor` logs what would be
+6. **Deploy watched, then enforce.** `set mode monitor` logs what would be
    refused, and nobody is refused. When the log shows no real request among
    them, write `set mode enforce`.
 

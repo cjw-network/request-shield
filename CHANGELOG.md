@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **The replay: your own clicks as a test** (proposal 0016, first part;
+  RSF05-04): `request-shield replay <main.rules> <recording>` sends requests
+  known to be good through the rules -- a session recorded as a HAR file (the
+  browser's developer tools, Playwright's `recordHar`), a web server's access
+  log (its 2xx and 3xx), or a list -- each different request once, on a fresh
+  store, nothing counted, the rules switched on as for `test`. It lists what
+  would be refused, with its rule (exit 1), and what gets the browser check;
+  `--junit` for CI. Only the shape is read: never a cookie, a token or a body;
+  static files and other websites' addresses are left out.
 - **The demo's "Show the answer" shows the request and the answer**: the
   request as the browser sends it (request line, Host, the row's headers, the
   User-Agent, the pass cookie for a row "with pass", how often it is sent),

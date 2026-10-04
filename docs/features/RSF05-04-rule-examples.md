@@ -147,6 +147,55 @@ In CI or before a deploy:
 php vendor/cjw-network/request-shield/bin/request-shield test config/site.rules --junit=build/rules.xml
 ```
 
+## The replay: your own clicks as a test
+
+Examples say what one request should get. A **replay** asks the other way
+round: here are requests known to be good -- would the rules refuse any of
+them? Record someone clicking through the application, or the site's
+end-to-end tests, and send the recording through the rules:
+
+```bash
+php bin/request-shield replay site.rules session.har            # a session recorded in the browser
+php bin/request-shield replay site.rules access.log --ip=log    # a web server's access log, each line's own address
+php bin/request-shield replay site.rules urls.txt --junit=build/replay.xml
+```
+
+```text
+replay: session.har (HAR): 1284 requests, 214 different; left out: 812 static files (--all keeps them), 33 of other websites
+
+  ✕ GET /products/?page=2&utm_source=mail          404 by APP-STRICT
+  ✕ POST /cart/add                                 405 by APP-FORMS  (3×)
+  ! POST /login                                    check by APP-ORIGIN
+
+214 different requests: 211 pass, 1 get the browser check (…), 2 refused.
+```
+
+- **A recording:** a HAR file -- the browser's developer tools (Network, "Save
+  all as HAR"), Playwright (`recordHar` in a browser context), a proxy; a web
+  server's access log in the combined or common format (only its 2xx and 3xx
+  lines: the others were no good requests); or a list, one request per line
+  (`GET /path`, `/path`, a full address).
+- **Each different request once,** on a fresh store, nothing counted -- one
+  session is no measure of a crowd, so no limit decides. The rules are
+  switched on as for `test` (`monitor` as enforced); `--as-written` takes them
+  as they are.
+- **Only the shape:** method, address and the headers a rule looks at
+  (Origin, Referer, Content-Type, User-Agent, Accept …) -- never a cookie, a
+  token or a body. Static files (style sheets, scripts, pictures, fonts) are
+  left out, because a web server answers them without PHP (`--all` keeps
+  them), and so are other websites' addresses (a CDN, a font).
+- **Every request from one address,** `198.51.100.7` by default (`--ip=…`): a
+  restricted area refuses it, as it would a visitor. `--ip=log` keeps an access
+  log's own addresses.
+- **Exit 1 when one is refused,** with its rule -- a step for CI next to
+  `test`. A browser check is a note: a browser passes it, an end-to-end test
+  needs a pass.
+
+Before switching a rule from `monitor` to enforced, before `set mode enforce`,
+after an update: the replay says in seconds whether your own clicks still get
+through. Recording and suggesting rules from it is the next part of
+[proposal 0016](../proposals/0016-rule-advisor.md#a-learning-run-good-traffic-on-purpose).
+
 ## The built-in rules have examples too
 
 `rules/scanners.rules`, `rules/wordpress.rules` and `rules/tracking.rules`
