@@ -32,7 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   accept their purges (in the answer, `PURGE`, `PURGEKEYS`), one page per
   role (a role cookie, the user context hash), answers in APCu with the
   disk only when needed, cleaning up by itself -- so a site can switch to a
-  Varnish later without changing the application.
+  Varnish later without changing the application; and how it replaces
+  Exponential Platform's `AppCache` (its `xkey` tags, `PURGE` with `key`,
+  roles by `X-User-Hash`).
 - **A page cache for small sites** (0031 step G.2, RSF04-03, the `cache`
   edition): `set http-cache on` keeps the public answers of a site without a
   cache of its own (200, 301, 308; no cookie set, not private, within
