@@ -52,7 +52,7 @@ final class Vocabulary
         'cookie' => 'RSF03-02', 'solution-cookie' => 'RSF03-02', 'bind-user-agent' => 'RSF03-02', 'search-engines' => 'RSF01-04', 'dns-lookups' => 'RSF01-04',
         'recheck' => 'RSF05-01', 'site-from' => 'RSF05-01', 'lists-dir' => 'RSF01-02', 'ban-growth' => 'RSF01-02', 'ban-max' => 'RSF01-02',
         'language' => 'RSF03-02', 'home' => 'RSF03-02', 'widget-path' => 'RSF03-03', 'widget-difficulty' => 'RSF03-03', 'challenge-logo' => 'RSF03-02',
-        'mode' => 'RSF05-03', 'crawler-verify' => 'RSF01-04', 'log' => 'RSF05-05', 'dashboard-path' => 'RSF06-01', 'docs-url' => 'RSF06-01', 'dashboard-session' => 'RSF06-01',
+        'mode' => 'RSF05-03', 'crawler-verify' => 'RSF01-04', 'log' => 'RSF05-05', 'dashboard-path' => 'RSF06-01', 'docs-url' => 'RSF06-01', 'error-page' => 'RSF05-06', 'dashboard-session' => 'RSF06-01',
         'log-level' => 'RSF05-05', 'live' => 'RSF06-02', 'live-keep' => 'RSF06-02', 'ban-keep' => 'RSF01-02', 'feeds-max-age' => 'RSF01-03',
         'log-ip' => 'RSF05-05', 'log-max-size' => 'RSF05-05',
     ];
@@ -127,6 +127,9 @@ final class Vocabulary
         'RSF05-05' => ['log-and-rule-ids', 'Log and rule IDs',
             'Every refusal names the rule that decided, in the log and on the pages.',
             'Jede Abweisung nennt die Regel, die entschieden hat, im Log und auf den Seiten.'],
+        'RSF05-06' => ['error-pages', 'Error pages',
+            'A refused visitor gets a calm page in the own language, or the site\'s own page, never the reason.',
+            'Wer abgewiesen wird, bekommt eine ruhige Seite in der eigenen Sprache oder die eigene Seite der Website, nie den Grund.'],
         'RSF05-07' => ['single-file', 'The single file',
             'The whole shield in one PHP file, for hosting without Composer.',
             'Die ganze Shield in einer PHP-Datei, für Hosting ohne Composer.'],

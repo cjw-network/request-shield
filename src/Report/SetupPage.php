@@ -46,8 +46,8 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
             'd.check' => 'a pass is valid %s%s', 'd.alwaysAt' => '; always at %d addresses', 'd.widget' => '; in forms at %s',
             'a.429' => '429 (Retry-After)', 'a.405' => '405', 'a.400' => '400, 414, 431', 'a.404' => '404', 'a.403' => '403', 'a.pass' => 'answered, not kept', 'a.check' => 'browser check, then 429', 'a.page' => 'the check page',
             // The settings' groups
-            'g.run' => 'Operation', 'g.clients' => 'Visitors and proxies', 'g.limits' => 'Requests', 'g.store' => 'Counters', 'g.check' => 'Browser check', 'g.crawlers' => 'Known crawlers', 'g.stats' => 'Statistics', 'g.log' => 'Log', 'g.files' => 'Rule files',
-            'k.mode' => 'mode', 'k.monitor' => 'rules only watched (monitor)', 'k.debug' => 'X-RS header', 'k.app' => 'the site may ask for the check',
+            'g.run' => 'Operation', 'g.pages' => 'Error pages', 'g.clients' => 'Visitors and proxies', 'g.limits' => 'Requests', 'g.store' => 'Counters', 'g.check' => 'Browser check', 'g.crawlers' => 'Known crawlers', 'g.stats' => 'Statistics', 'g.log' => 'Log', 'g.files' => 'Rule files',
+            'k.mode' => 'mode', 'k.monitor' => 'rules only watched (monitor)', 'k.debug' => 'X-RS header', 'k.app' => 'the site may ask for the check', 'k.errorPages' => 'error pages of the site\'s own', 'k.builtIn' => 'none: the shield\'s own',
             'k.proxies' => 'trusted proxies', 'k.strip' => 'X-Forwarded-* from others', 'k.stripYes' => 'removed', 'k.stripNo' => 'ignored', 'k.ipv6' => 'IPv6 counted per', 'k.exempt' => 'never counted',
             'k.methods' => 'accepted methods', 'k.hosts' => 'website names', 'k.uri' => 'longest address', 'k.params' => 'most parameters', 'k.headers' => 'most header data', 'k.strictQ' => 'query strict',
             'k.store' => 'store', 'k.storeDir' => 'store directory', 'k.weight' => 'a request a cache must not keep counts', 'k.budgets' => 'budgets',
@@ -87,8 +87,8 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
             'd.attacks' => '%d Muster in %d Regeln', 'd.cacheAll' => 'jede Adresse', 'd.cachePaths' => '%d Adressmuster', 'd.cacheQ' => ', Parameter: %s', 'd.budgets' => '%d Budgets: %s',
             'd.check' => 'ein Pass gilt %s%s', 'd.alwaysAt' => '; immer an %d Adressen', 'd.widget' => '; in Formularen unter %s',
             'a.429' => '429 (Retry-After)', 'a.405' => '405', 'a.400' => '400, 414, 431', 'a.404' => '404', 'a.403' => '403', 'a.pass' => 'beantwortet, nicht gecacht', 'a.check' => 'Browser-Check, dann 429', 'a.page' => 'die Check-Seite',
-            'g.run' => 'Betrieb', 'g.clients' => 'Besucher und Proxys', 'g.limits' => 'Anfragen', 'g.store' => 'Zähler', 'g.check' => 'Browser-Check', 'g.crawlers' => 'Bekannte Crawler', 'g.stats' => 'Statistik', 'g.log' => 'Log', 'g.files' => 'Regeldateien',
-            'k.mode' => 'Modus', 'k.monitor' => 'nur beobachtete Regeln (monitor)', 'k.debug' => 'Header X-RS', 'k.app' => 'die Website darf den Check anfordern',
+            'g.run' => 'Betrieb', 'g.pages' => 'Fehlerseiten', 'g.clients' => 'Besucher und Proxys', 'g.limits' => 'Anfragen', 'g.store' => 'Zähler', 'g.check' => 'Browser-Check', 'g.crawlers' => 'Bekannte Crawler', 'g.stats' => 'Statistik', 'g.log' => 'Log', 'g.files' => 'Regeldateien',
+            'k.mode' => 'Modus', 'k.monitor' => 'nur beobachtete Regeln (monitor)', 'k.debug' => 'Header X-RS', 'k.app' => 'die Website darf den Check anfordern', 'k.errorPages' => 'eigene Fehlerseiten der Website', 'k.builtIn' => 'keine: die des Schutzes',
             'k.proxies' => 'vertrauenswürdige Proxys', 'k.strip' => 'X-Forwarded-* von anderen', 'k.stripYes' => 'entfernt', 'k.stripNo' => 'ignoriert', 'k.ipv6' => 'IPv6 gezählt pro', 'k.exempt' => 'nie gezählt',
             'k.methods' => 'erlaubte Methoden', 'k.hosts' => 'Namen der Website', 'k.uri' => 'längste Adresse', 'k.params' => 'meiste Parameter', 'k.headers' => 'meiste Header-Daten', 'k.strictQ' => 'query strict',
             'k.store' => 'Speicher', 'k.storeDir' => 'Speicherverzeichnis', 'k.weight' => 'eine nicht cachebare Anfrage zählt', 'k.budgets' => 'Budgets',
@@ -269,6 +269,11 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
                 'k.monitor' => (string) count($s->origins['monitor'] ?? []),
                 'k.debug' => $yes($s->debugHeader),
                 'k.app' => $yes($s->appChallenge),
+            ],
+            // set error-page (0030): which statuses, in which languages ("*": one page for all).
+            'pages' => [
+                'k.errorPages' => $s->errorPages === [] ? $t['k.builtIn'] : implode(', ', array_map(static fn (string $st, array $l): string => $st . ' (' . implode(', ', array_map(static fn ($x): string => $x === '' ? '*' : (string) $x, array_keys($l))) . ')',
+                    array_map('strval', array_keys($s->errorPages)), $s->errorPages)),
             ],
             'clients' => [
                 'k.proxies' => $list($s->trustedProxies),
@@ -521,7 +526,7 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
 
     /** Each group of the technical settings, and the feature that explains it. */
     public const GROUP_FEATURES = [
-        'run' => 'RSF05-03', 'clients' => 'RSF01-01', 'limits' => 'RSF02-01', 'store' => 'RSF03-01', 'check' => 'RSF03-02', 'crawlers' => 'RSF01-04',
+        'run' => 'RSF05-03', 'pages' => 'RSF05-06', 'clients' => 'RSF01-01', 'limits' => 'RSF02-01', 'store' => 'RSF03-01', 'check' => 'RSF03-02', 'crawlers' => 'RSF01-04',
         'stats' => 'RSF06-03', 'log' => 'RSF05-05', 'files' => 'RSF05-01',
     ];
 

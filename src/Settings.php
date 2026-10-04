@@ -191,6 +191,8 @@ final class Settings
         public array $routeBases = [],
         /** @readonly where the pages' "?" links point (set docs-url, Help): the docs' folder; "" with the links off */
         public string $docsUrl = Help::DOCS,
+        /** @var array<int|string, array<string, string>> @readonly the site's own error pages (set error-page): status or 4xx => language ("" for all) => HTML, read when the rules were compiled (0030) */
+        public array $errorPages = [],
     ) {
     }
 
@@ -318,7 +320,7 @@ final class Settings
             ...array_slice($feeds, 0, 5),
             ...self::dashboardAccess($c),
             ...[self::postOrigin($c), self::patternList($c['backend'] ?? [], 'backend')],
-            ...[self::ext($c), self::hooks($c), self::routes($c), [], self::docsUrl($c)],
+            ...[self::ext($c), self::hooks($c), self::routes($c), [], self::docsUrl($c), self::errorPages($c)],
         ));
     }
 
@@ -961,6 +963,31 @@ final class Settings
         return trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($name)), '-');
     }
 
+    /**
+     * @param array<mixed> $c
+     * @return array<int|string, array<string, string>> status (a number keeps its key as one) => language => HTML
+     */
+    private static function errorPages(array $c): array
+    {
+        $pages = $c['errorPages'] ?? [];
+        if (!is_array($pages)) {
+            throw self::wrong('errorPages', 'status => language => HTML (set error-page in a rule file)');
+        }
+        $out = [];
+        foreach ($pages as $status => $byLang) {
+            if (!in_array((string) $status, ErrorPage::STATUSES, true) || !is_array($byLang)) {
+                throw self::wrong("errorPages.$status", 'a status the shield refuses with (' . implode(', ', ErrorPage::STATUSES) . ') => language => HTML');
+            }
+            foreach ($byLang as $lang => $html) {
+                if (!is_string($html) || strlen($html) > ErrorPage::MAX || ($lang !== '' && preg_match('/^[a-z]{2,3}(-[a-z0-9]{2,8})?$/', (string) $lang) !== 1)) {
+                    throw self::wrong("errorPages.$status.$lang", 'HTML of at most 64 KB, by a language code ("" for all)');
+                }
+                $out[(string) $status][(string) $lang] = $html;
+            }
+        }
+        return $out;
+    }
+
     /** @param array<mixed> $c the docs' folder: an http(s) address or a path on the site; "off" (or "") for no links */
     private static function docsUrl(array $c): string
     {
@@ -1288,7 +1315,7 @@ final class Settings
     /** The capabilities a Plugin may have: hook name => its interface (recorded by compiledExt()). */
     private const HOOKS = ['ruleCounts' => RuleCounts::class, 'sink' => Sink::class, 'pages' => Pages::class, 'ruleProvider' => RuleProvider::class, 'handler' => Handler::class];
 
-    private const FORMAT = 52;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats; 43: routes compiled, stats path in ext.stats; 44: dashboardAccess, dashboardSession (stats-group in ext.stats); 45: hooks recorded; 46: the sink hook; 47: the pages hook; 48: the ruleProvider hook; 49: the handler hook; 50: pluginFiles; 51: routeBases; 52: docsUrl
+    private const FORMAT = 53;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats; 43: routes compiled, stats path in ext.stats; 44: dashboardAccess, dashboardSession (stats-group in ext.stats); 45: hooks recorded; 46: the sink hook; 47: the pages hook; 48: the ruleProvider hook; 49: the handler hook; 50: pluginFiles; 51: routeBases; 52: docsUrl; 53: errorPages
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

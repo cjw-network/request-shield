@@ -163,6 +163,9 @@ final class Config
             // Where the pages' "?" links point: the docs' folder (Help::DOCS, the
             // repository's); a copy of your own, or 'off' for no links.
             'docsUrl' => 'https://github.com/cjw-network/request-shield/blob/main/docs',
+            // The site's own error pages (proposal 0030): status or '4xx' => language ('' for
+            // all) => HTML; a rule file's "set error-page 404 errors/404.html" reads them.
+            'errorPages' => [],
             // Plugins by class name: told what was decided and how a request ended
             // (proposal 0023). The statistics come with 'ext' => ['stats' => ['enabled' => true]].
             'plugins' => [],

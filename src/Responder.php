@@ -21,9 +21,10 @@ class Responder
      * @param (callable(string, array<string, mixed>): ?string)|null $pages the Pages hook (PageHook::asker()): the site's own refusal page, or null for the shield's
      * @param ?string $logo the site's logo for the built-in page (set challenge-logo)
      * @param bool $api the request is a program's (api-path, it asks for or sends JSON): the refusal as JSON (0030)
+     * @param array<int|string, array<string, string>> $errorPages the site's own pages (set error-page): status => language => HTML
      */
     public function send(Decision $decision, Request $request, bool $debugHeader = false, ?string $page = null, ?string $rule = null, array $texts = [], ?string $home = null,
-        ?callable $pages = null, ?string $logo = null, bool $api = false, ?string $reference = null): void
+        ?callable $pages = null, ?string $logo = null, bool $api = false, ?string $reference = null, array $errorPages = []): void
     {
         if ($api && $page === null) {
             $this->headers($decision, $debugHeader, $rule, false, true);
@@ -32,7 +33,7 @@ class Responder
             }
             return;
         }
-        [$body, $builtIn] = $this->page($decision, $page, $texts, $home, $pages, $request, $logo, $reference);
+        [$body, $builtIn] = $this->page($decision, $page, $texts, $home, $pages, $request, $logo, $reference, $errorPages);
         $this->headers($decision, $debugHeader, $rule, $builtIn);
         if ($request->method !== 'HEAD') {
             echo $body;
@@ -103,8 +104,8 @@ class Responder
     }
 
     /**
-     * The page: the one given (the check page), the site's own (the Pages hook, 0031 B.10),
-     * else the shield's built-in error page (0030).
+     * The page: the one given (the check page), a plugin's (the Pages hook, 0031 B.10),
+     * the site's own file (set error-page), else the shield's built-in error page (0030).
      *
      * @param array<string, string> $texts
      * @param (callable(string, array<string, mixed>): ?string)|null $pages
@@ -120,9 +121,11 @@ class Responder
      *
      * @param array<string, string> $texts
      * @param (callable(string, array<string, mixed>): ?string)|null $pages
+     * @param array<int|string, array<string, string>> $errorPages the site's own pages (set error-page): status => language => HTML
      * @return array{0: string, 1: bool}
      */
-    public function page(Decision $decision, ?string $page, array $texts, ?string $home, ?callable $pages, ?Request $request, ?string $logo = null, ?string $reference = null): array
+    public function page(Decision $decision, ?string $page, array $texts, ?string $home, ?callable $pages, ?Request $request, ?string $logo = null, ?string $reference = null,
+        array $errorPages = []): array
     {
         if ($page !== null) {
             return [$page, false];
@@ -134,6 +137,11 @@ class Responder
             if ($own !== null) {
                 return [$own, false];
             }
+        }
+        // The site's own page from a file (set error-page), its placeholders filled in: the site's, no CSP of the shield's.
+        $file = ErrorPage::own($errorPages, $decision->status, $texts['lang'] ?? 'en');
+        if ($file !== null) {
+            return [ErrorPage::fill($file, $decision, $texts, $home, $reference), false];
         }
         return [ErrorPage::render($decision, $texts, $home, $logo, $reference, $reference !== null ? time() : null), true];
     }

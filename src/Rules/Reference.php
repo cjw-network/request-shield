@@ -146,6 +146,8 @@ final class Reference
             'value' => '`both` (default), `ranges` (the published address lists only: no DNS, for a DMZ), `dns` ([known crawlers](RSF01-04-known-crawlers.md))'],
         ['keys' => ['log', 'log-level', 'log-ip', 'log-max-size'], 'label' => '`log`, `log-level`, `log-ip`, `log-max-size`',
             'value' => '[the log](RSF05-05-log-and-rule-ids.md)'],
+        ['keys' => ['error-page'], 'label' => '`error-page`',
+            'value' => 'a page of the site\'s own for a status the shield refuses with: `set error-page 404 errors/404.html`, `4xx` for all of them, `{lang}` in the name for one per language (`errors/pause.{lang}.html`); relative to the rule file, HTML up to 64 KB, read when the rules are compiled; placeholders `{status}` `{title}` `{text}` `{wait}` `{home}` `{lang}` `{reference}`; also in a site block -- without one, the shield\'s own page ([error pages](RSF05-06-error-pages.md))'],
         ['keys' => ['docs-url'], 'label' => '`docs-url`',
             'value' => 'where the pages\' `?` links and the command line\'s hints point: the docs\' folder, the repository\'s by default; a copy of your own (`https://docs.example.org/request-shield`, `/docs`), or `off` for no links -- the one-sentence explanations stay ([rules and setup](RSF06-01-active-rules-page.md))'],
         ['keys' => ['stats'], 'label' => '`stats`',

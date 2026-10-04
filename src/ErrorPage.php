@@ -83,4 +83,94 @@ final class ErrorPage
         }
         return $out;
     }
+
+    /** The statuses a page of the site's own may be for; 4xx: every one of them. */
+    public const STATUSES = ['400', '403', '404', '405', '414', '429', '431', '4xx'];
+
+    /** The largest page of the site's own: it lives in the compiled settings. */
+    public const MAX = 65536;
+
+    /**
+     * A page of the site's own (set error-page <status> <file>): read when the
+     * rules are compiled, checked -- there, not too large, UTF-8. "{lang}" in
+     * the name gives one page per language (pause.{lang}.html: pause.de.html,
+     * pause.en.html …); else one page for all ("" ).
+     *
+     * @return array{status: string, pages: array<string, string>, files: list<string>} the status, language => HTML, the files read
+     * @throws \InvalidArgumentException saying what is wrong
+     */
+    public static function load(string $spec, string $dir): array
+    {
+        $parts = preg_split('/\s+/', trim($spec)) ?: [];
+        if (count($parts) !== 2 || !in_array(strtolower($parts[0]), self::STATUSES, true)) {
+            throw new \InvalidArgumentException('error-page <status> <file>: a status the shield refuses with (' . implode(', ', self::STATUSES) . ') and an HTML file');
+        }
+        [$status, $name] = [strtolower($parts[0]), $parts[1]];
+        $path = $name[0] === '/' ? $name : rtrim($dir, '/') . '/' . $name;
+        $files = [];
+        if (strpos($path, '{lang}') !== false) {
+            $re = '#^' . str_replace('\{lang\}', '([a-z]{2,3}(?:-[a-z0-9]{2,8})?)', preg_quote(basename($path), '#')) . '$#';
+            foreach (glob(dirname($path) . '/' . str_replace('{lang}', '*', basename($path))) ?: [] as $f) {
+                if (preg_match($re, basename($f), $m) === 1) {
+                    $files[$m[1]] = $f;
+                }
+            }
+            if ($files === []) {
+                throw new \InvalidArgumentException("error-page $status: no file $name for any language");
+            }
+        } else {
+            $files[''] = $path;
+        }
+        $pages = [];
+        foreach ($files as $lang => $f) {
+            $html = is_file($f) && is_readable($f) ? @file_get_contents($f, false, null, 0, self::MAX + 1) : false;
+            if ($html === false) {
+                throw new \InvalidArgumentException("error-page $status: cannot read " . basename($f));
+            }
+            if (strlen($html) > self::MAX) {
+                throw new \InvalidArgumentException("error-page $status: " . basename($f) . ' is larger than 64 KB');
+            }
+            if (preg_match('//u', $html) !== 1) {
+                throw new \InvalidArgumentException("error-page $status: " . basename($f) . ' is not UTF-8');
+            }
+            $pages[(string) $lang] = $html;
+        }
+        return ['status' => $status, 'pages' => $pages, 'files' => array_values($files)];
+    }
+
+    /**
+     * The site's own page for a status in a language: its own status's, else
+     * 4xx's -- each for the language, else the one for all; null: none (the
+     * built-in one answers).
+     *
+     * @param array<int|string, array<string, string>> $pages status => language => HTML
+     */
+    public static function own(array $pages, int $status, string $lang): ?string
+    {
+        foreach ([(string) $status, '4xx'] as $key) {
+            $byLang = $pages[$key] ?? [];
+            $page = $byLang[$lang] ?? $byLang[explode('-', $lang)[0]] ?? $byLang[''] ?? null;
+            if ($page !== null) {
+                return $page;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The placeholders of a page of the site's own, filled in and escaped:
+     * {status} {title} {text} {wait} {home} {lang} {reference}. Anything else
+     * in braces stays as it is (CSS and scripts keep theirs).
+     *
+     * @param array<string, string> $texts
+     */
+    public static function fill(string $html, Decision $d, array $texts, ?string $home, ?string $reference): string
+    {
+        $t = $texts + Texts::all('en');
+        $e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        return strtr($html, [
+            '{status}' => (string) $d->status, '{title}' => $e(Texts::status($d->status, $t)), '{text}' => $e(self::sentence($d, $t)),
+            '{wait}' => (string) max(0, $d->retryAfter), '{home}' => $e($home ?? '/'), '{lang}' => $e($t['lang'] ?? 'en'), '{reference}' => $e($reference ?? ''),
+        ]);
+    }
 }

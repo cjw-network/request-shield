@@ -70,6 +70,7 @@ final class RuleFile
         'widget-path' => ['challenge.widgetPath', 'string'],
         'widget-difficulty' => ['challenge.widgetDifficulty', 'int'],
         'challenge-logo' => ['challenge.logo', 'logo'],
+        'error-page' => ['errorPages', 'errorpage'],
         'mode' => ['mode', 'mode'],
         'crawler-verify' => ['crawlerVerify', 'verify'],
         'log' => ['log.file', 'path'],
@@ -2366,6 +2367,23 @@ final class RuleFile
                     throw new RuleFileException("$at: store is auto, apcu, file or memory, not \"$value\"");
                 }
                 $v = $value;
+                break;
+            case 'errorpage':
+                // set error-page <status> <file>: read now (a missing or wrong file names its line),
+                // kept in the compiled settings; several lines add up, a status's last one wins.
+                try {
+                    $page = \CjwNetwork\RequestShield\ErrorPage::load($value, dirname($file));
+                } catch (\InvalidArgumentException $e) {
+                    throw new RuleFileException("$at: " . $e->getMessage());
+                }
+                foreach ($page['files'] as $f) {
+                    $stat = self::stat($f);
+                    if ($stat !== null) {
+                        $this->seen[$f] = $stat;    // a changed page is noticed like a changed rule file
+                    }
+                }
+                $v = (array) $this->get('errorPages');
+                $v[$page['status']] = $page['pages'];
                 break;
             case 'logo':
                 // Relative to the rule file; checked now, so a refused logo names its line.

@@ -440,7 +440,7 @@ final class Shield
             $c = $s->challenge;
             (new Responder())->send($decision, $request, $s->debugHeader, $settled['page'], $rule,
                 Texts::all(Texts::language($c->language, $request->header('accept-language'), $c->texts), $c->texts), $c->home, PageHook::asker($s),
-                $c->logo, $settled['page'] === null && $shield->isApi($request));
+                $c->logo, $settled['page'] === null && $shield->isApi($request), null, $s->errorPages);
             exit;
         }
         // The dashboard's own pages (0031 B.6): a route is answered here, before the
@@ -1174,7 +1174,7 @@ final class Shield
             $responder->headers($d, $s->debugHeader, $rule, false, true);
             $body = $request->method === 'HEAD' ? '' : json_encode(ErrorPage::json($d), JSON_UNESCAPED_SLASHES) . "\n";
         } else {
-            [$body, $builtIn] = $responder->page($d, $page, $texts, $c->home, PageHook::asker($s), $request, $c->logo);
+            [$body, $builtIn] = $responder->page($d, $page, $texts, $c->home, PageHook::asker($s), $request, $c->logo, null, $s->errorPages);
             $responder->headers($d, $s->debugHeader, $rule, $builtIn);
             $body = $request->method === 'HEAD' ? '' : $body;
         }

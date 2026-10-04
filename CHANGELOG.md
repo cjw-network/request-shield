@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **Error pages, part 2: the site's own page** (proposal 0030, 0031 step
+  G.1, RSF05-06): `set error-page 404 errors/404.html`, `4xx` for every status
+  the shield refuses with, `{lang}` in the name for one per language, also in
+  a site block. Read when the rules are compiled (at most 64 KB, UTF-8; a
+  missing or wrong file names its line), kept in the compiled settings
+  (format 53); placeholders `{status}` `{title}` `{text}` `{wait}` `{home}`
+  `{lang}` `{reference}` filled in and escaped. Rules & setup shows which
+  statuses have one. The feature has its page and its demo group.
 - **Use case: the sign-in, hardened -- three tries, then longer and longer**
   (`docs/use-cases/login-backoff.md`): the application counts each wrong
   password (`consume('logins', answer: true)`), `limit logins 3/15m on-demand

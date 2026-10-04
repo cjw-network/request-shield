@@ -331,3 +331,11 @@ expect GET /rs/api/v1/status          403 by DEMO-API        # from anywhere els
 expect GET /rs/api/v1/status          from 127.0.0.1 answered   # The status, from this machine
 # try: GET /rs/api/v1/rules Every rule, as JSON
 # try: GET /rs/api/v1/openapi.yaml The API described (OpenAPI 3.1)
+
+# demo: RSF05-06 error-pages Error pages
+# What a refused visitor sees: a calm page in the own language, how long to
+# wait after too many requests, the way home -- never why. A program gets JSON.
+expect GET /.env                      404 by SCAN-HIDDEN     # The shield's own page: "Not found"
+expect GET /.env/                     404 by SCAN-HIDDEN     # the same for a folder
+expect GET /environment               answered               # an address that only looks alike
+# try: GET /.git/config The page, in your browser's language

@@ -36,7 +36,7 @@
   | RSF05-03 | Operating | [modes: monitor and strict](features/RSF05-03-modes.md) |
   | RSF05-04 | Operating | [examples next to the rules (`expect`, `request-shield test`)](features/RSF05-04-rule-examples.md) |
   | RSF05-05 | Operating | [log and rule IDs](features/RSF05-05-log-and-rule-ids.md) |
-  | RSF05-06 | Operating | planned: error pages (proposal 0030) |
+  | RSF05-06 | Operating | [error pages](features/RSF05-06-error-pages.md) |
   | RSF05-07 | Operating | [the single file](features/RSF05-07-single-file.md) |
   | RSF06-01 | Watching & connecting | [active rules page](features/RSF06-01-active-rules-page.md) |
   | RSF06-02 | Watching & connecting | [the live view and the lists in the dashboard](features/RSF06-02-live-and-lists.md) |

@@ -90,4 +90,52 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF05-06 set error-page: the site\'s own page per status, 4xx for all, {lang} per language -- read when the rules are compiled, its placeholders filled in and escaped; else the built-in one' => function (): void {
+        $dir = sys_get_temp_dir() . '/rs-errpage-' . getmypid() . '-' . mt_rand();
+        mkdir("$dir/errors", 0700, true);
+        try {
+            file_put_contents("$dir/errors/404.html", '<style>p{color:red}</style><h1>{title}</h1><p>{text}</p><a href="{home}">{lang}</a> {other} {status}');
+            file_put_contents("$dir/errors/pause.de.html", '<p>Pause {wait}</p>');
+            file_put_contents("$dir/errors/all.html", '<p>Any {status}</p>');
+            file_put_contents("$dir/site.rules", "set error-page 404 errors/404.html\nset error-page 429 errors/pause.{lang}.html\nset error-page 4xx errors/all.html\n");
+            $s = \CjwNetwork\RequestShield\Settings::from(\CjwNetwork\RequestShield\Rules\RuleFile::read(["$dir/site.rules"])['config']);
+            same(['404', '429', '4xx'], array_map('strval', array_keys($s->errorPages)));
+            same(['de'], array_keys($s->errorPages['429']), 'one page per language');
+            $page = static function (Decision $d, string $lang) use ($s): array {
+                return (new Responder())->page($d, null, Texts::all($lang), '/home?a="1"', null, null, null, null, $s->errorPages);
+            };
+            [$html, $builtIn] = $page(Decision::reject(404, 'x'), 'en');
+            same(false, $builtIn, 'the site\'s: no CSP of the shield\'s');
+            same('<style>p{color:red}</style><h1>Not found</h1><p>This address does not exist here.</p><a href="/home?a=&quot;1&quot;">en</a> {other} 404', $html, 'filled in, escaped; other braces as they were');
+            same('<p>Pause 30</p>', $page(Decision::throttle('requests', 30), 'de')[0], 'German');
+            same('<p>Any 429</p>', $page(Decision::throttle('requests', 30), 'en')[0], '429 has a page for German, not for English: the 4xx page');
+            same('<p>Any 403</p>', $page(Decision::reject(403, 'x'), 'en')[0], '4xx for the rest');
+            foreach (["set error-page 404 errors/none.html\n" => 'cannot read none.html', "set error-page 500 errors/404.html\n" => 'error-page <status> <file>',
+                "set error-page 429 errors/gone.{lang}.html\n" => 'no file errors/gone.{lang}.html for any language'] as $rules => $why) {
+                file_put_contents("$dir/bad.rules", $rules);
+                $thrown = '';
+                try {
+                    \CjwNetwork\RequestShield\Rules\RuleFile::read(["$dir/bad.rules"]);
+                } catch (\InvalidArgumentException $e) {
+                    $thrown = $e->getMessage();
+                }
+                truthy(strpos($thrown, 'bad.rules:1: ') === 0 && strpos($thrown, $why) !== false, "a mistake names its line: $thrown");
+            }
+            file_put_contents("$dir/errors/big.html", str_repeat('x', 65537));
+            file_put_contents("$dir/bad.rules", "set error-page 404 errors/big.html\n");
+            $thrown = '';
+            try {
+                \CjwNetwork\RequestShield\Rules\RuleFile::read(["$dir/bad.rules"]);
+            } catch (\InvalidArgumentException $e) {
+                $thrown = $e->getMessage();
+            }
+            truthy(strpos($thrown, 'larger than 64 KB') !== false, $thrown);
+            file_put_contents("$dir/site.rules", "site shop.example {\n  set error-page 404 errors/all.html\n}\n");
+            $shop = \CjwNetwork\RequestShield\Settings::from(\CjwNetwork\RequestShield\Rules\RuleFile::read(["$dir/site.rules"], 'shop.example')['config']);
+            $base = \CjwNetwork\RequestShield\Settings::from(\CjwNetwork\RequestShield\Rules\RuleFile::read(["$dir/site.rules"])['config']);
+            same([['404'], []], [array_map('strval', array_keys($shop->errorPages)), $base->errorPages], 'one website its own');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
 ];
