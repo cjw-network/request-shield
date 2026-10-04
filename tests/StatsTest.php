@@ -538,8 +538,8 @@ return [
             truthy(preg_match('~<details class="rfile" open><summary><code>site.rules</code> <span class="note">· 3 rules · 6× decided</span></summary><table class="rtable"><tr id="rule-T-AREA"><td class="rid"><code>T-AREA</code></td><td>the intranet only~', $en) === 1,
                 'the rules as the file holds them: the file open, the ID first, in its order');
             truthy(strpos($en, '<td class="rline">line 5</td>') !== false && strpos($en, '<span class="tag">Areas for certain visitors</span>') !== false && strpos($en, 'closest("details")') !== false, 'its line, its topic; a link opens the file');
-            same(['id' => 'T-AREA', 'text' => 'the intranet only', 'where' => 'site.rules:5'], $page::rule($s, 'site.rules:5'), 'a rule counted by its place: found by it');
-            same(['id' => 'T-OLD', 'text' => 'the old admin area', 'where' => 'site.rules:6'], $page::rule($s, 'T-OLD'));
+            same(['id' => 'T-AREA', 'text' => 'the intranet only', 'where' => 'site.rules:5'], \CjwNetwork\RequestShield\Describe::ruleInfo($s, 'site.rules:5'), 'a rule counted by its place: found by it');
+            same(['id' => 'T-OLD', 'text' => 'the old admin area', 'where' => 'site.rules:6'], \CjwNetwork\RequestShield\Describe::ruleInfo($s, 'T-OLD'));
             file_put_contents("$dir/q.rules", "[Q-ONE] query page int at **/a/**   # the first\n[Q-TWO] query page int   sort word at **/b/**   # the second\n");
             $rows = array_values(array_filter(RulesPage::groups(Settings::from(RuleFile::read(["$dir/q.rules"])['config'])), static fn (array $g): bool => $g[0] === 'Known parameters'))[0][2];
             same([['Q-ONE', 'the first'], ['Q-TWO', 'the second']], array_map(static fn (array $r): array => [$r['id'], $r['text']], $rows), 'two query lines with the same parameter: each its own rule');

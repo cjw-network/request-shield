@@ -10,7 +10,6 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield;
 
-
 /**
  * Settings and decisions in plain words, for people who do not read regular
  * expressions: the rules page and the command line use it.
@@ -176,5 +175,34 @@ final class Describe
             'access' => 'a wrong token or link for the statistics',
         ];
         return $words[$reason] ?? "the budget \"$reason\"";
+    }
+
+    /**
+     * What a rule the statistics counted is: its ID, its description, where it
+     * is written -- for "site.rules:4" too (a rule without an ID).
+     *
+     * @return array{id: string, text: ?string, where: ?string}
+     */
+    public static function ruleInfo(Settings $s, string $counted): array
+    {
+        $id = str_replace('_', ' ', $counted);
+        if ($s->origin('at', $counted) !== null || $s->origin('text', $counted) !== null) {
+            $id = $counted;
+        } elseif ($s->origin('at', $id) === null) {
+            // A location, not an ID: the rule written there.
+            foreach ($s->origins['at'] ?? [] as $rid => $at) {
+                if ($at === $counted) {
+                    $id = (string) $rid;
+                    break;
+                }
+            }
+        }
+        return ['id' => $id, 'text' => $s->origin('text', $id), 'where' => $s->origin('at', $id)];
+    }
+
+    /** A rule ID as an anchor: letters, digits, "-", "_", "." only. */
+    public static function anchor(string $id): string
+    {
+        return (string) preg_replace('/[^A-Za-z0-9_.-]/', '-', $id);
     }
 }

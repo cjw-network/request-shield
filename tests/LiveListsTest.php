@@ -87,7 +87,7 @@ return [
             liveLine($s, 'http://www.example.org/', Decision::reject(403, 'crawler'), 'CRAWLER-GPTBOT');
             liveLine($s, 'http://www.example.org/', Decision::reject(405, 'method'), null);
             liveLine($s, 'http://news.shop.example.de/old', Decision::reject(404, 'blocked path'), 'SITE-OLD', '203.0.113.9', true);
-            $j = LivePage::json($s, null, ['lang' => 'en']);
+            $j = \CjwNetwork\RequestShield\Api\LiveRows::json($s, null, ['lang' => 'en']);
             same(['list', 'ban', 'builtin', 'own', 'pace', 'crawler', 'shield', 'own'], array_column($j['rows'], 'source'), 'where from');
             same(['refused', 'banned', 'refused', 'refused', 'paused', 'refused', 'refused', 'refused'], array_column($j['rows'], 'what'));
             $r = $j['rows'];
@@ -99,13 +99,13 @@ return [
             same([true, 'watched: would be refused 404'], [$r[7]['watched'], $r[7]['label']], 'a watched rule says so');
             same(['198.51.100.0/24', null], [$r[0]['client'], $r[0]['keep']], 'on a list already: no "keep out"');
             same('203.0.113.0/24', $r[2]['keep'], 'a masked address: kept out as its /24');
-            same(null, LivePage::json($s, null, ['ip' => '203.0.113.50'])['rows'][2]['keep'], 'never offered for the range the viewer is in');
-            $linked = LivePage::json($s, null, ['links' => ['rules' => '/rs/rules', 'lists' => '/rs/lists']])['rows'];
+            same(null, \CjwNetwork\RequestShield\Api\LiveRows::json($s, null, ['ip' => '203.0.113.50'])['rows'][2]['keep'], 'never offered for the range the viewer is in');
+            $linked = \CjwNetwork\RequestShield\Api\LiveRows::json($s, null, ['links' => ['rules' => '/rs/rules', 'lists' => '/rs/lists']])['rows'];
             same(['/rs/lists?q=%5BLIST-D7%5D', '/rs/rules#rule-SCAN-HIDDEN', '/rs/rules#rule-SITE-ADMIN', '/rs/rules#rule-SITE-PACE', null],
                 [$linked[0]['ruleHref'], $linked[2]['ruleHref'], $linked[3]['ruleHref'], $linked[4]['ruleHref'], $linked[6]['ruleHref']],
                 'a rule\'s ID: where it is written (a list entry: its list); a basic check without one: no link');
-            same(null, LivePage::json($s, null)['rows'][3]['ruleHref'], 'without the pages\' addresses: no link');
-            $de = LivePage::json($s, null, ['lang' => 'de'])['rows'];
+            same(null, \CjwNetwork\RequestShield\Api\LiveRows::json($s, null)['rows'][3]['ruleHref'], 'without the pages\' addresses: no link');
+            $de = \CjwNetwork\RequestShield\Api\LiveRows::json($s, null, ['lang' => 'de'])['rows'];
             same(['abgewiesen 403', 'Sperre', 'auf der Sperrliste: scraper, 900 a minute'], [$de[0]['label'], $de[1]['sourceLabel'], $de[0]['why']], 'in German');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
@@ -118,7 +118,7 @@ return [
             liveLine($s, 'http://example.org/site/admin/rs/waf/live?format=json&cursor=1:2', Decision::allowUncached('query parameter'), 'DEMO-Q');
             liveLine($s, 'http://example.org/admin/rs/waf/lists', Decision::reject(403, 'restricted'), 'SITE-RS');
             liveLine($s, 'http://example.org/"><script>alert(1)</script>', Decision::reject(404, 'blocked path'), 'SCAN-1', '203.0.113.9', false, '<img src=x onerror=alert(2)>');
-            $j = LivePage::json($s, null);
+            $j = \CjwNetwork\RequestShield\Api\LiveRows::json($s, null);
             same(['http://example.org/admin/rs/waf/lists', 'http://example.org/\'><script>alert(1)</script>'], array_map(static fn (array $r): string => 'http://' . $r['host'] . $r['request'], $j['rows']),
                 'its own pages that went through are left out (below a prefix too); refused ones stay');
             $html = LivePage::render($s, ['feed' => '/admin/rs/live?format=json', 'lists' => '/admin/rs/lists', 'lang' => 'en']);
@@ -126,7 +126,7 @@ return [
             truthy(strpos($html, 'data-feed="/admin/rs/live?format=json&amp;lang=en"') !== false && strpos($html, 'noindex') !== false, 'the feed, never indexed');
             $none = Settings::from(RuleFile::read([(string) (file_put_contents("$dir/b.rules", "set store-dir $dir/store\n") !== false ? "$dir/b.rules" : '')])['config']);
             truthy(strpos(LivePage::render($none, ['feed' => '/x']), 'set log') !== false, 'no log: how to switch it on');
-            same(false, LivePage::json($none, null)['log']);
+            same(false, \CjwNetwork\RequestShield\Api\LiveRows::json($none, null)['log']);
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }
@@ -136,12 +136,12 @@ return [
         try {
             $s = liveSettings($dir, "trust 10.1.0.0/16\n");
             $now = 1790800000;
-            $tok = ListsPage::token($s, '192.0.2.10', $now);
-            same([true, true, false, false, false], [ListsPage::verify($s, '192.0.2.10', $tok, $now), ListsPage::verify($s, '192.0.2.10', $tok, $now + 3600),
-                ListsPage::verify($s, '192.0.2.10', $tok, $now + 7200), ListsPage::verify($s, '192.0.2.11', $tok, $now), ListsPage::verify($s, '192.0.2.10', '', $now)],
+            $tok = \CjwNetwork\RequestShield\Api\ListsChanges::token($s, '192.0.2.10', $now);
+            same([true, true, false, false, false], [\CjwNetwork\RequestShield\Api\ListsChanges::verify($s, '192.0.2.10', $tok, $now), \CjwNetwork\RequestShield\Api\ListsChanges::verify($s, '192.0.2.10', $tok, $now + 3600),
+                \CjwNetwork\RequestShield\Api\ListsChanges::verify($s, '192.0.2.10', $tok, $now + 7200), \CjwNetwork\RequestShield\Api\ListsChanges::verify($s, '192.0.2.11', $tok, $now), \CjwNetwork\RequestShield\Api\ListsChanges::verify($s, '192.0.2.10', '', $now)],
                 'this hour and the next; not later, not another address, not empty');
             $o = ['ip' => '192.0.2.10', 'now' => $now, 'user' => 'editor', 'ruleFile' => "$dir/site.rules"];
-            $post = static fn (array $p): array => ListsPage::handle($s, $p + ['token' => $tok], $o);
+            $post = static fn (array $p): array => \CjwNetwork\RequestShield\Api\ListsChanges::handle($s, $p + ['token' => $tok], $o);
             touch("$dir/site.rules", $now - 100);
             $r = $post(['do' => 'add', 'kind' => 'deny', 'address' => '203.0.113.0/24', 'for' => '7d', 'note' => 'scanner <b>#1</b> [x]']);
             same([true, 'LIST-D1: 203.0.113.0/24 added (until ' . date('Y-m-d H:i', $now + 604800) . ').'], [$r['ok'], $r['message']]);
@@ -165,8 +165,8 @@ return [
                 $r = $post($p);
                 truthy(!$r['ok'] && strpos($r['message'], $says) !== false, $says . ': ' . $r['message']);
             }
-            same(false, ListsPage::handle($s, ['do' => 'add', 'kind' => 'deny', 'address' => '198.51.100.5', 'for' => '1d', 'token' => 'forged'], $o)['ok'], 'a forged token');
-            same(true, ListsPage::handle($s, ['do' => 'add', 'kind' => 'deny', 'address' => '198.51.100.5', 'for' => '1d'], $o + ['csrfChecked' => true])['ok'], 'a CMS that checked its own form token');
+            same(false, \CjwNetwork\RequestShield\Api\ListsChanges::handle($s, ['do' => 'add', 'kind' => 'deny', 'address' => '198.51.100.5', 'for' => '1d', 'token' => 'forged'], $o)['ok'], 'a forged token');
+            same(true, \CjwNetwork\RequestShield\Api\ListsChanges::handle($s, ['do' => 'add', 'kind' => 'deny', 'address' => '198.51.100.5', 'for' => '1d'], $o + ['csrfChecked' => true])['ok'], 'a CMS that checked its own form token');
             same(true, $post(['do' => 'add', 'kind' => 'deny', 'address' => '198.0.0.0/8', 'for' => '1d', 'note' => 'x', 'confirm' => '1'])['ok'], 'a wide range, confirmed');
             same(true, $post(['do' => 'update', 'id' => 'LIST-D1', 'for' => 'good', 'note' => 'scanner, for good'])['ok'], 'for good, with a comment');
             $e = Lists::find("$dir/store/lists", '[LIST-D1]', 1)['entries'][0];
@@ -209,9 +209,9 @@ return [
             truthy(strpos($html, 'banned 3 times today') !== false, 'the third ban today: "keep out for good?"');
             $found = ListsPage::render($s, ['action' => '/rs/lists', 'ip' => '192.0.2.10', 'store' => $store, 'get' => ['q' => 'scraper 25']]);
             same(2, substr_count($found, 'name="do" value="remove"'), 'searched: "scraper 25" and "scraper 250"');
-            $r = ListsPage::handle($s, ['do' => 'lift', 'bucket' => '203.0.113.9', 'token' => ListsPage::token($s, '192.0.2.10')], ['ip' => '192.0.2.10', 'store' => $store]);
+            $r = \CjwNetwork\RequestShield\Api\ListsChanges::handle($s, ['do' => 'lift', 'bucket' => '203.0.113.9', 'token' => \CjwNetwork\RequestShield\Api\ListsChanges::token($s, '192.0.2.10')], ['ip' => '192.0.2.10', 'store' => $store]);
             same([true, 0], [$r['ok'], $store->marked('ban:203.0.113.9', (float) time())], 'lifted');
-            same(false, ListsPage::handle($s, ['do' => 'lift', 'bucket' => '203.0.113.9', 'token' => ListsPage::token($s, '192.0.2.10')], ['ip' => '192.0.2.10', 'store' => $store])['ok'], 'not banned any more');
+            same(false, \CjwNetwork\RequestShield\Api\ListsChanges::handle($s, ['do' => 'lift', 'bucket' => '203.0.113.9', 'token' => \CjwNetwork\RequestShield\Api\ListsChanges::token($s, '192.0.2.10')], ['ip' => '192.0.2.10', 'store' => $store])['ok'], 'not banned any more');
             $empty = liveSettings(liveDir());
             truthy(strpos(ListsPage::render($empty, ['action' => '/x', 'ip' => '1.2.3.4']), 'No entries yet') !== false, 'an empty list');
         } finally {
@@ -235,15 +235,15 @@ return [
             $note('/.env', '203.0.113.77');
             $note('/', '203.0.113.78');                          // passes: not kept
             $note('/?utm_source=x', '203.0.113.79');            // uncached: not kept
-            $j = LivePage::json($s, null, ['lang' => 'en']);
+            $j = \CjwNetwork\RequestShield\Api\LiveRows::json($s, null, ['lang' => 'en']);
             same([true, ['203.0.113.77'], '203.0.113.77'], [$j['memory'] ?? null, array_column($j['rows'], 'client'), $j['rows'][0]['keep']], 'the full address -- and "keep out" for exactly it');
             same('shop.example.de', $j['rows'][0]['host']);
             $note('/.git/config', '2001:db8::5');
-            $next = LivePage::json($s, $j['cursor']);
+            $next = \CjwNetwork\RequestShield\Api\LiveRows::json($s, $j['cursor']);
             same(['2001:db8::5'], array_column($next['rows'], 'client'), 'with the cursor: only what is new');
-            same([], LivePage::json($s, $next['cursor'])['rows'], 'nothing new');
+            same([], \CjwNetwork\RequestShield\Api\LiveRows::json($s, $next['cursor'])['rows'], 'nothing new');
             $other = liveSettings(liveDir(), "set live on\n");
-            same([], LivePage::json($other, null)['rows'], 'another store-dir: its own memory');
+            same([], \CjwNetwork\RequestShield\Api\LiveRows::json($other, null)['rows'], 'another store-dir: its own memory');
             // The ring: once full, the oldest overwritten -- a reader never gets an overwritten slot as new.
             $p = 'rshield-live:' . hash('crc32b', $s->storeDir) . ':';
             apcu_store($p . 'n', \CjwNetwork\RequestShield\Live::SIZE + 1);
@@ -264,7 +264,7 @@ return [
         try {
             $s = liveSettings($dir, "set store file\nset live on\nset live-keep 10m\nset log-level off\n");
             same('file', \CjwNetwork\RequestShield\Live::where($s), 'the file store keeps the live view in a file');
-            truthy(LivePage::fromMemory($s), 'the page reads the live view, not the log');
+            truthy(\CjwNetwork\RequestShield\Api\LiveRows::fromMemory($s), 'the page reads the live view, not the log');
             $shield = new \CjwNetwork\RequestShield\Shield($s, new MemoryStore());
             $note = static function (string $uri, string $ip, float $now = 0.0) use ($s, $shield): void {
                 $r = Request::fromServer(['REQUEST_URI' => $uri, 'REQUEST_METHOD' => 'GET', 'HTTP_HOST' => 'shop.example.de', 'REMOTE_ADDR' => $ip, 'HTTP_USER_AGENT' => 'Mozilla/5.0 Firefox/136.0']);
@@ -277,18 +277,18 @@ return [
             $note('/.git/HEAD', '203.0.113.79', time() - 3600.0); // an hour old: past live-keep, not shown
             truthy(is_file("$dir/store/live.log"), 'the file in store-dir');
             same(false, is_file("$dir/shield.log"), 'the log itself was not written (log-level off)');
-            $j = LivePage::json($s, null, ['lang' => 'en']);
+            $j = \CjwNetwork\RequestShield\Api\LiveRows::json($s, null, ['lang' => 'en']);
             same([true, ['203.0.113.77'], '203.0.113.77'], [$j['memory'] ?? null, array_column($j['rows'], 'client'), $j['rows'][0]['keep']], 'the full address -- and "keep out" for exactly it; the old entry left out');
             same('shop.example.de', $j['rows'][0]['host']);
             $note('/.git/config', '2001:db8::5');
-            $next = LivePage::json($s, $j['cursor']);
+            $next = \CjwNetwork\RequestShield\Api\LiveRows::json($s, $j['cursor']);
             same(['2001:db8::5'], array_column($next['rows'], 'client'), 'with the cursor: only what is new');
-            same([], LivePage::json($s, $next['cursor'])['rows'], 'nothing new');
+            same([], \CjwNetwork\RequestShield\Api\LiveRows::json($s, $next['cursor'])['rows'], 'nothing new');
             // Rotation: past FILE_MAX the file moves to .1 and a new one starts; a reader goes on from its start.
             file_put_contents("$dir/store/live.log", str_repeat(str_repeat('x', 99) . "\n", intdiv(\CjwNetwork\RequestShield\Live::FILE_MAX, 100) + 10), FILE_APPEND);
             $note('/.htpasswd', '198.51.100.1');
             truthy(is_file("$dir/store/live.log.1") && filesize("$dir/store/live.log") < 1000, 'rotated: the new file holds the newest line only');
-            same(['198.51.100.1'], array_column(LivePage::json($s, $next['cursor'])['rows'], 'client'), 'read on after the rotation');
+            same(['198.51.100.1'], array_column(\CjwNetwork\RequestShield\Api\LiveRows::json($s, $next['cursor'])['rows'], 'client'), 'read on after the rotation');
             $html = LivePage::render($s, ['feed' => '/rs/live?format=json', 'lang' => 'en']);
             truthy(strpos($html, 'From the live memory') !== false && strpos($html, '10 minutes') !== false, 'the page says where its rows come from');
         } finally {

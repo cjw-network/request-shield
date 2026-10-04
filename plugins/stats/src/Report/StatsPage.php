@@ -10,9 +10,9 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield\Stats\Report;
 
+use CjwNetwork\RequestShield\Describe;
 use CjwNetwork\RequestShield\Access;
 use CjwNetwork\RequestShield\Help;
-use CjwNetwork\RequestShield\Report\SetupPage;
 use CjwNetwork\RequestShield\Routes;
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Stats\Stats;
@@ -409,11 +409,11 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         $rules = [];
         $setup = $links['rules'] ?? ($links === [] ? $action : null);
         foreach (array_slice($r['rules'], 0, 10, true) as $rule => $c) {
-            $info = SetupPage::rule($s, (string) $rule);
+            $info = Describe::ruleInfo($s, (string) $rule);
             $fixed = $info['id'] === 'built-in';          // method, sizes, disguised addresses: steps, not rules
             $info['text'] ??= $fixed ? $t['builtIn'] : null;
             $id = '<code>' . $e($info['id']) . '</code>';
-            $href = $setup !== null ? ($links !== [] ? $setup . '?' . http_build_query(['days' => $days, 'lang' => $lang]) : $query(['view' => 'rules', 'days' => $days, 'lang' => $lang])) . ($fixed ? '#way' : '#rule-' . SetupPage::anchor($info['id'])) : null;
+            $href = $setup !== null ? ($links !== [] ? $setup . '?' . http_build_query(['days' => $days, 'lang' => $lang]) : $query(['view' => 'rules', 'days' => $days, 'lang' => $lang])) . ($fixed ? '#way' : '#rule-' . Describe::anchor($info['id'])) : null;
             $rules[] = [($href !== null ? '<a href="' . $e($href) . '">' . $id . '</a>' : $id)
                 . ($info['text'] !== null ? '<br>' . $e($info['text']) : '') . ($info['where'] !== null ? '<br><span class="note">' . $e($info['where']) . '</span>' : ''), $c];
         }

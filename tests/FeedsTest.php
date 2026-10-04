@@ -283,7 +283,7 @@ return [
             $r = feedReq('45.10.1.2');
             $d = $shield->decide($r, 1000.0);
             \CjwNetwork\RequestShield\Log::write($s, $r, $d, $shield->explain($d, $r), 1000.0);
-            $row = LivePage::json($s, null)['rows'][0];
+            $row = \CjwNetwork\RequestShield\Api\LiveRows::json($s, null)['rows'][0];
             same(['feed', 'on the public list Spamhaus DROP (Don\'t Route Or Peer)', 'F-DROP'], [$row['source'], $row['why'], $row['rule']]);
             $groups = \CjwNetwork\RequestShield\Report\RulesPage::groups($s, [], null, 'en');
             $feeds = array_values(array_filter($groups, static fn (array $g): bool => $g[0] === 'Public blocklists'));

@@ -12,7 +12,7 @@ namespace CjwNetwork\RequestShield\Api\Service;
 
 
 use CjwNetwork\RequestShield\ApiService;
-use CjwNetwork\RequestShield\Report\LivePage;
+use CjwNetwork\RequestShield\Api\LiveRows;
 use CjwNetwork\RequestShield\Routes;
 use CjwNetwork\RequestShield\Settings;
 
@@ -30,6 +30,6 @@ final class Live implements ApiService
     {
         $cursor = Params::string($params, 'cursor', '', 64);
         // A rule's ID links to its row on Rules & setup, an entry to the lists -- the dashboard's pages, without a front controller's prefix.
-        return LivePage::json($s, $cursor === '' ? null : $cursor, ['lang' => $ctx['lang'], 'ip' => $ctx['ip'], 'links' => Routes::links($s)]);
+        return LiveRows::json($s, $cursor === '' ? null : $cursor, ['lang' => $ctx['lang'], 'ip' => $ctx['ip'], 'links' => Routes::links($s)]);
     }
 }

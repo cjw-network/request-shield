@@ -245,7 +245,7 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
                 . $e($n(count($rows)) . ' ' . $t['rulesN'] . ($sum > 0 ? ' · ' . $n($sum) . '× ' . $t['decided'] : '')) . '</span></summary><table class="rtable">';
             foreach ($rows as $r) {
                 $count = $r['log'] !== null && $r['log'] !== '' ? ($decided[str_replace(' ', '_', $r['log'])] ?? 0) : 0;
-                $h .= '<tr' . ($r['id'] !== null ? ' id="rule-' . $e(self::anchor($r['id'])) . '"' : '') . '>'
+                $h .= '<tr' . ($r['id'] !== null ? ' id="rule-' . $e(Describe::anchor($r['id'])) . '"' : '') . '>'
                     . '<td class="rid">' . ($r['id'] !== null ? '<code>' . $e($r['id']) . '</code>' : '') . '</td>'
                     . '<td>' . $e($r['text']) . ($r['detail'] !== null ? '<br><code class="rule">' . $e($r['detail']) . '</code>' : '')
                     . '<br><span class="tag">' . $e($r['topic']) . '</span>' . ($r['more'] !== '' ? ' <span class="note">' . $e($r['more']) . '</span>' : '') . '</td>'
@@ -422,8 +422,8 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
             if ($id === null) {
                 return '';
             }
-            $info = self::rule($s, $id);
-            return ' <a class="rid" href="#' . ($info['id'] === 'built-in' ? 'way' : 'rule-' . $e(self::anchor($info['id']))) . '"><code>' . $e($info['id']) . '</code></a>';
+            $info = Describe::ruleInfo($s, $id);
+            return ' <a class="rid" href="#' . ($info['id'] === 'built-in' ? 'way' : 'rule-' . $e(Describe::anchor($info['id']))) . '"><code>' . $e($info['id']) . '</code></a>';
         };
         $h .= '<div class="diagram">' . Diagram::trace($trace, $method . ' ' . (string) (parse_url($url, PHP_URL_PATH) ?: $url), $lang) . '</div>'
             . '<p class="verdict ' . $state . '"><b>' . $e(sprintf($t['tryResult'], $trace['verdict'])) . '</b>'
@@ -434,29 +434,6 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
                 . '<span class="note">' . $e($st['text']) . '</span>' . $rule($st['rule']) . '</div></li>';
         }
         return $h . '</ol></section>';
-    }
-
-    /**
-     * What a rule the statistics counted is: its ID, its description, where it
-     * is written -- for "site.rules:4" too (a rule without an ID).
-     *
-     * @return array{id: string, text: ?string, where: ?string}
-     */
-    public static function rule(Settings $s, string $counted): array
-    {
-        $id = str_replace('_', ' ', $counted);
-        if ($s->origin('at', $counted) !== null || $s->origin('text', $counted) !== null) {
-            $id = $counted;
-        } elseif ($s->origin('at', $id) === null) {
-            // A location, not an ID: the rule written there.
-            foreach ($s->origins['at'] ?? [] as $rid => $at) {
-                if ($at === $counted) {
-                    $id = (string) $rid;
-                    break;
-                }
-            }
-        }
-        return ['id' => $id, 'text' => $s->origin('text', $id), 'where' => $s->origin('at', $id)];
     }
 
     /**
@@ -471,12 +448,6 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
             $out[] = is_scalar($v) ? (string) $v : '';
         }
         return $out === [] ? $none : implode(', ', $out);
-    }
-
-    /** A rule ID as an anchor: letters, digits, "-", "_", "." only. */
-    public static function anchor(string $id): string
-    {
-        return (string) preg_replace('/[^A-Za-z0-9_.-]/', '-', $id);
     }
 
     /**

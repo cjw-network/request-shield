@@ -13,7 +13,7 @@ namespace CjwNetwork\RequestShield\Api\Service;
 
 use CjwNetwork\RequestShield\ApiProblem;
 use CjwNetwork\RequestShield\ApiService;
-use CjwNetwork\RequestShield\Report\ListsPage;
+use CjwNetwork\RequestShield\Api\ListsChanges;
 use CjwNetwork\RequestShield\Settings;
 
 /**
@@ -57,7 +57,7 @@ final class ListsChange implements ApiService
         if ($do === 'add' && ($post['for'] ?? '') === '') {
             $post['for'] = '7d';                // as the page's form starts: a week
         }
-        $done = ListsPage::handle($s, $post, ['ip' => $ctx['ip'], 'user' => 'api', 'ruleFile' => $ctx['ruleFile'], 'csrfChecked' => true, 'lang' => $ctx['lang'], 'now' => $ctx['now']]);
+        $done = ListsChanges::handle($s, $post, ['ip' => $ctx['ip'], 'user' => 'api', 'ruleFile' => $ctx['ruleFile'], 'csrfChecked' => true, 'lang' => $ctx['lang'], 'now' => $ctx['now']]);
         if (!$done['ok']) {
             throw new ApiProblem(409, 'Conflict', $done['message']);
         }
