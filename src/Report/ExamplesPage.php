@@ -42,10 +42,13 @@ final class ExamplesPage
             foreach ($g['rows'] as $r) {
                 $id = 't' . str_replace('.', '-', $r['n']);
                 $what = $r['text'] !== '' ? $r['text'] : $r['method'] . ' ' . $r['url'];
-                $local = $r['url'][0] === '/';
-                $link = $local ? $url($r['url']) : $r['url'];
+                $local = $r['url'][0] === '/' && $r['site'] === null;
+                $link = $r['site'] !== null && $r['url'][0] === '/' ? 'https://' . $r['site'] . $r['url'] : ($local ? $url($r['url']) : $r['url']);
                 $h .= '<tr id="' . $id . '"' . ($r['kind'] === 'try' ? ' class="try-row"' : '') . '><td class="no"><a href="#' . $id . '">' . $e($r['n']) . '</a></td><td class="what">';
-                if ($r['method'] === 'GET') {
+                if ($r['site'] !== null) {
+                    // Another website's row (a site block): no address to click here -- "Show the answer" decides it.
+                    $h .= '<strong>' . $e($what) . '</strong>';
+                } elseif ($r['method'] === 'GET') {
                     $h .= '<a href="' . $e($link) . '">' . $e($what) . '</a>';
                 } else {
                     $h .= '<form method="post" action="' . $e($link) . '" class="inline"><input type="hidden" name="message" value="test ' . $e($r['n']) . '">'
@@ -152,6 +155,9 @@ final class ExamplesPage
             $out .= ' · rule ' . $r['by'];
         }
         $about = [];
+        if ($r['site'] !== null) {
+            $about[] = 'on the website ' . $r['site'];
+        }
         if ($r['from'] !== null && $r['from'] !== DemoSite::FROM) {
             $about[] = 'from ' . $r['from'];
         } elseif ($r['from'] === DemoSite::FROM) {

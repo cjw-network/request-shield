@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The demo shows site blocks and strict mode** (0031 step F.6, RSF05-01):
+  `site strict.example { set mode strict … }` -- a rule of one website, and
+  strict mode there (eleven made-up addresses count as 22); the other website
+  is not touched. The demo page and `request-shield examples` read the
+  examples inside site blocks too, each row knows its website.
 - **Blocked paths have their page** (0031 step F.6, RSF02-02):
   `docs/features/RSF02-02-blocked-paths.md` -- `@scanners` and `@wordpress`
   rule by rule, a path of your own, taking one back or opening it somewhere,

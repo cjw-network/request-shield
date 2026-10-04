@@ -27,7 +27,7 @@ use CjwNetwork\RequestShield\Store\Store;
  * own address from inside a request would never be answered by PHP's built-in
  * server, which serves one request at a time.
  *
- * @phpstan-type Row array{n: string, kind: string, method: string, url: string, outcome: ?string, by: ?string, from: ?string, pass: bool, times: int, ua: ?string, headers: array<string, string>, text: string, at: string}
+ * @phpstan-type Row array{n: string, kind: string, method: string, url: string, outcome: ?string, by: ?string, from: ?string, pass: bool, times: int, ua: ?string, headers: array<string, string>, text: string, at: string, site: ?string}
  * @phpstan-type Group array{n: int, id: string, slug: string, title: string, about: list<string>, rows: list<Row>}
  */
 final class DemoSite
@@ -46,18 +46,31 @@ final class DemoSite
     {
         $read = RuleFile::read([$rulesFile]);
         $base = basename($rulesFile) . ':';
-        $rows = [];
+        // The base's examples, then each site block's (as request-shield test reads them): an
+        // example inside a site block belongs to that website and is decided with its rules.
+        $examples = [];
         foreach ($read['examples'] as $x) {
+            $examples[$x['at']] = $x;
+        }
+        foreach ((array) ($read['config']['sites'] ?? []) as $site) {
+            foreach (is_string($site) ? RuleFile::read([$rulesFile], $site)['examples'] : [] as $x) {
+                if ($x['site'] !== null) {
+                    $examples[$x['at']] = $x;
+                }
+            }
+        }
+        $rows = [];
+        foreach ($examples as $x) {
             if ($x['demo'] !== null && strncmp($x['at'], $base, strlen($base)) === 0) {
                 $rows[] = ['demo' => $x['demo'], 'line' => (int) substr($x['at'], strlen($base)), 'row' => ['kind' => 'expect', 'method' => $x['method'], 'url' => $x['url'],
                     'outcome' => $x['outcome'], 'by' => $x['by'], 'from' => $x['from'], 'pass' => $x['pass'], 'times' => $x['times'], 'ua' => $x['ua'], 'headers' => $x['headers'],
-                    'text' => (string) $x['text'], 'at' => $x['at']]];
+                    'text' => (string) $x['text'], 'at' => $x['at'], 'site' => $x['site']]];
             }
         }
         foreach ($read['tries'] as $t) {
             if ($t['demo'] !== null && strncmp($t['at'], $base, strlen($base)) === 0) {
                 $rows[] = ['demo' => $t['demo'], 'line' => (int) substr($t['at'], strlen($base)), 'row' => ['kind' => 'try', 'method' => $t['method'], 'url' => $t['url'],
-                    'outcome' => null, 'by' => null, 'from' => null, 'pass' => false, 'times' => 1, 'ua' => null, 'headers' => [], 'text' => $t['text'], 'at' => $t['at']]];
+                    'outcome' => null, 'by' => null, 'from' => null, 'pass' => false, 'times' => 1, 'ua' => null, 'headers' => [], 'text' => $t['text'], 'at' => $t['at'], 'site' => null]];
             }
         }
         usort($rows, static fn (array $a, array $b): int => $a['line'] <=> $b['line']);
@@ -96,7 +109,7 @@ final class DemoSite
 
     /**
      * What a row's request gets, decided now with the live settings and store
-     * (nothing counted): the outcome as an expect line writes it, the status
+     * (nothing counted) -- for a row of a site block, $s is that website's: the outcome as an expect line writes it, the status
      * and the headers the visitor would get, the verdict in words, the rule,
      * and the steps.
      *
@@ -110,7 +123,7 @@ final class DemoSite
             // A count or a pass: decided as request-shield test does, on a fresh store
             // (the live one would carry this visitor's own counters).
             $x = ['method' => $row['method'], 'url' => $row['url'], 'outcome' => (string) $row['outcome'], 'by' => $row['by'], 'rule' => null, 'from' => $from,
-                'pass' => $row['pass'], 'times' => $row['times'], 'headers' => $row['headers'], 'text' => null, 'at' => $row['at'], 'site' => null, 'ua' => $row['ua'], 'demo' => null];
+                'pass' => $row['pass'], 'times' => $row['times'], 'headers' => $row['headers'], 'text' => null, 'at' => $row['at'], 'site' => $row['site'], 'ua' => $row['ua'], 'demo' => null];
             $r = Examples::one($s, $x);
             $how = ($row['pass'] ? 'with a pass' : '') . ($row['pass'] && $row['times'] > 1 ? ', ' : '') . ($row['times'] > 1 ? $row['times'] . ' requests in a row' : '');
             return ['outcome' => $r['got'], 'status' => $r['http'], 'headers' => $r['headers'], 'verdict' => ExamplesPage::expected(['outcome' => $r['got'], 'by' => null, 'from' => null, 'pass' => false, 'times' => 1, 'ua' => null] + $row),
@@ -120,7 +133,8 @@ final class DemoSite
         if ($row['ua'] !== null) {
             $headers['user-agent'] = $row['ua'];
         }
-        $url = $row['url'][0] === '/' ? 'http://' . $host . $front . $row['url'] : $row['url'];
+        // A row of a site block: that website's address (its rules are in $s, see the caller).
+        $url = $row['url'][0] === '/' ? 'http://' . ($row['site'] ?? $host) . $front . $row['url'] : $row['url'];
         $t = (new Inspector($s, $store))->trace(Inspector::request($row['method'], $url, $from, $headers, $s->trustedProxies));
         $d = $t['decision'];
         $steps = [];

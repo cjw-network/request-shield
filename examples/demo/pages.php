@@ -151,7 +151,9 @@ if ($path === '/__answer' && $shield !== null) {
         echo json_encode(['error' => 'no such row']), "\n";
         exit;
     }
-    echo json_encode(DemoSite::answer($shield->settings, $shield->store(), $row, $front, $request->host) + ['expected' => ExamplesPage::expected($row)], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), "\n";
+    // A row of a site block is decided with that website's rules.
+    $rowSettings = $row['site'] !== null ? \CjwNetwork\RequestShield\Settings::from(\CjwNetwork\RequestShield\Rules\RuleFile::read([__DIR__ . '/request-shield.rules'], $row['site'])['config']) : $shield->settings;
+    echo json_encode(DemoSite::answer($rowSettings, $shield->store(), $row, $front, $request->host) + ['expected' => ExamplesPage::expected($row)], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), "\n";
     exit;
 }
 

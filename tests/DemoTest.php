@@ -215,6 +215,8 @@ function demoGroup(array $g, string $prefix): void
                 $p = parse_url($url);
                 $headers['Host'] = (string) ($p['host'] ?? 'localhost');
                 $url = ($p['path'] ?? '/') . (isset($p['query']) ? '?' . $p['query'] : '');
+            } elseif ($r['site'] !== null) {
+                $headers['Host'] = (string) $r['site'];      // a row of a site block: that website (the demo picks a block by Host)
             }
             $from = (string) ($r['from'] ?? \CjwNetwork\RequestShield\Report\DemoSite::FROM);
             $headers['X-Forwarded-For'] = (isset($headers['x-forwarded-for']) ? $headers['x-forwarded-for'] . ', ' : '') . $from;
@@ -231,8 +233,10 @@ function demoGroup(array $g, string $prefix): void
                 // Watched: the real answer is what the rules decide as written (the watched rule
                 // lets it through), and the log says, for this very request, what it would have done.
                 $x = ['method' => (string) $r['method'], 'url' => (string) $r['url'], 'outcome' => $want, 'by' => null, 'rule' => null, 'from' => $from, 'pass' => false,
-                    'times' => (int) $r['times'], 'headers' => (array) $r['headers'], 'text' => null, 'at' => (string) $r['at'], 'site' => null, 'ua' => $r['ua'], 'demo' => null];
-                $written = \CjwNetwork\RequestShield\Rules\Examples::one(\CjwNetwork\RequestShield\Settings::from($demo), $x);
+                    'times' => (int) $r['times'], 'headers' => (array) $r['headers'], 'text' => null, 'at' => (string) $r['at'], 'site' => $r['site'], 'ua' => $r['ua'], 'demo' => null];
+                // As written -- with the row's website's rules when it belongs to a site block.
+                $config = $r['site'] !== null ? \CjwNetwork\RequestShield\Rules\RuleFile::read([dirname(__DIR__) . '/examples/demo/request-shield.rules'], (string) $r['site'])['config'] : $demo;
+                $written = \CjwNetwork\RequestShield\Rules\Examples::one(\CjwNetwork\RequestShield\Settings::from($config), $x);
                 same([$written['got'], $written['gotRule']], [$got, $rule], "row {$r['n']}: {$r['by']} is only watched in the demo -- the real answer is the rules' as written");
                 $masked = \CjwNetwork\RequestShield\Log::mask($from);
                 truthy(preg_match('#' . preg_quote($masked, '#') . ' monitor-[a-z]+ \d+ &quot;[^&]*&quot; rule=' . preg_quote((string) $r['by'], '#') . ' &quot;' . preg_quote((string) $r['method'], '#') . ' [^ ]*'
@@ -263,7 +267,7 @@ function demoGroup(array $g, string $prefix): void
             } elseif ((int) $r['times'] === 1) {
                 $check($get, $r);
             }
-            if (((string) $r['url'])[0] === '/') {
+            if (((string) $r['url'])[0] === '/' && $r['site'] === null) {
                 // "See the path": the rules page checks the row's own address (this machine only).
                 $path = $get('GET', '/rules?method=' . $r['method'] . '&url=' . rawurlencode($prefix . $r['url']) . '&ip=127.0.0.1');
                 same(200, $path['status'], "row {$r['n']}: its \"See the path\" link opens the rules page");

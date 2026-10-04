@@ -438,3 +438,20 @@ secret.
 PHP array settings keep working unchanged; `protectFile()` takes a `.rules`
 file or a `.php` settings file. Proposal:
 [0003](../proposals/0003-human-readable-rule-files.md).
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF05-01 · One rule file, several websites**
+
+A site block holds the rules of one website, added to the rules for all of them: a rule of its own, a setting of its own. strict.example runs in strict mode -- the setting for a site under attack: an address a cache must not keep counts twice against the pace.
+
+| Request | The rules decide | |
+|---|---|---|
+| `/cart/debug/x` | "not found" (404) — the site never sees it · rule DEMO-SITE-DEBUG — on the website strict.example, from another address (198.51.100.7) | A rule of one website |
+| `/random/a` | the invisible browser check · rule DEMO-PACE — on the website strict.example, from another address (198.51.100.7), 11 times in a row | strict there: eleven made-up addresses count as 22, past 20 the check |
+| `https://www.example.org/cart/debug/x` | the site answers it — from another address (198.51.100.7) | the same path on the other website |
+| `https://www.example.org/random/a` | passes, but a cache must not keep it — from another address (198.51.100.7), 11 times in a row | eleven made-up addresses there: eleven, no check |
+<!-- /examples -->

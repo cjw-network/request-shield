@@ -148,6 +148,10 @@ set         home ${REQUEST_SHIELD_DEMO_HOME:-/}
 
 # X-RS: <decision> <reason>; rule=<ID> on every response.
 set         debug-header on
+# A site block is picked by the Host header here (PHP's built-in server names
+# itself otherwise). check warns that there is no host rule: a visitor names the
+# website -- in the demo that can only choose strict.example's stricter rules.
+set         site-from host
 
 # ── The demo page's rows, by feature (0031 F.4) ─────────────────────────────
 # Each group is a feature of the docs (RSF<gg>-<nn>): its comment lines are
@@ -206,6 +210,20 @@ expect GET /search?q=%3Cscript%3Ealert(1)%3C/script%3E                 403 by AT
 expect GET /search?q=1%27%20UnIoN/**/SeLeCt%20password%20from%20users   403 by ATK-SQL-UNION   # SQL injection, disguised
 expect GET /search?q=a%20union%20of%20states                            answered               # a search that only looks alike
 expect GET /                ua "sqlmap/1.7 (https://sqlmap.org)"        403 by ATK-UA-TOOLS    # An attack tool by its name
+
+# demo: RSF05-01 rule-files One rule file, several websites
+# A site block holds the rules of one website, added to the rules for all of
+# them: a rule of its own, a setting of its own. strict.example runs in strict
+# mode -- the setting for a site under attack: an address a cache must not keep
+# counts twice against the pace.
+site strict.example {
+  set mode strict
+  [DEMO-SITE-DEBUG]   block **/cart/debug/**                     # a rule of this website only
+  expect GET /cart/debug/x            404 by DEMO-SITE-DEBUG     # A rule of one website
+  expect GET /random/a                times 11 check by DEMO-PACE   # strict there: eleven made-up addresses count as 22, past 20 the check
+}
+expect GET https://www.example.org/cart/debug/x    answered      # the same path on the other website
+expect GET https://www.example.org/random/a        times 11 uncached   # eleven made-up addresses there: eleven, no check
 
 # demo: RSF04-01 cacheable-definition What a cache may keep
 # Every page passes; only some may be kept by a cache. Unknown paths and
