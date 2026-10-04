@@ -251,7 +251,7 @@ function demoGroup(array $g, string $prefix): void
         }
     };
     $trust = ['REQUEST_SHIELD_DEMO_TRUST' => '127.0.0.1'];
-    withDemo(function (callable $get) use ($g, $check): void {
+    withDemo(function (callable $get) use ($g, $check, $prefix): void {
         $home = $get('GET', '/')['body'];
         truthy(strpos($home, '<tbody id="g' . $g['n'] . '">') !== false && strpos($home, '<span class="feature">' . $g['id'] . '</span>') !== false, "group {$g['n']} ({$g['id']}) on the page");
         foreach ($g['rows'] as $r) {
@@ -262,6 +262,11 @@ function demoGroup(array $g, string $prefix): void
                 }
             } elseif ((int) $r['times'] === 1) {
                 $check($get, $r);
+            }
+            if (((string) $r['url'])[0] === '/') {
+                // "See the path": the rules page checks the row's own address (this machine only).
+                $path = $get('GET', '/rules?method=' . $r['method'] . '&url=' . rawurlencode($prefix . $r['url']) . '&ip=127.0.0.1');
+                same(200, $path['status'], "row {$r['n']}: its \"See the path\" link opens the rules page");
             }
         }
     }, $prefix, $trust);

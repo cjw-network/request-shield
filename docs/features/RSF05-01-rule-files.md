@@ -127,7 +127,8 @@ do not get past; the answer is 403 and the log and trace name the rule. Form
 contents (POST bodies) are not looked at. `unblock`, `unblock at` and `replace`
 work for these rules exactly as for path blocks; `rules/attacks.rules`
 (`include @attacks`) is a reviewed set, after the OWASP Core Rule Set's first
-level.
+level -- [attack patterns](RSF02-06-attack-patterns.md) has the rules, what
+they cost and where they stop.
 
 ## match blocks: the rules of an area in one place
 

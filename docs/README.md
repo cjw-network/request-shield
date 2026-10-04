@@ -18,7 +18,7 @@
   | RSF02-03 | What is asked | [access rules](features/RSF02-03-access-rules.md) |
   | RSF02-04 | What is asked | [forms only from the website itself (`post-origin`)](features/RSF02-04-forms-from-the-website.md) |
   | RSF02-05 | What is asked | [known query parameters](features/RSF02-05-known-parameters.md) |
-  | RSF02-06 | What is asked | attack patterns -- in [rule files](features/RSF05-01-rule-files.md#the-built-in-rules) for now |
+  | RSF02-06 | What is asked | [attack patterns](features/RSF02-06-attack-patterns.md) |
   | RSF03-01 | How often | [budgets and stores](features/RSF03-01-budgets.md) |
   | RSF03-02 | How often | [browser challenge](features/RSF03-02-browser-challenge.md) |
   | RSF03-03 | How often | [the check inside the form](features/RSF03-03-browser-check-in-the-form.md) |

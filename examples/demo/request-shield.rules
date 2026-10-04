@@ -34,9 +34,10 @@ trust       ${REQUEST_SHIELD_DEMO_TRUST:-198.51.100.1}
 # Marketing tags (utm_*, fbclid, gclid, ...) come from the library's
 # rules/tracking.rules, so newsletter and ad links keep working.
 include @tracking
+include @attacks                                                  # attack patterns in the query and the headers (the free text only: the rest is typed)
 [DEMO-PARAMS]       query page int   q text   start word   v id                            # page numbers, the search, how the form box starts, the script's version
-[DEMO-PARAMS-RULES] query method word   url text   ip /[0-9A-Fa-f.:]{1,45}/ at **/rules      # the check on the active rules page
-[DEMO-PARAMS-STATS] query days int   by word   crawler id   format word   lang word   fragment any   path text   sort word   from /[0-9]{4}-[0-9]{2}-[0-9]{2}/   to /[0-9]{4}-[0-9]{2}-[0-9]{2}/   method word   url text   ip /[0-9A-Fa-f.:]{1,45}/   ua text   site text   rs-g word   rs-exp int   rs-sig word   rs-login word   rs-logout word   cursor /(m:[0-9]{1,20}|[0-9]{1,20}:[0-9]{1,20})/   host text   what word   source word   q text   address text   note text   kind word   for word at **/rs/**   # the statistics: the period, one crawler, a subtree, the order, JSON, the rule tester
+[DEMO-PARAMS-RULES] query method word   url any   ip /[0-9A-Fa-f.:]{1,45}/ at **/rules      # the check on the active rules page
+[DEMO-PARAMS-STATS] query days int   by word   crawler id   format word   lang word   fragment any   path text   sort word   from /[0-9]{4}-[0-9]{2}-[0-9]{2}/   to /[0-9]{4}-[0-9]{2}-[0-9]{2}/   method word   url any   ip /[0-9A-Fa-f.:]{1,45}/   ua text   site text   rs-g word   rs-exp int   rs-sig word   rs-login word   rs-logout word   cursor /(m:[0-9]{1,20}|[0-9]{1,20}:[0-9]{1,20})/   host text   what word   source word   q text   address text   note text   kind word   for word at **/rs/**   # the statistics: the period, one crawler, a subtree, the order, JSON, the rule tester
 [DEMO-PARAMS-ANSWER] query n /[0-9]{1,3}\.[0-9]{1,3}/ at **/__answer   # the row whose answer the front page asks for
 [DEMO-STRICT]       query strict                                  # any other parameter, or a value not of its type: 404
 
@@ -196,6 +197,15 @@ expect GET /  from 192.0.2.40 answered                                          
 expect POST https://www.example.org/edit header Origin:https://elsewhere.example 403 by DEMO-ORIGIN   # A form sent from another website
 expect POST https://www.example.org/edit header Origin:https://www.example.org answered              # from the site's own page
 expect POST https://www.example.org/edit answered                                                    # without Origin and Referer (missing allow): a tool, an old browser
+
+# demo: RSF02-06 attack-patterns Attack patterns
+# Injection in the address and the headers -- after decoding, in lower case,
+# comments removed: a disguise does not help. Only free text is looked at (q
+# here); a number or a word cannot carry an attack.
+expect GET /search?q=%3Cscript%3Ealert(1)%3C/script%3E                 403 by ATK-XSS-TAG     # Cross-site scripting in the search
+expect GET /search?q=1%27%20UnIoN/**/SeLeCt%20password%20from%20users   403 by ATK-SQL-UNION   # SQL injection, disguised
+expect GET /search?q=a%20union%20of%20states                            answered               # a search that only looks alike
+expect GET /                ua "sqlmap/1.7 (https://sqlmap.org)"        403 by ATK-UA-TOOLS    # An attack tool by its name
 
 # demo: RSF04-01 cacheable-definition What a cache may keep
 # Every page passes; only some may be kept by a cache. Unknown paths and

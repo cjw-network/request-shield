@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Attack patterns have their page, and the demo shows them** (0031 step F.6,
+  RSF02-06): `docs/features/RSF02-06-attack-patterns.md` -- what `@attacks`
+  looks at, the 15 rules, a pattern of your own, what it costs (about 1.4 µs
+  per request, about 3.5 µs with a free-text parameter) and where it stops
+  (no form bodies); the demo includes `@attacks`: script and disguised SQL in
+  the search, an attack tool by its name, a search that only looks alike.
 - **The demo shows forms only from the website itself** (0031 step F.6,
   RSF02-04): `post-origin same missing allow` -- a form sent from another
   website is refused, one from the site's own pages passes, one without Origin
