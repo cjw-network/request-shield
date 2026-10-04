@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The feature contract is met** (0031 step F.6): every feature has its page,
+  its tests, a demo group with an effect and a near miss (or its reason in
+  `examples/demo/.demo-exempt`: settings, the single file, plugins, the two
+  that the page's every row already shows -- examples and rule IDs -- and the
+  two the page itself decides), and every request-path feature an end-to-end
+  test; the contract's lists of gaps are empty.
 - **The demo shows site blocks and strict mode** (0031 step F.6, RSF05-01):
   `site strict.example { set mode strict … }` -- a rule of one website, and
   strict mode there (eleven made-up addresses count as 22); the other website

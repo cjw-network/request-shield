@@ -15,16 +15,16 @@ use CjwNetwork\RequestShield\Stats\StatsExtension;
  * Vocabulary::FEATURES. The docs index (docs/README.md) is the list of
  * features; a row without a page is either "planned:" or a gap below.
  *
- * FEATURE_GAPS holds what is missing today. It only shrinks: a gap that is
- * closed but still listed fails the test, so the list is always the truth.
- * Step F.6 empties it.
+ * FEATURE_GAPS holds what is missing. Step F.6 emptied it; it stays, exact
+ * both ways -- a new feature without its parts fails here until they are
+ * there (or, for a demo, a reason is in .demo-exempt).
  */
 
 const FEATURE_GAPS = [
     // A feature documented inside another page for now.
     'page' => [],
-    // No "# demo:" group with an effect and a near miss yet (the demo's groups came with F.4; F.6 adds these).
-    'demo' => ['RSF05-04', 'RSF05-05'],
+    // No "# demo:" group with an effect and a near miss.
+    'demo' => [],
     // On the request path, but no test of the id sits in a file that starts a server -- they get
     // one with their demo group (DemoTest runs each group on a server under its id).
     'e2e' => [],
@@ -112,7 +112,7 @@ function contractDemoExempt(): array
 }
 
 return [
-    'RSF06-04 the contract: every feature in the index has its page, its tests and -- on the request path -- an end-to-end test; the gaps are listed and only shrink' => function (): void {
+    'RSF06-04 the contract: every feature in the index has its page, its tests and -- on the request path -- an end-to-end test; the gaps are listed, exactly' => function (): void {
         $features = contractFeatures();
         $tests = contractTests();
         truthy(count($features) >= 25, 'the index lists the features: ' . count($features));
@@ -138,7 +138,7 @@ return [
         same([], $missing['tests'], 'every feature has tests under its id');
         same(FEATURE_GAPS['e2e'], $missing['e2e'], 'request-path features without an end-to-end test (FEATURE_GAPS[e2e])');
     },
-    'RSF06-04 the contract: every feature has a demo group with an effect and a near miss -- or a reason in .demo-exempt; the gaps only shrink' => function (): void {
+    'RSF06-04 the contract: every feature has a demo group with an effect and a near miss -- or a reason in .demo-exempt; the gaps are listed, exactly' => function (): void {
         // The groups come from the parser: any order after the address, a bare marker, quotes.
         $tmp = sys_get_temp_dir() . '/rs-contract-' . getmypid() . '.rules';
         file_put_contents($tmp, "set store-dir /nonexistent/never-written\n# demo: RSF02-02\nexpect GET /backup.zip by SCAN-BACKUP 404\nexpect GET /a.php ua \"Mozilla 404 passes\" header X-A:1 passes   # 403 in a comment\n"
