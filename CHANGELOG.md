@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **Proposal 0039 a page cache that speaks the known dialects** (Draft):
+  what Ibexa (FOSHttpCache, xkey, `X-Cache-Tags`, the user context hash),
+  eZ Publish legacy / Exponential, LiteSpeed (`X-LiteSpeed-*`), Varnish,
+  Magento and the CDNs send to their caches; proposed: read their tags,
+  accept their purges (in the answer, `PURGE`, `PURGEKEYS`), one page per
+  role (a role cookie, the user context hash), answers in APCu with the
+  disk only when needed, cleaning up by itself -- so a site can switch to a
+  Varnish later without changing the application.
 - **A page cache for small sites** (0031 step G.2, RSF04-03, the `cache`
   edition): `set http-cache on` keeps the public answers of a site without a
   cache of its own (200, 301, 308; no cookie set, not private, within
