@@ -385,7 +385,7 @@ return [
         $dir = ruleDir(['site.rules' => "unblock at /admin/files/** for 192.0.2.0/24\nunblock [SCAN-BACKUP] at /downloads/**\n"]);
         try {
             $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
-            $t = (new \CjwNetwork\RequestShield\Report\Inspector($s, new MemoryStore()))->trace(\CjwNetwork\RequestShield\Report\Inspector::request('GET', '/admin/files/.env', '192.0.2.5'), 1000.0);
+            $t = (new \CjwNetwork\RequestShield\Inspector($s, new MemoryStore()))->trace(\CjwNetwork\RequestShield\Inspector::request('GET', '/admin/files/.env', '192.0.2.5'), 1000.0);
             same('pass', step($t, 'Addresses only attackers ask for')['state']);
             same('would be refused (hidden files and folders: .env, .git, .htpasswd, editor settings), but open here for 192.0.2.5 (192.0.2.0/24) — site.rules:1', step($t, 'Addresses only attackers ask for')['text']);
             $html = \CjwNetwork\RequestShield\Report\RulesPage::render($s, ['store' => new MemoryStore()]);

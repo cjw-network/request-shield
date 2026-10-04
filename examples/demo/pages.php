@@ -11,7 +11,7 @@
 declare(strict_types=1);
 
 use CjwNetwork\RequestShield\IpAddress;
-use CjwNetwork\RequestShield\Report\Describe;
+use CjwNetwork\RequestShield\Describe;
 use CjwNetwork\RequestShield\Report\Diagram;
 use CjwNetwork\RequestShield\Report\RulesPage;
 use CjwNetwork\RequestShield\Request;

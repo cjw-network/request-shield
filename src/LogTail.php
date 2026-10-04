@@ -8,7 +8,7 @@
 
 declare(strict_types=1);
 
-namespace CjwNetwork\RequestShield\Report;
+namespace CjwNetwork\RequestShield;
 
 /**
  * The log's new lines since the last look, for the live view: a cursor

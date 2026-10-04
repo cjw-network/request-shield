@@ -240,21 +240,21 @@ return [
             }
             throw new TestFailure("no step \"$check\"");
         };
-        $t = (new \CjwNetwork\RequestShield\Report\Inspector($s, new MemoryStore()))
-            ->trace(\CjwNetwork\RequestShield\Report\Inspector::request('GET', '/?id=1 union select 2', '198.51.100.7'), 1000.0);
+        $t = (new \CjwNetwork\RequestShield\Inspector($s, new MemoryStore()))
+            ->trace(\CjwNetwork\RequestShield\Inspector::request('GET', '/?id=1 union select 2', '198.51.100.7'), 1000.0);
         $step = $find($t['steps'], 'Attack patterns');
         same('stop', $step['state'], 'the trace refuses it');
         same('refused: SQL injection: UNION SELECT', $step['text'], 'named in plain words');
         same('ATK-SQL-UNION', $step['rule']);
         same('reject', $t['decision']->action);
         same('ATK-SQL-UNION', $t['rule'], 'the verdict names the rule');
-        $t = (new \CjwNetwork\RequestShield\Report\Inspector($s, new MemoryStore()))
-            ->trace(\CjwNetwork\RequestShield\Report\Inspector::request('GET', '/?id=1', '198.51.100.7'), 1000.0);
+        $t = (new \CjwNetwork\RequestShield\Inspector($s, new MemoryStore()))
+            ->trace(\CjwNetwork\RequestShield\Inspector::request('GET', '/?id=1', '198.51.100.7'), 1000.0);
         same('pass', $find($t['steps'], 'Attack patterns')['state'], 'a clean request passes it');
         // An exception is told, not hidden.
         $s2 = attacksRules("unblock [ATK-XSS-URL] at /go/**\n");
-        $t = (new \CjwNetwork\RequestShield\Report\Inspector($s2, new MemoryStore()))
-            ->trace(\CjwNetwork\RequestShield\Report\Inspector::request('GET', '/go/?u=javascript:x', '198.51.100.7'), 1000.0);
+        $t = (new \CjwNetwork\RequestShield\Inspector($s2, new MemoryStore()))
+            ->trace(\CjwNetwork\RequestShield\Inspector::request('GET', '/go/?u=javascript:x', '198.51.100.7'), 1000.0);
         $step = $find($t['steps'], 'Attack patterns');
         same('pass', $step['state']);
         truthy(strpos($step['text'], 'but open here') !== false, $step['text']);

@@ -10,7 +10,6 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield;
 
-use CjwNetwork\RequestShield\Report\LogTail;
 
 /**
  * The live view's memory (set live on): the last requests the shield stopped

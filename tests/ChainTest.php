@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use CjwNetwork\RequestShield\Report\Inspector;
+use CjwNetwork\RequestShield\Inspector;
 use CjwNetwork\RequestShield\Rule\Step;
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Shield;

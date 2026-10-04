@@ -89,7 +89,7 @@ return [
             truthy($status === 404 && ($json['error'] ?? null) === 'not found' && preg_match('/^[2-9A-Z]{4}-[2-9A-Z]{4}$/', (string) ($json['reference'] ?? '')) === 1 && strpos($headers, 'application/json') !== false, "$status $body");
             $log = (string) @file_get_contents("$dir/shield.log");
             truthy(strpos($log, ' ref=' . ($ref[1] ?? '?') . ' "GET ') !== false && strpos($log, ' ref=' . ($json['reference'] ?? '?') . ' ') !== false, 'the same references in the log: ' . $log);
-            $lines = array_values(array_filter(array_map([\CjwNetwork\RequestShield\Report\LogStats::class, 'parse'], explode("\n", trim($log)))));
+            $lines = array_values(array_filter(array_map([\CjwNetwork\RequestShield\LogStats::class, 'parse'], explode("\n", trim($log)))));
             same([$ref[1] ?? null, 'SCAN-HIDDEN'], [$lines[0]['ref'] ?? null, $lines[0]['rule'] ?? null], 'read back from the log, the rule untouched by it: ' . json_encode($lines[0] ?? null));
         } finally {
             proc_terminate($proc);

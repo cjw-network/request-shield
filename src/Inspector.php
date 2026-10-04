@@ -8,11 +8,8 @@
 
 declare(strict_types=1);
 
-namespace CjwNetwork\RequestShield\Report;
+namespace CjwNetwork\RequestShield;
 
-use CjwNetwork\RequestShield\Decision;
-use CjwNetwork\RequestShield\IpAddress;
-use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rule\BlockedPathRule;
 use CjwNetwork\RequestShield\Rule\CacheableRule;
 use CjwNetwork\RequestShield\Rule\ContentRule;
@@ -22,8 +19,6 @@ use CjwNetwork\RequestShield\Rule\MethodPathRule;
 use CjwNetwork\RequestShield\Rule\MethodRule;
 use CjwNetwork\RequestShield\Rule\PathSanityRule;
 use CjwNetwork\RequestShield\Rule\RestrictedPathRule;
-use CjwNetwork\RequestShield\Settings;
-use CjwNetwork\RequestShield\Shield;
 use CjwNetwork\RequestShield\Store\PeekStore;
 use CjwNetwork\RequestShield\Store\Store;
 

@@ -92,8 +92,8 @@ RULES);
         $r = Request::fromServer(['REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/contact', 'REMOTE_ADDR' => '198.51.100.7', 'HTTP_HOST' => 'www.example.org', 'HTTP_ORIGIN' => 'https://evil.example']);
         $d = $shield->decide($r, 1000.0);
         same([403, 'cross-site', 'postOrigin'], [$d->status, $d->reason, $shield->explain($d, $r)], 'refused, and named');
-        same('a form sent from another website', \CjwNetwork\RequestShield\Report\Describe::reason('cross-site'), 'in words');
-        same('ein Formular, von einer anderen Website aus gesendet', \CjwNetwork\RequestShield\Report\Describe::reason('cross-site', 'de'), 'in German');
+        same('a form sent from another website', \CjwNetwork\RequestShield\Describe::reason('cross-site'), 'in words');
+        same('ein Formular, von einer anderen Website aus gesendet', \CjwNetwork\RequestShield\Describe::reason('cross-site', 'de'), 'in German');
         try {
             Settings::from(['postOrigin' => ['missing' => 'maybe']]);
             throw new TestFailure('accepted missing maybe');

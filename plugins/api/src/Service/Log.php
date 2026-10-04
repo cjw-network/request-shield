@@ -13,7 +13,7 @@ namespace CjwNetwork\RequestShield\Api\Service;
 
 use CjwNetwork\RequestShield\ApiProblem;
 use CjwNetwork\RequestShield\ApiService;
-use CjwNetwork\RequestShield\Report\LogTail;
+use CjwNetwork\RequestShield\LogTail;
 use CjwNetwork\RequestShield\Settings;
 
 /** GET /log: the log's lines since the cursor, parsed -- what was refused or checked, and why. */

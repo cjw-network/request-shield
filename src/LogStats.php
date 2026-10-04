@@ -8,7 +8,7 @@
 
 declare(strict_types=1);
 
-namespace CjwNetwork\RequestShield\Report;
+namespace CjwNetwork\RequestShield;
 
 /**
  * What the log says: how often each rule decided, and when last; the latest

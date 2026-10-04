@@ -110,8 +110,8 @@ has it at `/rules` (`examples/demo`).
 
 The inspector walks `Shield::chain()` -- the one list of what the shield
 checks, in its order (0031 C.1) -- so a step added to the chain appears in the
-trace by itself. The parts are usable on their own: `Report\Inspector` (the step-by-step
-check), `Report\LogStats` (counts per rule from the log), `Report\Describe`
+trace by itself. The parts are usable on their own: `Inspector` (the step-by-step
+check), `LogStats` (counts per rule from the log), `Describe`
 (settings and decisions in words).
 
 ## Security

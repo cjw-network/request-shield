@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use CjwNetwork\RequestShield\Decision;
-use CjwNetwork\RequestShield\Report\Inspector;
+use CjwNetwork\RequestShield\Inspector;
 use CjwNetwork\RequestShield\Report\RulesPage;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rule\QueryRule;

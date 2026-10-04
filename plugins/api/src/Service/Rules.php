@@ -12,7 +12,7 @@ namespace CjwNetwork\RequestShield\Api\Service;
 
 
 use CjwNetwork\RequestShield\ApiService;
-use CjwNetwork\RequestShield\Report\Counts;
+use CjwNetwork\RequestShield\Counts;
 use CjwNetwork\RequestShield\Settings;
 
 /** GET /rules: every rule with an ID -- where it is written, what it does, its revision, how often it decided. */

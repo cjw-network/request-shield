@@ -10,7 +10,6 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield;
 
-use CjwNetwork\RequestShield\Report\Inspector;
 use CjwNetwork\RequestShield\Rules\CrawlerLists;
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Rules\RuleFileException;

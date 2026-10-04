@@ -10,6 +10,10 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield\Report;
 
+use CjwNetwork\RequestShield\Counts;
+use CjwNetwork\RequestShield\Inspector;
+use CjwNetwork\RequestShield\Describe;
+use CjwNetwork\RequestShield\Frame;
 use CjwNetwork\RequestShield\Help;
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Store\ApcuStore;

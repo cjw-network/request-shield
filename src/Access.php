@@ -11,7 +11,6 @@ declare(strict_types=1);
 namespace CjwNetwork\RequestShield;
 
 use CjwNetwork\RequestShield\Challenge\Secret;
-use CjwNetwork\RequestShield\Report\Frame;
 use CjwNetwork\RequestShield\Store\Store;
 
 /**

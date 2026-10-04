@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use CjwNetwork\RequestShield\Report\Counts;
+use CjwNetwork\RequestShield\Counts;
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Rules\Vocabulary;
 use CjwNetwork\RequestShield\Settings;
@@ -60,6 +60,6 @@ return [
             $code = (string) file_get_contents(dirname(__DIR__) . '/src/Report/' . $f);
             truthy(strpos($code, 'StatsReport::') === false && strpos($code, 'StatsPage::') === false && strpos($code, "Report\\\\StatsPage") === false, "$f asks Counts, not the statistics: no StatsReport::/StatsPage:: call");
         }
-        truthy(strpos((string) file_get_contents(dirname(__DIR__) . '/src/Report/Counts.php'), 'hooks[\'ruleCounts\']') !== false, 'Counts reads the hook');
+        truthy(strpos((string) file_get_contents(dirname(__DIR__) . '/src/Counts.php'), 'hooks[\'ruleCounts\']') !== false, 'Counts reads the hook');
     },
 ];

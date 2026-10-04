@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield\Report;
 
+use CjwNetwork\RequestShield\Inspector;
 use CjwNetwork\RequestShield\Decision;
 
 /**

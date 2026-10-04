@@ -8,10 +8,8 @@
 
 declare(strict_types=1);
 
-namespace CjwNetwork\RequestShield\Report;
+namespace CjwNetwork\RequestShield;
 
-use CjwNetwork\RequestShield\RuleCounts;
-use CjwNetwork\RequestShield\Settings;
 
 /**
  * The numbers next to the rules: asked from the plugins that have the

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use CjwNetwork\RequestShield\Access;
-use CjwNetwork\RequestShield\Report\Frame;
+use CjwNetwork\RequestShield\Frame;
 use CjwNetwork\RequestShield\Routes;
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Rules\Vocabulary;

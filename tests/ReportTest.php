@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Log;
-use CjwNetwork\RequestShield\Report\Describe;
-use CjwNetwork\RequestShield\Report\Inspector;
-use CjwNetwork\RequestShield\Report\LogStats;
+use CjwNetwork\RequestShield\Describe;
+use CjwNetwork\RequestShield\Inspector;
+use CjwNetwork\RequestShield\LogStats;
 use CjwNetwork\RequestShield\Report\RulesPage;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rules\RuleFile;

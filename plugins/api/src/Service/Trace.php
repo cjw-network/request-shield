@@ -13,7 +13,7 @@ namespace CjwNetwork\RequestShield\Api\Service;
 
 use CjwNetwork\RequestShield\ApiProblem;
 use CjwNetwork\RequestShield\ApiService;
-use CjwNetwork\RequestShield\Report\Inspector;
+use CjwNetwork\RequestShield\Inspector;
 use CjwNetwork\RequestShield\Settings;
 
 /** POST /trace: what happens to a request, check by check -- as request-shield trace; nothing is counted. */

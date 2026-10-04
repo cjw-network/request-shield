@@ -278,9 +278,9 @@ return [
             same(['sites' => '/statistik/sites', 'all' => '/statistik/overview', 'site' => '/statistik/visitors', 'shield' => '/statistik/protection', 'rules' => '/rs/waf/rules'],
                 StatsPage::links($s), 'the plugin\'s pages below its path; rules is the core\'s');
             same(['sites', 'site', null], [StatsPage::viewFor($s, '/statistik'), StatsPage::viewFor($s, '/statistik/visitors'), StatsPage::viewFor($s, '/rs/stats/visitors')]);
-            same('/statistik/visitors', \CjwNetwork\RequestShield\Report\Frame::links($s)['site'], 'the tabs know it');
-            same([true, true, false], [\CjwNetwork\RequestShield\Report\Frame::isPage($s, '/demo/statistik/overview'), \CjwNetwork\RequestShield\Report\Frame::isPage($s, '/rs/waf/live'),
-                \CjwNetwork\RequestShield\Report\Frame::isPage($s, '/rs/stats/overview')], 'the dashboard\'s pages (for the pace, the live view)');
+            same('/statistik/visitors', \CjwNetwork\RequestShield\Frame::links($s)['site'], 'the tabs know it');
+            same([true, true, false], [\CjwNetwork\RequestShield\Frame::isPage($s, '/demo/statistik/overview'), \CjwNetwork\RequestShield\Frame::isPage($s, '/rs/waf/live'),
+                \CjwNetwork\RequestShield\Frame::isPage($s, '/rs/stats/overview')], 'the dashboard\'s pages (for the pace, the live view)');
             try {
                 sitesStatsSettings($dir, "set stats-path statistik\n");
                 throw new TestFailure('accepted a path without /');

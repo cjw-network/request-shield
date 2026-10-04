@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use CjwNetwork\RequestShield\Decision;
-use CjwNetwork\RequestShield\Report\Describe;
+use CjwNetwork\RequestShield\Describe;
 use CjwNetwork\RequestShield\Report\RulesPage;
 use CjwNetwork\RequestShield\Stats\Report\StatsReport;
 use CjwNetwork\RequestShield\Request;
@@ -550,8 +550,8 @@ return [
             $st->count(['a:reject', 'r:T-AREA', 'r:built-in', 's:403'], STATS_T0);
             $links = \CjwNetwork\RequestShield\Stats\Report\StatsPage::links($s);
             // Rules & setup is the core's page (0031 B.8): the frame's tabs, the counts from the plugins that have RuleCounts.
-            $view = \CjwNetwork\RequestShield\Report\Frame::tabs($s, $links, 'rules', 'de')
-                . \CjwNetwork\RequestShield\Report\SetupPage::render($s, 'de', \CjwNetwork\RequestShield\Report\Counts::rules($s, 7, STATS_T0 + 10.0), ['now' => STATS_T0 + 10.0]);
+            $view = \CjwNetwork\RequestShield\Frame::tabs($s, $links, 'rules', 'de')
+                . \CjwNetwork\RequestShield\Report\SetupPage::render($s, 'de', \CjwNetwork\RequestShield\Counts::rules($s, 7, STATS_T0 + 10.0), ['now' => STATS_T0 + 10.0]);
             truthy(strpos($view, 'class="tab on" href="/rs/waf/rules?lang=de">Regeln &amp; Einrichtung') !== false && strpos($view, 'Der Weg einer Anfrage') !== false, 'the core\'s page "Regeln & Einrichtung", in the frame');
             truthy(strpos($view, '1× entschieden') !== false || strpos($view, 'entschieden') !== false, 'the rule\'s count from the statistics plugin (RuleCounts): ' . (strpos($view, 'T-AREA') !== false ? 'T-AREA shown' : 'T-AREA missing'));
             $shield = \CjwNetwork\RequestShield\Stats\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'view' => 'shield', 'links' => $links]);

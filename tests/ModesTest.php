@@ -184,7 +184,7 @@ return [
         truthy(strpos($html, 'a pass from the last 5 minutes') !== false, 'max-age in words');
         truthy(strpos(\CjwNetwork\RequestShield\Report\RulesPage::render(modesSettings("set mode monitor\n")), 'Monitor mode (set mode monitor)') !== false, 'monitor mode');
         truthy(strpos(\CjwNetwork\RequestShield\Report\RulesPage::render(modesSettings("set mode strict\n")), 'a pass for 15 minutes') !== false, 'strict');
-        $t = (new \CjwNetwork\RequestShield\Report\Inspector(modesSettings("set mode monitor\n"), new MemoryStore()))->trace(\CjwNetwork\RequestShield\Report\Inspector::request('GET', '/.env', '198.51.100.7'), 1000.0);
+        $t = (new \CjwNetwork\RequestShield\Inspector(modesSettings("set mode monitor\n"), new MemoryStore()))->trace(\CjwNetwork\RequestShield\Inspector::request('GET', '/.env', '198.51.100.7'), 1000.0);
         same('sees the page — monitor mode; enforced, it gets "not found" (404) — the site never sees it', $t['verdict']);
     },
     'RSF05-03 mode off: nothing checked, counted or logged -- the site runs' => function (): void {

@@ -5,7 +5,7 @@ declare(strict_types=1);
 use CjwNetwork\RequestShield\Challenge\Crawlers;
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Log;
-use CjwNetwork\RequestShield\Report\LogStats;
+use CjwNetwork\RequestShield\LogStats;
 use CjwNetwork\RequestShield\Report\RulesPage;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rules\CrawlerLists;

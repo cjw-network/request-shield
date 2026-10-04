@@ -8,11 +8,8 @@
 
 declare(strict_types=1);
 
-namespace CjwNetwork\RequestShield\Report;
+namespace CjwNetwork\RequestShield;
 
-use CjwNetwork\RequestShield\Config;
-use CjwNetwork\RequestShield\Decision;
-use CjwNetwork\RequestShield\Settings;
 
 /**
  * Settings and decisions in plain words, for people who do not read regular

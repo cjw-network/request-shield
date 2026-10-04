@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield\Report;
 
+use CjwNetwork\RequestShield\Frame;
 use CjwNetwork\RequestShield\Challenge\Secret;
 use CjwNetwork\RequestShield\Help;
 use CjwNetwork\RequestShield\IpAddress;

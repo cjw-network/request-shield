@@ -6,7 +6,7 @@ use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Log;
 use CjwNetwork\RequestShield\Report\ListsPage;
 use CjwNetwork\RequestShield\Report\LivePage;
-use CjwNetwork\RequestShield\Report\LogTail;
+use CjwNetwork\RequestShield\LogTail;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rules\Lists;
 use CjwNetwork\RequestShield\Rules\RuleFile;
