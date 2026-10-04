@@ -1,0 +1,10 @@
+# docs/use-cases/form-rate-limits.md: rate limits on a form that a script sends as JSON, added afterwards.
+title A form's script sends JSON to the forms' endpoint; the shield lets it through only from the own website and five times an hour per address, the sixth gets 429
+row  visitor:box "The form's script" "POST, JSON" | origin:warnbox "Same website?" "post-origin" | limit:warnbox "5 an hour?" "limit" | site:okbox "Your site" "saves it"
+row  foreign:nobox "403" "sent from another website" | wait:nobox "429, please wait" "Retry-After: when it may try again"
+arrow visitor -> origin
+arrow origin -> limit "yes"
+arrow limit -> site "yes" go
+arrow origin -> foreign "no"
+arrow limit -> wait "the sixth"
+note Reading the job offer and opening the form count nothing: only the endpoint is counted.

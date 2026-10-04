@@ -91,7 +91,8 @@ the body changes.
 - **Headers** as today, plus for the page: `Content-Security-Policy:
   default-src 'none'; style-src 'unsafe-inline'; img-src data:`,
   `X-Robots-Tag: noindex`, `Cache-Control: no-store`.
-- **An API** (`api-path`, or a request that asks for JSON) gets JSON instead:
+- **An API** (`api-path`, a request that asks for JSON, or one that sends
+  JSON, as the budgets' check already decides it) gets JSON instead:
   `{"status": 404, "error": "not found", "reference": "7KQ2-M4XD"}` (429: with
   `retryAfter`). **HEAD**: the headers only.
 - About 2 KB; built from a constant string with a few replacements.

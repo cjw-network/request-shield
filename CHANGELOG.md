@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Use case: a pentest asks for rate limits on the forms**
+  (`docs/use-cases/form-rate-limits.md`): forms built by a script and sent as
+  JSON to one endpoint get `allow POST`, `post-origin same` and a budget on
+  the endpoint, watched first, with `expect` lines as the proof; one limit
+  per kind of form through `consume()`; the limits named (the 429 is HTML
+  until 0030, per address only). Proposal **0034 budgets for everyone
+  together** (Draft): one counter for all senders of a form, and how not to
+  lock out real applicants with it. Proposal 0030 answers in JSON a request
+  that sends JSON.
 - **Docs for people, by role, in plain language** (0031 step F.8):
   `docs/for/` has a page each for admins, hosters, editors, customers and
   developers -- what they see, what the numbers mean, what to do when, and a

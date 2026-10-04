@@ -58,7 +58,8 @@
   [page cache pollution](use-cases/page-cache-pollution.md) ·
   [scrapers and bots](use-cases/scraping-and-bots.md) ·
   [behind a load balancer](use-cases/behind-a-load-balancer.md) ·
-  [an Exponential site](use-cases/exponential.md)
+  [an Exponential site](use-cases/exponential.md) ·
+  [a pentest asks for rate limits on the forms](use-cases/form-rate-limits.md)
 - **Proposals** — planned features, open for discussion (status in each):
   [0001 earn back a spent budget](proposals/0001-earn-back-a-spent-budget.md) (implemented) ·
   [0003 human-readable rule files](proposals/0003-human-readable-rule-files.md) (implemented) ·
@@ -91,7 +92,8 @@
   [0031 a robust core, everything else a plugin](proposals/0031-robust-core-plugins.md) (draft — the plan; [steps and progress](proposals/0031-steps.md)) ·
   [0002 the single-file build](proposals/0002-single-file-build.md) (draft; part of 0031) ·
   [0032 check levels](proposals/0032-check-levels.md) (draft; largely superseded by 0004) ·
-  [0033 event log](proposals/0033-event-log.md) (draft; partly built, the rest a `Sink` plugin)
+  [0033 event log](proposals/0033-event-log.md) (draft; partly built, the rest a `Sink` plugin) ·
+  [0034 budgets for everyone together](proposals/0034-shared-budgets.md) (draft)
   (0007 is unused)
 - **Roadmap for 0012–0016** (the reasons in [0012](proposals/0012-dashboard.md#roadmap-for-00120016)):
   counters and crawler statistics first (they answer "did GPTBot crawl the
