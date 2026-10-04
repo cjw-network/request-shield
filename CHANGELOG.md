@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **Proposal 0040 in a PHP application server** (Draft): the shield in
+  Qbix / Exponential Velocity (PHP's own web server with long-lived
+  workers) -- the settings loaded once before the workers fork, a hook
+  before any application code, static files decided too; first a test
+  setup (one fork per request, then persistent workers), what persistent
+  workers need (state reset by the shield, the page cache off where the
+  end of a request is not seen), then an adapter.
 - **Use case "an accessible website, hardened: no puzzle for anyone"**: why
   every captcha shuts someone out (pictures, audio, riddles, sliders, time
   limits, Google's score; WCAG 1.1.1 and 3.3.8), compared in plain language
