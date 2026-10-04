@@ -98,7 +98,8 @@
   [0034 budgets for everyone together](proposals/0034-shared-budgets.md) (draft) ·
   [0035 the check for forms that send JSON](proposals/0035-checked-json-forms.md) (draft) ·
   [0036 forms per page: viewed, sent, saved](proposals/0036-forms-per-page.md) (draft) ·
-  [0037 named values: an address range, a set of paths, written once](proposals/0037-named-values.md) (draft)
+  [0037 named values: an address range, a set of paths, written once](proposals/0037-named-values.md) (draft) ·
+  [0038 without JavaScript, and without friction: a fallback and invisible signals](proposals/0038-checks-without-friction.md) (draft)
   (0007 is unused)
 - **Roadmap for 0012–0016** (the reasons in [0012](proposals/0012-dashboard.md#roadmap-for-00120016)):
   counters and crawler statistics first (they answer "did GPTBot crawl the

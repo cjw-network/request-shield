@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **Proposal 0038 without JavaScript, and without friction** (Draft): why no
+  captcha (models solve them, Google's value is its risk score, every person
+  pays); instead a fallback for visitors without JavaScript (a signed form and
+  a short wait, a few uses an hour) and two invisible signals in the form --
+  a honeypot field and the time it took -- that bring the check, and a
+  refusal only when both say "program".
 - **Error pages, part 3: the reference** (proposal 0030, 0031 step G.1,
   RSF05-06): every refusal the shield answers with its page gets eight random
   characters (`7KQ2-M4XD`) -- on the page with the time, in the JSON and in
