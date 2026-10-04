@@ -47,7 +47,13 @@ const EDITIONS = [
         'about' => 'the statistics plugin, loaded after request-shield.php',
         'load' => 'the statistics are switched on in the rules (set stats on)',
     ],
-    'waf' => ['later' => 'the dashboard\'s pages (src/Report, Access) are still part of the mini edition; 0031 step G.3 moves them into plugins/waf, then this edition is built from there'],
+    'waf' => [
+        'file' => 'request-shield-waf.php',
+        'dirs' => ['plugins/waf/src'],
+        'core' => false,
+        'about' => 'the firewall\'s pages (Rules & setup, Live, Lists) and the examples command, loaded after request-shield.php and request-shield-api.php',
+        'load' => 'the pages are below <dashboard-path>/waf, guarded like the dashboard; they read their data through the API\'s classes (request-shield-api.php)',
+    ],
     'api' => [
         'file' => 'request-shield-api.php',
         'dirs' => ['plugins/api/src'],

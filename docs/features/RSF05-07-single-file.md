@@ -2,7 +2,8 @@
 
 request-shield can be one PHP file: `request-shield.php`, the **mini edition**.
 It holds the checks, the answers, the browser check, the log, the rule
-compiler, the command line and the shipped rule sets. A site without Composer
+compiler, the command line and the shipped rule sets -- no page of the
+dashboard: those are the `waf` edition's. A site without Composer
 uploads it, puts its rules next to it and switches it on with one
 `auto_prepend_file` line. The design is [proposal 0002](../proposals/0002-single-file-build.md);
 the release with checksums and a signature, `verify`, `self-update` and `init`
@@ -18,6 +19,7 @@ php build/single-file.php                              # build/out/request-shiel
 php build/single-file.php --edition=stats              # build/out/request-shield-stats.php
 php build/single-file.php --edition=api                # build/out/request-shield-api.php
 php build/single-file.php --edition=cache              # build/out/request-shield-cache.php
+php build/single-file.php --edition=waf                # build/out/request-shield-waf.php
 php build/single-file.php --out=/tmp/rs.php --build=v0.4.0
 ```
 
@@ -27,7 +29,7 @@ php build/single-file.php --out=/tmp/rs.php --build=v0.4.0
 | `stats` | `request-shield-stats.php` | `plugins/stats/src`, loaded after the mini file |
 | `api` | `request-shield-api.php` | `plugins/api/src`, loaded after the mini file ([the API](RSF06-05-api.md)) |
 | `cache` | `request-shield-cache.php` | `plugins/cache/src`, loaded after the mini file ([the HTTP cache](RSF04-03-http-cache.md)) |
-| `waf` | — | not yet: the dashboard's pages are still in the mini file; step G.3 moves them out |
+| `waf` | `request-shield-waf.php` | `plugins/waf/src`: Rules & setup, Live, Lists and the `examples` command, loaded after the mini file and the API's ([the rules page](RSF06-01-active-rules-page.md), [live and lists](RSF06-02-live-and-lists.md)) |
 
 The build is deterministic: the same sources and `--build` give the same
 bytes. It refuses, and writes nothing, when a source file has code outside

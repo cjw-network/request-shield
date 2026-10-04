@@ -177,13 +177,13 @@ return [
     },
     'RSF05-03 the rules page names the mode and the watched rules; trace says what they would do' => function (): void {
         $s = modesSettings("[SITE-OLD] monitor block /old/**   # the old API\n[SITE-CO] challenge /checkout max-age 5m\n");
-        $html = \CjwNetwork\RequestShield\Report\RulesPage::render($s, ['check' => ['url' => '/old/x', 'method' => 'GET', 'ip' => '198.51.100.7'], 'store' => new MemoryStore()]);
+        $html = \CjwNetwork\RequestShield\Waf\RulesPage::render($s, ['check' => ['url' => '/old/x', 'method' => 'GET', 'ip' => '198.51.100.7'], 'store' => new MemoryStore()]);
         truthy(strpos($html, '1 rule is only watched (monitor)') !== false, 'the mode line');
         truthy(strpos($html, 'Watched, not enforced') !== false && strpos($html, 'monitor block /old/**') !== false, 'the group, the rule as written');
         truthy(strpos($html, 'Watched: it gets &quot;not found&quot; (404)') !== false, 'the check: what the watched rule would do');
         truthy(strpos($html, 'a pass from the last 5 minutes') !== false, 'max-age in words');
-        truthy(strpos(\CjwNetwork\RequestShield\Report\RulesPage::render(modesSettings("set mode monitor\n")), 'Monitor mode (set mode monitor)') !== false, 'monitor mode');
-        truthy(strpos(\CjwNetwork\RequestShield\Report\RulesPage::render(modesSettings("set mode strict\n")), 'a pass for 15 minutes') !== false, 'strict');
+        truthy(strpos(\CjwNetwork\RequestShield\Waf\RulesPage::render(modesSettings("set mode monitor\n")), 'Monitor mode (set mode monitor)') !== false, 'monitor mode');
+        truthy(strpos(\CjwNetwork\RequestShield\Waf\RulesPage::render(modesSettings("set mode strict\n")), 'a pass for 15 minutes') !== false, 'strict');
         $t = (new \CjwNetwork\RequestShield\Inspector(modesSettings("set mode monitor\n"), new MemoryStore()))->trace(\CjwNetwork\RequestShield\Inspector::request('GET', '/.env', '198.51.100.7'), 1000.0);
         same('sees the page — monitor mode; enforced, it gets "not found" (404) — the site never sees it', $t['verdict']);
     },

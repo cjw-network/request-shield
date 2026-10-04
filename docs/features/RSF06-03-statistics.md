@@ -164,7 +164,7 @@ shield and wants every technical detail in one place:
   known crawlers, statistics, log, the rule files and rule sets read.
 
 It shows how the site is protected and its paths on the server: the same
-login or `restrict` as the other views. `Report\SetupPage::render($settings,
+login or `restrict` as the other views. `Waf\SetupPage::render($settings,
 $lang, $decided)` prints only this part, for a CMS's own admin page.
 
 ## Days, weeks, months, years

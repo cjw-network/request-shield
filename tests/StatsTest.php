@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Describe;
-use CjwNetwork\RequestShield\Report\RulesPage;
+use CjwNetwork\RequestShield\Waf\RulesPage;
 use CjwNetwork\RequestShield\Stats\Report\StatsReport;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rules\RuleFile;
@@ -519,7 +519,7 @@ return [
                 . "[T-OLD]   block **/old-admin/**                     # the old admin area\n"
                 . "[T-PACE]  limit requests 30/min challenge-at 10     # per visitor: 30 a minute\n");
             $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
-            $page = \CjwNetwork\RequestShield\Report\SetupPage::class;
+            $page = \CjwNetwork\RequestShield\Waf\SetupPage::class;
             $en = $page::render($s, 'en', ['T-AREA' => 4, 'T-OLD' => 2]);
             $de = $page::render($s, 'de', ['T-AREA' => 4]);
             truthy(strpos($en, 'The way of a request') !== false && preg_match('#Areas for certain visitors</b> <a class="rs-help" href="[^"]+/RSF02-03-access-rules\.md"[^>]*>\?</a> <span class="state">on#', $en) === 1
@@ -551,7 +551,7 @@ return [
             $links = \CjwNetwork\RequestShield\Stats\Report\StatsPage::links($s);
             // Rules & setup is the core's page (0031 B.8): the frame's tabs, the counts from the plugins that have RuleCounts.
             $view = \CjwNetwork\RequestShield\Frame::tabs($s, $links, 'rules', 'de')
-                . \CjwNetwork\RequestShield\Report\SetupPage::render($s, 'de', \CjwNetwork\RequestShield\Counts::rules($s, 7, STATS_T0 + 10.0), ['now' => STATS_T0 + 10.0]);
+                . \CjwNetwork\RequestShield\Waf\SetupPage::render($s, 'de', \CjwNetwork\RequestShield\Counts::rules($s, 7, STATS_T0 + 10.0), ['now' => STATS_T0 + 10.0]);
             truthy(strpos($view, 'class="tab on" href="/rs/waf/rules?lang=de">Regeln &amp; Einrichtung') !== false && strpos($view, 'Der Weg einer Anfrage') !== false, 'the core\'s page "Regeln & Einrichtung", in the frame');
             truthy(strpos($view, '1× entschieden') !== false || strpos($view, 'entschieden') !== false, 'the rule\'s count from the statistics plugin (RuleCounts): ' . (strpos($view, 'T-AREA') !== false ? 'T-AREA shown' : 'T-AREA missing'));
             $shield = \CjwNetwork\RequestShield\Stats\Report\StatsPage::render($s, ['stats' => $st, 'now' => STATS_T0 + 10, 'lang' => 'de', 'view' => 'shield', 'links' => $links]);
@@ -571,7 +571,7 @@ return [
             truthy(strpos($area, 'a restricted area, and 10.1.2.3 is allowed (10.0.0.0/8)') !== false && strpos($area, 'This visitor sees the page') !== false, 'in English, from inside the area');
             truthy(strpos($page::render($s, 'en', [], ['check' => ['url' => '/x', 'ip' => '<script>'], 'store' => $store, 'ip' => '192.0.2.1']), 'value="192.0.2.1"') !== false, 'an address that is none: the viewer\'s');
             same(0, (int) $store->hit('requests:198.51.100.7', 60, 1000.0) - 1, 'the tester counted nothing');
-            $viewed = \CjwNetwork\RequestShield\Report\SetupPage::render($s, 'de', [], ['check' => ['url' => '/old-admin/'], 'ip' => '203.0.113.5', 'store' => $store, 'now' => STATS_T0 + 10.0, 'action' => '/rs/waf/rules']);
+            $viewed = \CjwNetwork\RequestShield\Waf\SetupPage::render($s, 'de', [], ['check' => ['url' => '/old-admin/'], 'ip' => '203.0.113.5', 'store' => $store, 'now' => STATS_T0 + 10.0, 'action' => '/rs/waf/rules']);
             truthy(strpos($viewed, 'href="#rule-T-OLD"') !== false && strpos($viewed, 'value="203.0.113.5"') !== false && strpos($viewed, 'name="view"') === false, 'on the core\'s page: its address, no view field');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));

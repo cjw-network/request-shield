@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Log;
-use CjwNetwork\RequestShield\Report\ListsPage;
-use CjwNetwork\RequestShield\Report\LivePage;
+use CjwNetwork\RequestShield\Waf\ListsPage;
+use CjwNetwork\RequestShield\Waf\LivePage;
 use CjwNetwork\RequestShield\LogTail;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rules\Lists;

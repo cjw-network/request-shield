@@ -98,8 +98,8 @@ expect GET /oldies           answered          # a near miss
 - In an `expect` line a `#` inside quotes is part of the value (`ua "Bot #1"`);
   the comment starts at a `#` outside them.
 
-The demo's front page is drawn from these groups (`Report\DemoSite`,
-`Report\ExamplesPage`): one numbered row per line, "Show the answer" decided
+The demo's front page is drawn from these groups (`Waf\DemoSite`,
+`Waf\ExamplesPage`): one numbered row per line, "Show the answer" decided
 on the server with the live rules and store, nothing counted. An example
 decided by a fixed check with no ID -- a path out of the site's folder, a size
 limit -- names it `by built-in`.

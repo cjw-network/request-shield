@@ -7,7 +7,7 @@ use CjwNetwork\RequestShield\Log;
 use CjwNetwork\RequestShield\Describe;
 use CjwNetwork\RequestShield\Inspector;
 use CjwNetwork\RequestShield\LogStats;
-use CjwNetwork\RequestShield\Report\RulesPage;
+use CjwNetwork\RequestShield\Waf\RulesPage;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Settings;
@@ -148,19 +148,19 @@ return [
     'RSF06-01 diagrams: valid SVG, the path of a request, everything escaped; the files in docs/ are current' => function (): void {
         $i = new Inspector(reportSettings(REPORT_RULES), new MemoryStore());
         $t = $i->trace(Inspector::request('GET', 'https://www.example.org/wp-admin/<script>', '198.51.100.7'), 1000.0);
-        $svg = \CjwNetwork\RequestShield\Report\Diagram::trace($t, 'GET /wp-admin/<script>');
+        $svg = \CjwNetwork\RequestShield\Waf\Diagram::trace($t, 'GET /wp-admin/<script>');
         truthy(@simplexml_load_string($svg) !== false, 'well-formed');
         truthy(strpos($svg, '<script') === false, 'nothing from the request is markup');
         same(1, substr_count($svg, 'class="stop"'), 'one refusing check');
         same(count(array_filter($t['steps'], static fn (array $st): bool => $st['state'] === 'skip')), substr_count($svg, 'class="skip"'), 'the rest not checked, a circle each');
         truthy(strpos($svg, '>404</text>') !== false, 'where it ends: the shield\'s answer');
-        $ok = \CjwNetwork\RequestShield\Report\Diagram::trace($i->trace(Inspector::request('GET', 'https://www.example.org/', '198.51.100.7'), 1000.0), 'GET /');
+        $ok = \CjwNetwork\RequestShield\Waf\Diagram::trace($i->trace(Inspector::request('GET', 'https://www.example.org/', '198.51.100.7'), 1000.0), 'GET /');
         truthy(strpos($ok, '>Your site</text>') !== false && strpos($ok, 'class="stop"') === false, 'a passing request: the site');
         foreach (['browserCheck' => 'browser-check.svg', 'overview' => 'overview.svg'] as $method => $file) {
-            $drawn = \CjwNetwork\RequestShield\Report\Diagram::$method();
+            $drawn = \CjwNetwork\RequestShield\Waf\Diagram::$method();
             truthy(@simplexml_load_string($drawn) !== false, "$method: well-formed");
             same($drawn . "\n", (string) file_get_contents(dirname(__DIR__) . "/docs/explained/$file"),
-                "docs/explained/$file is current (php -r 'require \"bootstrap.php\"; echo CjwNetwork\\RequestShield\\Report\\Diagram::$method(), \"\\n\";' > docs/explained/$file)");
+                "docs/explained/$file is current (php -r 'require \"bootstrap.php\"; echo CjwNetwork\\RequestShield\\Waf\\Diagram::$method(), \"\\n\";' > docs/explained/$file)");
         }
     },
 ];

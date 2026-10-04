@@ -196,7 +196,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
 
         // The tabs: visitors and pages (editors) -- protection (admins). An
         // embedding page can show one only ('tabs' => false).
-        // Live and lists are the core's pages (Report\LivePage, ListsPage): tabs here when the site has them.
+        // Live and lists are the WAF's pages (Waf\LivePage, ListsPage): tabs here when the site has them.
         // Its own labels for its own views; the other pages' (live, lists, an extension's) from the routes.
         $tabs = $links !== [] ? array_intersect_key(['sites' => $t['tabSites'], 'all' => $t['tabAll'], 'site' => $t['tabSite'], 'shield' => $t['tabShield'], 'rules' => $t['tabRules']]
             + array_map(static fn (array $tab): string => $tab[$lang === 'de' ? 1 : 0], Routes::tabs($s)), $links)
@@ -590,8 +590,8 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
     {
         $out = [];
         foreach ($s->routes as $path => $r) {
-            // Its own pages, and the core's Rules & setup: the statistics' tabs lead there too.
-            if ($r['tab'] !== null && (self::owns($r) || ($r['ext'] === null && $r['key'] === 'rules')) && !isset($out[$r['key']])) {
+            // Its own pages, and the WAF's Rules & setup (when that plugin is there): the statistics' tabs lead there too.
+            if ($r['tab'] !== null && (self::owns($r) || ($r['ext'] === 'waf' && $r['key'] === 'rules')) && !isset($out[$r['key']])) {
                 $out[$r['key']] = $prefix . $path;
             }
         }

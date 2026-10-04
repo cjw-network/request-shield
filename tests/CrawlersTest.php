@@ -6,7 +6,7 @@ use CjwNetwork\RequestShield\Challenge\Crawlers;
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Log;
 use CjwNetwork\RequestShield\LogStats;
-use CjwNetwork\RequestShield\Report\RulesPage;
+use CjwNetwork\RequestShield\Waf\RulesPage;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rules\CrawlerLists;
 use CjwNetwork\RequestShield\Rules\RuleFile;

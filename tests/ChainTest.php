@@ -125,8 +125,7 @@ return [
                 same(16, count($out->chain()), 'the core\'s steps only');
             }
         } finally {
-            \CjwNetwork\RequestShield\Rules\Vocabulary::forget();
-            \CjwNetwork\RequestShield\Rules\Vocabulary::offer(\CjwNetwork\RequestShield\Stats\StatsExtension::class);
+            \CjwNetwork\RequestShield\Rules\Vocabulary::reset();
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },

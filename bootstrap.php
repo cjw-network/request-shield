@@ -26,7 +26,7 @@ spl_autoload_register(static function (string $class): void {
         // The core (src/); the shipped plugins each in its own namespace (plugins/<name>/src, 0031 D.2, G.0).
         $rest = substr($class, 25);
         $dir = __DIR__ . '/src/';
-        foreach (['Stats\\' => '/plugins/stats/src/', 'Api\\' => '/plugins/api/src/', 'Cache\\' => '/plugins/cache/src/'] as $ns => $path) {
+        foreach (['Stats\\' => '/plugins/stats/src/', 'Api\\' => '/plugins/api/src/', 'Cache\\' => '/plugins/cache/src/', 'Waf\\' => '/plugins/waf/src/'] as $ns => $path) {
             if (strncmp($rest, $ns, strlen($ns)) === 0) {
                 $dir = __DIR__ . $path;
                 $rest = substr($rest, strlen($ns));
@@ -45,7 +45,7 @@ spl_autoload_register(static function (string $class): void {
 // and offers them the first time the rules are compiled (class_exists(), so a
 // build without plugins/stats has none); a passing request loads no class for it.
 if (!defined('REQUEST_SHIELD_EXTENSIONS')) {
-    define('REQUEST_SHIELD_EXTENSIONS', ['CjwNetwork\\RequestShield\\Stats\\StatsExtension', 'CjwNetwork\\RequestShield\\Api\\ApiExtension', 'CjwNetwork\\RequestShield\\Cache\\CacheExtension']);
+    define('REQUEST_SHIELD_EXTENSIONS', ['CjwNetwork\\RequestShield\\Stats\\StatsExtension', 'CjwNetwork\\RequestShield\\Api\\ApiExtension', 'CjwNetwork\\RequestShield\\Cache\\CacheExtension', 'CjwNetwork\\RequestShield\\Waf\\WafExtension']);
 }
 
 (static function (): void {

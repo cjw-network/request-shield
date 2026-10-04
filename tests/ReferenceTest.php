@@ -36,10 +36,7 @@ return [
             $keys = array_merge($keys, $r['keys']);
         }
         // Every shipped extension offered, whatever the tests before left behind: the reference covers them all.
-        Vocabulary::forget();
-        foreach ((array) constant('REQUEST_SHIELD_EXTENSIONS') as $class) {
-            Vocabulary::offer((string) $class);
-        }
+        Vocabulary::reset();
         $known = Vocabulary::known();
         same([], array_values(array_diff(RuleFile::coreWords(), $words)), 'the core\'s words');
         same([], array_values(array_diff(RuleFile::coreSettings(), $keys)), 'the core\'s set keys');
@@ -73,7 +70,7 @@ return [
         truthy(strpos($md, '**RSF02-03 · Doors for certain people**') === 0 && strpos($md, '| `/admin/` | no access (403) · rule DEMO-ADMIN') !== false && strpos($md, 'RSF04-01') === false, 'one feature\'s table: ' . substr($md, 0, 300));
         [$html, $code] = refRun(rsCli(), "examples $demo --html");
         same(0, $code, substr($html, 0, 200));
-        $groups = \CjwNetwork\RequestShield\Report\DemoSite::groups(dirname(__DIR__) . '/examples/demo/request-shield.rules');
+        $groups = \CjwNetwork\RequestShield\Waf\DemoSite::groups(dirname(__DIR__) . '/examples/demo/request-shield.rules');
         $expects = 0;
         foreach ($groups as $g) {
             truthy(strpos($html, '<h2 id="' . $g['id'] . '">') !== false, "the page has {$g['id']}");

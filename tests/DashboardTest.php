@@ -26,7 +26,7 @@ function withDashboard(string $rules, callable $body): void
     mkdir("$dir/docroot", 0700, true);
     file_put_contents("$dir/docroot/index.php", '<?php echo "site " . ($_SERVER["REQUEST_SHIELD"] ?? "-") . " " . $_SERVER["REQUEST_URI"];');
     file_put_contents("$dir/site.rules", "set recheck 0\nset store file\nset store-dir $dir/store\n" . str_replace('__DIR__', $dir, $rules));
-    file_put_contents("$dir/prepend.php", '<?php define("REQUEST_SHIELD_EXTENSIONS", ["CjwNetwork\\\\RequestShield\\\\Stats\\\\StatsExtension", "CjwNetwork\\\\RequestShield\\\\Api\\\\ApiExtension", "CjwNetwork\\\\RequestShield\\\\Tests\\\\RsTestExtension"]);'
+    file_put_contents("$dir/prepend.php", '<?php define("REQUEST_SHIELD_EXTENSIONS", ["CjwNetwork\\\\RequestShield\\\\Stats\\\\StatsExtension", "CjwNetwork\\\\RequestShield\\\\Api\\\\ApiExtension", "CjwNetwork\\\\RequestShield\\\\Waf\\\\WafExtension", "CjwNetwork\\\\RequestShield\\\\Tests\\\\RsTestExtension"]);'
         . 'require ' . var_export(rsEntry(), true) . '; foreach (glob(' . var_export(__DIR__ . '/support/*.php', true) . ') as $f) { require $f; }' . "\n"
         . '\CjwNetwork\RequestShield\Shield::protectFile(' . var_export("$dir/site.rules", true) . ', null, ' . var_export("$dir/cache", true) . ');');
     $port = freePort();

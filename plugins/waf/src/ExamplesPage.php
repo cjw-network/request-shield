@@ -8,7 +8,7 @@
 
 declare(strict_types=1);
 
-namespace CjwNetwork\RequestShield\Report;
+namespace CjwNetwork\RequestShield\Waf;
 
 /**
  * The demo's rows as a table (0031 F.4), from its rule file's "# demo:"

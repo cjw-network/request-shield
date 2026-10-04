@@ -75,8 +75,11 @@ return [
         same([2, ['forms']], [$s->ext['stats']['depth'] ?? null, $s->ext['stats']['parts'] ?? null], 'ext.stats: compiled by the shipped extension (0031 B.3), the values kept');
         same(['handler' => ['Vendor\\Pkg\\Cache', 'Vendor\\Pkg\\Routes'], 'sink' => []], $s->hooks, 'hooks: class names cleaned, once each');
         same(['key' => 'own', 'ext' => null, 'tab' => ['Own', 'Eigene'], 'role' => 'reader', 'order' => 80], $s->routes['/rs/own'] ?? null, 'routes: as given, among the core\'s and the extensions\' (0031 B.5)');
-        same([['stats'], [], ['/rs/stats', '/rs/stats/overview', '/rs/stats/visitors', '/rs/stats/protection', '/rs/waf/rules', '/rs/waf', '/rs/waf/live', '/rs/waf/lists']],
-            [array_keys(Settings::from([])->ext), Settings::from([])->hooks, array_keys(Settings::from([])->routes)], 'empty by default (but the shipped extension\'s slot and pages, and the core\'s pages)');
+        \CjwNetwork\RequestShield\Rules\Vocabulary::reset();
+        $plain = Settings::from([]);
+        same([['stats', 'api', 'cache', 'waf'], [], ['/rs/stats', '/rs/stats/overview', '/rs/stats/visitors', '/rs/stats/protection', '/rs/waf/rules', '/rs/waf', '/rs/waf/live', '/rs/waf/lists']],
+            [array_keys($plain->ext), $plain->hooks, array_keys(array_filter($plain->routes, static fn (array $r): bool => $r['ext'] !== 'api'))],
+            'empty by default (but the shipped extensions\' slots and pages; the API\'s own routes aside)');
         $round = Settings::import(eval('return ' . var_export($s->export(), true) . ';'));
         same(serialize($s), serialize($round), 'the round trip keeps them');
         expectInvalid(['ext' => ['Stats' => []]], 'ext');

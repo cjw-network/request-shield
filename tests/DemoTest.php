@@ -88,7 +88,7 @@ $examples = function (string $prefix): void {
             truthy(strpos($r['body'], 'href="' . $prefix . '/challenge"') !== false, 'links start where the demo lives');
             truthy(strpos($r['body'], 'action="' . $prefix . '/edit"') !== false, 'so does the form');
             truthy(preg_match('#<tr id="t3-1">\s*<td class="no"><a href="\#t3-1">3\.1</a></td>#', $r['body']) === 1, 'one numbered row per test, with its own anchor');
-            $pace = array_values(array_filter(\CjwNetwork\RequestShield\Report\DemoSite::groups(dirname(__DIR__) . '/examples/demo/request-shield.rules'), static fn (array $g): bool => $g['id'] === 'RSF03-01'))[0]['n'] ?? 0;
+            $pace = array_values(array_filter(\CjwNetwork\RequestShield\Waf\DemoSite::groups(dirname(__DIR__) . '/examples/demo/request-shield.rules'), static fn (array $g): bool => $g['id'] === 'RSF03-01'))[0]['n'] ?? 0;
             truthy(strpos($r['body'], '<tr class="group"><th colspan="4">' . $pace . ' · Budgets and pace <span class="feature">RSF03-01</span></th></tr>') !== false, 'grouped by feature, the groups numbered -- from the rules\' # demo: groups');
             truthy(strpos($r['body'], 'href="' . $prefix . '/rules?method=GET&amp;url=' . rawurlencode($prefix . '/.env') . '&amp;ip=127.0.0.1#check">See the path') !== false, 'each example links to its path on the rules page');
             $rules = $get('GET', '/rules?method=GET&url=' . rawurlencode($prefix . '/files/%2e%2e/secret') . '&ip=127.0.0.1');
@@ -218,7 +218,7 @@ function demoGroup(array $g, string $prefix): void
             } elseif ($r['site'] !== null) {
                 $headers['Host'] = (string) $r['site'];      // a row of a site block: that website (the demo picks a block by Host)
             }
-            $from = (string) ($r['from'] ?? \CjwNetwork\RequestShield\Report\DemoSite::FROM);
+            $from = (string) ($r['from'] ?? \CjwNetwork\RequestShield\Waf\DemoSite::FROM);
             $headers['X-Forwarded-For'] = (isset($headers['x-forwarded-for']) ? $headers['x-forwarded-for'] . ', ' : '') . $from;
             unset($headers['x-forwarded-for']);
             if ($r['ua'] !== null) {
@@ -292,7 +292,7 @@ function demoGroup(array $g, string $prefix): void
     }
 }
 
-$demoGroups = \CjwNetwork\RequestShield\Report\DemoSite::groups(dirname(__DIR__) . '/examples/demo/request-shield.rules');
+$demoGroups = \CjwNetwork\RequestShield\Waf\DemoSite::groups(dirname(__DIR__) . '/examples/demo/request-shield.rules');
 
 $forms = function (string $prefix): void {
         if (!function_exists('proc_open')) {

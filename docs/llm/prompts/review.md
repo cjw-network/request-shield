@@ -75,7 +75,7 @@ C5 API (RSF06-05) is a plugin, not core: grep -rn "api/v1\|openapi" src/ is empt
    any response (grep the schemas).
 
 D. Single file ("mini", no backend)
-D1 build/single-file.php produces request-shield.php from src/ WITHOUT src/Report/*; the build is
+D1 build/single-file.php produces request-shield.php from src/ WITHOUT plugins/waf/src/*; the build is
    reproducible (build twice, sha256 identical); php -l passes on PHP 8.0–8.5 (docker php:8.x-cli).
 D2 The full test suite runs against the built file (REQUEST_SHIELD_ENTRY or equivalent) and exits 0.
 D3 Follow docs/llm/install.md literally in a fresh container with a plain index.php: download from
@@ -115,7 +115,7 @@ G. Security
 G1 The secret is never logged or output: grep -rn "secret" src/ | grep -i "log\|echo\|print\|header("
    is empty; MACs are compared with hash_equals() only (grep -rn "hash_equals\|== \$sig\|=== \$sig"
    src/Challenge/ src/Access.php).
-G2 Everything a page embeds is escaped: sample ten echoes of user-controlled data in src/Report/ and
+G2 Everything a page embeds is escaped: sample ten echoes of user-controlled data in plugins/waf/src/ and
    src/Challenge/; each goes through htmlspecialchars(…, ENT_QUOTES).
 G3 Routes the shield serves are behind restrict or dashboard-access; check warns otherwise; responses
    carry Cache-Control: no-store and X-Robots-Tag: noindex; POST handlers check a CSRF token.

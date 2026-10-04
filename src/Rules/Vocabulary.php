@@ -154,7 +154,7 @@ final class Vocabulary
     ];
 
     /** @var array<string, string> the feature an extension's words and keys belong to, by the extension's id */
-    public const EXTENSION_FEATURES = ['stats' => 'RSF06-03', 'api' => 'RSF06-05', 'cache' => 'RSF04-03'];
+    public const EXTENSION_FEATURES = ['stats' => 'RSF06-03', 'api' => 'RSF06-05', 'cache' => 'RSF04-03', 'waf' => 'RSF06-01'];
 
     /** The feature a word or set key belongs to: the core's (FEATURES), else its extension's; null when none is known. */
     public static function featureOf(string $word): ?string
@@ -227,6 +227,13 @@ final class Vocabulary
         self::$shipped = true;
         self::$words = null;
         self::$settings = null;
+    }
+
+    /** Back to the shipped extensions, offered again on the next lookup (tests, after forget()). */
+    public static function reset(): void
+    {
+        self::forget();
+        self::$shipped = false;
     }
 
     /** @return class-string<Extension>|null */

@@ -7,7 +7,7 @@ the statistics, under `dashboard-path`: `/rs/waf/live` and `/rs/waf/lists`.
 
 ![The live view shows what is stopped right now and why; one click keeps an address out, with a comment, on every server](../diagrams/live-and-lists.svg)
 
-- **Live** (`Report\LivePage`): what the shield stops right now, one row per
+- **Live** (`Waf\LivePage`): what the shield stops right now, one row per
   request, newest first, updated every 3 seconds. Each row shows:
   - **the website** (the host, and its site block when there are some);
   - the address;
@@ -27,7 +27,7 @@ the statistics, under `dashboard-path`: `/rs/waf/live` and `/rs/waf/lists`.
 
   Filters for the website, what happened and the source, plus a text search,
   are kept in the page's address. **Pause** holds new rows back and counts them.
-- **Lists** (`Report\ListsPage`): both lists, newest first, with a search.
+- **Lists** (`Waf\ListsPage`): both lists, newest first, with a search.
   - **Add** an address or range: kept out or let in, for 1 hour, 1 day, 7 days,
     30 days, until a date, or for good (keep out only), with **a comment of your
     own**.
@@ -76,12 +76,17 @@ All four are about the server and belong above the site blocks.
 
 ### In the site's front controller
 
-The library renders the pages and the data; the site routes them and decides
-who may open them (an address rule, its own login), as for the statistics:
+The pages are the WAF plugin's (`plugins/waf`, the edition
+`request-shield-waf.php`); their data is the API's (`Api\LiveRows`,
+`Api\ListsChanges`), so a site without the pages still has `GET /live` and
+the list changes. The site routes them and decides who may open them (an
+address rule, its own login), as for the statistics:
 
 ```php
-use CjwNetwork\RequestShield\Report\{Frame, LivePage, ListsPage};
+use CjwNetwork\RequestShield\Api\{ListsChanges, LiveRows};
+use CjwNetwork\RequestShield\Frame;
 use CjwNetwork\RequestShield\Shield;
+use CjwNetwork\RequestShield\Waf\{ListsPage, LivePage};
 
 $shield = Shield::active();
 $page = Frame::pageFor($shield->settings, $path);           // 'live', 'lists', or another dashboard page
@@ -89,18 +94,18 @@ $links = Frame::links($shield->settings);                  // the tabs
 $ip = $_SERVER['REMOTE_ADDR'];                             // the viewer: never offered to be kept out
 if ($page === 'live' && ($_GET['format'] ?? '') === 'json') {
     header('Content-Type: application/json');
-    echo json_encode(LivePage::json($shield->settings, $_GET['cursor'] ?? null, ['lang' => $_GET['lang'] ?? 'en', 'ip' => $ip]));
+    echo json_encode(LiveRows::json($shield->settings, $_GET['cursor'] ?? null, ['lang' => $_GET['lang'] ?? 'en', 'ip' => $ip]));
 } elseif ($page === 'live') {
     echo LivePage::render($shield->settings, ['feed' => $links['live'] . '?format=json', 'lists' => $links['lists'], 'links' => $links, 'ip' => $ip]);
 } elseif ($page === 'lists') {
     $message = $_SERVER['REQUEST_METHOD'] === 'POST'
-        ? ListsPage::handle($shield->settings, $_POST, ['ip' => $ip, 'user' => $currentUser, 'ruleFile' => REQUEST_SHIELD_CONFIG])
+        ? ListsChanges::handle($shield->settings, $_POST, ['ip' => $ip, 'user' => $currentUser, 'ruleFile' => REQUEST_SHIELD_CONFIG])
         : null;
     echo ListsPage::render($shield->settings, ['action' => $links['lists'], 'get' => $_GET, 'message' => $message, 'links' => $links, 'ip' => $ip]);
 }
 ```
 
-- **Changes are POST with a token:** `ListsPage::token()` is an HMAC of the
+- **Changes are POST with a token:** `ListsChanges::token()` is an HMAC of the
   shield's secret, the viewer's address and the hour, never the secret itself.
   A token from this hour or the last one is accepted. A CMS that checks its own
   form token passes `'csrf' => $itsToken` to `render()` and

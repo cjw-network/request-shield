@@ -61,8 +61,7 @@ return [
             }
             truthy(strpos((string) @file_get_contents("$dir/php-errors.log"), 'HandlerPlugin failed to answer, the application runs: the handler failed, as asked (') !== false, 'noted');
         } finally {
-            Vocabulary::forget();
-            Vocabulary::offer(\CjwNetwork\RequestShield\Stats\StatsExtension::class);
+            Vocabulary::reset();
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },

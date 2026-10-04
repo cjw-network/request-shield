@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use CjwNetwork\RequestShield\Decision;
-use CjwNetwork\RequestShield\Report\LivePage;
+use CjwNetwork\RequestShield\Waf\LivePage;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rules\FeedExport;
 use CjwNetwork\RequestShield\Rules\Feeds;
@@ -285,7 +285,7 @@ return [
             \CjwNetwork\RequestShield\Log::write($s, $r, $d, $shield->explain($d, $r), 1000.0);
             $row = \CjwNetwork\RequestShield\Api\LiveRows::json($s, null)['rows'][0];
             same(['feed', 'on the public list Spamhaus DROP (Don\'t Route Or Peer)', 'F-DROP'], [$row['source'], $row['why'], $row['rule']]);
-            $groups = \CjwNetwork\RequestShield\Report\RulesPage::groups($s, [], null, 'en');
+            $groups = \CjwNetwork\RequestShield\Waf\RulesPage::groups($s, [], null, 'en');
             $feeds = array_values(array_filter($groups, static fn (array $g): bool => $g[0] === 'Public blocklists'));
             truthy($feeds !== [] && strpos(json_encode($feeds[0]) ?: '', '1 entries, fetched') !== false, 'the rules page: the list, how many, when fetched');
         } finally {

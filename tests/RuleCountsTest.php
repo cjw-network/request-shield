@@ -51,8 +51,7 @@ return [
             same([], Counts::rules($failing, 7, 1000.0), 'a plugin that throws: left out, the page is drawn without its numbers');
             same([], Counts::rules(countsSettings("host a.example\n"), 7, 1000.0), 'no hook: nothing asked');
         } finally {
-            Vocabulary::forget();
-            Vocabulary::offer(\CjwNetwork\RequestShield\Stats\StatsExtension::class);
+            Vocabulary::reset();
         }
     },
     'RSF06-04 the rules and setup page knows no plugin by name: src/Report has no StatsReport' => function (): void {

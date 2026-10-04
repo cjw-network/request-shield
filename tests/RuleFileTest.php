@@ -388,7 +388,7 @@ return [
             $t = (new \CjwNetwork\RequestShield\Inspector($s, new MemoryStore()))->trace(\CjwNetwork\RequestShield\Inspector::request('GET', '/admin/files/.env', '192.0.2.5'), 1000.0);
             same('pass', step($t, 'Addresses only attackers ask for')['state']);
             same('would be refused (hidden files and folders: .env, .git, .htpasswd, editor settings), but open here for 192.0.2.5 (192.0.2.0/24) — site.rules:1', step($t, 'Addresses only attackers ask for')['text']);
-            $html = \CjwNetwork\RequestShield\Report\RulesPage::render($s, ['store' => new MemoryStore()]);
+            $html = \CjwNetwork\RequestShield\Waf\RulesPage::render($s, ['store' => new MemoryStore()]);
             truthy(strpos($html, 'Open at /admin/files/**: every block above — only for 192.0.2.0/24') !== false, 'the exception on the page');
             truthy(strpos($html, 'Open at /downloads/**: backups, dumps and archives') !== false && strpos($html, '⚠ for everyone') !== false, 'the open one, with a warning');
             $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli());
@@ -419,7 +419,7 @@ return [
             same('no ID: file and line', $s->origin('text', 'site.rules:5'));
             same(shippedAt('SCAN-HIDDEN'), $s->origin('at', 'SCAN-HIDDEN'));
             same('SITE-20', $s->origin('budgets', 'requests'));
-            $html = \CjwNetwork\RequestShield\Report\RulesPage::render($s, ['store' => new MemoryStore()]);
+            $html = \CjwNetwork\RequestShield\Waf\RulesPage::render($s, ['store' => new MemoryStore()]);
             truthy(strpos($html, 'the admin area: office only<br><code class="rule">/admin/** — only for 192.0.2.0/24</code>') !== false, 'the page: description, then the rule');
             truthy(strpos($html, '<code class="origin">SITE-10</code><br><span class="note">site.rules:3</span>') !== false, 'the page: ID and where');
         } finally {
@@ -471,7 +471,7 @@ return [
             $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli());
             exec("$bin check " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
             truthy(strpos(implode("\n", $out), 'rule sets SCAN 2026.10.1, CRAWL 2026.10.1, ext/shop.rules 1.4.0, SITE 2026-09-29.2') !== false, implode("\n", $out));
-            $html = \CjwNetwork\RequestShield\Report\RulesPage::render($s, ['store' => new MemoryStore()]);
+            $html = \CjwNetwork\RequestShield\Waf\RulesPage::render($s, ['store' => new MemoryStore()]);
             truthy(strpos($html, '<code>SITE 2026-09-29.2</code>') !== false, 'on the rules page');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
@@ -516,7 +516,7 @@ return [
             exec('rm -rf ' . escapeshellarg($dir) . ' ' . escapeshellarg($lib));
         }
         $warned = rulesFrom("[SITE-X] unblock [SCAN-CGI@7]\n");
-        truthy(strpos(\CjwNetwork\RequestShield\Report\RulesPage::render($warned, ['store' => new MemoryStore()]), '<strong>Please check:</strong> SITE-X (site.rules:1) was written for SCAN-CGI revision 7; SCAN-CGI is now revision 1') !== false, 'on the rules page');
+        truthy(strpos(\CjwNetwork\RequestShield\Waf\RulesPage::render($warned, ['store' => new MemoryStore()]), '<strong>Please check:</strong> SITE-X (site.rules:1) was written for SCAN-CGI revision 7; SCAN-CGI is now revision 1') !== false, 'on the rules page');
         rulesFail(['site.rules' => "[SITE-1@0] block /x\n"], 'site.rules:1', 'is not an ID');
         rulesFail(['site.rules' => "unblock [SCAN-BACKUP@x]\n"], 'site.rules:1', 'is not an ID');
     },

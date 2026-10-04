@@ -12,7 +12,7 @@ namespace CjwNetwork\RequestShield\Store;
 
 /**
  * A store that only looks: hit() answers what a real hit would count, without
- * counting. For trying a request (Report\Inspector) without spending a
+ * counting. For trying a request (Inspector) without spending a
  * visitor's budget.
  */
 final class PeekStore implements Store

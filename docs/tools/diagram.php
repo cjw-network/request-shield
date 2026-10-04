@@ -9,7 +9,7 @@
  *
  * The docs' diagrams from a few lines of text (0031 F.7): each
  * docs/diagrams/<name>.dg becomes docs/diagrams/<name>.svg, in the house
- * style of the shield's own pages (Report\Diagram::style(): light and dark).
+ * style of the shield's own pages (Waf\Diagram::style(): light and dark).
  * A page shows one with ![what it shows](../diagrams/<name>.svg).
  *
  *   title  What the diagram shows, in one sentence (the SVG's title, for screen readers)
@@ -33,7 +33,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/../../bootstrap.php';
 
-use CjwNetwork\RequestShield\Report\Diagram;
+use CjwNetwork\RequestShield\Waf\Diagram;
 
 const KINDS = ['box', 'okbox', 'warnbox', 'nobox'];
 const WIDTH = 760;

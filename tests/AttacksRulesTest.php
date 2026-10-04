@@ -259,7 +259,7 @@ return [
         same('pass', $step['state']);
         truthy(strpos($step['text'], 'but open here') !== false, $step['text']);
         // The rules page lists them with their descriptions and IDs.
-        $html = \CjwNetwork\RequestShield\Report\RulesPage::render($s, ['store' => new MemoryStore()]);
+        $html = \CjwNetwork\RequestShield\Waf\RulesPage::render($s, ['store' => new MemoryStore()]);
         truthy(strpos($html, 'Attack patterns in the request') !== false, 'the group');
         truthy(strpos($html, 'SQL injection: UNION SELECT') !== false && strpos($html, 'ATK-SQL-UNION') !== false, 'description and ID');
         // The command line, too.

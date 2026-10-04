@@ -12,8 +12,7 @@ namespace CjwNetwork\RequestShield;
 
 /**
  * The dashboard's pages, as the compiled settings carry them (0031 B.5):
- * `$s->routes` is full path => entry, the core's pages (Routes::core()) and
- * what every offered extension declared (Extension::routes()), sorted by
+ * `$s->routes` is full path => entry: what every offered extension declared (Extension::routes()), sorted by
  * their order. Everything that lists, links or recognises a page derives
  * from it -- the frame's tabs, the statistics' links, the pace's exemption
  * for the dashboard's own requests -- so no table of pages lives anywhere
@@ -33,23 +32,6 @@ final class Routes
 {
     /** Who may open a page: the admin, or a reader (a customer with its statistics). */
     public const ROLES = ['admin', 'reader'];
-
-    /**
-     * The core's pages below dashboard-path: the firewall's start (/waf,
-     * which is the live view), Rules & setup, Live and Lists.
-     *
-     * @return array<string, Entry>
-     */
-    public static function core(string $dashboardPath): array
-    {
-        $waf = $dashboardPath . '/waf';
-        return [
-            $waf => ['key' => 'live', 'ext' => null, 'tab' => null, 'role' => 'admin', 'order' => 60, 'page' => 'CjwNetwork\\RequestShield\\Report\\LivePage'],
-            "$waf/rules" => ['key' => 'rules', 'ext' => null, 'tab' => ['Rules & setup', 'Regeln & Einrichtung'], 'role' => 'admin', 'order' => 50, 'page' => 'CjwNetwork\\RequestShield\\Report\\SetupPage'],
-            "$waf/live" => ['key' => 'live', 'ext' => null, 'tab' => ['Live', 'Live'], 'role' => 'admin', 'order' => 60, 'page' => 'CjwNetwork\\RequestShield\\Report\\LivePage'],
-            "$waf/lists" => ['key' => 'lists', 'ext' => null, 'tab' => ['Lists', 'Listen'], 'role' => 'admin', 'order' => 70, 'page' => 'CjwNetwork\\RequestShield\\Report\\ListsPage'],
-        ];
-    }
 
     /**
      * One entry, shape-checked: key a string, tab null or two strings, role
@@ -101,9 +83,6 @@ final class Routes
     {
         /** @var list<array{0: string, 1: Entry, 2: string}> path, entry, owner */
         $all = [];
-        foreach (self::core($dashboardPath) as $path => $entry) {
-            $all[] = [$path, $entry, 'the core'];
-        }
         foreach ($extensions as $id => $routes) {
             foreach ($routes as $path => $route) {
                 if ($path === '' || $path[0] !== '/') {

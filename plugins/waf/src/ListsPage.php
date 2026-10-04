@@ -8,7 +8,7 @@
 
 declare(strict_types=1);
 
-namespace CjwNetwork\RequestShield\Report;
+namespace CjwNetwork\RequestShield\Waf;
 
 use CjwNetwork\RequestShield\Api\ListsChanges;
 use CjwNetwork\RequestShield\Frame;

@@ -41,15 +41,17 @@ function routesBrief(Settings $s): array
 }
 
 return [
-    'RSF06-04 the core alone: four routes below <dashboard-path>/waf, in the tabs\' order; links for rules, live, lists' => function (): void {
+    'RSF06-04 the core alone has no page; the WAF plugin: four routes below <dashboard-path>/waf, in the tabs\' order; links for rules, live, lists' => function (): void {
         withRegistry(function (): void {
+            same([], Settings::from([])->routes, 'the core alone: no page (the mini file)');
+            Vocabulary::offer(\CjwNetwork\RequestShield\Waf\WafExtension::class);
             $s = Settings::from([]);
             same([
-                '/rs/waf/rules' => ['key' => 'rules', 'ext' => null, 'tab' => ['Rules & setup', 'Regeln & Einrichtung'], 'role' => 'admin', 'order' => 50, 'page' => 'CjwNetwork\\RequestShield\\Report\\SetupPage'],
-                '/rs/waf' => ['key' => 'live', 'ext' => null, 'tab' => null, 'role' => 'admin', 'order' => 60, 'page' => 'CjwNetwork\\RequestShield\\Report\\LivePage'],
-                '/rs/waf/live' => ['key' => 'live', 'ext' => null, 'tab' => ['Live', 'Live'], 'role' => 'admin', 'order' => 60, 'page' => 'CjwNetwork\\RequestShield\\Report\\LivePage'],
-                '/rs/waf/lists' => ['key' => 'lists', 'ext' => null, 'tab' => ['Lists', 'Listen'], 'role' => 'admin', 'order' => 70, 'page' => 'CjwNetwork\\RequestShield\\Report\\ListsPage'],
-            ], $s->routes, 'exactly the core\'s, sorted by order then path');
+                '/rs/waf/rules' => ['key' => 'rules', 'ext' => 'waf', 'tab' => ['Rules & setup', 'Regeln & Einrichtung'], 'role' => 'admin', 'order' => 50, 'page' => 'CjwNetwork\\RequestShield\\Waf\\SetupPage'],
+                '/rs/waf' => ['key' => 'live', 'ext' => 'waf', 'tab' => null, 'role' => 'admin', 'order' => 60, 'page' => 'CjwNetwork\\RequestShield\\Waf\\LivePage'],
+                '/rs/waf/live' => ['key' => 'live', 'ext' => 'waf', 'tab' => ['Live', 'Live'], 'role' => 'admin', 'order' => 60, 'page' => 'CjwNetwork\\RequestShield\\Waf\\LivePage'],
+                '/rs/waf/lists' => ['key' => 'lists', 'ext' => 'waf', 'tab' => ['Lists', 'Listen'], 'role' => 'admin', 'order' => 70, 'page' => 'CjwNetwork\\RequestShield\\Waf\\ListsPage'],
+            ], $s->routes, 'exactly the WAF\'s, sorted by order then path');
             same(['rules' => '/rs/waf/rules', 'live' => '/rs/waf/live', 'lists' => '/rs/waf/lists'], Routes::links($s), 'one link per key, the pages with a tab');
             same(['rules' => '/demo/rs/waf/rules', 'live' => '/demo/rs/waf/live', 'lists' => '/demo/rs/waf/lists'], Routes::links($s, '/demo'), 'with a prefix');
             same(['rules' => ['Rules & setup', 'Regeln & Einrichtung'], 'live' => ['Live', 'Live'], 'lists' => ['Lists', 'Listen']], Routes::tabs($s));
@@ -65,11 +67,11 @@ return [
             ['/rs/stats/overview', 'all', 'stats', 'admin', true],
             ['/rs/stats/visitors', 'site', 'stats', 'reader', true],
             ['/rs/stats/protection', 'shield', 'stats', 'reader', true],
-            ['/rs/waf/rules', 'rules', null, 'admin', true],
-            ['/rs/waf', 'live', null, 'admin', false],
-            ['/rs/waf/live', 'live', null, 'admin', true],
-            ['/rs/waf/lists', 'lists', null, 'admin', true],
-        ], routesBrief($s), 'path, key, ext, role, has a tab');
+            ['/rs/waf/rules', 'rules', 'waf', 'admin', true],
+            ['/rs/waf', 'live', 'waf', 'admin', false],
+            ['/rs/waf/live', 'live', 'waf', 'admin', true],
+            ['/rs/waf/lists', 'lists', 'waf', 'admin', true],
+        ], array_values(array_filter(routesBrief($s), static fn (array $r): bool => $r[2] !== 'api')), 'path, key, ext, role, has a tab (the API\'s own routes aside)');
         same(['sites', 'all', 'site', 'shield', 'rules', 'live', 'lists'], array_keys(Routes::tabs($s)), 'the tabs\' order (what Frame::TABS had)');
         same(['sites' => ['All websites', 'Alle Websites'], 'all' => ['Dashboard', 'Dashboard'], 'site' => ['Visitors & pages', 'Besucher & Seiten'], 'shield' => ['Protection', 'Schutz']],
             array_slice(Routes::tabs($s), 0, 4), 'the labels');
@@ -119,7 +121,7 @@ return [
                 throw new TestFailure("accepted a second route on $path");
             } catch (InvalidArgumentException $e) {
                 truthy(strpos($e->getMessage(), "'routes'") !== false && strpos($e->getMessage(), $path) !== false && strpos($e->getMessage(), 'the settings (routes)') !== false
-                    && strpos($e->getMessage(), $path === '/rs/stats/visitors' ? 'the extension stats' : 'the core') !== false, $e->getMessage());
+                    && strpos($e->getMessage(), $path === '/rs/stats/visitors' ? 'the extension stats' : 'the extension waf') !== false, $e->getMessage());
             }
         }
         // Two extensions: the second one's path.
@@ -139,7 +141,7 @@ return [
     },
     'RSF06-04 match(): the path or its end, the longest; page(): exact only' => function (): void {
         $s = Settings::from([]);
-        same(['key' => 'live', 'ext' => null, 'tab' => ['Live', 'Live'], 'role' => 'admin', 'order' => 60, 'page' => 'CjwNetwork\\RequestShield\\Report\\LivePage', 'path' => '/rs/waf/live'], Routes::match($s, '/demo/index.php/rs/waf/live'), 'below a prefix: the entry with its path');
+        same(['key' => 'live', 'ext' => 'waf', 'tab' => ['Live', 'Live'], 'role' => 'admin', 'order' => 60, 'page' => 'CjwNetwork\\RequestShield\\Waf\\LivePage', 'path' => '/rs/waf/live'], Routes::match($s, '/demo/index.php/rs/waf/live'), 'below a prefix: the entry with its path');
         same(['/rs/waf', '/rs/waf', '/rs/waf/live', null, null, null], [Routes::match($s, '/rs/waf')['path'] ?? null, Routes::match($s, '/app/RS/WAF/')['path'] ?? null, Routes::match($s, '/rs/waf/live/')['path'] ?? null,
             Routes::match($s, '/rs/waf/livestream'), Routes::match($s, '/xrs/waf'), Routes::match($s, '/')], 'capitals and a trailing / aside; a page below another is itself; never a longer name');
         same(['live', 'live', 'lists', null, null], [Routes::page($s, '/rs/waf'), Routes::page($s, '/RS/waf/live/'), Routes::page($s, '/rs/waf/lists'), Routes::page($s, '/demo/index.php/rs/waf/live'), Routes::page($s, '/rs')], 'page(): exact');

@@ -78,8 +78,7 @@ return [
             $errors = (string) @file_get_contents("$dir/php-errors.log");
             truthy(strpos($errors, 'SinkPlugin failed, the record went to the others: the sink failed, as asked (' . $s->storeDir . ')') !== false, 'noted in PHP\'s error log: ' . $errors);
         } finally {
-            Vocabulary::forget();
-            Vocabulary::offer(\CjwNetwork\RequestShield\Stats\StatsExtension::class);
+            Vocabulary::reset();
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },

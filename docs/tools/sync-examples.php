@@ -22,8 +22,8 @@ declare(strict_types=1);
 
 require __DIR__ . '/../../bootstrap.php';
 
-use CjwNetwork\RequestShield\Report\DemoSite;
-use CjwNetwork\RequestShield\Report\ExamplesPage;
+use CjwNetwork\RequestShield\Waf\DemoSite;
+use CjwNetwork\RequestShield\Waf\ExamplesPage;
 
 $root = dirname(__DIR__, 2);
 $check = in_array('--check', $argv, true);

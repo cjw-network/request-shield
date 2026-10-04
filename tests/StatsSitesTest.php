@@ -138,7 +138,7 @@ return [
                 'challenge' => ($day['a:challenge'] ?? 0) + ($day['a:throttle'] ?? 0)], 'only "/" of the passing ones; the refusal (/.env) and the checks past the pace at the proxy are counted');
             same('reject', $shield->decide(Request::fromServer(['REQUEST_URI' => '/osm-proxy/.git/config', 'HTTP_HOST' => 'a.de', 'REMOTE_ADDR' => '203.0.113.9']), SITES_T0 + 9.0)->action,
                 'protected all the same');
-            truthy(strpos(\CjwNetwork\RequestShield\Report\SetupPage::render($s, 'en', []), 'not counted when they pass (stats-skip)') !== false, 'shown with the settings');
+            truthy(strpos(\CjwNetwork\RequestShield\Waf\SetupPage::render($s, 'en', []), 'not counted when they pass (stats-skip)') !== false, 'shown with the settings');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }
@@ -172,7 +172,7 @@ return [
             truthy(strpos($h, '<optgroup label="Customer A"><option value="group:customer-a" selected>Customer A: all 2 websites</option><option value="a.de">a.de</option><option value="b.de">b.de</option></optgroup>'
                 . '<optgroup label="In no group"><option value="c.de">c.de</option></optgroup><option value="(other)">') !== false, 'the switch: a section per group, then the rest');
             truthy(strpos($h, 'Customer A: all 2 websites: a.de, b.de</p>') !== false && strpos($h, 'site=group%3Acustomer-a') !== false, 'named under the title, kept in the links');
-            truthy(strpos(\CjwNetwork\RequestShield\Report\SetupPage::render($s, 'en', []), 'Customer A: a.de, b.de') !== false, 'shown with the settings');
+            truthy(strpos(\CjwNetwork\RequestShield\Waf\SetupPage::render($s, 'en', []), 'Customer A: a.de, b.de') !== false, 'shown with the settings');
             $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' stats ' . escapeshellarg("$dir/site.rules");
             exec("$bin --group=\"Customer A\" --json 2>&1", $out, $code);
             same(0, $code, implode("\n", $out));

@@ -283,7 +283,7 @@ final class Cli
                 }
             }
         }
-        $core = ['check', 'show', 'reload', 'trace', 'test', 'replay', 'examples', 'crawlers', 'feeds', 'access-token', 'deny', 'allow', 'unlist', 'lists'];
+        $core = ['check', 'show', 'reload', 'trace', 'test', 'replay', 'crawlers', 'feeds', 'access-token', 'deny', 'allow', 'unlist', 'lists'];
         if (!in_array($command, array_merge($core, array_keys($commands)), true) || $file === null
             || ($command === 'access-token' && $what === null)
             || ($command === 'feeds' && $what !== null && !in_array($what, ['list', 'update', 'export'], true))
@@ -304,7 +304,6 @@ final class Cli
                 . "       request-shield init --app=" . implode('|', Shipped::starters()) . " [--docroot=<dir>] [--out=<file>] [--force]\n"
                 . "       request-shield verify <request-shield.php> [--sums=<SHA256SUMS>] [--sig=<file.minisig>] [--key=<public key>]\n"
                 . "       request-shield self-update [--check] [--to=vX.Y.Z] [--major]\n"
-                . "       request-shield examples <main.rules> --markdown [--feature=RSF02-06] | --html [--out=<file>] | --coverage\n"
                 . "       request-shield vocabulary [--json]\n");
             exit(2);
         }
@@ -315,65 +314,6 @@ final class Cli
 
         $files = $sources;
         $files[] = $file;
-
-        // The demo groups of a rule file (# demo:, 0031 F.4/F.5): as Markdown for the docs,
-        // as a page that needs no server (recorded by test), or what is covered.
-        if ($command === 'examples') {
-            try {
-                $groups = Report\DemoSite::groups($file);
-                if ($show['feature'] !== null) {
-                    // One feature's groups, in every form; an id with none is a mistake, never an empty table.
-                    $groups = array_values(array_filter($groups, static fn (array $g): bool => $g['id'] === $show['feature']));
-                    if ($groups === []) {
-                        fwrite(STDERR, "request-shield: no \"# demo: {$show['feature']}\" group in $file\n");
-                        exit(2);
-                    }
-                }
-                $run = $show['html'] || $show['coverage'] ? Rules\Examples::run($files) : ['results' => [], 'without' => []];
-            } catch (RuleFileException | \InvalidArgumentException $e) {
-                self::mistake($e->getMessage());
-                exit(2);
-            }
-            if ($show['markdown']) {
-                echo Report\ExamplesPage::markdown($groups);
-                exit(0);
-            }
-            if ($show['html']) {
-                $results = [];
-                foreach ($run['results'] as $r) {
-                    $results[$r['example']['at']] = ['status' => $r['status'], 'got' => $r['got'], 'gotRule' => $r['gotRule'], 'http' => $r['http']];
-                }
-                $page = Report\ExamplesPage::html($groups, $results, 'request-shield demo -- ' . basename($file),
-                    'Recorded by request-shield test, ' . Shield::VERSION . ' (' . Shield::BUILD . '): every row decided on a fresh store, as the rules say. The live demo answers the same: php -S 127.0.0.1:8080 examples/demo/router.php');
-                if ($release['out'] !== null) {
-                    if (@file_put_contents($release['out'], $page) === false) {
-                        fwrite(STDERR, "request-shield: cannot write {$release['out']}\n");
-                        exit(2);
-                    }
-                    echo "written: {$release['out']}\n";
-                } else {
-                    echo $page;
-                }
-                exit(0);
-            }
-            if ($show['coverage']) {
-                // Per feature group: rows, decided, passing; then the rules without an example.
-                foreach ($groups as $g) {
-                    $expects = array_filter($g['rows'], static fn (array $r): bool => $r['kind'] === 'expect');
-                    $ok = 0;
-                    foreach ($run['results'] as $r) {
-                        foreach ($expects as $x) {
-                            $ok += $r['example']['at'] === $x['at'] && $r['status'] === 'pass' ? 1 : 0;
-                        }
-                    }
-                    echo str_pad($g['id'], 10) . str_pad((string) count($expects), 4, ' ', STR_PAD_LEFT) . ' examples, ' . $ok . ' pass, ' . (count($g['rows']) - count($expects)) . ' to look at  ' . $g['title'] . "\n";
-                }
-                echo "\n" . count($run['without']) . ' rule(s) without an example' . ($run['without'] !== [] ? ': ' . implode(', ', $run['without']) : '') . "\n";
-                exit(0);
-            }
-            fwrite(STDERR, "usage: request-shield examples <main.rules> --markdown [--feature=RSF02-06] | --html [--out=<file>] | --coverage\n");
-            exit(2);
-        }
 
         if ($command === 'replay') {
             // Requests known to be good, through the rules (proposal 0016, the replay).
@@ -530,7 +470,7 @@ final class Cli
         if (isset($commands[$command])) {
             exit($commands[$command]::run(new \CjwNetwork\RequestShield\Cli\Context($command, $settings, $file, $read, $sources, $what,
                 ['days' => $days, 'json' => $json, 'force' => $force, 'ip' => $ip, 'ua' => $ua, 'period' => $period, 'feed' => $feedOpts, 'test' => $testOpts,
-                    'list' => ['for' => $listFor, 'until' => $listUntil, 'reason' => $listReason]], $args)));
+                    'list' => ['for' => $listFor, 'until' => $listUntil, 'reason' => $listReason], 'show' => $show + ['out' => $release['out']]], $args)));
         }
 
         if ($command === 'access-token') {

@@ -97,8 +97,7 @@ return [
                 truthy(strpos(implode("\n", $out), 'nowhere.php -- the file is not there') !== false, 'check names it: ' . implode(' | ', $out));
             }
         } finally {
-            \CjwNetwork\RequestShield\Rules\Vocabulary::forget();
-            \CjwNetwork\RequestShield\Rules\Vocabulary::offer(\CjwNetwork\RequestShield\Stats\StatsExtension::class);
+            \CjwNetwork\RequestShield\Rules\Vocabulary::reset();
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },

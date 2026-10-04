@@ -535,6 +535,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   S2 (APCu), and what is not active in it ([docs](docs/features/RSF05-02-settings.md#what-this-installation-can-do-the-tiers)).
 
 ### Changed
+- **The firewall's pages are a plugin** (0031 step G.3): Rules & setup, Live
+  and Lists, the demo's pages and the `examples` command moved from
+  `src/Report` to `plugins/waf` (namespace `Waf\`, the edition
+  `request-shield-waf.php`, offered like the statistics); the mini file has
+  no page of the dashboard now. What the core needs stayed in it, as
+  `Inspector`, `Describe`, `Counts`, `LogTail`, `LogStats` and `Frame`
+  (`trace`, the live log, the rule counts, the login page); what the API
+  needs went to it (`Api\LiveRows`, `Api\ListsChanges`), so the WAF's pages
+  read their data where the API does. Its routes carry `ext` `waf`;
+  `Routes::core()` is gone. `Describe::ruleInfo()`/`anchor()` replace
+  `SetupPage::rule()`/`anchor()`.
 - **The command line is the class `Cli`** (0031 step E.2, first part):
   `src/Cli.php` holds what `bin/request-shield` was, `Cli::main($argv)`; the
   script is three lines that call it. The single file runs the same class

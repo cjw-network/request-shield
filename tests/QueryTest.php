@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Inspector;
-use CjwNetwork\RequestShield\Report\RulesPage;
+use CjwNetwork\RequestShield\Waf\RulesPage;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rule\QueryRule;
 use CjwNetwork\RequestShield\Rules\RuleFile;

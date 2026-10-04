@@ -6,5 +6,6 @@ parameters:
         - plugins/stats/src
         - plugins/api/src
         - plugins/cache/src
+        - plugins/waf/src
         - tests/support
         - bootstrap.php

@@ -70,8 +70,7 @@ return [
             $core = pagesSettings("plugin CjwNetwork\\RequestShield\\Tests\\PagesPlugin\nrs-test-mark core:error\n", $dir);
             truthy(strpos((new Responder())->body(Decision::reject(404, 'blocked path'), null, [], null, PageHook::asker($core), pagesRequest()), '<h1>') !== false, 'null from the plugin: the shield\'s page');
         } finally {
-            Vocabulary::forget();
-            Vocabulary::offer(\CjwNetwork\RequestShield\Stats\StatsExtension::class);
+            Vocabulary::reset();
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
@@ -90,8 +89,7 @@ return [
             truthy(strpos($body, '<h1>') !== false && strpos($body, 'PAGES:') === false, 'the shield\'s page');
             truthy(strpos((string) @file_get_contents("$dir/php-errors.log"), 'PagesPlugin failed to draw the error page, the shield\'s own went out: the pages plugin failed, as asked (' . $s->storeDir . ')') !== false, 'noted');
         } finally {
-            Vocabulary::forget();
-            Vocabulary::offer(\CjwNetwork\RequestShield\Stats\StatsExtension::class);
+            Vocabulary::reset();
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },

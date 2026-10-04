@@ -44,7 +44,9 @@ This visitor gets "not allowed here" (405) …. Decided by site.rules:22.
 ## Rules & setup in the dashboard
 
 The dashboard serves the same as its page **Rules & setup**
-(`/rs/waf/rules`), in four parts. Each part's heading has a `?` that opens
+(`/rs/waf/rules`), in four parts. The page is the WAF plugin's
+(`plugins/waf`, the edition `request-shield-waf.php`, 0031 G.3); the mini
+file has `trace` on the command line and no page. Each part's heading has a `?` that opens
 its section here.
 
 ### The rule tester
@@ -93,7 +95,7 @@ their section.
 ## Use
 
 ```php
-use CjwNetwork\RequestShield\Report\RulesPage;
+use CjwNetwork\RequestShield\Waf\RulesPage;
 use CjwNetwork\RequestShield\Shield;
 
 // in the site's admin area, after protect()/protectFile():

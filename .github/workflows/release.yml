@@ -47,7 +47,7 @@ jobs:
         run: |
           BUILD="$GITHUB_REF_NAME $(git rev-parse --short HEAD)"
           mkdir -p dist build/out
-          for edition in mini stats api cache; do
+          for edition in mini stats api cache waf; do
             file=request-shield.php; [ "$edition" = mini ] || file="request-shield-$edition.php"
             php build/single-file.php --edition=$edition --build="$BUILD" --out="dist/$file"
             php build/single-file.php --edition=$edition --build="$BUILD" --out="/tmp/again-$file"
@@ -62,7 +62,7 @@ jobs:
         run: php tests/run.php
 
       - name: Checksums
-        run: cd dist && sha256sum request-shield.php request-shield-stats.php request-shield-api.php request-shield-cache.php > SHA256SUMS && cat SHA256SUMS
+        run: cd dist && sha256sum request-shield.php request-shield-stats.php request-shield-api.php request-shield-cache.php request-shield-waf.php > SHA256SUMS && cat SHA256SUMS
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -99,4 +99,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag \
             --title "request-shield $GITHUB_REF_NAME" --notes-file notes.md \
-            dist/request-shield.php dist/request-shield-stats.php dist/request-shield-api.php dist/request-shield-cache.php dist/SHA256SUMS
+            dist/request-shield.php dist/request-shield-stats.php dist/request-shield-api.php dist/request-shield-cache.php dist/request-shield-waf.php dist/SHA256SUMS

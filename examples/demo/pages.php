@@ -2,7 +2,7 @@
 /**
  * The demo's pages (index.php includes this after the shield let the request
  * through): what the site shows for each path, and the front page -- its rows
- * from the rules' "# demo:" groups (Report\DemoSite, Report\ExamplesPage).
+ * from the rules' "# demo:" groups (Waf\DemoSite, Waf\ExamplesPage).
  *
  * @copyright Copyright (C) 2026 JAC Systeme GmbH, CJW Network
  * @license MIT, see LICENSE
@@ -12,12 +12,12 @@ declare(strict_types=1);
 
 use CjwNetwork\RequestShield\IpAddress;
 use CjwNetwork\RequestShield\Describe;
-use CjwNetwork\RequestShield\Report\Diagram;
-use CjwNetwork\RequestShield\Report\RulesPage;
+use CjwNetwork\RequestShield\Waf\Diagram;
+use CjwNetwork\RequestShield\Waf\RulesPage;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Shield;
-use CjwNetwork\RequestShield\Report\DemoSite;
-use CjwNetwork\RequestShield\Report\ExamplesPage;
+use CjwNetwork\RequestShield\Waf\DemoSite;
+use CjwNetwork\RequestShield\Waf\ExamplesPage;
 
 
 $decision = Shield::current();

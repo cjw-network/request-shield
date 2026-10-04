@@ -42,6 +42,7 @@
             "CjwNetwork\\RequestShield\\Stats\\": "plugins/stats/src/",
             "CjwNetwork\\RequestShield\\Api\\": "plugins/api/src/",
             "CjwNetwork\\RequestShield\\Cache\\": "plugins/cache/src/",
+            "CjwNetwork\\RequestShield\\Waf\\": "plugins/waf/src/",
             "CjwNetwork\\RequestShield\\": "src/"
         },
         "files": [

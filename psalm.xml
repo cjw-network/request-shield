@@ -13,6 +13,7 @@
         <directory name="plugins/stats/src"/>
         <directory name="plugins/api/src"/>
         <directory name="plugins/cache/src"/>
+        <directory name="plugins/waf/src"/>
         <file name="bootstrap.php"/>
         <ignoreFiles>
             <directory name="vendor"/>
