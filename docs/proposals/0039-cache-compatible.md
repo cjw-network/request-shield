@@ -245,6 +245,14 @@ headers then go to the real cache, unchanged -- that is the exchange.
 - Roles by the hash request: one application request per session per
   `max-age`.
 
+## Decided
+
+- **2026-10-04, the owner:** the order as proposed -- the core call
+  `cacheContext()` with tags, purges and memory first (Exponential
+  Platform's dialect first, then Ibexa 4), then the WordPress adapter as its
+  first user, then Exponential 6's legacy extension (0031 steps G.4 to G.6);
+  the role cookie is dropped. Questions 1, 3 and 5 below are answered by it.
+
 ## Open questions for the owner
 
 1. **Order:** 1 + 2 (tags, purges) and 4 (memory) first, roles (3) and stale

@@ -125,6 +125,9 @@ the model you trust most there, not fast mode.
 - [x] **G.1** 0030 error pages as a `Pages` consumer in the core. `69b0e5b` `d0700c4` `9d3ca49` `e6dc652`
 - [x] **G.2** HTTP-cache backend as a `Handler` plugin (`plugins/cache`), bench 0 µs without the plugin. `672b433` `5864d15`
 - [ ] **G.3** `plugins/waf` (Report + Access) as its own file `request-shield-waf.php`; the mini build without `Report/*`.
+- [ ] **G.4** Proposal 0039, part 1 (owner, 2026-10-04: "ja so planen"): the core call `Shield::cacheContext()`/`forgetContext()` (MAC of the session cookie → role key in APCu), tags read from the answer with generation counters, purges in the answer and by request (`PURGE` + `key`/`X-Location-Id`, `PURGEKEYS`, `PURGE` + `X-Cache-Tags`, from `http-cache-purgers` or with the token), answers in APCu first and on disk when needed with a cap; Exponential Platform's dialect first (`xkey`, `PURGE` + `key`, `X-User-Hash`), with an end-to-end test that sends what its purge client and hash lookup send; then Ibexa 4's.
+- [ ] **G.5** The WordPress adapter as the first user of `cacheContext()` (pulled forward from I.3): a plugin that tells the role, purges on publish, keeps pages with nonces out, the widget in forms; tests against a pseudo-WordPress.
+- [ ] **G.6** Exponential 6's legacy extension (pulled forward from I.2): the role from the user's roles, purge on publish by node and address.
 
 ### Phase H — Split + v1.0
 - [ ] **H.1** Own `composer.json`/LICENSE/README/CHANGELOG/SECURITY/.gitattributes per subpackage; root `require-dev` path repos; `testkit/`.
@@ -134,7 +137,7 @@ the model you trust most there, not fast mode.
 
 ### Phase I — CMS adapters
 - [ ] **I.1** `rules/app/{exponential,wordpress,symfony,ibexa,drupal}.rules` with `expect` + demo groups (`site wp.localhost {}` …); `@wordpress` → `@not-wordpress`.
-- [ ] **I.2** `adapters/exponential` · **I.3** `adapters/wordpress` · **I.4** `adapters/symfony` (+ Ibexa) · **I.5** `adapters/drupal` — each: activation README, settings page, route export, cache kill switch, widget, dashboard menu, `Sink`, tests against a pseudo-CMS.
+- [ ] **I.2** `adapters/exponential` (its cache part: G.6) · **I.3** `adapters/wordpress` (its cache part: G.5) · **I.4** `adapters/symfony` (+ Ibexa) · **I.5** `adapters/drupal` — each: activation README, settings page, route export, cache kill switch, widget, dashboard menu, `Sink`, tests against a pseudo-CMS.
 
 ## Status
 
