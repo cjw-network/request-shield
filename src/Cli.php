@@ -660,62 +660,9 @@ final class Cli
 
         if ($command === 'check' || $command === 'reload') {
             $warnings = 0;
-            foreach ($settings->origins['warnings'] ?? [] as $w) {
+            foreach (self::warnings($settings, $read, $file) as $w) {
                 fwrite(STDERR, "warning: $w\n");
                 $warnings++;
-            }
-            foreach (array_keys($read['seen']) as $path) {
-                $perms = @fileperms($path);
-                if ($perms !== false && ($perms & 0002) !== 0) {
-                    fwrite(STDERR, "warning: $path can be changed by anyone on this machine\n");
-                    $warnings++;
-                }
-            }
-            foreach ($settings->blockExceptions as $n => $x) {
-                if ($x['ips'] === []) {
-                    fwrite(STDERR, 'warning: ' . ($settings->origin('blockExceptions', $x['paths'][0] ?? '') ?? "blockExceptions[$n]")
-                        . ": blocked paths are open there for everyone -- add \"for <addresses>\", or make sure only admins reach it\n");
-                    $warnings++;
-                }
-            }
-            // plugin … from <file>: a file that is not there (the rules warned at compile; here with the fix).
-            foreach ($settings->pluginFiles as $class => $pluginFile) {
-                if (!is_file($pluginFile)) {
-                    fwrite(STDERR, 'warning: ' . ($settings->origin('plugins', $class) ?? 'plugins') . ": plugin $class from $pluginFile -- the file is not there; the plugin is left out until it is\n");
-                    $warnings++;
-                }
-            }
-            // Plugins: a class that is not there, or no Plugin, is left out when the shield runs.
-            foreach ($settings->plugins as $class) {
-                if (!class_exists($class) || !is_subclass_of($class, \CjwNetwork\RequestShield\Plugin::class)) {
-                    fwrite(STDERR, 'warning: ' . ($settings->origin('plugins', $class) ?? 'plugins') . ": plugin $class is not there, or is no " . \CjwNetwork\RequestShield\Plugin::class . " -- it is left out\n");
-                    $warnings++;
-                }
-            }
-            if ($settings->sites !== [] && $settings->siteFrom === 'host' && $settings->hosts === []) {
-                fwrite(STDERR, "warning: site blocks picked by the Host header (set site-from host), and no host rule -- a visitor names the website; list the names (host …), or use set site-from server-name\n");
-                $warnings++;
-            }
-            // The dashboard's pages nobody guards (0031 B.6): no restrict rule covers them, no login is set up.
-            $open = \CjwNetwork\RequestShield\Dashboard::unguarded($settings);
-            if ($open !== []) {
-                fwrite(STDERR, "warning: the dashboard's pages are open to everyone (" . implode(', ', array_slice($open, 0, 3)) . (count($open) > 3 ? ', …' : '')
-                    . ") -- add a rule such as \"restrict {$settings->dashboardPath}/** to <your addresses>\", or a login (dashboard-access)\n");
-                $warnings++;
-            }
-            // The extensions' own warnings about the compiled settings (Extension::check(), 0031 B.4).
-            foreach (\CjwNetwork\RequestShield\Rules\Vocabulary::extensions() as $extension) {
-                foreach ($extension::check($settings) as $warning) {
-                    fwrite(STDERR, "warning: $warning\n");
-                    $warnings++;
-                }
-            }
-            foreach (array_merge($settings->feeds, $settings->monitor !== null ? $settings->monitor->feeds : []) as $f) {
-                if ($f['state'] !== 'in force') {
-                    fwrite(STDERR, "warning: {$f['rule']}: the feed {$f['name']} is " . ($f['file'] !== null ? "a file that cannot be read: {$f['file']} -- not used until it can"
-                        : ($f['state'] === 'too old' ? 'older than feeds-max-age and not used' : 'not fetched yet') . " -- request-shield feeds $file update (cron, e.g. hourly)") . "\n");
-                    $warnings++;
-                }
             }
             $files = count(array_filter(array_keys($read['seen']), static fn (string $f): bool => substr($f, -6) === '.rules' && !Shipped::isShipped($f)));
             $attacks = 0;
@@ -909,6 +856,69 @@ final class Cli
     {
         $see = Help::forError($message, Help::DOCS, array_values(array_unique(self::$dirs)));
         fwrite(STDERR, $message . "\n" . ($see !== null ? '  ' . $see . "\n" : ''));
+    }
+
+
+    /**
+     * What `check` warns about the compiled rules (the API's POST /check says the
+     * same): rule files anyone could change, opened blocked paths, plugins not
+     * there, the dashboard unguarded, the extensions' own warnings, feeds not in force.
+     *
+     * @param array{config: array<string, mixed>, seen: array<string, mixed>} $read RuleFile::read()
+     * @return list<string>
+     */
+    public static function warnings(Settings $settings, array $read, string $file): array
+    {
+        $out = [];
+        foreach ($settings->origins['warnings'] ?? [] as $w) {
+            $out[] = "$w";
+        }
+        foreach (array_keys($read['seen']) as $path) {
+            $perms = @fileperms($path);
+            if ($perms !== false && ($perms & 0002) !== 0) {
+                $out[] = "$path can be changed by anyone on this machine";
+            }
+        }
+        foreach ($settings->blockExceptions as $n => $x) {
+            if ($x['ips'] === []) {
+                $out[] = ($settings->origin('blockExceptions', $x['paths'][0] ?? '') ?? "blockExceptions[$n]")
+                    . ": blocked paths are open there for everyone -- add \"for <addresses>\", or make sure only admins reach it";
+            }
+        }
+        // plugin … from <file>: a file that is not there (the rules warned at compile; here with the fix).
+        foreach ($settings->pluginFiles as $class => $pluginFile) {
+            if (!is_file($pluginFile)) {
+                $out[] = ($settings->origin('plugins', $class) ?? 'plugins') . ": plugin $class from $pluginFile -- the file is not there; the plugin is left out until it is";
+            }
+        }
+        // Plugins: a class that is not there, or no Plugin, is left out when the shield runs.
+        foreach ($settings->plugins as $class) {
+            if (!class_exists($class) || !is_subclass_of($class, \CjwNetwork\RequestShield\Plugin::class)) {
+                $out[] = ($settings->origin('plugins', $class) ?? 'plugins') . ": plugin $class is not there, or is no " . \CjwNetwork\RequestShield\Plugin::class . " -- it is left out";
+            }
+        }
+        if ($settings->sites !== [] && $settings->siteFrom === 'host' && $settings->hosts === []) {
+            $out[] = "site blocks picked by the Host header (set site-from host), and no host rule -- a visitor names the website; list the names (host …), or use set site-from server-name";
+        }
+        // The dashboard's pages nobody guards (0031 B.6): no restrict rule covers them, no login is set up.
+        $open = \CjwNetwork\RequestShield\Dashboard::unguarded($settings);
+        if ($open !== []) {
+            $out[] = "the dashboard's pages are open to everyone (" . implode(', ', array_slice($open, 0, 3)) . (count($open) > 3 ? ', …' : '')
+                . ") -- add a rule such as \"restrict {$settings->dashboardPath}/** to <your addresses>\", or a login (dashboard-access)";
+        }
+        // The extensions' own warnings about the compiled settings (Extension::check(), 0031 B.4).
+        foreach (\CjwNetwork\RequestShield\Rules\Vocabulary::extensions() as $extension) {
+            foreach ($extension::check($settings) as $warning) {
+                $out[] = "$warning";
+            }
+        }
+        foreach (array_merge($settings->feeds, $settings->monitor !== null ? $settings->monitor->feeds : []) as $f) {
+            if ($f['state'] !== 'in force') {
+                $out[] = "{$f['rule']}: the feed {$f['name']} is " . ($f['file'] !== null ? "a file that cannot be read: {$f['file']} -- not used until it can"
+                    : ($f['state'] === 'too old' ? 'older than feeds-max-age and not used' : 'not fetched yet') . " -- request-shield feeds $file update (cron, e.g. hourly)");
+            }
+        }
+        return $out;
     }
 
 }

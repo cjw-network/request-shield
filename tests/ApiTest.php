@@ -199,4 +199,90 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF06-05 the core\'s endpoints read what the command line and the pages show: rules, trace, crawlers, feeds, log, live -- each in its schema' => function (): void {
+        $dir = apiDir();
+        try {
+            $s = apiSettings($dir, "restrict **/rs/** to 203.0.113.0/24\nset log $dir/shield.log\nset log-level all\n[SITE-ADMIN] restrict /admin/** to 192.0.2.0/24   # the office only\n");
+            $rules = Api::call($s, 'GET', '/rules', ['days' => '3'])['data'];
+            same(3, $rules['days']);
+            $own = array_values(array_filter($rules['rules'], static fn (array $r): bool => $r['id'] === 'SITE-ADMIN'))[0] ?? null;
+            same(['id' => 'SITE-ADMIN', 'where' => 'site.rules:7', 'text' => 'the office only', 'revision' => null, 'builtIn' => false], array_diff_key((array) $own, ['decided' => 1]));
+            $hidden = array_values(array_filter($rules['rules'], static fn (array $r): bool => $r['id'] === 'SCAN-HIDDEN'))[0];
+            same([true, 1], [$hidden['builtIn'], $hidden['revision']], 'a shipped rule: built in, its revision');
+            same(400, Api::call($s, 'GET', '/rules', ['days' => 'x'])['status'], 'a wrong parameter names itself');
+            truthy(strpos(Api::call($s, 'GET', '/rules', ['days' => '9999'])['detail'], 'days is a whole number from 1 to 400') !== false, 'the detail says what fits');
+            $t = Api::call($s, 'POST', '/trace', ['url' => 'https://www.example.org/admin/', 'ip' => '198.51.100.7'])['data'];
+            same([false, 403, 'SITE-ADMIN'], [$t['passes'], $t['status'], $t['rule']], 'trace: refused by the rule');
+            truthy(count($t['steps']) > 10 && $t['steps'][0]['state'] === 'pass', 'every step');
+            same(true, Api::call($s, 'POST', '/trace', ['url' => '/admin/', 'ip' => '192.0.2.10'])['data']['passes'], 'from the office');
+            same(400, Api::call($s, 'POST', '/trace', [])['status'], 'url is missing');
+            same(400, Api::call($s, 'POST', '/trace', ['url' => '/', 'ip' => 'nope'])['status']);
+            truthy(count(Api::call($s, 'GET', '/crawlers')['data']['crawlers']) > 5, 'the known crawlers');
+            same(['feeds' => []], Api::call($s, 'GET', '/feeds')['data'], 'no feed named');
+            \CjwNetwork\RequestShield\Log::write($s, Request::fromServer(['REQUEST_URI' => '/admin/', 'REQUEST_METHOD' => 'GET', 'HTTP_HOST' => 'www.example.org', 'REMOTE_ADDR' => '198.51.100.7', 'HTTP_USER_AGENT' => 'curl/8']),
+                \CjwNetwork\RequestShield\Decision::reject(403, 'restricted'), 'SITE-ADMIN', 1790800000.0, false);
+            $log = Api::call($s, 'GET', '/log', ['cursor' => '0:0'])['data'];
+            same([1, 'SITE-ADMIN', 403], [count($log['rows']), $log['rows'][0]['rule'], $log['rows'][0]['status']], 'the log, parsed');
+            same([], Api::call($s, 'GET', '/log', ['cursor' => $log['cursor']])['data']['rows'], 'from its cursor: nothing new');
+            same(true, Api::call($s, 'GET', '/live')['data']['log'], 'the live view reads the log');
+            same(409, Api::call(apiSettings($dir, ''), 'GET', '/log')['status'], 'no log: a conflict that says set log');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'RSF06-05 test and check run on the rule file the shield runs from; settings from a PHP array have none: 409' => function (): void {
+        $dir = apiDir();
+        try {
+            $s = apiSettings($dir, "[SITE-OLD] block /old/**\nexpect GET /old/x 404 by SITE-OLD\nexpect GET /new/x answered\n");
+            $ctx = ['ruleFile' => "$dir/site.rules"];
+            $t = Api::call($s, 'POST', '/test', [], '*', $ctx)['data'];
+            truthy($t['fail'] === 0 && $t['pass'] === $t['examples'] && $t['examples'] >= 2, json_encode($t));
+            same(2, Api::call($s, 'POST', '/test', ['only' => 'SITE-OLD'], '*', $ctx)['data']['examples'], 'one rule\'s: both lines under it');
+            $c = Api::call($s, 'POST', '/check', [], '*', $ctx)['data'];
+            same([true, null], [$c['ok'], $c['error']]);
+            file_put_contents("$dir/site.rules", "restrict /x too 1.2.3.4\n", FILE_APPEND);
+            $c = Api::call($s, 'POST', '/check', [], '*', $ctx)['data'];
+            truthy($c['ok'] === false && strpos((string) $c['error'], 'site.rules:') === 0 && strpos((string) $c['error'], $dir) === false, 'the mistake, by the file\'s name and line, not its path: ' . $c['error']);
+            same(409, Api::call($s, 'POST', '/test')['status'], 'no rule file');
+            same(409, Api::call($s, 'POST', '/check')['status']);
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'RSF06-05 writes only with set api-write on and only for the administrator: lists, reload -- with the dashboard\'s own checks' => function (): void {
+        $dir = apiDir();
+        try {
+            $rules = "restrict **/rs/** to 203.0.113.0/24\nset lists-dir $dir/lists\n" . apiTokens();
+            $off = apiSettings($dir, $rules);
+            same(403, Api::call($off, 'POST', '/lists', ['address' => '203.0.113.66'])['status'], 'off by default');
+            $s = apiSettings($dir, $rules . "set api-write on\n");
+            $ctx = ['ruleFile' => "$dir/site.rules", 'ip' => '192.0.2.10'];
+            same(403, Api::call($s, 'POST', '/lists', ['address' => '203.0.113.66'], 'customer-a', $ctx)['status'], 'a reader may not write');
+            $add = Api::call($s, 'POST', '/lists', ['address' => '203.0.113.66', 'for' => '7d', 'note' => 'login attempts'], '*', $ctx);
+            truthy(($add['data']['ok'] ?? false) === true, json_encode($add));
+            $list = Api::call($s, 'GET', '/lists', ['q' => '203.0.113.66'])['data'];
+            same([1, 'deny', ['203.0.113.66']], [$list['total'], $list['entries'][0]['kind'], $list['entries'][0]['addresses']]);
+            $self = Api::call($s, 'POST', '/lists', ['address' => '192.0.2.10'], '*', $ctx);
+            same(409, $self['status'], 'the caller\'s own address: refused, as on the page');
+            $wide = Api::call($s, 'POST', '/lists', ['address' => '10.0.0.0/8'], '*', $ctx);
+            same(409, $wide['status'], 'a wide range without confirm');
+            $id = $list['entries'][0]['id'];
+            same(true, Api::call($s, 'POST', '/lists/remove', ['id' => $id], '*', $ctx)['data']['ok']);
+            same(0, Api::call($s, 'GET', '/lists', ['q' => '203.0.113.66'])['data']['total'], 'taken out');
+            same(409, Api::call($s, 'POST', '/lists/remove', ['id' => $id], '*', $ctx)['status'], 'gone already');
+            same(400, Api::call($s, 'POST', '/lists/remove', [], '*', $ctx)['status'], 'id is missing');
+            touch("$dir/site.rules", 1000000000);
+            clearstatcache();
+            $r = Api::call($s, 'POST', '/reload', [], '*', $ctx);
+            clearstatcache();
+            truthy(($r['data']['reloaded'] ?? false) === true && filemtime("$dir/site.rules") > 1000000000, 'reload: marked changed');
+            file_put_contents("$dir/site.rules", "restrict /x too 1.2.3.4\n", FILE_APPEND);
+            touch("$dir/site.rules", 1000000000);
+            same(409, Api::call($s, 'POST', '/reload', [], '*', $ctx)['status'], 'rules that do not compile are not reloaded');
+            clearstatcache();
+            same(1000000000, filemtime("$dir/site.rules"), 'untouched');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
 ];

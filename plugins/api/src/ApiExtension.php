@@ -174,11 +174,42 @@ final class ApiExtension implements Extension, ApiProvider
     /** The core's endpoints (RSF06-05): one service each, the same data the command line and the pages show. */
     public static function api(): array
     {
+        $change = Service\ListsChange::SCHEMA;
         return [
             new Endpoint('GET', '/status', 'reader', false, Service\Status::class, Service\Status::SCHEMA, 'RSF06-05',
                 'The version, the tier, the mode and the rule sets in force -- what request-shield version says.'),
+            new Endpoint('GET', '/rules', 'admin', false, Service\Rules::class, Service\Rules::SCHEMA, 'RSF06-01',
+                'Every rule with an ID: where it is written, what it does, its revision, how often it decided.', Service\Rules::PARAMS),
+            new Endpoint('POST', '/trace', 'admin', false, Service\Trace::class, Service\Trace::SCHEMA, 'RSF06-01',
+                'What happens to a request, check by check -- as request-shield trace; nothing is counted.', Service\Trace::PARAMS),
+            new Endpoint('POST', '/test', 'admin', false, Service\Test::class, Service\Test::SCHEMA, 'RSF05-04',
+                'Every example next to the rules, decided on a fresh store -- as request-shield test.', Service\Test::PARAMS),
+            new Endpoint('POST', '/check', 'admin', false, Service\Check::class, Service\Check::SCHEMA, 'RSF05-01',
+                'The rule files read again and compiled: the first mistake, or the warnings and the tier -- as request-shield check.'),
+            new Endpoint('POST', '/reload', 'admin', true, Service\Reload::class, Service\Reload::SCHEMA, 'RSF05-01',
+                'Check, then mark the main rule file changed: every server reads the rules on its next check.'),
+            new Endpoint('GET', '/live', 'admin', false, Service\Live::class, Service\Live::SCHEMA, 'RSF06-02',
+                'What was stopped since the cursor: the live view\'s rows.', Service\Live::PARAMS),
+            new Endpoint('GET', '/lists', 'admin', false, Service\Lists::class, Service\Lists::SCHEMA, 'RSF01-02',
+                'The addresses kept out and let in, newest first, searched; and the bans in force.', Service\Lists::PARAMS),
+            new Endpoint('POST', '/lists', 'admin', true, Service\ListsChange::class, $change, 'RSF01-02',
+                'An address kept out or let in, for a while or for good -- with the dashboard\'s checks.', Service\ListsChange::PARAMS_ADD),
+            new Endpoint('POST', '/lists/update', 'admin', true, Service\ListsUpdate::class, $change, 'RSF01-02',
+                'Another end or another note for an entry, by its ID.', Service\ListsUpdate::PARAMS),
+            new Endpoint('POST', '/lists/remove', 'admin', true, Service\ListsRemove::class, $change, 'RSF01-02',
+                'An entry taken out, by its ID.', Service\ListsRemove::PARAMS),
+            new Endpoint('POST', '/lists/lift', 'admin', true, Service\ListsLift::class, $change, 'RSF01-02',
+                'A ban lifted before its end, by its bucket.', Service\ListsLift::PARAMS),
+            new Endpoint('GET', '/feeds', 'admin', false, Service\Feeds::class, Service\Feeds::SCHEMA, 'RSF01-03',
+                'The public blocklists the rules name: action, entries, when fetched, whether in force.'),
+            new Endpoint('POST', '/feeds/update', 'admin', true, Service\FeedsUpdate::class, Service\FeedsUpdate::SCHEMA, 'RSF01-03',
+                'The lists that are due fetched now -- as request-shield feeds update.', Service\FeedsUpdate::PARAMS),
+            new Endpoint('GET', '/crawlers', 'admin', false, Service\Crawlers::class, Service\Crawlers::SCHEMA, 'RSF01-04',
+                'The known crawlers: kind, what the site does with each, how they are verified.'),
+            new Endpoint('GET', '/log', 'admin', false, Service\Log::class, Service\Log::SCHEMA, 'RSF05-05',
+                'The log\'s lines since the cursor, parsed: what was refused or checked, and why.', Service\Log::PARAMS),
             new Endpoint('GET', '/openapi.json', 'reader', false, Service\OpenApi::class, ['type' => 'object'], 'RSF06-05',
-                'This API described as OpenAPI 3.1 (JSON): every endpoint, what it takes and what it answers.'),
+                'This API described as OpenAPI 3.1: every endpoint, what it takes and what it answers.'),
         ];
     }
 }

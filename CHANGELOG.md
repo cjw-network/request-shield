@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The API, part 2: the core's endpoints** (0031 step G.0, RSF06-05):
+  `GET /rules`, `POST /trace`, `POST /test`, `POST /check`, `GET /live`,
+  `GET /lists`, `GET /feeds`, `GET /crawlers`, `GET /log`; and the writes, only
+  with `set api-write on` and for the administrator: `POST /reload`,
+  `POST /lists` (and `/lists/update`, `/lists/remove`, `/lists/lift`),
+  `POST /feeds/update`. Each answers what the command line and the pages show
+  -- the same functions; the lists with the page's own checks (no trusted
+  proxy, not the caller's own address, a wide range only with `confirm`). A
+  write is a POST: DELETE is not among the methods a site accepts by default.
+  `check`'s warnings are one function the command line and the API share.
 - **The API, part 1: the host** (0031 step G.0, RSF06-05): `plugins/api` serves
   the shield's data as JSON below `<dashboard-path>/api/v1`, guarded like the
   dashboard (a restrict rule, or `Authorization: Bearer <token>`); every answer
