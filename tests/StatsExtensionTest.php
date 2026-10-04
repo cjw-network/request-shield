@@ -116,7 +116,7 @@ return [
         exec(escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg($code) . ' 2>&1', $out, $exit);
         $got = json_decode(implode("\n", $out), true);
         same(0, $exit, implode("\n", $out));
-        same([[], [StatsExtension::class, \CjwNetwork\RequestShield\Api\ApiExtension::class], ['stats' => StatsExtension::class, 'api' => \CjwNetwork\RequestShield\Api\ApiExtension::class], true], $got, 'loaded after the bootstrap: none; named: the statistics and the API; after the first lookup: offered and loaded');
+        same([[], [StatsExtension::class, \CjwNetwork\RequestShield\Api\ApiExtension::class, \CjwNetwork\RequestShield\Cache\CacheExtension::class], ['stats' => StatsExtension::class, 'api' => \CjwNetwork\RequestShield\Api\ApiExtension::class, 'cache' => \CjwNetwork\RequestShield\Cache\CacheExtension::class], true], $got, 'loaded after the bootstrap: none; named: the statistics, the API, the cache; after the first lookup: offered and loaded');
         truthy(!is_subclass_of(StatsExtension::class, \CjwNetwork\RequestShield\Plugin::class), 'the extension itself is no plugin: it is never on the request path');
     },
     'RSF06-03 a Composer install without bootstrap.php: the autoload file names the shipped extension, so set stats on is known there too' => function (): void {
@@ -130,6 +130,6 @@ return [
             . 'echo json_encode([defined("REQUEST_SHIELD_EXTENSIONS") ? constant("REQUEST_SHIELD_EXTENSIONS") : null, array_keys(\\CjwNetwork\\RequestShield\\Rules\\Vocabulary::extensions())]);';
         exec(PHP_BINARY . ' -r ' . escapeshellarg($code) . ' 2>&1', $out, $exit);
         same(0, $exit, implode("\n", $out));
-        same([[StatsExtension::class, \CjwNetwork\RequestShield\Api\ApiExtension::class], ['stats', 'api']], json_decode(implode("\n", $out), true), 'named by plugins/shipped.php (composer.json autoload files), offered on the first lookup');
+        same([[StatsExtension::class, \CjwNetwork\RequestShield\Api\ApiExtension::class, \CjwNetwork\RequestShield\Cache\CacheExtension::class], ['stats', 'api', 'cache']], json_decode(implode("\n", $out), true), 'named by plugins/shipped.php (composer.json autoload files), offered on the first lookup');
     },
 ];

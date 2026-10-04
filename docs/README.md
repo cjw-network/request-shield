@@ -31,6 +31,7 @@
   | RSF03-04 | How often | [the site asks for the check](features/RSF03-04-app-challenges.md) |
   | RSF04-01 | What a cache may keep | [cacheable definition](features/RSF04-01-cacheable-definition.md) |
   | RSF04-02 | What a cache may keep | planned: cache keys without tracking (proposal 0020) |
+  | RSF04-03 | What a cache may keep | [the HTTP cache (a plugin)](features/RSF04-03-http-cache.md) |
   | RSF05-01 | Operating | [rule files](features/RSF05-01-rule-files.md) |
   | RSF05-02 | Operating | [settings](features/RSF05-02-settings.md) |
   | RSF05-03 | Operating | [modes: monitor and strict](features/RSF05-03-modes.md) |

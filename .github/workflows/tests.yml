@@ -60,9 +60,11 @@ jobs:
           php build/single-file.php --build=ci
           php build/single-file.php --edition=stats --build=ci
           php build/single-file.php --edition=api --build=ci
+          php build/single-file.php --edition=cache --build=ci
           php -l build/out/request-shield.php > /dev/null
           php -l build/out/request-shield-stats.php > /dev/null
           php -l build/out/request-shield-api.php > /dev/null
+          php -l build/out/request-shield-cache.php > /dev/null
 
       - name: Tests (source tree)
         if: matrix.entry == 'source'

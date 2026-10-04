@@ -112,6 +112,9 @@ final class Vocabulary
         'RSF04-01' => ['cacheable-definition', 'What a cache may keep',
             'Made-up addresses and parameters are answered, but a cache does not keep them.',
             'Ausgedachte Adressen und Parameter werden beantwortet, aber ein Cache behält sie nicht.'],
+        'RSF04-03' => ['http-cache', 'The HTTP cache',
+            'Public pages are answered from a cache before the application starts; never a page that may be someone\'s own.',
+            'Öffentliche Seiten kommen aus einem Cache, bevor die Anwendung startet; nie eine Seite, die jemandem gehören kann.'],
         'RSF05-01' => ['rule-files', 'Rule files',
             'The shield\'s rules, one per line, in a plain text file.',
             'Die Regeln der Shield, eine pro Zeile, in einer einfachen Textdatei.'],
@@ -151,7 +154,7 @@ final class Vocabulary
     ];
 
     /** @var array<string, string> the feature an extension's words and keys belong to, by the extension's id */
-    public const EXTENSION_FEATURES = ['stats' => 'RSF06-03', 'api' => 'RSF06-05'];
+    public const EXTENSION_FEATURES = ['stats' => 'RSF06-03', 'api' => 'RSF06-05', 'cache' => 'RSF04-03'];
 
     /** The feature a word or set key belongs to: the core's (FEATURES), else its extension's; null when none is known. */
     public static function featureOf(string $word): ?string

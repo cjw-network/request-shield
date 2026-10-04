@@ -9,3 +9,4 @@ RSF03-03  the check inside the form: the box solves it while a visitor types, th
 RSF03-04  the site asks for the check: the page decides (requirePass(), X-RS-Check: 1) -- shown as "# try:" rows
 RSF05-04  examples next to the rules: every group of the demo is made of them, and request-shield test decides each -- a group of its own would only repeat them
 RSF05-05  the log and rule IDs: every row names the rule that decides it, and the front page shows the log -- a group of its own would only repeat them
+RSF04-03  the HTTP cache: it keeps the site's answers, and the demo's pages show live counters and the log -- a cached demo would show old ones; its end-to-end test shows it

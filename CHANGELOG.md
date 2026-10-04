@@ -18,6 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **A page cache for small sites** (0031 step G.2, RSF04-03, the `cache`
+  edition): `set http-cache on` keeps the public answers of a site without a
+  cache of its own (200, 301, 308; no cookie set, not private, within
+  `http-cache-max-object`) for `s-maxage`, `max-age` or `http-cache-ttl`, and
+  answers the next request for them before the application runs (`Age`,
+  `X-RS-Cache: hit`, 304 for a known ETag). Visitors with a login cookie, an
+  `Authorization` header or a form are never served from it; harmless cookies
+  (`http-cache-cookies`: analytics, the shield's pass) do not count.
+  `request-shield cache <rules> purge [--path=…] | expired` and the API's
+  `GET /cache`, `POST /cache/purge`. Off by default; nothing of it loads then.
 - **Proposal 0038 without JavaScript, and without friction** (Draft): why no
   captcha (models solve them, Google's value is its risk score, every person
   pays); instead a fallback for visitors without JavaScript (a signed form and

@@ -1,0 +1,9 @@
+# RSF04-03: the HTTP cache as a plugin.
+title A page the shield finds cacheable is answered from the cache before the application starts; the first time, the application's public answer is kept
+row  req:box "GET /news/?page=2" "no session, no token" | shield:warnbox "request-shield" "the rules; cacheable?" | cache:okbox "The cache" "kept? answer it" | app:box "Your application" "only on a miss"
+row  own:nobox "Never kept" "a session, Set-Cookie, private, a made-up address"
+arrow req -> shield
+arrow shield -> cache "cacheable" go
+arrow cache -> app "a miss"
+arrow shield -> own "not for a cache"
+note A hit costs the shield's few microseconds and a file read; the application, its database and the page's rendering do not run.

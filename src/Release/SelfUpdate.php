@@ -21,7 +21,7 @@ namespace CjwNetwork\RequestShield\Release;
  * proves the comment. Then the file is downloaded, its checksum and its
  * signature checked, `php -l` run on it; a downgrade, the same version, or a
  * new major version without --major is refused. Every edition file beside it
- * (request-shield-stats.php, request-shield-api.php) is updated the same way and to the same version,
+ * (request-shield-stats.php, request-shield-api.php, request-shield-cache.php) is updated the same way and to the same version,
  * all checked before any is replaced; each old one is kept as <file>.prev,
  * and the new one moved in with rename(). Exit 0: up to date or updated;
  * 1: refused or failed (nothing replaced); 2: not the single file; 10 (with
@@ -32,7 +32,7 @@ final class SelfUpdate
     public const RELEASES = 'https://github.com/cjw-network/request-shield/releases';
 
     /** The add-on editions that are updated with the file when they lie beside it. */
-    public const EDITIONS = ['request-shield-stats.php', 'request-shield-api.php'];
+    public const EDITIONS = ['request-shield-stats.php', 'request-shield-api.php', 'request-shield-cache.php'];
 
     /** @var callable(string): ?string */
     private $fetch;

@@ -12,6 +12,7 @@
         <directory name="src"/>
         <directory name="plugins/stats/src"/>
         <directory name="plugins/api/src"/>
+        <directory name="plugins/cache/src"/>
         <file name="bootstrap.php"/>
         <ignoreFiles>
             <directory name="vendor"/>

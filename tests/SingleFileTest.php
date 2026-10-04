@@ -80,6 +80,7 @@ return [
         $file = singleFile();
         $stats = singleFile('stats');
         $api = singleFile('api');
+        $cache = singleFile('cache');
         $classes = [];
         foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(dirname(__DIR__) . '/src', FilesystemIterator::SKIP_DOTS)) as $f) {
             if ($f instanceof SplFileInfo && $f->getExtension() === 'php' && preg_match('/^namespace ([^;]+);.*?^(?:final |abstract )?(?:class|interface|trait) (\w+)/ms', (string) file_get_contents($f->getPathname()), $m) === 1) {
@@ -88,12 +89,12 @@ return [
         }
         truthy(count($classes) > 80, 'found the classes: ' . count($classes));
         foreach (['-d opcache.enable_cli=0', '-d opcache.enable_cli=1'] as $flags) {
-            [$out, $code] = singlePhp('require ' . var_export($stats, true) . '; require ' . var_export($file, true) . '; require ' . var_export($file, true) . '; require ' . var_export($stats, true) . '; require ' . var_export($stats, true) . '; require ' . var_export($api, true) . '; require ' . var_export($api, true) . ';'
+            [$out, $code] = singlePhp('require ' . var_export($stats, true) . '; require ' . var_export($file, true) . '; require ' . var_export($file, true) . '; require ' . var_export($stats, true) . '; require ' . var_export($stats, true) . '; require ' . var_export($api, true) . '; require ' . var_export($api, true) . '; require ' . var_export($cache, true) . ';'
                 . '$missing = array_values(array_filter(' . var_export($classes, true) . ', static fn (string $c): bool => !class_exists($c, false) && !interface_exists($c, false) && !trait_exists($c, false)));'
-                . 'echo json_encode(["missing" => $missing, "stats" => class_exists("CjwNetwork\\\\RequestShield\\\\Stats\\\\StatsPlugin", false), "api" => class_exists("CjwNetwork\\\\RequestShield\\\\Api\\\\ApiExtension", false), "done" => defined("REQUEST_SHIELD_DONE")]);', $flags);
+                . 'echo json_encode(["missing" => $missing, "stats" => class_exists("CjwNetwork\\\\RequestShield\\\\Stats\\\\StatsPlugin", false), "api" => class_exists("CjwNetwork\\\\RequestShield\\\\Api\\\\ApiExtension", false), "cache" => class_exists("CjwNetwork\\\\RequestShield\\\\Cache\\\\CachePlugin", false), "done" => defined("REQUEST_SHIELD_DONE")]);', $flags);
             $got = json_decode((string) end($out), true);
             truthy($code === 0 && is_array($got), "$flags: " . implode(' | ', $out));
-            same(['missing' => [], 'stats' => true, 'api' => true, 'done' => false], $got, "$flags: every class, the statistics, the API; required by a script on the command line, nothing protected");
+            same(['missing' => [], 'stats' => true, 'api' => true, 'cache' => true, 'done' => false], $got, "$flags: every class, the statistics, the API, the cache; required by a script on the command line, nothing protected");
             truthy(strpos(implode("\n", $out), 'needs request-shield.php loaded first') !== false, 'the statistics before the core: one line in the error log, nothing declared');
         }
     },

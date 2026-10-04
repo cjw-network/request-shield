@@ -41,6 +41,7 @@
         "psr-4": {
             "CjwNetwork\\RequestShield\\Stats\\": "plugins/stats/src/",
             "CjwNetwork\\RequestShield\\Api\\": "plugins/api/src/",
+            "CjwNetwork\\RequestShield\\Cache\\": "plugins/cache/src/",
             "CjwNetwork\\RequestShield\\": "src/"
         },
         "files": [

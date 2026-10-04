@@ -5,7 +5,7 @@
  * @copyright Copyright (C) 2026 JAC Systeme GmbH, CJW Network
  * @license MIT, see LICENSE
  *
- *   php build/single-file.php [--edition=mini|stats|api|waf] [--out=<file>] [--build=<id>]
+ *   php build/single-file.php [--edition=mini|stats|api|cache|waf] [--out=<file>] [--build=<id>]
  *
  * Builds one edition as one PHP file (proposal 0002, 0031 E.2): the classes
  * of the edition's directories, each in its own `namespace X { … }` block,
@@ -54,6 +54,13 @@ const EDITIONS = [
         'core' => false,
         'about' => 'the API plugin, loaded after request-shield.php',
         'load' => 'the API is on below <dashboard-path>/api/v1, guarded like the dashboard (set api off, set api-write on)',
+    ],
+    'cache' => [
+        'file' => 'request-shield-cache.php',
+        'dirs' => ['plugins/cache/src'],
+        'core' => false,
+        'about' => 'the HTTP cache plugin, loaded after request-shield.php',
+        'load' => 'the cache is switched on in the rules (set http-cache on)',
     ],
 ];
 
@@ -354,7 +361,7 @@ namespace {
     // The shipped extensions, by name (as bootstrap.php): a statistics file loaded
     // before the rules are compiled is offered; without it, nothing is loaded.
     if (!defined('REQUEST_SHIELD_EXTENSIONS')) {
-        define('REQUEST_SHIELD_EXTENSIONS', ['CjwNetwork\\RequestShield\\Stats\\StatsExtension', 'CjwNetwork\\RequestShield\\Api\\ApiExtension']);
+        define('REQUEST_SHIELD_EXTENSIONS', ['CjwNetwork\\RequestShield\\Stats\\StatsExtension', 'CjwNetwork\\RequestShield\\Api\\ApiExtension', 'CjwNetwork\\RequestShield\\Cache\\CacheExtension']);
     }
     (static function (): void {
         if (defined('REQUEST_SHIELD_DONE')) {

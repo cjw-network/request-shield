@@ -35,6 +35,11 @@ return [
         foreach (Reference::SETTINGS as $r) {
             $keys = array_merge($keys, $r['keys']);
         }
+        // Every shipped extension offered, whatever the tests before left behind: the reference covers them all.
+        Vocabulary::forget();
+        foreach ((array) constant('REQUEST_SHIELD_EXTENSIONS') as $class) {
+            Vocabulary::offer((string) $class);
+        }
         $known = Vocabulary::known();
         same([], array_values(array_diff(RuleFile::coreWords(), $words)), 'the core\'s words');
         same([], array_values(array_diff(RuleFile::coreSettings(), $keys)), 'the core\'s set keys');

@@ -73,3 +73,10 @@ Below `<dashboard-path>/api/v1` (`/rs/api/v1` by default), guarded like the dash
 |---|---|---|
 | `GET /stats/report` | reader | What the counters say about a period: requests, what the shield did, pages, not found, crawlers, bots, forms, the sentences.<br>`days`: the last days: 1 to 400 (default 7)<br>`from`: a period instead: from YYYY-MM-DD (with to)<br>`to`: to YYYY-MM-DD<br>`by`: day (default), week, month or year<br>`site`: one website (stats-hosts), or group:&lt;id&gt;; a customer sees its group only<br>`path`: only pages below it: /news/<br>`crawler`: one known crawler: CRAWL-GOOGLE<br>`sort`: views (default), blocked, refused, checked or throttled |
 | `GET /stats/sites` | reader | All websites at a glance: page views, people, crawlers, bots, stopped, not found, and the period before.<br>`days`: the last days: 1 to 400 (default 7)<br>`from`: a period instead: from YYYY-MM-DD (with to)<br>`to`: to YYYY-MM-DD<br>`by`: day (default), week, month or year |
+
+### The HTTP cache ([RSF04-03](../features/RSF04-03-http-cache.md))
+
+| Endpoint | Who | What it answers |
+|---|---|---|
+| `GET /cache` | admin | The HTTP cache: on or off, how many answers it holds, how many bytes. |
+| `POST /cache/purge` | admin, a write | Empties the HTTP cache, or the addresses below a path -- after a page changed.<br>`path`: only the addresses below it: /news/ (every website); none: everything |

@@ -17,6 +17,7 @@ follow in phase E of [0031](../proposals/0031-robust-core-plugins.md).
 php build/single-file.php                              # build/out/request-shield.php
 php build/single-file.php --edition=stats              # build/out/request-shield-stats.php
 php build/single-file.php --edition=api                # build/out/request-shield-api.php
+php build/single-file.php --edition=cache              # build/out/request-shield-cache.php
 php build/single-file.php --out=/tmp/rs.php --build=v0.4.0
 ```
 
@@ -25,6 +26,7 @@ php build/single-file.php --out=/tmp/rs.php --build=v0.4.0
 | `mini` | `request-shield.php` | `src/` with the command line (`Cli`), the rule sets and crawler lists of `rules/` embedded in `Rules\Shipped` |
 | `stats` | `request-shield-stats.php` | `plugins/stats/src`, loaded after the mini file |
 | `api` | `request-shield-api.php` | `plugins/api/src`, loaded after the mini file ([the API](RSF06-05-api.md)) |
+| `cache` | `request-shield-cache.php` | `plugins/cache/src`, loaded after the mini file ([the HTTP cache](RSF04-03-http-cache.md)) |
 | `waf` | — | not yet: the dashboard's pages are still in the mini file; step G.3 moves them out |
 
 The build is deterministic: the same sources and `--build` give the same

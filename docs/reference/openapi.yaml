@@ -1320,6 +1320,94 @@ paths:
             "application/problem+json":
               schema:
                 $ref: "#/components/schemas/Problem"
+  "/cache":
+    get:
+      summary: "The HTTP cache: on or off, how many answers it holds, how many bytes."
+      tags:
+        - "RSF04-03"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF04-03-http-cache.md"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "enabled"
+                      - "entries"
+                      - "bytes"
+                      - "ttl"
+                    properties:
+                      enabled:
+                        type: "boolean"
+                      entries:
+                        type: "integer"
+                      bytes:
+                        type: "integer"
+                      ttl:
+                        type: "integer"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/cache/purge":
+    post:
+      summary: "Empties the HTTP cache, or the addresses below a path -- after a page changed."
+      tags:
+        - "RSF04-03"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF04-03-http-cache.md"
+      x-write: true
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                path:
+                  type: "string"
+                  description: "only the addresses below it: /news/ (every website); none: everything"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "removed"
+                    properties:
+                      removed:
+                        type: "integer"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
 components:
   securitySchemes:
     bearer:
