@@ -285,4 +285,29 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF06-05 review: with tokens a browser\'s preflight is answered before the login, and every problem carries CORS for api-origins; a form\'s fields count; a login\'s own answers are no API\'s; no server paths' => function (): void {
+        $dir = apiDir();
+        try {
+            $s = apiSettings($dir, apiTokens() . "set api-origins https://cms.example.org\nset api-write on\n");
+            $r = apiServe($s, 'OPTIONS', '/rs/api/v1/status', ['Origin' => 'https://cms.example.org']);
+            same([204, 'https://cms.example.org'], [$r->status, apiHeader($r, 'Access-Control-Allow-Origin')], 'the preflight, without a token');
+            $r = apiServe($s, 'GET', '/rs/api/v1/status', ['Origin' => 'https://cms.example.org']);
+            same([401, 'https://cms.example.org'], [$r->status, apiHeader($r, 'Access-Control-Allow-Origin')], 'the 401 the page can read');
+            same(null, apiHeader(apiServe($s, 'GET', '/rs/api/v1/status', ['Origin' => 'https://evil.example']), 'Access-Control-Allow-Origin'));
+            $r = apiServe($s, 'GET', '/rs/api/v1/status?rs-logout=1');
+            same([401, 'application/problem+json; charset=utf-8'], [$r->status, apiHeader($r, 'Content-Type')], 'a sign-out on the API: 401, not 200 with a problem');
+            $r = apiServe($s, 'POST', '/rs/api/v1/trace', ['Authorization' => 'Bearer ' . API_ADMIN], ['url' => '/x', 'ip' => '192.0.2.1']);
+            same(200, $r->status, 'a form\'s fields: ' . $r->body);
+            file_put_contents("$dir/inc.rules", "block /old/**\n");
+            $warned = apiSettings($dir, "include $dir/inc.rules\n");
+            file_put_contents("$dir/inc.rules", "restrict /x too 1.2.3.4\n");
+            $c = Api::call($warned, 'POST', '/check', [], '*', ['ruleFile' => "$dir/site.rules"])['data'];
+            truthy($c['ok'] === false && strpos((string) $c['error'], $dir) === false && strpos((string) $c['error'], 'inc.rules') !== false, 'the mistake without the folder: ' . $c['error']);
+            foreach (Api::call($s, 'GET', '/rules', [], '*', ['ruleFile' => "$dir/site.rules"])['data']['rules'] as $rule) {
+                truthy(strpos($rule['where'], $dir) === false, "where: {$rule['where']}");
+            }
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
 ];

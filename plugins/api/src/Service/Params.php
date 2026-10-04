@@ -61,6 +61,19 @@ final class Params
         throw new ApiProblem(400, 'Bad request', "$name is true or false.");
     }
 
+    /**
+     * A message without the server's paths: a file below the rule file's
+     * folder by its path from there, any other by its name.
+     */
+    public static function relative(string $text, ?string $ruleFile): string
+    {
+        $dir = $ruleFile !== null ? rtrim(dirname($ruleFile), '/') . '/' : null;
+        if ($dir !== null && $dir !== '/') {
+            $text = str_replace($dir, '', $text);
+        }
+        return (string) preg_replace_callback('#(?<![\w.])/(?:[^\s:"\'/()]+/)+([^\s:"\'/()]+)#', static fn (array $m): string => $m[1], $text);
+    }
+
     /** The main rule file, or a 409: settings from a PHP array have none to read, test or touch. */
     public static function ruleFile(?string $file): string
     {

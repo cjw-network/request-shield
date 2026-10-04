@@ -98,6 +98,10 @@ final class Host implements RoutePage
             return null;
         }
         $data = json_decode($raw, true);
+        if (!is_array($data) && $post !== []) {
+            /** @var array<string, mixed> */
+            return $post;                       // a form's fields (application/x-www-form-urlencoded)
+        }
         /** @var array<string, mixed>|null */
         return is_array($data) && ($data === [] || array_keys($data) !== range(0, count($data) - 1)) ? $data : null;
     }

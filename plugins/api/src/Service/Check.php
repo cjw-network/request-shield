@@ -37,10 +37,11 @@ final class Check implements ApiService
             $read = RuleFile::read([$file]);
             $settings = Settings::from($read['config']);
         } catch (\InvalidArgumentException $e) {
-            // The mistake names the file by its name and the line: never the full path.
-            return ['ok' => false, 'error' => $e->getMessage(), 'warnings' => [], 'tier' => null];
+            // The mistake by the file's name and line: never the server's paths.
+            return ['ok' => false, 'error' => Params::relative($e->getMessage(), $file), 'warnings' => [], 'tier' => null];
         }
         $tier = Tier::of($settings, Settings::cacheDirFor($file));
-        return ['ok' => true, 'error' => null, 'warnings' => array_merge(Cli::warnings($settings, $read, $file), $tier['off']), 'tier' => $tier['tier']];
+        return ['ok' => true, 'error' => null, 'warnings' => array_map(static fn (string $w): string => Params::relative($w, $file), array_merge(Cli::warnings($settings, $read, $file), $tier['off'])),
+            'tier' => $tier['tier']];
     }
 }

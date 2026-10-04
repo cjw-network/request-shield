@@ -36,7 +36,7 @@ final class Rules implements ApiService
         foreach ((array) ($s->origins['at'] ?? []) as $id => $at) {
             $id = (string) $id;
             $rev = $s->origins['rev'][$id] ?? null;
-            $rules[] = ['id' => $id, 'where' => (string) $at, 'text' => $s->origin('text', $id), 'revision' => is_numeric($rev) ? (int) $rev : null,
+            $rules[] = ['id' => $id, 'where' => Params::relative((string) $at, $ctx['ruleFile']), 'text' => $s->origin('text', $id), 'revision' => is_numeric($rev) ? (int) $rev : null,
                 'builtIn' => strncmp((string) $at, 'built-in ', 9) === 0, 'decided' => $counts === [] ? null : ($counts[$id] ?? 0)];
         }
         return ['days' => $days, 'rules' => $rules];

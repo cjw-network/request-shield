@@ -99,9 +99,18 @@ final class Dashboard
         $admin = self::restricted($s, $path);
         $own = Access::headers($s);
         $api = $route['key'] === 'api';
+        $cors = $api ? self::cors($s, $request) : [];
+        if ($api && $request->method === 'OPTIONS') {
+            // A browser's preflight carries no token: the API's page answers it (api-origins), before any login.
+            $page = $route['page'] ?? null;
+            if (is_string($page) && class_exists($page) && is_subclass_of($page, RoutePage::class)) {
+                return $page::serve($s, $request, $route, ['who' => '', 'prefix' => '', 'get' => $get, 'post' => $post, 'method' => 'OPTIONS', 'lang' => $lang,
+                    'accept' => null, 'links' => [], 'ip' => $request->clientIp, 'home' => '/', 'homeLabel' => '', 'ruleFile' => $ruleFile])->withHeaders($own);
+            }
+        }
         if (!$admin && !Access::enabled($s)) {
             if ($api) {
-                return self::problem(403, 'Forbidden', 'The API is not set up: a restrict rule for ' . $s->dashboardPath . '/** or a login (dashboard-access) is needed.', $own);
+                return self::problem(403, 'Forbidden', 'The API is not set up: a restrict rule for ' . $s->dashboardPath . '/** or a login (dashboard-access) is needed.', [...$own, ...$cors]);
             }
             // Nobody guards this page: refused, and check says what to do.
             return Response::html(403, self::plain($request, $lang, 'This page is not set up: a restrict rule for ' . $s->dashboardPath . '/** or a login (dashboard-access) is needed.',
@@ -109,17 +118,19 @@ final class Dashboard
         }
         $gate = Access::gate($s, $request, $get, $post, ['admin' => $admin, 'lang' => $lang, 'home' => $home, 'homeLabel' => $homeLabel]);
         if ($gate['who'] === null && $api) {
-            // A program gets JSON, never the login form (RFC 9457).
-            return self::problem($gate['status'], $gate['status'] === 429 ? 'Too many requests' : 'Unauthorized',
-                $gate['status'] === 429 ? 'Too many wrong tokens from this address: wait a minute.' : 'Send a token: Authorization: Bearer <token> (request-shield access-token).',
-                [...array_values(array_filter($gate['headers'], static fn (string $h): bool => stripos($h, 'Set-Cookie:') !== 0)), ...($gate['status'] === 401 ? ['WWW-Authenticate: Bearer'] : [])]);
+            // A program gets JSON, never the login form (RFC 9457); a login's own answers (a signed link, sign-out) are no API's.
+            $status = in_array($gate['status'], [401, 403, 429], true) ? $gate['status'] : 401;
+            return self::problem($status, $status === 429 ? 'Too many requests' : ($status === 403 ? 'Forbidden' : 'Unauthorized'),
+                $status === 429 ? 'Too many wrong tokens from this address: wait a minute.' : 'Send a token: Authorization: Bearer <token> (request-shield access-token).',
+                [...array_values(array_filter($gate['headers'], static fn (string $h): bool => stripos($h, 'Set-Cookie:') !== 0 && stripos($h, 'Location:') !== 0)),
+                    ...($status === 401 ? ['WWW-Authenticate: Bearer'] : []), ...$cors]);
         }
         if ($gate['who'] === null) {
             return new Response($gate['status'], array_merge(['Content-Type: text/html; charset=utf-8'], $gate['headers']), (string) $gate['body']);
         }
         $who = $gate['who'];
         if ($route['role'] === 'admin' && $who !== '*' && $api) {
-            return self::problem(403, 'Forbidden', 'This endpoint is the administrator\'s.', $gate['headers']);
+            return self::problem(403, 'Forbidden', 'This endpoint is the administrator\'s.', [...$gate['headers'], ...$cors]);
         }
         if ($route['role'] === 'admin' && $who !== '*') {
             return Response::html(403, self::plain($request, $lang, 'This page is the administrator\'s.', 'Diese Seite ist dem Administrator vorbehalten.'), $gate['headers']);
@@ -132,6 +143,18 @@ final class Dashboard
         $ctx = ['who' => $who, 'prefix' => $prefix, 'get' => $get, 'post' => $post, 'method' => $request->method, 'lang' => $lang,
             'accept' => $request->header('accept-language'), 'links' => $links, 'ip' => $request->clientIp, 'home' => $home, 'homeLabel' => $homeLabel, 'ruleFile' => $ruleFile];
         return $page::serve($s, $request, $route, $ctx)->withHeaders($gate['headers']);
+    }
+
+    /**
+     * CORS for an API answer: the Origin back, when api-origins names it (the API plugin's setting).
+     *
+     * @return list<string>
+     */
+    private static function cors(Settings $s, Request $request): array
+    {
+        $origin = (string) $request->header('origin');
+        $allowed = $s->ext['api']['origins'] ?? [];
+        return $origin !== '' && is_array($allowed) && in_array(strtolower(rtrim($origin, '/')), $allowed, true) ? ['Access-Control-Allow-Origin: ' . $origin, 'Vary: Origin'] : [];
     }
 
     /**
