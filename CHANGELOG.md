@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Blocked paths have their page** (0031 step F.6, RSF02-02):
+  `docs/features/RSF02-02-blocked-paths.md` -- `@scanners` and `@wordpress`
+  rule by rule, a path of your own, taking one back or opening it somewhere,
+  what it costs, and that on a site without a front controller the shield
+  sees only what reaches PHP. Every feature has its page now.
 - **Attack patterns have their page, and the demo shows them** (0031 step F.6,
   RSF02-06): `docs/features/RSF02-06-attack-patterns.md` -- what `@attacks`
   looks at, the 15 rules, a pattern of your own, what it costs (about 1.4 µs

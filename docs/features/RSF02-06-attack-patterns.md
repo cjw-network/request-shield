@@ -49,7 +49,7 @@ unblock [ATK-XSS-TAG@1] at /admin/editor/** for 192.0.2.0/24   # opened where it
 
 The patterns are regular expressions, case does not matter. `unblock`,
 `unblock … at` and `replace` work for them as for [blocked
-paths](RSF05-01-rule-files.md#the-built-in-rules); the `@1` is the revision a site reviewed
+paths](RSF02-02-blocked-paths.md); the `@1` is the revision a site reviewed
 -- when an update changes a rule, `check` says so. Test new patterns first:
 `monitor block query …` logs what it would refuse, nobody is refused
 ([modes](RSF05-03-modes.md)).

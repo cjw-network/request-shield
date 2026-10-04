@@ -39,8 +39,8 @@ foreach (glob("$root/docs/features/RSF*.md") ?: [] as $f) {
     $pages[substr(basename($f), 0, 8)] = basename($f);
 }
 // The feature of a word or key: the core's, else its extension's (Vocabulary::featureOf()).
-$feature = static function (string $word, string $base) use ($pages): string {
-    $id = Vocabulary::featureOf($word);
+$feature = static function (string $word, string $base, ?string $own = null) use ($pages): string {
+    $id = $own ?? Vocabulary::featureOf($word);
     return $id === null ? '' : (isset($pages[$id]) ? "[$id]($base{$pages[$id]})" : $id);
 };
 // Links in the rows are relative to the rule files page; from docs/reference they go through ../features/.
@@ -50,7 +50,7 @@ $rulesTable = "| Rule | Setting | |\n|---|---|---|\n";
 $rulesRef = "| Rule | Setting | Feature | What it does |\n|---|---|---|---|\n";
 foreach (Reference::RULES as $r) {
     $rulesTable .= '| ' . $cell($r['syntax']) . ' | ' . $cell($r['setting']) . ' | ' . $cell($r['about']) . " |\n";
-    $rulesRef .= '| ' . $cell($r['syntax']) . ' | ' . $cell($r['setting']) . ' | ' . $feature($r['words'][0], '../features/') . ' | ' . $cell($relink($r['about'])) . " |\n";
+    $rulesRef .= '| ' . $cell($r['syntax']) . ' | ' . $cell($r['setting']) . ' | ' . $feature($r['words'][0], '../features/', $r['feature'] ?? null) . ' | ' . $cell($relink($r['about'])) . " |\n";
 }
 $setsTable = "| Key | Value |\n|---|---|\n";
 $setsRef = "| Key | Value | Feature |\n|---|---|---|\n";

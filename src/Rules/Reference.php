@@ -22,9 +22,10 @@ namespace CjwNetwork\RequestShield\Rules;
 final class Reference
 {
     /**
-     * The rules: the words a row is about, how it is written, what it sets, what it does.
+     * The rules: the words a row is about, how it is written, what it sets, what it does --
+     * and its feature where it is not its first word's (block query … is an attack pattern).
      *
-     * @var list<array{words: list<string>, syntax: string, setting: string, about: string}>
+     * @var list<array{words: list<string>, syntax: string, setting: string, about: string, feature?: string}>
      */
     public const RULES = [
         ['words' => ['host'], 'syntax' => '`host <names>`',
@@ -39,7 +40,7 @@ final class Reference
             'setting' => '`restricted`', 'about' => 'only those addresses, else 403 ([access rules](RSF02-03-access-rules.md))'],
         ['words' => ['block', 'unblock'], 'syntax' => '`block <paths>` / `unblock <paths>`',
             'setting' => '`blockedPaths`', 'about' => '404 before the site sees it / take a block back'],
-        ['words' => ['block'], 'syntax' => '`block query|header <Name>|headers|anywhere <regex>`',
+        ['words' => ['block'], 'feature' => 'RSF02-06', 'syntax' => '`block query|header <Name>|headers|anywhere <regex>`',
             'setting' => '`contentRules`', 'about' => 'attack patterns in the query or the headers, 403'],
         ['words' => ['unblock'], 'syntax' => '`unblock [<what>] at <paths> [for <addresses>]`',
             'setting' => '`blockExceptions`', 'about' => 'blocked paths let through at some paths only (an admin\'s file reader) ([access rules](RSF02-03-access-rules.md#exceptions-an-admins-file-reader))'],

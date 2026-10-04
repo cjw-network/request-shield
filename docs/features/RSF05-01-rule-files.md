@@ -301,6 +301,8 @@ and survive updates — and with `@n` you learn when the rule underneath changed
 
 ## The built-in rules
 
+What they refuse, and why: [blocked paths](RSF02-02-blocked-paths.md) and [attack patterns](RSF02-06-attack-patterns.md).
+
 The blocks every site has are rule files shipped with the library, read
 before the site's own rules — the same format, with IDs and descriptions:
 

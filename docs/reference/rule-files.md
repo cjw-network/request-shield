@@ -11,9 +11,9 @@ Every rule a rule file may hold, what it sets, and the feature it belongs to. Ho
 | `method <METHODS>` | `methods` | [RSF02-01](../features/RSF02-01-hard-rejects.md) | methods allowed at all |
 | `allow <METHODS> <paths>` | `methodPaths` | [RSF02-03](../features/RSF02-03-access-rules.md) | those methods only there, else 405 ([access rules](../features/RSF02-03-access-rules.md)) |
 | `restrict <paths> to <addresses or ranges>` | `restricted` | [RSF02-03](../features/RSF02-03-access-rules.md) | only those addresses, else 403 ([access rules](../features/RSF02-03-access-rules.md)) |
-| `block <paths>` / `unblock <paths>` | `blockedPaths` | RSF02-02 | 404 before the site sees it / take a block back |
-| `block query\|header <Name>\|headers\|anywhere <regex>` | `contentRules` | RSF02-02 | attack patterns in the query or the headers, 403 |
-| `unblock [<what>] at <paths> [for <addresses>]` | `blockExceptions` | RSF02-02 | blocked paths let through at some paths only (an admin's file reader) ([access rules](../features/RSF02-03-access-rules.md#exceptions-an-admins-file-reader)) |
+| `block <paths>` / `unblock <paths>` | `blockedPaths` | [RSF02-02](../features/RSF02-02-blocked-paths.md) | 404 before the site sees it / take a block back |
+| `block query\|header <Name>\|headers\|anywhere <regex>` | `contentRules` | [RSF02-06](../features/RSF02-06-attack-patterns.md) | attack patterns in the query or the headers, 403 |
+| `unblock [<what>] at <paths> [for <addresses>]` | `blockExceptions` | [RSF02-02](../features/RSF02-02-blocked-paths.md) | blocked paths let through at some paths only (an admin's file reader) ([access rules](../features/RSF02-03-access-rules.md#exceptions-an-admins-file-reader)) |
 | `query <name> <type> … [at <paths>]` / `query strict` | `queryParams`, `queryStrict` | [RSF02-05](../features/RSF02-05-known-parameters.md) | the query parameters the site takes and their types (`int`, `number`, `word`, `id`, `list`, `text`, `any`, `/regex/`); only `text` and the unknown ones go to the attack patterns; `strict`: anything else 404 ([known parameters](../features/RSF02-05-known-parameters.md)) |
 | `cache-path <paths>` | `cacheable.paths` | [RSF04-01](../features/RSF04-01-cacheable-definition.md) | what a cache may keep; `any`: every path (default) |
 | `cache-query <names>` | `cacheable.query` | [RSF04-01](../features/RSF04-01-cacheable-definition.md) | parameters a cached URL may have; `any` (default), `none` |

@@ -14,7 +14,7 @@
   | RSF01-03 | Who is asking | [public blocklists (feeds)](features/RSF01-03-blocklist-feeds.md) |
   | RSF01-04 | Who is asking | [known crawlers](features/RSF01-04-known-crawlers.md) |
   | RSF02-01 | What is asked | [hard rejects](features/RSF02-01-hard-rejects.md) |
-  | RSF02-02 | What is asked | blocked paths (scanners) -- in [rule files](features/RSF05-01-rule-files.md#the-built-in-rules) for now |
+  | RSF02-02 | What is asked | [blocked paths](features/RSF02-02-blocked-paths.md) |
   | RSF02-03 | What is asked | [access rules](features/RSF02-03-access-rules.md) |
   | RSF02-04 | What is asked | [forms only from the website itself (`post-origin`)](features/RSF02-04-forms-from-the-website.md) |
   | RSF02-05 | What is asked | [known query parameters](features/RSF02-05-known-parameters.md) |
