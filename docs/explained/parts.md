@@ -1,6 +1,6 @@
 # The parts of request-shield, and their switches
 
-request-shield is a set of small parts that look at every request, in a fixed
+request-shield is a set of small parts that look at every [request](../glossary.md#request), in a fixed
 order, before your website starts. Each one is switched with a single line in
 your rule file. Some are on from the start; the others wait until you switch
 them on.
@@ -28,7 +28,7 @@ them on.
 | [Statistics](../features/RSF06-03-statistics.md) | people, crawlers, bots, status codes, pages not found — per day, week, month | `set stats on`, `set crawler-log <dir>` | off |
 | [Look at it](../features/RSF06-01-active-rules-page.md) | the rules page and the statistics page; on the command line `show`, `trace`, `stats`, `crawlers` | `bin/request-shield stats site.rules` | — |
 
-Every line goes into the site's rule file ([rule files](../features/RSF05-01-rule-files.md));
+Every line goes into the site's [rule file](../glossary.md#rule-file) ([rule files](../features/RSF05-01-rule-files.md));
 after a change, the servers read it on their next check. Nothing is sent to
-anyone else, except optional DNS lookups to verify crawlers (off with `set
+anyone else, except optional DNS lookups to verify [crawlers](../glossary.md#crawler) (off with `set
 crawler-verify ranges`) — see [privacy and the GDPR](../privacy.md).

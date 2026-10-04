@@ -74,7 +74,7 @@ shows each known crawler's last 7 days next to its row.
 
 ## The statistics page
 
-![](../explained/stats-page.png)
+![The statistics page: tiles with a curve of the last 48 hours, who came and what the shield did per hour, the answers, crawlers and pages not found](../explained/stats-page.png)
 
 **Where it lives:** `set dashboard-path /rs` (the default; `/admin/rs` if the site
 wants it behind its admin area). The statistics plugin's pages live under

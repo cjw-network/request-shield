@@ -1,0 +1,6 @@
+# docs/for/customers.md: a link from the hoster opens the customer's own statistics.
+title A link or a token from your hoster opens the statistics of your own websites, and nothing else
+row  menu:box "Your hosting panel" "a signed link" | page:okbox "Your statistics" "your websites, side by side" | token:box "Or a token" "kept like a password"
+arrow menu -> page "one click" go
+arrow token -> page "typed in"
+note Other customers, the rules and the server's settings are never shown to you.

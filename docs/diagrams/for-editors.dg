@@ -1,0 +1,8 @@
+# docs/for/editors.md: visitors pass, the shield counts, the editor reads.
+title Visitors pass the shield to your pages; the shield counts people, crawlers and bots, and the statistics show it
+row  who:box "Visitors" "people, crawlers, bots" | shield:warnbox "request-shield" "counts while they pass" | pages:okbox "Your pages"
+row  stats:okbox "Visitors & pages" "views, crawlers, not found"
+arrow who -> shield
+arrow shield -> pages "almost everyone" go
+arrow shield -> stats "counted per hour"
+note No visitor is followed from page to page: the counts are per page and per hour.

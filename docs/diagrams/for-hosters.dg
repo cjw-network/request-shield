@@ -1,0 +1,9 @@
+# docs/for/hosters.md: one shield, many websites, each customer its own view.
+title One shield per server protects many websites; each customer opens only its own statistics with its own token
+row  rules:box "One rule file" "site blocks per website" | shield:warnbox "request-shield" "one install per server" | sites:okbox "Many websites" "each with its own rules"
+row  admin:okbox "The admin" "everything, rules and lists" | customer:okbox "Customer A" "its own websites only"
+arrow rules -> shield
+arrow shield -> sites "in microseconds" go
+arrow shield -> admin "dashboard, token *"
+arrow shield -> customer "its token or a link"
+note Each customer's token opens only its own group; the rule file holds only fingerprints of the tokens.

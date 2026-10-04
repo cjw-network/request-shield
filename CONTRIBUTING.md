@@ -64,6 +64,30 @@ things come first: **it must be right, and it must be fast.**
    an index that may be stale), it lets the request through rather than
    blocking a real user; only clear cases are refused.
 
+## Plain language
+
+The docs are read by admins, hosters, editors, customers and developers. Most
+of them are not security experts. Write so that they understand it the first
+time.
+
+- **Short sentences.** One idea per sentence. A page for people
+  (`docs/for/`, `docs/explained/`) has no sentence over 30 words.
+- **Every word explained.** A word from `docs/glossary.md` is linked to its
+  entry where a page for people first uses it. A new word gets an entry: its
+  heading, the other forms it takes (`*Also:*`), and two or three sentences.
+- **Numbers with a unit and a comparison**: "about 12 µs, a page from the CMS
+  takes 100 to 200 ms", not "fast".
+- **No page without a picture.** Every feature, use case and page for people
+  shows a diagram (`docs/diagrams/`) or a screenshot whose alt text says what
+  it shows.
+- **Made-up data only**: `example.org`, addresses from `192.0.2.0/24`,
+  `198.51.100.0/24` and `203.0.113.0/24`, "Customer A". Never a real person's
+  name or address.
+
+`tests/DocsStyleTest.php` checks the glossary links, the sentence length and
+the pictures. The pages that have no picture yet are listed there; the list
+only gets shorter.
+
 ## Releasing
 
 1. **Crawler address lists:** `php bin/update-crawler-lists` fetches the

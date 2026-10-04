@@ -7,18 +7,19 @@ programming knowledge needed. The technical details are in
 ## In one sentence
 
 Before a suspicious visitor gets the page, their browser has to solve a small
-arithmetic task — a real browser does that by itself in a fraction of a
-second, invisibly, and is then left alone for an hour; a program that fetches
-pages by the thousand either cannot do it at all, or has to pay for every
-single page with computing time.
+arithmetic task: the [browser check](../glossary.md#browser-check). A real
+browser does that by itself in a fraction of a second, invisibly, and is then
+left alone for an hour. A program that fetches pages by the thousand either
+cannot do it at all, or pays for every single page with computing time.
 
 ## What a visitor sees
 
 A plain page for a moment — *"One moment, please. Your browser is being
 checked."* — with a progress bar, then the page they asked for. **Nothing to
 click, no pictures of traffic lights, no puzzle.** Usually it takes 0.1 to
-0.5 seconds, and it happens once: afterwards the browser holds a pass for an
-hour (the site decides how long).
+0.5 seconds, and it happens once. Afterwards the browser holds a
+[pass cookie](../glossary.md#pass-cookie) for an hour; the site decides how
+long.
 
 Without JavaScript or without cookies, the page says what is missing. The
 page speaks the visitor's language — German or English built in, chosen by
@@ -27,18 +28,18 @@ their browser's setting; a site can change every text and add languages.
 ## When it happens
 
 - **Someone asks too often:** past a threshold (for example more than 300
-  pages a minute from one address) the next request gets the check instead of
+  pages a minute from one [address](../glossary.md#address)) the next request gets the check instead of
   the page. Ordinary visitors never get near it.
 - **Pages every visitor has to pass,** whatever the pace: a login, a checkout,
   an admin page — so a program cannot post to a login form it never loaded.
 - **When the site asks for it:** the CMS can demand the check when content is
-  sent (a comment, a registration) or when a form is opened — for example
-  only when a post looks like spam. The visitor loses nothing: after the check
+  sent, such as a comment or a registration, or when a form is opened. It may
+  do so only when a post looks like spam. The visitor loses nothing: after the check
   the form is sent again by itself.
-- **Inside a form, while typing:** a site can put a small box into its forms
-  — *"✓ Browser checked"* — that does the check in the background while the
-  visitor writes; sending then goes straight through.
-- **Never** for search engines: Google, Bing and others are recognised — their
+- **Inside a form, while typing:** a site can put a small box into its forms:
+  *"✓ Browser checked"*. It does the check in the background while the
+  visitor writes, so sending goes straight through.
+- **Never** for [search engines](../glossary.md#crawler): Google, Bing and others are recognised — their
   address is checked with the name service, not just their claim — and let
   through.
 
@@ -53,8 +54,8 @@ their browser's setting; a site can change every text and add languages.
 
 And what it does **not** cost you:
 
-- **No third party:** no Google, no Cloudflare, no script from elsewhere — the
-  check comes from your own server, and nothing about your visitors leaves it
+- **No third party:** no Google, no Cloudflare, no script from elsewhere. The
+  check comes from your own server. Nothing about your visitors leaves it,
   except optional DNS lookups to verify crawlers (off with `set crawler-verify
   ranges`). No tracking cookie; the pass is for security only. More in
   [privacy and the GDPR](../privacy.md).
@@ -70,14 +71,14 @@ And what it does **not** cost you:
   slower and at their own cost. The check makes attacks expensive, not
   impossible.
 - It does not help against floods that overload the **network or the web
-  server** before PHP runs; that is the hoster's or a CDN's job.
+  server** before PHP runs; that is the hoster's or a [CDN](../glossary.md#proxy)'s job.
 
 ## How it works, step by step
 
 ![The browser check, step by step: the browser asks, gets a small page with a task, solves it, sends the answer, the shield checks it and the page comes with a pass](browser-check.svg)
 
 1. **The shield decides** that this request is to be checked (too many
-   requests, or a page that is always checked).
+   [requests](../glossary.md#request), or a page that is always checked).
 2. **Instead of the page, it sends a small page** (about 5 KB, no external
    files) with a task: *"find the number n for which sha256(code + n) gives
    this result"*. The task is **signed** by the server, so it cannot be
@@ -87,14 +88,14 @@ And what it does **not** cost you:
    computer, a noticeable cost for someone who wants a million pages.
 4. **The browser puts the answer in a cookie and loads the page again.**
 5. **The shield checks the answer** — one calculation, well under a
-   millisecond. Every answer counts **only once**.
+   [millisecond](../glossary.md#microsecond). Every answer counts **only once**.
 6. **The browser gets a pass:** a signed cookie, valid for an hour, tied to the
    visitor's address group and browser. With it, the next requests go straight
-   through — the site's limits still apply.
+   through — the site's [limits](../glossary.md#budget) still apply.
 
-This is the same principle as [ALTCHA](https://altcha.org/) (whose format the
-shield uses) and as Imunify360's or Cloudflare's JavaScript checks — only
-running on your own server, in PHP, with nothing to install.
+This is the same principle as [ALTCHA](https://altcha.org/), whose format the
+shield uses, and as Imunify360's or Cloudflare's JavaScript checks. Only here
+it runs on your own server, in PHP, with nothing to install.
 
 ## Compared
 
@@ -110,7 +111,7 @@ running on your own server, in PHP, with nothing to install.
 
 In the demo (`examples/demo`), open `/challenge`: every visitor is checked
 there. The pass lasts one minute in the demo, so you can watch it expire;
-`/reset` forgets it at once. The active rules page shows how often the check
+`/reset` forgets it at once. The active [rules page](../glossary.md#dashboard) shows how often the check
 was needed in the last 24 hours.
 
 ## The settings, in short

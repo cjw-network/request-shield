@@ -1,0 +1,9 @@
+# docs/for/developers.md: where the shield sits in an application.
+title The shield runs first in the front controller; the application reads its decision and can ask for more
+row  fc:box "Front controller" "protectFile() first" | decision:warnbox "The decision" "Shield::current()" | app:okbox "Your application" "reads cacheable()"
+row  plugin:box "A plugin" "decided(), ended()" | ask:box "Ask for more" "consume(), requirePass(), widget()"
+arrow fc -> decision
+arrow decision -> app "passes" go
+arrow app -> ask "when it needs to"
+arrow decision -> plugin "every request"
+note The rules stay in the rule file; the code only asks.

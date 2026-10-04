@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Docs for people, by role, in plain language** (0031 step F.8):
+  `docs/for/` has a page each for admins, hosters, editors, customers and
+  developers -- what they see, what the numbers mean, what to do when, and a
+  typical day, each with its diagram; `docs/glossary.md` explains 36 words.
+  CONTRIBUTING has a section "Plain language", and `tests/DocsStyleTest.php`
+  checks it: glossary words linked, no sentence over 30 words on the pages
+  for people, and a picture on every page (the pages still without one are
+  listed, 0031 F.9 empties the list). The browser check's explanation has
+  shorter sentences.
 - **Diagrams from text, and the demo on GitHub Pages** (0031 step F.7):
   `docs/diagrams/*.dg` -- a title, rows of boxes, arrows, a note -- become
   SVGs in the shield's house style, light and dark (`docs/tools/diagram.php`,

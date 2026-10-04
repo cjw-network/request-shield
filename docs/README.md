@@ -1,5 +1,11 @@
 # Documentation
 
+- **For people, by role** — what you see, what the numbers mean, what you do
+  when, and a typical day:
+  [admins](for/admins.md) · [hosters](for/hosters.md) ·
+  [editors](for/editors.md) · [customers](for/customers.md) ·
+  [developers](for/developers.md); the words explained:
+  [glossary](glossary.md)
 - **Explained** — for site owners, in plain words:
   [the parts and their switches](explained/parts.md) ·
   [the browser check](explained/browser-check.md)

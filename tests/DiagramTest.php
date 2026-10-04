@@ -28,7 +28,7 @@ return [
         truthy(count($dg) >= 3, 'diagrams: ' . implode(', ', $dg));
         same($dg, $svg, 'one SVG per text, none without one');
         $docs = '';
-        foreach (glob(dirname(__DIR__) . '/docs/{features,for,explained}/*.md', GLOB_BRACE) ?: [] as $f) {
+        foreach (glob(dirname(__DIR__) . '/docs/{features,for,explained,use-cases}/*.md', GLOB_BRACE) ?: [] as $f) {
             $docs .= (string) file_get_contents($f);
         }
         foreach ($svg as $name) {

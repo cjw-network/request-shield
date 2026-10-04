@@ -1,0 +1,9 @@
+# docs/for/admins.md: from a new rule to a site under attack.
+title A new rule is watched first, then switched on; the log names every refusal, and strict mode is ready for an attack
+row  monitor:warnbox "monitor" "logs, refuses nobody" | look:box "The log and test" "any real visitor hit?" | enforce:okbox "enforce" "the rules act"
+row  falsehit:box "A false hit" "the log names the rule" | attack:nobox "Under attack" "set mode strict"
+arrow monitor -> look "a few days"
+arrow look -> enforce "none" go
+arrow enforce -> falsehit "a visitor reports"
+arrow enforce -> attack "a flood"
+note trace replays one request, step by step; unblock … at opens a rule where it is in the way.
