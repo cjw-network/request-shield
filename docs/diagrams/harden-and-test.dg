@@ -1,0 +1,9 @@
+# use case: a developer hardens the application and tests it.
+title The rules say what the application accepts, an expect line next to each says what it must refuse and let through, and CI tests every one before a deploy
+row  code:box "A new endpoint" "or a new parameter" | rule:warnbox "A rule and its examples" "query, allow, restrict, expect" | ci:okbox "request-shield test in CI" "JUnit, exit 1 on a failure"
+row  monitor:warnbox "Deployed, watched" "monitor: logs, refuses nobody" | enforce:okbox "Enforced" "remove the word monitor"
+arrow code -> rule
+arrow rule -> ci go
+arrow ci -> monitor "all pass"
+arrow monitor -> enforce "no false hits" go
+note The application still checks its input; the shield refuses the junk before the framework starts.

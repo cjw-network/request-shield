@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Use case: a developer hardens the application, and tests it**
+  (`docs/use-cases/harden-and-test.md`): a rule file next to the code -- known
+  parameters, `query strict`, `allow POST`, `post-origin`, `restrict`, a pace
+  for the login, `@attacks` -- with an `expect` line for what must be refused
+  and what must get through; `request-shield check` and `test --junit` in CI
+  like unit tests, `trace` for one request, monitor before enforce. Every rule
+  and example on the page passes `test`.
 - **The API, part 3: the statistics, the description, the feature** (0031
   step G.0, RSF06-05): the statistics add `GET /stats/report` and
   `GET /stats/sites` as an `ApiProvider` -- a customer's token gets its group
