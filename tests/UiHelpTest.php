@@ -82,6 +82,8 @@ return [
             foreach (['en', 'de'] as $lang) {
                 $pages = uiPages($s, $lang);
                 truthy(count($pages) >= 7, "the pages ($lang): " . implode(', ', array_keys($pages)));
+                // Rules & setup brings its own styles (the steps as circles): the route is the core's, not the statistics'.
+                truthy(strpos((string) ($pages['/rs/waf/rules'] ?? ''), '.way .step{') !== false && strpos((string) ($pages['/rs/waf/rules'] ?? ''), 'table.settings{') !== false, 'Rules & setup has the styles of its steps');
                 foreach ($pages as $path => $html) {
                     truthy(preg_match('#<h1>(?:(?!</h1>).)*<a class="rs-help"[^>]*>\?</a></h1>#s', $html) === 1, "$path ($lang): a \"?\" after the title");
                     preg_match_all('#<h2[^>]*>(.*?)</h2>#s', $html, $h2);

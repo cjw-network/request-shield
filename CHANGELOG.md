@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Rules & setup shows its steps as circles again**: since the page is the
+  core's (`/rs/waf/rules`), its styles -- the numbered circles of the way, the
+  tester's verdict, the rules, the settings -- were still in the statistics'
+  page and missing on it. They are the page's own now.
+
 ### Added
 - **Use case: a developer hardens the application, and tests it**
   (`docs/use-cases/harden-and-test.md`): a rule file next to the code -- known
