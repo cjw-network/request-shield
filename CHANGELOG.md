@@ -19,7 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   opening a job offer (rules only, with its costs), or when the form is sent,
   its script solving the task (ten lines, tried against a real server);
   proposal **0035 the check for forms that send JSON** (Draft) makes that a
-  promised `RS.fetch()`.
+  promised `RS.fetch()`. Proposal **0036 forms per page** (Draft): for each
+  page, how often it was viewed, how often a form was sent from it and how
+  often that succeeded -- the outcome per page, an optional header that says
+  how it ended, more pages per form, the check's task not counted as a send.
 - **Docs for people, by role, in plain language** (0031 step F.8):
   `docs/for/` has a page each for admins, hosters, editors, customers and
   developers -- what they see, what the numbers mean, what to do when, and a
