@@ -90,6 +90,68 @@ CjwNetwork\RequestShield\Shield::active()?->consume('applications', answer: true
 `consume()` counts one. Past the limit the shield answers 429 itself and the
 request ends there.
 
+## The browser check before sending
+
+A limit per address caps a bot; it does not ask whether a browser is there.
+The [browser check](../glossary.md#browser-check) does: a bot that sends to
+the endpoint directly has to solve a task first. A
+[pass cookie](../glossary.md#pass-cookie) is per visitor, not per job offer;
+`max-age` says how fresh it must be.
+
+**A. The check when a job offer is opened.** Rules only, no code:
+
+```text
+set        pass-ttl 3h                   # a pass holds long enough to write an application
+[JOB-PAGE] challenge /jobs/** max-age 30m   # opening an offer: a check, unless one was solved in the last 30 minutes
+[JOB-SEND] challenge /forms/submit          # sending: only with a pass
+```
+
+The script's `fetch` is sent to the same website, so the browser sends the
+pass with it. It works, and it has costs:
+
+- **Every reader** of a job offer sees "one moment, please" for up to half a
+  second, not only applicants.
+- **Job portals and other crawlers** that are not
+  [known crawlers](../features/RSF01-04-known-crawlers.md) get the check page
+  instead of the offer and cannot list it. Verified search engines, Google
+  for Jobs among them, are let through. Watch first: `monitor challenge
+  /jobs/** max-age 30m`, then read the log.
+- **An applicant who needs longer than `pass-ttl`** gets a task the script
+  cannot solve, and the form shows its general error.
+
+**B. The check when the form is sent** (recommended). Only the endpoint
+asks; the form's script solves the task and sends again. Readers and
+crawlers notice nothing, and no input is lost:
+
+```text
+set        widget-path /request-shield
+[JOB-SEND] challenge /forms/submit max-age 60m
+```
+
+The page loads the shield's script, `<script src="/request-shield/widget.js"
+defer></script>`, and the form's script sends through this function:
+
+```js
+// Sends; when the shield answers with a task (429, JSON), solves it and sends again.
+async function sendChecked(url, init) {
+  const r = await fetch(url, init);
+  if (r.status !== 429 || !r.headers.get('Request-Shield-Challenge') || !window.RS) return r;
+  const c = (await r.clone().json()).challenge;
+  const [n, took] = await new Promise((ok) => RS.solve(c, (n, took) => ok([n, took])));
+  if (n < 0) return r;
+  return fetch(url, { ...init, headers: { ...init.headers, 'Request-Shield-Solution': RS.payload(c, n, took) } });
+}
+```
+
+Tried against a real server: the first request gets 429 with the task, the
+browser solves it in well under a second, the second request reaches the
+endpoint with its body unchanged and sets the pass cookie; the same answer
+twice is refused. The task is sent only to a sender without a fresh pass;
+everyone else sends once. Both tries count against `limit forms`. `RS.solve`
+and `RS.payload` are not yet a promised interface:
+[0035 the check for forms that send JSON](../proposals/0035-checked-json-forms.md)
+makes them one.
+
 ## Limits
 
 - **The answer is a short HTML page, not JSON.** The form's script expects
@@ -97,8 +159,8 @@ request ends there.
   stays in the form. [Error pages (0030)](../proposals/0030-error-pages.md)
   will answer in JSON a request that sends JSON. Do not mark the endpoint as
   `api-path` for this: an API path is not checked by `post-origin`.
-- **Keep the pause, not the check.** `on-exceeded challenge` would answer
-  with a task the form's script cannot solve.
+- **Keep the pause, not the check,** past the limit: `on-exceeded challenge`
+  would answer with a task. Only a script as in B above can solve it.
 - **Per address.** Applicants behind one office network share one budget.
   Five an hour is still enough for a whole office; raise it where needed.
 - **Many addresses.** A botnet that sends one form per address is not

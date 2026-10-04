@@ -15,7 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   until 0030, per address only). Proposal **0034 budgets for everyone
   together** (Draft): one counter for all senders of a form, and how not to
   lock out real applicants with it. Proposal 0030 answers in JSON a request
-  that sends JSON.
+  that sends JSON. The use case shows the browser check before sending: on
+  opening a job offer (rules only, with its costs), or when the form is sent,
+  its script solving the task (ten lines, tried against a real server);
+  proposal **0035 the check for forms that send JSON** (Draft) makes that a
+  promised `RS.fetch()`.
 - **Docs for people, by role, in plain language** (0031 step F.8):
   `docs/for/` has a page each for admins, hosters, editors, customers and
   developers -- what they see, what the numbers mean, what to do when, and a

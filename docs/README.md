@@ -93,7 +93,8 @@
   [0002 the single-file build](proposals/0002-single-file-build.md) (draft; part of 0031) ·
   [0032 check levels](proposals/0032-check-levels.md) (draft; largely superseded by 0004) ·
   [0033 event log](proposals/0033-event-log.md) (draft; partly built, the rest a `Sink` plugin) ·
-  [0034 budgets for everyone together](proposals/0034-shared-budgets.md) (draft)
+  [0034 budgets for everyone together](proposals/0034-shared-budgets.md) (draft) ·
+  [0035 the check for forms that send JSON](proposals/0035-checked-json-forms.md) (draft)
   (0007 is unused)
 - **Roadmap for 0012–0016** (the reasons in [0012](proposals/0012-dashboard.md#roadmap-for-00120016)):
   counters and crawler statistics first (they answer "did GPTBot crawl the
