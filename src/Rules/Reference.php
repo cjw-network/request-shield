@@ -146,6 +146,8 @@ final class Reference
             'value' => '`both` (default), `ranges` (the published address lists only: no DNS, for a DMZ), `dns` ([known crawlers](RSF01-04-known-crawlers.md))'],
         ['keys' => ['log', 'log-level', 'log-ip', 'log-max-size'], 'label' => '`log`, `log-level`, `log-ip`, `log-max-size`',
             'value' => '[the log](RSF05-05-log-and-rule-ids.md)'],
+        ['keys' => ['docs-url'], 'label' => '`docs-url`',
+            'value' => 'where the pages\' `?` links and the command line\'s hints point: the docs\' folder, the repository\'s by default; a copy of your own (`https://docs.example.org/request-shield`, `/docs`), or `off` for no links -- the one-sentence explanations stay ([rules and setup](RSF06-01-active-rules-page.md))'],
         ['keys' => ['stats'], 'label' => '`stats`',
             'value' => '`off` (default), `on`, or the parts: `requests`, `crawlers`, `not-found`, `bots` ([statistics](RSF06-03-statistics.md))'],
         ['keys' => ['dashboard-path'], 'label' => '`dashboard-path`',

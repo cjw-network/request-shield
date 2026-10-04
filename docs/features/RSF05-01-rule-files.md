@@ -340,6 +340,7 @@ keeps both the same.
 | `mode` | `off`, `monitor`, `enforce` (default), `strict` ([modes](RSF05-03-modes.md)) |
 | `crawler-verify` | `both` (default), `ranges` (the published address lists only: no DNS, for a DMZ), `dns` ([known crawlers](RSF01-04-known-crawlers.md)) |
 | `log`, `log-level`, `log-ip`, `log-max-size` | [the log](RSF05-05-log-and-rule-ids.md) |
+| `docs-url` | where the pages' `?` links and the command line's hints point: the docs' folder, the repository's by default; a copy of your own (`https://docs.example.org/request-shield`, `/docs`), or `off` for no links -- the one-sentence explanations stay ([rules and setup](RSF06-01-active-rules-page.md)) |
 | `stats` | `off` (default), `on`, or the parts: `requests`, `crawlers`, `not-found`, `bots` ([statistics](RSF06-03-statistics.md)) |
 | `dashboard-path` | where the statistics pages live: `/rs` (default) gives the statistics under `/rs/stats/` (`overview`, `visitors`, `protection`, `sites`) and `/rs/waf/rules`, `/rs/waf/live`, `/rs/waf/lists`; something in front is fine (`/admin/rs`); the shield serves these pages itself -- a `restrict` rule (`restrict **/rs/** to <addresses>`) or a login must cover them, `check` warns otherwise ([statistics](RSF06-03-statistics.md#the-statistics-page)) |
 | `stats-hours`, `stats-days`, `stats-months`, `stats-flush` | days the hours are kept (7), days the day totals are kept (400, then summed into months), months kept (0: for good), seconds between writes to disk with APCu (60) |

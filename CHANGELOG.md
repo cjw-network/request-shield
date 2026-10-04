@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The pages can explain themselves** (0031 step F.9, part 1): `Help` renders
+  a feature's sentence (English, German) and its `?` link to the feature's
+  page from `Vocabulary::TOPICS`; `set docs-url` says where the docs are (the
+  repository's by default, a copy of your own, or `off`: no links, the
+  sentences stay). `docs/tools/check-anchors.php` finds every anchor a link
+  points at, in the docs and in the code's `Help` calls; it found one dead
+  link in this changelog.
 - **Use case: a pentest asks for rate limits on the forms**
   (`docs/use-cases/form-rate-limits.md`): forms built by a script and sent as
   JSON to one endpoint get `allow POST`, `post-origin same` and a budget on
@@ -535,7 +542,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (`/rs/sites`) shows each group with its websites, the rest and the other
   hosts side by side: page views, the change against the period before, people,
   crawlers, bots, stopped, not found, a small curve — sorted by traffic
-  ([docs](docs/features/RSF06-03-statistics.md#all-websites-at-a-glance-rssites)).
+  ([docs](docs/features/RSF06-03-statistics.md#all-websites-at-a-glance-rsstatssites)).
 - **`stats-skip <paths>`**: paths that are no pages of the site (a map
   proxy's tiles, an image resizer) are left out of the statistics when they
   pass; refused or checked they are still counted, and every rule applies to

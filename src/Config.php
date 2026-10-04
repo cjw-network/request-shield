@@ -160,6 +160,9 @@ final class Config
             // below <dashboardPath>/waf, the statistics' below <dashboardPath>/stats
             // (ext.stats.path). Something in front is fine: /admin/rs.
             'dashboardPath' => '/rs',
+            // Where the pages' "?" links point: the docs' folder (Help::DOCS, the
+            // repository's); a copy of your own, or 'off' for no links.
+            'docsUrl' => 'https://github.com/cjw-network/request-shield/blob/main/docs',
             // Plugins by class name: told what was decided and how a request ended
             // (proposal 0023). The statistics come with 'ext' => ['stats' => ['enabled' => true]].
             'plugins' => [],

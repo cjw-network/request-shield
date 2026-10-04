@@ -74,6 +74,7 @@ final class RuleFile
         'crawler-verify' => ['crawlerVerify', 'verify'],
         'log' => ['log.file', 'path'],
         'dashboard-path' => ['dashboardPath', 'string'],
+        'docs-url' => ['docsUrl', 'string'],
         'dashboard-session' => ['dashboardSession', 'seconds'],
         'log-level' => ['log.level', 'loglevel'],
         'live' => ['live.enabled', 'bool'],
