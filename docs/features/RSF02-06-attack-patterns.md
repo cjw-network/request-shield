@@ -2,6 +2,8 @@
 
 ## What it does
 
+![A query parameter is checked against its type first -- unknown or wrong: 404; only free text meets the attack patterns -- a hit: 403](../diagrams/attack-patterns.svg)
+
 Attack patterns look **inside** a request -- its query string and its headers
 -- for what automated attacks send: SQL injection, cross-site scripting, PHP
 and shell code, file inclusion, Log4Shell, attack tools, known exploit paths.

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Diagrams from text, and the demo on GitHub Pages** (0031 step F.7):
+  `docs/diagrams/*.dg` -- a title, rows of boxes, arrows, a note -- become
+  SVGs in the shield's house style, light and dark (`docs/tools/diagram.php`,
+  `--check` in the tests); the first three show blocked paths, attack
+  patterns and the single file on their pages. `.github/workflows/pages.yml`
+  publishes the demo as `request-shield examples … --html` records it, with
+  the diagrams (the repository's Pages setting must be "GitHub Actions").
 - **The feature contract is met** (0031 step F.6): every feature has its page,
   its tests, a demo group with an effect and a near miss (or its reason in
   `examples/demo/.demo-exempt`: settings, the single file, plugins, the two

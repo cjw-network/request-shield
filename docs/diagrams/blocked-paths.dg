@@ -1,0 +1,8 @@
+# RSF02-02: what happens to a scanner's request, and to every other one.
+title A scanner's request for a blocked path is answered by the shield; every other request reaches the site
+row  scanner:box "A scanner" "asks for /.env, /backup.sql" | shield:warnbox "request-shield" "blocked paths: one pattern" | site:okbox "Your site" "runs only for the rest"
+row  refused:nobox "404 not found" "the scanner learns nothing"
+arrow scanner -> shield "every request"
+arrow shield -> site "anything else" go
+arrow shield -> refused "a blocked path"
+note The site never renders a page for it, and the log names the rule (SCAN-HIDDEN, WP-SCRIPTS …).

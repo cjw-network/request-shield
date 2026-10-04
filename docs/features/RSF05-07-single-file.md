@@ -8,6 +8,9 @@ uploads it, puts its rules next to it and switches it on with one
 the release with checksums and a signature, `verify`, `self-update` and `init`
 follow in phase E of [0031](../proposals/0031-robust-core-plugins.md).
 
+
+![The release builds one file from the sources; a site includes it with auto_prepend_file, and run directly it is the command line](../diagrams/single-file.svg)
+
 ## Building it
 
 ```

@@ -1,0 +1,57 @@
+name: Demo on GitHub Pages
+
+# The demo, recorded (0031 step F.7): `request-shield examples … --html` writes
+# every row of the demo's "# demo:" groups with what request-shield test
+# decided for it -- a page that needs no server -- and GitHub Pages serves it,
+# with the docs' diagrams. The live demo stays `php -S … examples/demo/router.php`.
+# The repository's Pages setting must be "GitHub Actions" (the owner's).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Record the demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+
+      - name: The demo, recorded by request-shield test
+        run: |
+          mkdir -p _site/diagrams
+          php bin/request-shield examples examples/demo/request-shield.rules --html --out=_site/index.html
+          php docs/tools/diagram.php --check
+          cp docs/diagrams/*.svg _site/diagrams/
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+
+  deploy:
+    name: Publish
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

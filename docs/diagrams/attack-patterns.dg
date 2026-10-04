@@ -1,0 +1,10 @@
+# RSF02-06: the order in which the shield looks at a query string.
+title A query parameter is checked against its type first; only free text meets the attack patterns
+row  req:box "?q=<script>…" "a request with a query" | known:warnbox "Known parameters" "typed: int, word, id, text" | patterns:warnbox "Attack patterns" "free text only, decoded twice" | site:okbox "Your site"
+row  unknown:nobox "404" "unknown, or not of its type" | attack:nobox "403" "an attack pattern, named"
+arrow req -> known
+arrow known -> patterns "text"
+arrow patterns -> site "clean" go
+arrow known -> unknown "wrong"
+arrow patterns -> attack "a hit"
+note A number or a word cannot carry an attack: the patterns never look at it.

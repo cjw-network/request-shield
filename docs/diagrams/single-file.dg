@@ -1,0 +1,9 @@
+# RSF05-07: from the sources to a site, one file.
+title The release builds one file from the sources; a site runs it from auto_prepend_file, and it is the command line too
+row  src:box "src/, rules/" "the repository" | build:warnbox "build/single-file.php" "built twice, compared" | file:okbox "request-shield.php" "one file, its checksum"
+row  site:okbox "A site" "auto_prepend_file" | cli:box "The command line" "php request-shield.php check"
+arrow src -> build
+arrow build -> file "a release"
+arrow file -> site "included" go
+arrow file -> cli "run directly"
+note No Composer, no other file: the rule sets are inside it.

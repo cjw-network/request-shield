@@ -44,6 +44,17 @@ final class Diagram
         . '.rsd .line,.rsd .lane{stroke:#3a414b}.rsd .arrow{stroke:#a0a8b3}.rsd .okbox{fill:#17301f}.rsd .warnbox{fill:#3a2f15}.rsd .nobox{fill:#3d1f19}.rsd .skip{fill:#555c66}}'
         . '</style>';
 
+    /**
+     * The house style and the arrow head, for a diagram drawn elsewhere -- the
+     * docs' diagrams from their text (docs/tools/diagram.php, 0031 F.7) look
+     * like the pages' own, in light and in dark.
+     */
+    public static function style(string $marker = 'rsd-c'): string
+    {
+        return self::STYLE . '<defs><marker id="' . $marker . '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">'
+            . '<path d="M0 0 L10 5 L0 10z" class="m"/></marker></defs>';
+    }
+
     private static function e(string $s): string
     {
         return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE | ENT_XML1, 'UTF-8');

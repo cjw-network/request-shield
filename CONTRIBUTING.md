@@ -40,6 +40,10 @@ things come first: **it must be right, and it must be fast.**
    tables in the rule files page and `docs/reference/*` from it, and
    `php docs/tools/sync-examples.php` the demo's tables into the feature
    pages (`tests/ReferenceTest.php` fails while either is not current).
+   A diagram is a few lines of text in `docs/diagrams/<name>.dg` (boxes in
+   rows, arrows, a note); `php docs/tools/diagram.php` draws the SVG in the
+   house style, light and dark, and a page shows it with
+   `![what it shows](../diagrams/<name>.svg)`.
 7. **The single file.** `php build/single-file.php` turns `src/` into one
    file ([the single file](docs/features/RSF05-07-single-file.md)); `tests/SingleFileTest.php`
    builds it and puts a request through it. The whole suite runs against the

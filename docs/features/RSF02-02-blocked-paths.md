@@ -2,6 +2,8 @@
 
 ## What it does
 
+![A scanner's request for a blocked path is answered by the shield with 404; every other request reaches the site](../diagrams/blocked-paths.svg)
+
 Some addresses are asked for only by scanners: `/.env`, `/.git/config`,
 `/backup.sql`, `/phpinfo.php`, `/phpmyadmin/`. The shield refuses them with
 "not found" (404) before the site runs -- the scanner learns nothing, the site
