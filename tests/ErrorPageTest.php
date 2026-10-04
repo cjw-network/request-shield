@@ -145,4 +145,25 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF05-06 review: {lang} pages from a folder with [ ] in its name, a page for a new language noticed by the folder, JSON with nosniff; try-again named as what it became' => function (): void {
+        $dir = sys_get_temp_dir() . '/rs-errpage2-' . getmypid() . '-' . mt_rand() . '/a[1]';
+        mkdir("$dir/errors", 0700, true);
+        try {
+            file_put_contents("$dir/errors/p.de.html", 'DE');
+            $page = ErrorPage::load('429 errors/p.{lang}.html', $dir);
+            same(['de' => 'DE'], $page['pages'], 'found in a folder named a[1]');
+            truthy(in_array("$dir/errors", $page['files'], true), 'the folder is watched: a page for another language is noticed');
+            truthy(in_array('X-Content-Type-Options: nosniff', Responder::headerLines(Decision::reject(404, 'x'), false, null, false, true), true), 'JSON: nosniff');
+            file_put_contents(dirname($dir) . '/site.rules', "set text.de.try-again Gleich nochmal\n");
+            $thrown = '';
+            try {
+                \CjwNetwork\RequestShield\Rules\RuleFile::read([dirname($dir) . '/site.rules']);
+            } catch (\InvalidArgumentException $e) {
+                $thrown = $e->getMessage();
+            }
+            truthy(strpos($thrown, 'try-again is now too-many-text') !== false, $thrown);
+        } finally {
+            exec('rm -rf ' . escapeshellarg(dirname($dir)));
+        }
+    },
 ];

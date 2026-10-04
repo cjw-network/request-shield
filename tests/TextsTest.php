@@ -26,7 +26,7 @@ return [
         $de = Texts::all('de');
         same('Einen Moment, bitte', $de['title']);
         same('de', $de['lang']);
-        same('Bitte versuchen Sie es in %s Sekunden noch einmal.', $de['try-again']);
+        same('Bitte warten Sie %s Sekunden und versuchen Sie es dann noch einmal.', $de['too-many-text']);
         $own = ['title' => 'Checking…', 'de.text' => 'Wir prüfen kurz.', 'fr.title' => 'Un instant'];
         same(['Checking…', 'Wir prüfen kurz.'], [Texts::all('de', $own)['title'], Texts::all('de', $own)['text']], 'for all, then for one');
         same('Un instant', Texts::all('fr', $own)['title']);

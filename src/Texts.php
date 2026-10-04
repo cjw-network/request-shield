@@ -23,7 +23,7 @@ namespace CjwNetwork\RequestShield;
 final class Texts
 {
     /** The keys a site can set. */
-    public const KEYS = ['title', 'text', 'noscript', 'nocookies', 'failed', 'try-again', 'sending', 'send-again', 'resend-lost', 'back', 'home', 'widget-checking', 'widget-checked', 'widget-failed', 'spent', 'about',
+    public const KEYS = ['title', 'text', 'noscript', 'nocookies', 'failed', 'sending', 'send-again', 'resend-lost', 'back', 'home', 'widget-checking', 'widget-checked', 'widget-failed', 'spent', 'about',
         'bad-request', 'no-access', 'not-found', 'not-allowed', 'too-long', 'too-many', 'too-large', 'error',
         'bad-request-text', 'no-access-text', 'not-found-text', 'not-allowed-text', 'too-long-text', 'too-many-text', 'too-large-text', 'error-text', 'reference'];
 
@@ -34,7 +34,6 @@ final class Texts
             'noscript' => 'Please enable JavaScript to continue.',
             'nocookies' => 'Please allow cookies for this site to continue.',
             'failed' => 'The check did not succeed. Please reload the page.',
-            'try-again' => 'Please try again in %s seconds.',
             'sending' => 'Your browser is being checked; then what you entered is sent. This takes a moment.',
             'send-again' => 'Send again',
             'resend-lost' => 'For your protection, your browser had to be checked first. Please go back and send the form again.',
@@ -70,7 +69,6 @@ final class Texts
             'noscript' => 'Bitte aktivieren Sie JavaScript, um fortzufahren.',
             'nocookies' => 'Bitte erlauben Sie Cookies für diese Website, um fortzufahren.',
             'failed' => 'Die Prüfung ist nicht gelungen. Bitte laden Sie die Seite neu.',
-            'try-again' => 'Bitte versuchen Sie es in %s Sekunden noch einmal.',
             'sending' => 'Ihr Browser wird geprüft, danach wird gesendet, was Sie eingegeben haben. Das dauert nur einen Moment.',
             'send-again' => 'Erneut senden',
             'resend-lost' => 'Zu Ihrem Schutz musste Ihr Browser zuerst geprüft werden. Bitte gehen Sie zurück und senden Sie das Formular noch einmal.',

@@ -2252,6 +2252,9 @@ final class RuleFile
             if ($text === 'lang') {
                 return;                 // an old setting: the language is chosen now
             }
+            if ($text === 'try-again') {
+                throw new RuleFileException("$at: try-again is now too-many-text -- the error page's sentence for a pause (%s: the seconds to wait)");
+            }
             if (!in_array($text, Texts::KEYS, true)) {
                 throw new RuleFileException("$at: unknown text \"$text\" (there are " . implode(', ', Texts::KEYS) . ')');
             }

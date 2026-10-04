@@ -110,11 +110,13 @@ final class ErrorPage
         $files = [];
         if (strpos($path, '{lang}') !== false) {
             $re = '#^' . str_replace('\{lang\}', '([a-z]{2,3}(?:-[a-z0-9]{2,8})?)', preg_quote(basename($path), '#')) . '$#';
-            foreach (glob(dirname($path) . '/' . str_replace('{lang}', '*', basename($path))) ?: [] as $f) {
-                if (preg_match($re, basename($f), $m) === 1) {
-                    $files[$m[1]] = $f;
+            // The folder read as it is (no glob: a folder's name may hold [ ] * ?).
+            foreach (@scandir(dirname($path)) ?: [] as $f) {
+                if (preg_match($re, $f, $m) === 1) {
+                    $files[$m[1]] = dirname($path) . '/' . $f;
                 }
             }
+            ksort($files);
             if ($files === []) {
                 throw new \InvalidArgumentException("error-page $status: no file $name for any language");
             }
@@ -135,7 +137,8 @@ final class ErrorPage
             }
             $pages[(string) $lang] = $html;
         }
-        return ['status' => $status, 'pages' => $pages, 'files' => array_values($files)];
+        // The folder too, for {lang}: a language's page added later is noticed like a changed rule file.
+        return ['status' => $status, 'pages' => $pages, 'files' => array_merge(array_values($files), strpos($path, '{lang}') !== false ? [dirname($path)] : [])];
     }
 
     /**

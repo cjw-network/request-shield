@@ -91,6 +91,9 @@ class Responder
         if ($builtIn) {
             $out[] = 'Content-Security-Policy: ' . ErrorPage::CSP;     // the shield's own page loads nothing (0030)
         }
+        if ($json) {
+            $out[] = 'X-Content-Type-Options: nosniff';
+        }
         if ($decision->retryAfter > 0) {
             $out[] = 'Retry-After: ' . $decision->retryAfter;
         }

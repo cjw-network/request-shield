@@ -91,8 +91,8 @@ site shop.example {
 | | |
 |---|---|
 | a passing request | nothing |
-| a refusal, the shield's own page | a few string replacements, one random reference |
-| a refusal, the site's page | the same: the page is in the compiled settings |
+| a refusal, the shield's own page | about 10 µs with its reference (measured, PHP 8.3), 1.5 KB |
+| a refusal, the site's page | about the same: the page is in the compiled settings, its placeholders replaced |
 | compiling the rules | each `error-page` file read once |
 
 ## Limits

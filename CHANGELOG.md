@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- **Error pages after their review** (0031 step G.1): `{lang}` pages are
+  found in a folder whose name holds `[ ] * ?`, and a page for a new language
+  is noticed (the folder is watched); a JSON refusal says `nosniff`. The text
+  `try-again` is gone: the pause's sentence is `too-many-text` now, and a rule
+  file that still sets `try-again` is told so.
 - **Rules & setup shows its steps as circles again**: since the page is the
   core's (`/rs/waf/rules`), its styles -- the numbered circles of the way, the
   tester's verdict, the rules, the settings -- were still in the statistics'
