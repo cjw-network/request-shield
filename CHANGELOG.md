@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Every feature is reachable from where it shows** (0031 step F.9, part 5):
+  on Rules & setup every step of the way and every group of settings has the
+  `?` of its feature; `request-shield test` with a failure links how examples
+  are read; the feature contract asks every feature's page for a picture and
+  the shield for a link to it -- three features without one are listed with
+  their reason.
 - **The docs' screenshots come from the demo** (0031 step F.9, part 4):
   `docs/tools/screenshots.php` records the demo with `request-shield examples
   --html` and takes the pictures with a headless Chrome -- the recorded page on

@@ -31,6 +31,16 @@ const FEATURE_GAPS = [
 ];
 
 /**
+ * Features no page of the dashboard and no message of the command line links
+ * to with its "?" (Help, 0031 F.9), and why. Exact both ways.
+ */
+const HELP_EXEMPT = [
+    'RSF03-03' => 'the box in a form is for visitors: it links to the check in plain words, not to a feature page',
+    'RSF03-04' => 'the site\'s own code asks for the check; no page or message of the shield is about it',
+    'RSF05-07' => 'the single file is how the shield is shipped; no page or message is about it',
+];
+
+/**
  * The docs index's features: id => ['page' => file or null, 'planned' => bool].
  *
  * @return array<string, array{page: ?string, planned: bool}>
@@ -183,6 +193,29 @@ return [
             truthy(isset(Vocabulary::EXTENSION_FEATURES[$ext]) && isset($features[Vocabulary::EXTENSION_FEATURES[$ext]]), "the extension $ext ($class) belongs to a feature of the index");
         }
         truthy(isset(Vocabulary::extensions()['stats']) && Vocabulary::extensions()['stats'] === StatsExtension::class, 'the statistics are the shipped extension');
+    },
+    'RSF06-04 the contract: every feature\'s page shows a picture, and a page or a message of the shield links to it with its "?" -- or a reason in HELP_EXEMPT, exactly' => function (): void {
+        $code = '';
+        foreach (['src', 'plugins'] as $dir) {
+            foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(dirname(__DIR__) . "/$dir", FilesystemIterator::SKIP_DOTS)) as $f) {
+                // The data (TOPICS, the reference) names every id: not a link.
+                if (substr((string) $f, -4) === '.php' && preg_match('#Rules/(Vocabulary|Reference)\.php$#', (string) $f) !== 1) {
+                    $code .= (string) file_get_contents((string) $f);
+                }
+            }
+        }
+        $unlinked = [];
+        foreach (contractFeatures() as $id => $f) {
+            if ($f['page'] === null) {
+                continue;
+            }
+            $page = (string) file_get_contents(dirname(__DIR__) . '/docs/features/' . $f['page']);
+            truthy(preg_match('/!\[[^\]]{20,}\]\(\.\.\/(diagrams|screenshots|explained|proposals)\/[^)]+\.(svg|png)\)/', $page) === 1, "$id: its page shows a picture that says what it shows");
+            if (strpos($code, "'$id'") === false) {
+                $unlinked[] = $id;
+            }
+        }
+        same(array_keys(HELP_EXEMPT), $unlinked, 'the features without a "?" are exactly HELP_EXEMPT');
     },
     'RSF06-04 the contract, the other way: every id named in a test, a demo group, .demo-exempt or the gap list is a feature of the index' => function (): void {
         $features = contractFeatures();

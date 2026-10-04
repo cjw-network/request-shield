@@ -207,13 +207,14 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
             . '<div class="diagram">' . Diagram::setup(array_map(static fn (array $st): array => ['label' => $st[4], 'name' => $st[5], 'on' => $st[1], 'what' => $st[3], 'stops' => $st[2] !== $t['a.pass'], 'feeds' => $st[0] === 'crawlers' && $so['enabled']], $steps),
                 ['request' => $t['x.request'], 'before' => $t['x.before'], 'site' => $t['x.site'], 'siteSub' => $t['x.siteSub'], 'answer' => $t['x.answer'], 'answerSub' => $t['x.answerSub'],
                 'after' => $t['x.after'], 'lines' => $after, 'feeds' => $t['x.feeds']]) . '</div><ol class="way">';
-        $item = static fn (string $id, string $mark, bool $on, string $name, string $answers, string $what): string => '<li id="' . $id . '" class="' . ($on ? 'on' : 'off') . '"><span class="step">' . $e($mark) . '</span><div><b>' . $e($name) . '</b> <span class="state">' . $e($on ? $t['on'] : $t['off']) . '</span>'
+        $item = static fn (string $id, string $mark, bool $on, string $name, string $answers, string $what, string $feature = ''): string => '<li id="' . $id . '" class="' . ($on ? 'on' : 'off') . '"><span class="step">' . $e($mark) . '</span><div><b>' . $e($name) . '</b>'
+            . (($help = Help::link($feature, '', $s->docsUrl, $lang)) !== '' ? ' ' . $help : '') . ' <span class="state">' . $e($on ? $t['on'] : $t['off']) . '</span>'
             . ($answers !== '' ? ' <span class="note">· ' . $e($t['answers'] . ' ' . $answers) . '</span>' : '') . '<br><span class="note">' . $what . '</span></div></li>';
-        $h .= $item('step-before', '›', true, $t['x.beforeName'], '', $e($client));
+        $h .= $item('step-before', '›', true, $t['x.beforeName'], '', $e($client), self::STEP_FEATURES['before']);
         foreach ($steps as $i => [$key, $on, $answers, $what, , $name]) {
-            $h .= $item('step-' . ($i + 1), (string) ($i + 1), $on, $name, $answers, $e($what));
+            $h .= $item('step-' . ($i + 1), (string) ($i + 1), $on, $name, $answers, $e($what), self::STEP_FEATURES[$key] ?? 'RSF06-04');
         }
-        $h .= $item('step-after', '›', $s->logFile !== null || $so['enabled'], $t['x.after'], '', implode('<br>', array_map($e, $after)));
+        $h .= $item('step-after', '›', $s->logFile !== null || $so['enabled'], $t['x.after'], '', implode('<br>', array_map($e, $after)), self::STEP_FEATURES['after']);
         $h .= '</ol></section>';
 
         // ── The rules, as the rule files hold them ───────────────────────────
@@ -339,7 +340,8 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
         $h .= '<section class="card" id="settings">' . Frame::h2($t['settings'], $s, 'RSF06-01', 'the-technical-settings', $lang) . '<p class="note">' . $e($t['settingsIntro']) . '</p>';
         foreach ($groups as $g => $rows) {
             // One group under the other: a name and its value per line, room for long paths.
-            $h .= '<h3 class="rgroup">' . $e($t['g.' . $g]) . '</h3><table class="settings">';
+            $help = Help::link(self::GROUP_FEATURES[$g], '', $s->docsUrl, $lang);
+            $h .= '<h3 class="rgroup">' . $e($t['g.' . $g]) . ($help !== '' ? ' ' . $help : '') . '</h3><table class="settings">';
             foreach ($rows as $k => $v) {
                 $h .= '<tr><th>' . $e($t[$k] ?? $k) . '</th><td><code>' . $e($v) . '</code></td></tr>';
             }
@@ -509,6 +511,19 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
         return \CjwNetwork\RequestShield\Response::html(200, Frame::page(($lang === 'de' ? 'Regeln & Einrichtung — ' : 'Rules & setup — ') . $label, $lang, $h,
             ['home' => is_string($ctx['home'] ?? null) ? $ctx['home'] : '/', 'homeLabel' => $label, 'help' => Help::link('RSF06-01', '', $s->docsUrl, $lang)], self::CSS));
     }
+
+    /** Each step of the way, by its key, and the feature that explains it (its "?", 0031 F.9); a plugin's step: plugins. */
+    public const STEP_FEATURES = [
+        'before' => 'RSF01-01', 'deny' => 'RSF01-02', 'feed' => 'RSF01-03', 'ban' => 'RSF01-02', 'method' => 'RSF02-01', 'size' => 'RSF02-01', 'sanity' => 'RSF02-01',
+        'host' => 'RSF02-01', 'blocked' => 'RSF02-02', 'methodPaths' => 'RSF02-03', 'origin' => 'RSF02-04', 'restricted' => 'RSF02-03', 'crawlers' => 'RSF01-04',
+        'query' => 'RSF02-05', 'attacks' => 'RSF02-06', 'cache' => 'RSF04-01', 'budgets' => 'RSF03-01', 'check' => 'RSF03-02', 'after' => 'RSF05-05',
+    ];
+
+    /** Each group of the technical settings, and the feature that explains it. */
+    public const GROUP_FEATURES = [
+        'run' => 'RSF05-03', 'clients' => 'RSF01-01', 'limits' => 'RSF02-01', 'store' => 'RSF03-01', 'check' => 'RSF03-02', 'crawlers' => 'RSF01-04',
+        'stats' => 'RSF06-03', 'log' => 'RSF05-05', 'files' => 'RSF05-01',
+    ];
 
     /** The page's own styling, on top of the frame's: cards, notes, the tester, tables. */
     private const CSS = <<<'CSS'

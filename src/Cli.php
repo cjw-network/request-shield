@@ -390,6 +390,9 @@ final class Cli
             echo "\n$n example" . ($n === 1 ? '' : 's') . ': ' . $counts['pass'] . ' pass' . ($counts['fail'] > 0 ? ', ' . $counts['fail'] . ' fail' . ($counts['fail'] === 1 ? 's' : '') : '')
                 . ($counts['skip'] > 0 ? ', ' . $counts['skip'] . ' skipped' : '') . '.'
                 . ($run['without'] !== [] && $testOpts['only'] === null ? ' ' . count($run['without']) . ' rule' . (count($run['without']) === 1 ? '' : 's') . ' without an example: ' . implode(', ', $run['without']) : '') . "\n";
+            if ($counts['fail'] > 0) {
+                echo '  ' . Help::see('RSF05-04', 'request-shield-test') . "\n";   // how an example is read, and what a failure says
+            }
             if ($testOpts['junit'] !== null) {
                 $xml = new \DOMDocument('1.0', 'UTF-8');
                 $xml->formatOutput = true;

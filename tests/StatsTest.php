@@ -522,8 +522,8 @@ return [
             $page = \CjwNetwork\RequestShield\Report\SetupPage::class;
             $en = $page::render($s, 'en', ['T-AREA' => 4, 'T-OLD' => 2]);
             $de = $page::render($s, 'de', ['T-AREA' => 4]);
-            truthy(strpos($en, 'The way of a request') !== false && strpos($en, 'Areas for certain visitors</b> <span class="state">on') !== false
-                && strpos($en, 'Website names</b> <span class="state">off') !== false, 'the way: every step, on or off');
+            truthy(strpos($en, 'The way of a request') !== false && preg_match('#Areas for certain visitors</b> <a class="rs-help" href="[^"]+/RSF02-03-access-rules\.md"[^>]*>\?</a> <span class="state">on#', $en) === 1
+                && preg_match('#Website names</b> <a class="rs-help" href="[^"]+/RSF02-01-hard-rejects\.md"[^>]*>\?</a> <span class="state">off#', $en) === 1, 'the way: every step, on or off, with its feature\'s "?"');
             truthy(strpos($en, 'id="rule-T-AREA"') !== false && strpos($en, 'the intranet only') !== false && strpos($en, 'line 5') !== false && strpos($en, '4×') !== false,
                 'a rule: its ID as an anchor, its description, where it is written, how often it decided');
             truthy(strpos($en, '&quot;requests&quot;: 30 requests per minute, the browser check from 10, then a pause') !== false, 'a budget in words');
