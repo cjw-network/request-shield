@@ -1,0 +1,9 @@
+# RSF06-05: three fronts, one service.
+title The API serves the same data the pages and the command line show: a script over HTTP with a token, a CMS in the same process with Api::call()
+row  script:box "A script, a JS page" "Authorization: Bearer" | host:warnbox "/rs/api/v1" "guarded like the dashboard" | service:okbox "One service" "the data, once"
+row  cli:box "The command line" "request-shield api" | cms:box "A CMS backend" "Api::call(), same process"
+arrow script -> host "JSON"
+arrow host -> service go
+arrow cms -> service "no HTTP"
+arrow cli -> service
+note Every answer {data, meta}; every problem RFC 9457; writes only with set api-write on.

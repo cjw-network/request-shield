@@ -88,12 +88,12 @@ final class ApiExtension implements Extension, ApiProvider
         return ['enabled' => $enabled, 'write' => $write, 'origins' => array_values(array_filter($origins, 'is_string')), 'base' => $base->dashboardPath . self::BASE, 'endpoints' => $endpoints];
     }
 
-    /** @return list<Endpoint> every offered ApiProvider's endpoints, this one's first, the openapi documents last */
+    /** @return list<Endpoint> the core's endpoints first, then every other offered ApiProvider's */
     public static function all(): array
     {
-        $out = [];
+        $out = self::api();
         foreach (Vocabulary::extensions() as $class) {
-            if (is_subclass_of($class, ApiProvider::class)) {
+            if ($class !== self::class && is_subclass_of($class, ApiProvider::class)) {
                 foreach ($class::api() as $ep) {
                     $out[] = $ep;
                 }
@@ -209,7 +209,9 @@ final class ApiExtension implements Extension, ApiProvider
             new Endpoint('GET', '/log', 'admin', false, Service\Log::class, Service\Log::SCHEMA, 'RSF05-05',
                 'The log\'s lines since the cursor, parsed: what was refused or checked, and why.', Service\Log::PARAMS),
             new Endpoint('GET', '/openapi.json', 'reader', false, Service\OpenApi::class, ['type' => 'object'], 'RSF06-05',
-                'This API described as OpenAPI 3.1: every endpoint, what it takes and what it answers.'),
+                'This API described as OpenAPI 3.1 (JSON): every endpoint, what it takes and what it answers -- the document itself, no envelope.'),
+            new Endpoint('GET', '/openapi.yaml', 'reader', false, Service\OpenApi::class, ['type' => 'object'], 'RSF06-05',
+                'The same as YAML.'),
         ];
     }
 }

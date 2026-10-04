@@ -10,6 +10,8 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield\Stats;
 
+use CjwNetwork\RequestShield\ApiProvider;
+use CjwNetwork\RequestShield\Endpoint;
 use CjwNetwork\RequestShield\Extension;
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Rules\RuleFileException;
@@ -28,7 +30,7 @@ use CjwNetwork\RequestShield\Settings;
  * <dashboard-path>/stats): the registry in the compiled settings knows them,
  * the frame's tabs and the pace's exemption follow.
  */
-final class StatsExtension implements Extension
+final class StatsExtension implements Extension, ApiProvider
 {
     /** What the statistics can count (set stats <parts>). */
     public const PARTS = ['requests', 'crawlers', 'not-found', 'bots', 'pages', 'forms'];
@@ -333,6 +335,17 @@ final class StatsExtension implements Extension
                 $path . '/visitors' => ['key' => 'site', 'tab' => ['Visitors & pages', 'Besucher & Seiten'], 'role' => 'reader', 'order' => 30, 'page' => Report\StatsPage::class],
                 $path . '/protection' => ['key' => 'shield', 'tab' => ['Protection', 'Schutz'], 'role' => 'reader', 'order' => 40, 'page' => Report\StatsPage::class],
             ];
+    }
+
+    /** The statistics in the API (RSF06-05): the report of a period, and all websites at a glance -- a customer gets its group. */
+    public static function api(): array
+    {
+        return [
+            new Endpoint('GET', '/stats/report', 'reader', false, Api\Report::class, Api\Report::SCHEMA, 'RSF06-03',
+                'What the counters say about a period: requests, what the shield did, pages, not found, crawlers, bots, forms, the sentences.', Api\Report::PARAMS),
+            new Endpoint('GET', '/stats/sites', 'reader', false, Api\Sites::class, Api\Sites::SCHEMA, 'RSF06-03',
+                'All websites at a glance: page views, people, crawlers, bots, stopped, not found, and the period before.', Api\Sites::PARAMS),
+        ];
     }
 
     /** `request-shield stats <main.rules>`: the counters in words, or as JSON (0031 D.1). */

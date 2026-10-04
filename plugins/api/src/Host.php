@@ -52,8 +52,12 @@ final class Host implements RoutePage
         }
         $answer = Api::dispatch($s, $request->method, $path, $params, $ctx['who'],
             ['ruleFile' => $ctx['ruleFile'], 'ip' => $ctx['ip'], 'lang' => $ctx['lang'] === 'de' ? 'de' : 'en']);
-        if ($answer['data'] && ($path === '/openapi.json')) {
+        // The description is the document itself, without the envelope: what OpenAPI tools read.
+        if ($answer['data'] && $path === '/openapi.json') {
             return self::json(200, (array) ($answer['body']['data'] ?? []), $cors, false);
+        }
+        if ($answer['data'] && $path === '/openapi.yaml') {
+            return new Response(200, ['Content-Type: application/yaml; charset=utf-8', 'X-Content-Type-Options: nosniff', ...$cors], OpenApi::yaml((array) ($answer['body']['data'] ?? [])));
         }
         $headers = [...$cors, ...$answer['headers']];
         if ($answer['data']) {

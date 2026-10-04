@@ -29,8 +29,11 @@ final class OpenApi
                 'summary' => $ep->summary,
                 'tags' => [$ep->feature],
                 'x-role' => $ep->role,
-                'externalDocs' => ['url' => (string) Help::url($ep->feature)],
             ];
+            $docs = Help::url($ep->feature);
+            if ($docs !== null) {
+                $op['externalDocs'] = ['url' => $docs];
+            }
             if ($ep->write) {
                 $op['x-write'] = true;
             }
@@ -74,5 +77,59 @@ final class OpenApi
                 ],
             ],
         ];
+    }
+
+    /**
+     * A document as YAML: maps and lists in blocks, every string in double
+     * quotes as JSON writes it (valid YAML), keys bare where YAML lets them be.
+     *
+     * @param array<mixed> $doc
+     */
+    public static function yaml(array $doc): string
+    {
+        return self::block($doc, 0);
+    }
+
+    /** @param array<mixed> $value */
+    private static function block(array $value, int $depth): string
+    {
+        $pad = str_repeat('  ', $depth);
+        $list = $value !== [] && array_keys($value) === range(0, count($value) - 1);
+        $out = '';
+        foreach ($value as $k => $v) {
+            $head = $list ? $pad . '- ' : $pad . self::key((string) $k) . ':';
+            if (is_object($v)) {
+                $v = (array) $v;
+            }
+            if (is_array($v) && $v !== []) {
+                $out .= $list ? $head . "\n" . self::block($v, $depth + 1) : $head . "\n" . self::block($v, $depth + 1);
+            } else {
+                $out .= $head . ($list ? '' : ' ') . self::scalar($v) . "\n";
+            }
+        }
+        return $out;
+    }
+
+    private static function key(string $k): string
+    {
+        return preg_match('#^[A-Za-z_$][A-Za-z0-9_./{}$-]*$#', $k) === 1 && !in_array(strtolower($k), ['y', 'n', 'yes', 'no', 'true', 'false', 'on', 'off', 'null'], true)
+            ? $k : (string) json_encode($k, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    }
+
+    private static function scalar(mixed $v): string
+    {
+        if (is_array($v)) {
+            return '[]';
+        }
+        if ($v === null) {
+            return 'null';
+        }
+        if (is_bool($v)) {
+            return $v ? 'true' : 'false';
+        }
+        if (is_int($v) || is_float($v)) {
+            return (string) $v;
+        }
+        return (string) json_encode(is_scalar($v) ? (string) $v : '', JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 }

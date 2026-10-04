@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The API, part 3: the statistics, the description, the feature** (0031
+  step G.0, RSF06-05): the statistics add `GET /stats/report` and
+  `GET /stats/sites` as an `ApiProvider` -- a customer's token gets its group
+  and not the rules that decided. `GET /openapi.json` and `/openapi.yaml`
+  describe every endpoint (OpenAPI 3.1, the plugins' included);
+  `docs/reference/api.md` and `docs/reference/openapi.yaml` are written by
+  `gen-reference.php`; `request-shield api --openapi[=yaml]` prints it. The
+  feature has its page (`docs/features/RSF06-05-api.md`) and its demo group.
 - **The API, part 2: the core's endpoints** (0031 step G.0, RSF06-05):
   `GET /rules`, `POST /trace`, `POST /test`, `POST /check`, `GET /live`,
   `GET /lists`, `GET /feeds`, `GET /crawlers`, `GET /log`; and the writes, only

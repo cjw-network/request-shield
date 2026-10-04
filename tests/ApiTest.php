@@ -310,4 +310,41 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF06-05 the statistics in the API: the report and all websites -- a customer gets its group and not the rules; off: 409' => function (): void {
+        $dir = apiDir();
+        try {
+            same(409, Api::call(apiSettings($dir, ''), 'GET', '/stats/report')['status'], 'off: set stats on');
+            $s = apiSettings($dir, "set stats on\nset stats-hosts a.example b.example\n" . apiTokens());
+            $admin = Api::call($s, 'GET', '/stats/report', ['days' => '3']);
+            same([3, 'day'], [$admin['data']['days'], $admin['data']['by']], json_encode($admin));
+            same(400, Api::call($s, 'GET', '/stats/report', ['from' => '2026-10-04', 'to' => '2026-10-01'])['status'], 'from after to');
+            same(400, Api::call($s, 'GET', '/stats/report', ['by' => 'hour'])['status']);
+            $json = json_encode(Api::call($s, 'GET', '/stats/report', [], 'customer-a'));
+            truthy(strpos((string) $json, '"rules":{}') !== false && strpos((string) $json, '"monitor":{}') !== false, 'a customer: no rules');
+            $sites = Api::call($s, 'GET', '/stats/sites', [], 'customer-a')['data'];
+            same(null, $sites['all'], 'a customer: not all websites');
+            truthy(Api::call($s, 'GET', '/stats/sites')['data']['all'] !== null, 'the administrator: all');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'RSF06-05 the API describes itself: OpenAPI 3.1 as JSON and YAML, the same document -- every endpoint with its feature, role, parameters and schema; the reference is what the tool writes' => function (): void {
+        $dir = apiDir();
+        try {
+            $s = apiSettings($dir, "restrict **/rs/** to 203.0.113.0/24\n");
+            $j = json_decode(apiServe($s, 'GET', '/rs/api/v1/openapi.json')->body, true);
+            same('3.1.0', $j['openapi'] ?? null, 'the document itself, no envelope');
+            foreach (['/status', '/rules', '/trace', '/lists', '/lists/remove', '/stats/report', '/stats/sites', '/openapi.yaml'] as $p) {
+                truthy(isset($j['paths'][$p]), "documented: $p");
+            }
+            same(['RSF06-01'], $j['paths']['/trace']['post']['tags']);
+            same(['url'], $j['paths']['/trace']['post']['requestBody']['content']['application/json']['schema']['required'] ?? null, 'a POST\'s body, what it needs');
+            same(true, $j['paths']['/lists']['post']['x-write'] ?? null, 'a write says so');
+            $y = apiServe($s, 'GET', '/rs/api/v1/openapi.yaml');
+            truthy($y->status === 200 && strpos((string) apiHeader($y, 'Content-Type'), 'application/yaml') === 0 && strpos($y->body, "openapi: \"3.1.0\"\n") === 0, 'YAML');
+            truthy(strpos((string) file_get_contents(dirname(__DIR__) . '/docs/reference/openapi.yaml'), "  \"/stats/report\":\n") !== false, 'the reference holds the plugins\' endpoints too');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
 ];

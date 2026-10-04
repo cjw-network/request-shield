@@ -14,7 +14,9 @@
  * - docs/reference/rule-files.md and docs/reference/settings.md, the same
  *   rows with the feature each belongs to (Rules\Reference,
  *   Rules\Vocabulary::FEATURES);
- * - docs/reference/cli.md, the command line's usage and its commands (Cli).
+ * - docs/reference/cli.md, the command line's usage and its commands (Cli);
+ * - docs/reference/api.md and docs/reference/openapi.yaml, the API's endpoints
+ *   (every ApiProvider's Endpoint, Api\OpenApi), for dashboard-path /rs.
  *
  * --check writes nothing and exits 1 when a file is not what it would write
  * (the tests run it). Exit 0: written or current.
@@ -73,7 +75,34 @@ foreach (preg_split('/\n/', (string) $doc) ?: [] as $line) {
     }
 }
 
+// The API (RSF06-05): every endpoint, as the providers declare them.
+$byFeature = [];
+foreach (\CjwNetwork\RequestShield\Api\ApiExtension::all() as $ep) {
+    $byFeature[$ep->feature][] = $ep;              // grouped by feature, in the order they first come
+}
+$api = '';
+foreach ($byFeature as $group => $eps) {
+    $api .= "\n### " . (\CjwNetwork\RequestShield\Rules\Vocabulary::TOPICS[$group][1] ?? $group) . ' (' . (isset($pages[$group]) ? "[$group](../features/{$pages[$group]})" : $group) . ")\n\n"
+        . "| Endpoint | Who | What it answers |\n|---|---|---|\n";
+    foreach ($eps as $ep) {
+        $params = '';
+        foreach ($ep->params as $name => $p) {
+            $params .= '<br>`' . $name . '`' . (($p['required'] ?? false) ? ' (required)' : '') . ': ' . htmlspecialchars($p['about'], ENT_NOQUOTES, 'UTF-8');
+        }
+        $api .= '| `' . $ep->method . ' ' . $ep->path . '` | ' . $ep->role . ($ep->write ? ', a write' : '') . ' | ' . $cell(htmlspecialchars($ep->summary, ENT_NOQUOTES, 'UTF-8') . $params) . " |\n";
+    }
+}
+$apiNote = '<!-- Written by docs/tools/gen-reference.php from the API\'s endpoints (ApiProvider) -- do not edit; run the tool. -->';
+
 $files = [
+    "$root/docs/reference/api.md" => "# Reference: the API\n\n$apiNote\n\nBelow `<dashboard-path>/api/v1` (`/rs/api/v1` by default), guarded like the dashboard: "
+        . "a `restrict` rule, or `Authorization: Bearer <token>` (`request-shield access-token`). Every answer is `{\"data\": …, \"meta\": {\"version\", \"generated\", \"tier\"}}` "
+        . "with an `ETag` on the data; every problem is RFC 9457 JSON (`type`, `title`, `status`, `detail`). A GET takes its parameters in the query, a POST in a JSON body. "
+        . "*reader*: a customer's token may call it (and sees its group only); *admin*: the administrator only; *a write*: only with `set api-write on`. "
+        . "The same as OpenAPI 3.1: [openapi.yaml](openapi.yaml), and `GET /rs/api/v1/openapi.json` on a site. "
+        . "In the same process: `Api::call(\$settings, 'GET', '/status')` ([the API](../features/RSF06-05-api.md)).\n$api",
+    "$root/docs/reference/openapi.yaml" => "# Written by docs/tools/gen-reference.php from the API's endpoints -- do not edit; run the tool.\n"
+        . \CjwNetwork\RequestShield\Api\OpenApi::yaml(\CjwNetwork\RequestShield\Api\OpenApi::document('/rs')),
     "$root/docs/reference/rule-files.md" => "# Reference: the rule file\n\n$note\n\nEvery rule a rule file may hold, what it sets, and the feature it belongs to. "
         . "How the file works -- blocks, sites, IDs, includes -- is in [rule files](../features/RSF05-01-rule-files.md); `request-shield vocabulary` prints the same.\n\n$rulesRef",
     "$root/docs/reference/settings.md" => "# Reference: the set keys\n\n$note\n\nEvery `set` key, its values, and the feature it belongs to. `\${NAME}` in a value is an environment "

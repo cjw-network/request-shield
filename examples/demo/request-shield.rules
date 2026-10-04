@@ -323,3 +323,11 @@ expect GET /rs/stats/overview         from 127.0.0.1 answered   # The overview, 
 # try: GET /rs/stats/sites All websites, by customer
 # try: GET /rs/stats/visitors?lang=de Statistik auf Deutsch
 # try: GET /customer-menu A customer's menu: a signed link opens Customer A's statistics only
+
+# demo: RSF06-05 api The API
+# The same data as JSON below /rs/api/v1, for a CMS, a script or a language
+# model -- guarded like the dashboard: this machine, or a token.
+expect GET /rs/api/v1/status          403 by DEMO-API        # from anywhere else (the demo's rule for **/api/** comes first)
+expect GET /rs/api/v1/status          from 127.0.0.1 answered   # The status, from this machine
+# try: GET /rs/api/v1/rules Every rule, as JSON
+# try: GET /rs/api/v1/openapi.yaml The API described (OpenAPI 3.1)

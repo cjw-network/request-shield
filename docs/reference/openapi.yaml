@@ -1,0 +1,1354 @@
+# Written by docs/tools/gen-reference.php from the API's endpoints -- do not edit; run the tool.
+openapi: "3.1.0"
+info:
+  title: "request-shield"
+  version: "0.4.0-dev"
+  description: "The shield's data: status, rules, the live view, the lists, the statistics. Guarded like the dashboard: a restrict rule, or Authorization: Bearer <token>."
+servers:
+  - 
+    url: "/rs/api/v1"
+security:
+  - 
+    bearer: []
+paths:
+  "/status":
+    get:
+      summary: "The version, the tier, the mode and the rule sets in force -- what request-shield version says."
+      tags:
+        - "RSF06-05"
+      x-role: "reader"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF06-05-api.md"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "version"
+                      - "php"
+                      - "apcu"
+                      - "tier"
+                      - "store"
+                      - "mode"
+                      - "ruleSets"
+                      - "sites"
+                    properties:
+                      version:
+                        type: "string"
+                      php:
+                        type: "string"
+                      apcu:
+                        type: "boolean"
+                      tier:
+                        type: "string"
+                        enum:
+                          - "S0"
+                          - "S1"
+                          - "S2"
+                      store:
+                        type: "string"
+                      mode:
+                        type: "string"
+                        enum:
+                          - "off"
+                          - "monitor"
+                          - "enforce"
+                          - "strict"
+                      ruleSets:
+                        type: "object"
+                      sites:
+                        type: "integer"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/rules":
+    get:
+      summary: "Every rule with an ID: where it is written, what it does, its revision, how often it decided."
+      tags:
+        - "RSF06-01"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF06-01-active-rules-page.md"
+      parameters:
+        - 
+          name: "days"
+          in: "query"
+          required: false
+          description: "the days the counts are of: 1 to 400 (default 7)"
+          schema:
+            type: "integer"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "days"
+                      - "rules"
+                    properties:
+                      days:
+                        type: "integer"
+                      rules:
+                        type: "array"
+                        items:
+                          type: "object"
+                          required:
+                            - "id"
+                            - "where"
+                            - "text"
+                            - "builtIn"
+                            - "decided"
+                          properties:
+                            id:
+                              type: "string"
+                            where:
+                              type: "string"
+                            text:
+                              type:
+                                - "string"
+                                - "null"
+                            revision:
+                              type:
+                                - "integer"
+                                - "null"
+                            builtIn:
+                              type: "boolean"
+                            decided:
+                              type:
+                                - "integer"
+                                - "null"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/trace":
+    post:
+      summary: "What happens to a request, check by check -- as request-shield trace; nothing is counted."
+      tags:
+        - "RSF06-01"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF06-01-active-rules-page.md"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                url:
+                  type: "string"
+                  description: "a full address or a path: https://www.example.org/wp-login.php"
+                method:
+                  type: "string"
+                  description: "GET (default), POST, …"
+                ip:
+                  type: "string"
+                  description: "the visitor's address (default 198.51.100.7)"
+                ua:
+                  type: "string"
+                  description: "the User-Agent"
+              required:
+                - "url"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "method"
+                      - "url"
+                      - "ip"
+                      - "steps"
+                      - "verdict"
+                      - "rule"
+                      - "status"
+                      - "passes"
+                    properties:
+                      method:
+                        type: "string"
+                      url:
+                        type: "string"
+                      ip:
+                        type: "string"
+                      steps:
+                        type: "array"
+                        items:
+                          type: "object"
+                          required:
+                            - "check"
+                            - "key"
+                            - "state"
+                            - "text"
+                            - "rule"
+                          properties:
+                            check:
+                              type: "string"
+                            key:
+                              type: "string"
+                            state:
+                              type: "string"
+                              enum:
+                                - "pass"
+                                - "note"
+                                - "stop"
+                                - "skip"
+                            text:
+                              type: "string"
+                            rule:
+                              type:
+                                - "string"
+                                - "null"
+                      verdict:
+                        type: "string"
+                      rule:
+                        type:
+                          - "string"
+                          - "null"
+                      watched:
+                        type:
+                          - "string"
+                          - "null"
+                      status:
+                        type: "integer"
+                      passes:
+                        type: "boolean"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/test":
+    post:
+      summary: "Every example next to the rules, decided on a fresh store -- as request-shield test."
+      tags:
+        - "RSF05-04"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF05-04-rule-examples.md"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                only:
+                  type: "string"
+                  description: "the examples of this rule ID only"
+                asWritten:
+                  type: "boolean"
+                  description: "monitor as written, not as enforce"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "examples"
+                      - "pass"
+                      - "fail"
+                      - "skip"
+                      - "results"
+                      - "without"
+                    properties:
+                      examples:
+                        type: "integer"
+                      pass:
+                        type: "integer"
+                      fail:
+                        type: "integer"
+                      skip:
+                        type: "integer"
+                      results:
+                        type: "array"
+                        items:
+                          type: "object"
+                          required:
+                            - "status"
+                            - "method"
+                            - "url"
+                            - "expected"
+                            - "got"
+                            - "at"
+                          properties:
+                            status:
+                              type: "string"
+                              enum:
+                                - "pass"
+                                - "fail"
+                                - "skip"
+                            rule:
+                              type:
+                                - "string"
+                                - "null"
+                            method:
+                              type: "string"
+                            url:
+                              type: "string"
+                            expected:
+                              type: "string"
+                            got:
+                              type: "string"
+                            why:
+                              type: "string"
+                            at:
+                              type: "string"
+                      without:
+                        type: "array"
+                        items:
+                          type: "string"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/check":
+    post:
+      summary: "The rule files read again and compiled: the first mistake, or the warnings and the tier -- as request-shield check."
+      tags:
+        - "RSF05-01"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF05-01-rule-files.md"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "ok"
+                      - "error"
+                      - "warnings"
+                      - "tier"
+                    properties:
+                      ok:
+                        type: "boolean"
+                      error:
+                        type:
+                          - "string"
+                          - "null"
+                      warnings:
+                        type: "array"
+                        items:
+                          type: "string"
+                      tier:
+                        type:
+                          - "string"
+                          - "null"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/reload":
+    post:
+      summary: "Check, then mark the main rule file changed: every server reads the rules on its next check."
+      tags:
+        - "RSF05-01"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF05-01-rule-files.md"
+      x-write: true
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "reloaded"
+                      - "warnings"
+                    properties:
+                      reloaded:
+                        type: "boolean"
+                      warnings:
+                        type: "array"
+                        items:
+                          type: "string"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/live":
+    get:
+      summary: "What was stopped since the cursor: the live view's rows."
+      tags:
+        - "RSF06-02"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF06-02-live-and-lists.md"
+      parameters:
+        - 
+          name: "cursor"
+          in: "query"
+          required: false
+          description: "where the last call ended (its answer's cursor); none: the newest rows"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "cursor"
+                      - "rows"
+                      - "skipped"
+                      - "log"
+                    properties:
+                      cursor:
+                        type: "string"
+                      rows:
+                        type: "array"
+                        items:
+                          type: "object"
+                      skipped:
+                        type: "integer"
+                      log:
+                        type: "boolean"
+                      memory:
+                        type: "boolean"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/lists":
+    get:
+      summary: "The addresses kept out and let in, newest first, searched; and the bans in force."
+      tags:
+        - "RSF01-02"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF01-02-ip-lists.md"
+      parameters:
+        - 
+          name: "q"
+          in: "query"
+          required: false
+          description: "only entries whose line holds this: an address, an ID, a word of the note"
+          schema:
+            type: "string"
+        - 
+          name: "limit"
+          in: "query"
+          required: false
+          description: "at most this many entries: 1 to 500 (default 100)"
+          schema:
+            type: "integer"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "entries"
+                      - "total"
+                      - "bans"
+                    properties:
+                      entries:
+                        type: "array"
+                        items:
+                          type: "object"
+                          required:
+                            - "kind"
+                            - "id"
+                            - "addresses"
+                            - "until"
+                            - "note"
+                          properties:
+                            kind:
+                              type: "string"
+                              enum:
+                                - "deny"
+                                - "exempt"
+                            id:
+                              type: "string"
+                            addresses:
+                              type: "array"
+                              items:
+                                type: "string"
+                            until:
+                              type:
+                                - "integer"
+                                - "null"
+                            note:
+                              type: "string"
+                      total:
+                        type: "integer"
+                      bans:
+                        type: "array"
+                        items:
+                          type: "object"
+                          required:
+                            - "bucket"
+                            - "until"
+                          properties:
+                            bucket:
+                              type: "string"
+                            until:
+                              type: "integer"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+    post:
+      summary: "An address kept out or let in, for a while or for good -- with the dashboard's checks."
+      tags:
+        - "RSF01-02"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF01-02-ip-lists.md"
+      x-write: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                kind:
+                  type: "string"
+                  description: "deny (keep out, default) or exempt (let in)"
+                address:
+                  type: "string"
+                  description: "an address or a range: 203.0.113.7, 198.51.100.0/24"
+                for:
+                  type: "string"
+                  description: "1h, 1d, 7d (default), 30d, date (with until), good (for good: a note is needed)"
+                until:
+                  type: "string"
+                  description: "with for=date: 2026-10-07 or 2026-10-07T15:30"
+                note:
+                  type: "string"
+                  description: "why: shown in the lists and the live view"
+                confirm:
+                  type: "boolean"
+                  description: "a wide range is meant"
+              required:
+                - "address"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "ok"
+                      - "message"
+                    properties:
+                      ok:
+                        type: "boolean"
+                      message:
+                        type: "string"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/lists/update":
+    post:
+      summary: "Another end or another note for an entry, by its ID."
+      tags:
+        - "RSF01-02"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF01-02-ip-lists.md"
+      x-write: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                id:
+                  type: "string"
+                  description: "the entry's ID: LIST-D3"
+                for:
+                  type: "string"
+                  description: "1h, 1d, 7d, 30d, date (with until), good"
+                until:
+                  type: "string"
+                  description: "with for=date: 2026-10-07 or 2026-10-07T15:30"
+                note:
+                  type: "string"
+                  description: "the new note"
+              required:
+                - "id"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "ok"
+                      - "message"
+                    properties:
+                      ok:
+                        type: "boolean"
+                      message:
+                        type: "string"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/lists/remove":
+    post:
+      summary: "An entry taken out, by its ID."
+      tags:
+        - "RSF01-02"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF01-02-ip-lists.md"
+      x-write: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                id:
+                  type: "string"
+                  description: "the entry's ID: LIST-D3"
+              required:
+                - "id"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "ok"
+                      - "message"
+                    properties:
+                      ok:
+                        type: "boolean"
+                      message:
+                        type: "string"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/lists/lift":
+    post:
+      summary: "A ban lifted before its end, by its bucket."
+      tags:
+        - "RSF01-02"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF01-02-ip-lists.md"
+      x-write: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                bucket:
+                  type: "string"
+                  description: "as GET /lists names it under bans"
+              required:
+                - "bucket"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "ok"
+                      - "message"
+                    properties:
+                      ok:
+                        type: "boolean"
+                      message:
+                        type: "string"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/feeds":
+    get:
+      summary: "The public blocklists the rules name: action, entries, when fetched, whether in force."
+      tags:
+        - "RSF01-03"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF01-03-blocklist-feeds.md"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "feeds"
+                    properties:
+                      feeds:
+                        type: "array"
+                        items:
+                          type: "object"
+                          required:
+                            - "name"
+                            - "title"
+                            - "action"
+                            - "count"
+                            - "fetched"
+                            - "state"
+                            - "rule"
+                            - "watched"
+                          properties:
+                            name:
+                              type: "string"
+                            title:
+                              type: "string"
+                            action:
+                              type: "string"
+                            count:
+                              type: "integer"
+                            fetched:
+                              type: "integer"
+                            state:
+                              type: "string"
+                            rule:
+                              type: "string"
+                            watched:
+                              type: "boolean"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/feeds/update":
+    post:
+      summary: "The lists that are due fetched now -- as request-shield feeds update."
+      tags:
+        - "RSF01-03"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF01-03-blocklist-feeds.md"
+      x-write: true
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                force:
+                  type: "boolean"
+                  description: "keep a list that shrank to less than half, and fetch one not yet due"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "feeds"
+                    properties:
+                      feeds:
+                        type: "object"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/crawlers":
+    get:
+      summary: "The known crawlers: kind, what the site does with each, how they are verified."
+      tags:
+        - "RSF01-04"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF01-04-known-crawlers.md"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "verify"
+                      - "crawlers"
+                    properties:
+                      verify:
+                        type: "string"
+                      crawlers:
+                        type: "array"
+                        items:
+                          type: "object"
+                          required:
+                            - "id"
+                            - "kind"
+                            - "policy"
+                            - "dns"
+                            - "lists"
+                          properties:
+                            id:
+                              type: "string"
+                            kind:
+                              type: "string"
+                            policy:
+                              type: "string"
+                            dns:
+                              type: "array"
+                              items:
+                                type: "string"
+                            lists:
+                              type: "object"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/log":
+    get:
+      summary: "The log's lines since the cursor, parsed: what was refused or checked, and why."
+      tags:
+        - "RSF05-05"
+      x-role: "admin"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF05-05-log-and-rule-ids.md"
+      parameters:
+        - 
+          name: "cursor"
+          in: "query"
+          required: false
+          description: "where the last call ended (its answer's cursor); none: the end of the log"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "cursor"
+                      - "rows"
+                      - "skipped"
+                    properties:
+                      cursor:
+                        type: "string"
+                      skipped:
+                        type: "integer"
+                      rows:
+                        type: "array"
+                        items:
+                          type: "object"
+                          required:
+                            - "time"
+                            - "client"
+                            - "action"
+                            - "status"
+                            - "reason"
+                            - "rule"
+                            - "method"
+                            - "url"
+                          properties:
+                            time:
+                              type: "integer"
+                            client:
+                              type: "string"
+                            action:
+                              type: "string"
+                            status:
+                              type: "integer"
+                            reason:
+                              type: "string"
+                            rule:
+                              type:
+                                - "string"
+                                - "null"
+                            claimed:
+                              type:
+                                - "string"
+                                - "null"
+                            method:
+                              type: "string"
+                            url:
+                              type: "string"
+                            agent:
+                              type: "string"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/openapi.json":
+    get:
+      summary: "This API described as OpenAPI 3.1 (JSON): every endpoint, what it takes and what it answers -- the document itself, no envelope."
+      tags:
+        - "RSF06-05"
+      x-role: "reader"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF06-05-api.md"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/openapi.yaml":
+    get:
+      summary: "The same as YAML."
+      tags:
+        - "RSF06-05"
+      x-role: "reader"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF06-05-api.md"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/stats/report":
+    get:
+      summary: "What the counters say about a period: requests, what the shield did, pages, not found, crawlers, bots, forms, the sentences."
+      tags:
+        - "RSF06-03"
+      x-role: "reader"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF06-03-statistics.md"
+      parameters:
+        - 
+          name: "days"
+          in: "query"
+          required: false
+          description: "the last days: 1 to 400 (default 7)"
+          schema:
+            type: "integer"
+        - 
+          name: "from"
+          in: "query"
+          required: false
+          description: "a period instead: from YYYY-MM-DD (with to)"
+          schema:
+            type: "string"
+        - 
+          name: "to"
+          in: "query"
+          required: false
+          description: "to YYYY-MM-DD"
+          schema:
+            type: "string"
+        - 
+          name: "by"
+          in: "query"
+          required: false
+          description: "day (default), week, month or year"
+          schema:
+            type: "string"
+        - 
+          name: "site"
+          in: "query"
+          required: false
+          description: "one website (stats-hosts), or group:<id>; a customer sees its group only"
+          schema:
+            type: "string"
+        - 
+          name: "path"
+          in: "query"
+          required: false
+          description: "only pages below it: /news/"
+          schema:
+            type: "string"
+        - 
+          name: "crawler"
+          in: "query"
+          required: false
+          description: "one known crawler: CRAWL-GOOGLE"
+          schema:
+            type: "string"
+        - 
+          name: "sort"
+          in: "query"
+          required: false
+          description: "views (default), blocked, refused, checked or throttled"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "from"
+                      - "to"
+                      - "days"
+                      - "by"
+                      - "totals"
+                      - "periods"
+                      - "rules"
+                      - "crawlers"
+                      - "pages"
+                      - "notFound"
+                      - "sentences"
+                    properties:
+                      from:
+                        type: "string"
+                      to:
+                        type: "string"
+                      days:
+                        type: "integer"
+                      by:
+                        type: "string"
+                      totals:
+                        type: "object"
+                      periods:
+                        type: "object"
+                      rules:
+                        type: "object"
+                      crawlers:
+                        type: "object"
+                      pages:
+                        type: "object"
+                      notFound:
+                        type: "object"
+                      sentences:
+                        type: "array"
+                        items:
+                          type: "string"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+  "/stats/sites":
+    get:
+      summary: "All websites at a glance: page views, people, crawlers, bots, stopped, not found, and the period before."
+      tags:
+        - "RSF06-03"
+      x-role: "reader"
+      externalDocs:
+        url: "https://github.com/cjw-network/request-shield/blob/main/docs/features/RSF06-03-statistics.md"
+      parameters:
+        - 
+          name: "days"
+          in: "query"
+          required: false
+          description: "the last days: 1 to 400 (default 7)"
+          schema:
+            type: "integer"
+        - 
+          name: "from"
+          in: "query"
+          required: false
+          description: "a period instead: from YYYY-MM-DD (with to)"
+          schema:
+            type: "string"
+        - 
+          name: "to"
+          in: "query"
+          required: false
+          description: "to YYYY-MM-DD"
+          schema:
+            type: "string"
+        - 
+          name: "by"
+          in: "query"
+          required: false
+          description: "day (default), week, month or year"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "The answer"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                required:
+                  - "data"
+                  - "meta"
+                properties:
+                  data:
+                    type: "object"
+                    required:
+                      - "from"
+                      - "to"
+                      - "sites"
+                      - "groups"
+                      - "all"
+                    properties:
+                      from:
+                        type: "string"
+                      to:
+                        type: "string"
+                      sites:
+                        type: "object"
+                      groups:
+                        type: "object"
+                      all:
+                        type:
+                          - "object"
+                          - "null"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        default:
+          description: "A problem (RFC 9457)"
+          content:
+            "application/problem+json":
+              schema:
+                $ref: "#/components/schemas/Problem"
+components:
+  securitySchemes:
+    bearer:
+      type: "http"
+      scheme: "bearer"
+      description: "request-shield access-token <main.rules> \"*\""
+  schemas:
+    Meta:
+      type: "object"
+      required:
+        - "version"
+        - "generated"
+        - "tier"
+      properties:
+        version:
+          type: "string"
+        generated:
+          type: "string"
+        tier:
+          type: "string"
+    Problem:
+      type: "object"
+      required:
+        - "type"
+        - "title"
+        - "status"
+        - "detail"
+      properties:
+        type:
+          type: "string"
+        title:
+          type: "string"
+        status:
+          type: "integer"
+        detail:
+          type: "string"

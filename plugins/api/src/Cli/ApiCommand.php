@@ -24,26 +24,27 @@ final class ApiCommand implements Command
 {
     public static function usage(): string
     {
-        return 'request-shield api <main.rules> "GET|POST </path>" [--<param>=<value>]... | --openapi';
+        return 'request-shield api <main.rules> "GET|POST </path>" [--<param>=<value>]... | --openapi[=json|yaml]';
     }
 
     public static function run(Context $c): int
     {
         // Its own options from the arguments as given: --openapi, --<param>=<value>.
-        $openapi = false;
+        $openapi = null;
         $params = [];
         $words = [];
         foreach (array_slice($c->args, 2) as $a) {
-            if ($a === '--openapi') {
-                $openapi = true;
+            if ($a === '--openapi' || $a === '--openapi=json' || $a === '--openapi=yaml') {
+                $openapi = $a === '--openapi=yaml' ? 'yaml' : 'json';
             } elseif (preg_match('/^--([a-z][a-zA-Z0-9_-]*)=(.*)$/s', $a, $m) === 1) {
                 $params[$m[1]] = $m[2];
             } elseif (strncmp($a, '--', 2) !== 0) {
                 $words[] = $a;
             }
         }
-        if ($openapi) {
-            echo json_encode(OpenApi::document($c->settings->dashboardPath), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
+        if ($openapi !== null) {
+            $doc = OpenApi::document($c->settings->dashboardPath);
+            echo $openapi === 'yaml' ? OpenApi::yaml($doc) : json_encode($doc, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
             return 0;
         }
         $parts = preg_split('/\s+/', trim(implode(' ', $words))) ?: [];

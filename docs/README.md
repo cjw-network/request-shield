@@ -42,10 +42,10 @@
   | RSF06-02 | Watching & connecting | [the live view and the lists in the dashboard](features/RSF06-02-live-and-lists.md) |
   | RSF06-03 | Watching & connecting | [statistics](features/RSF06-03-statistics.md) |
   | RSF06-04 | Watching & connecting | [plugins](features/RSF06-04-plugins.md) |
-  | RSF06-05 | Watching & connecting | planned: the API (a plugin, 0031 step G.0) |
+  | RSF06-05 | Watching & connecting | [the API](features/RSF06-05-api.md) |
 - **Reference** — written from the code, never by hand
   (`docs/tools/gen-reference.php`): [the rule file](reference/rule-files.md) ·
-  [the set keys](reference/settings.md) · [the command line](reference/cli.md)
+  [the set keys](reference/settings.md) · [the command line](reference/cli.md) · [the API](reference/api.md)
 - **Privacy** — what the shield processes about visitors, feature by feature,
   and the GDPR: [privacy and the GDPR](privacy.md)
 - **For AI agents** — [llms.txt](../llms.txt) is the entry;

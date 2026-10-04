@@ -142,10 +142,13 @@ final class Vocabulary
         'RSF06-04' => ['plugins', 'Plugins',
             'Code that hears every decision and adds what the core does not do.',
             'Code, der jede Entscheidung erfährt und ergänzt, was der Kern nicht tut.'],
+        'RSF06-05' => ['api', 'The API',
+            'The shield\'s data as JSON for a CMS, a script or a language model, guarded like the dashboard.',
+            'Die Daten des Schutzes als JSON für ein CMS, ein Skript oder ein Sprachmodell, geschützt wie das Dashboard.'],
     ];
 
     /** @var array<string, string> the feature an extension's words and keys belong to, by the extension's id */
-    public const EXTENSION_FEATURES = ['stats' => 'RSF06-03'];
+    public const EXTENSION_FEATURES = ['stats' => 'RSF06-03', 'api' => 'RSF06-05'];
 
     /** The feature a word or set key belongs to: the core's (FEATURES), else its extension's; null when none is known. */
     public static function featureOf(string $word): ?string
