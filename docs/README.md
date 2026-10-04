@@ -62,7 +62,8 @@
   [an Exponential site](use-cases/exponential.md) ·
   [a pentest asks for rate limits on the forms](use-cases/form-rate-limits.md) ·
   [a developer hardens the application, and tests it](use-cases/harden-and-test.md) ·
-  [the sign-in, hardened: three tries, then longer and longer](use-cases/login-backoff.md)
+  [the sign-in, hardened: three tries, then longer and longer](use-cases/login-backoff.md) ·
+  [an accessible website, hardened: no puzzle for anyone](use-cases/accessible-hardening.md)
 - **Proposals** — planned features, open for discussion (status in each):
   [0001 earn back a spent budget](proposals/0001-earn-back-a-spent-budget.md) (implemented) ·
   [0003 human-readable rule files](proposals/0003-human-readable-rule-files.md) (implemented) ·

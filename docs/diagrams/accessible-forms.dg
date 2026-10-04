@@ -1,0 +1,9 @@
+# use case: an accessible website, hardened -- a captcha asks the person, the browser check asks the browser.
+title A captcha asks every person to solve a puzzle and shuts some out; the browser check asks only the browser, and nobody sees a puzzle
+row  form:box "A form is sent" "contact, sign-in" | cap:warnbox "A captcha" "pictures, letters" | out:nobox "Some cannot" "it shuts them out"
+row  check:okbox "The browser check" "in the background, while they type" | sent:okbox "The form arrives" "nobody saw a puzzle"
+arrow form -> cap "the old way"
+arrow cap -> out "a puzzle"
+arrow form -> check "with the shield" go
+arrow check -> sent "a task for the browser" go
+note The browser solves a small sum by itself: no eyes, no ears, no steady hand needed.

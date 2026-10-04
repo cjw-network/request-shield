@@ -1,0 +1,8 @@
+# use case: an accessible website, hardened -- the layers a bot meets, none of which a person notices.
+title Three layers a bot meets at a form, and none a person notices
+row  origin:box "From your own pages?" "post-origin same" | check:box "Browser checked?" "the box in the form" | pace:box "Not too many?" "5 an hour per address"
+row  site:okbox "Your form" "gets people, not bots"
+arrow origin -> check "yes" go
+arrow check -> pace "yes" go
+arrow pace -> site "yes" go
+note A bot fails at one: sent from elsewhere (403), no browser, too many (429). A person notices none.

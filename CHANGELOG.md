@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **Use case "an accessible website, hardened: no puzzle for anyone"**: why
+  every captcha shuts someone out (pictures, audio, riddles, sliders, time
+  limits, Google's score; WCAG 1.1.1 and 3.3.8), compared in plain language
+  with the browser check, which asks the browser and not the person; three
+  layers for a form (from your own pages, the box in the form, five an
+  hour), two pictures, and a test that holds the page's rules to what it
+  says.
 - **Proposal 0039 a page cache that speaks the known dialects** (Draft):
   what Ibexa (FOSHttpCache, xkey, `X-Cache-Tags`, the user context hash),
   eZ Publish legacy / Exponential, LiteSpeed (`X-LiteSpeed-*`), Varnish,
