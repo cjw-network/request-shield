@@ -116,7 +116,7 @@ the model you trust most there, not fast mode.
 - [x] **F.4** `Report/DemoSite` + `ExamplesPage`, server-side `/__answer`; `examples/demo/index.php` → 3 lines + `pages.php`; `examples/exponential` on the same base; `DemoTest` iterates groups. `bd9a4d0`
 - [x] **F.5** CLI `examples --markdown|--html|--coverage`, `vocabulary`; `docs/tools/sync-examples.php`, `gen-reference.php`, `docs/reference/*` generated; `--check` in CI. `4f2cffe`
 - [x] **F.6** Close the gaps: trust, post-origin, feeds (`feed … from <file>`), strict, sites, `@attacks` with `expect`, crawlers, lists/bans — one commit per feature; empty the exception list from F.2. `8850d51`
-- [x] **F.7** `docs/diagrams/*.dg` + `docs/tools/diagram.php`; Pages export of the recorded demo (`pages.yml`). `HASH-F7`
+- [x] **F.7** `docs/diagrams/*.dg` + `docs/tools/diagram.php`; Pages export of the recorded demo (`pages.yml`). `c9f3990`
 - [ ] **F.8** `docs/glossary.md`, `docs/for/{admins,hosters,editors,customers,developers}.md` (each a diagram + a scenario), `CONTRIBUTING.md` section "plain language", `tests/DocsStyleTest.php` (diagram required, glossary links) — first with an exception list that F.9 empties.
 - [ ] **F.9** `Help` service (`Help::link(RSF, anchor)` from `Vocabulary`), `set docs-url`, help links + one-sentence explanations + explained empty states on every core and stats page, the challenge page and the widget; CLI errors end with a docs anchor; `tests/UiHelpTest.php` + `docs/tools/check-anchors.php`; screenshots for the docs from `examples --html`; `FeatureContractTest` extended by diagram + help link.
 
