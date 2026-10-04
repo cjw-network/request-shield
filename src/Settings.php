@@ -968,7 +968,7 @@ final class Settings
         if ($u === 'off' || $u === '') {
             return '';
         }
-        if (!is_string($u) || preg_match('#^(https?://[^\s"<>]+|/[^\s"<>]*)$#i', $u) !== 1) {
+        if (!is_string($u) || preg_match('#^(https?://[^\s"<>]+|/(?!/)[^\s"<>]*)$#i', $u) !== 1) {
             throw self::wrong('docsUrl', 'an address such as https://docs.example.org/request-shield, a path such as /docs, or off');
         }
         return rtrim($u, '/');

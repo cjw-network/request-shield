@@ -139,7 +139,7 @@ final class Reference
         ['keys' => ['language'], 'label' => '`language`',
             'value' => '`auto` (default: the visitor\'s browser language among those there are texts for, else English) or a code: `de`, `en`'],
         ['keys' => ['text.<key>', 'text.<lang>.<key>'], 'label' => '`text.<key>`, `text.<lang>.<key>`',
-            'value' => 'what visitors read (the rest of the line): for every language, or for one — `set text.de.title Einen Moment, bitte`. Keys: `title`, `text`, `noscript`, `nocookies`, `failed`, `try-again` (`%s` = seconds), `bad-request`, `no-access`, `not-found`, `not-allowed`, `too-long`, `too-many`, `too-large`, `error`. English and German are built in; another language comes with its texts (`text.fr.title …`)'],
+            'value' => 'what visitors read (the rest of the line): for every language, or for one — `set text.de.title Einen Moment, bitte`. Keys: `title`, `text`, `noscript`, `nocookies`, `failed`, `try-again` (`%s` = seconds), `about` (the check page\'s link for visitors, with `docs-url`), `bad-request`, `no-access`, `not-found`, `not-allowed`, `too-long`, `too-many`, `too-large`, `error`. English and German are built in; another language comes with its texts (`text.fr.title …`)'],
         ['keys' => ['mode'], 'label' => '`mode`',
             'value' => '`off`, `monitor`, `enforce` (default), `strict` ([modes](RSF05-03-modes.md))'],
         ['keys' => ['crawler-verify'], 'label' => '`crawler-verify`',

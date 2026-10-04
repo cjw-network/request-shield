@@ -57,7 +57,10 @@ written by hand. `widget('load')` checks at once instead of on the first input;
 
 The box has the classes `rs-widget`, `rs-icon`, `rs-text` and a `data-state`
 (`idle`, `checking`, `done`, `failed`) for the site's own styles, `role="status"`
-and `aria-live="polite"` for screen readers. `widget.js` is served with a day's
+and `aria-live="polite"` for screen readers. Next to it, not inside it, a
+small `?` link (class `rs-about`) opens [the browser check in plain
+words](../explained/browser-check.md) for the visitor; its title is the text
+`about`, and `set docs-url off` leaves it out. `widget.js` is served with a day's
 cache and an ETag; for a strict Content-Security-Policy it is a file, not an
 inline script.
 

@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield\Report;
 
+use CjwNetwork\RequestShield\Help;
 use CjwNetwork\RequestShield\Routes;
 use CjwNetwork\RequestShield\Settings;
 
@@ -64,14 +65,25 @@ final class Frame
         return $h === '' ? '' : '<nav class="tabs">' . $h . '</nav>';
     }
 
-    /** @param array<string, mixed> $o home, homeLabel */
+    /**
+     * A section's heading with its "?" link into the docs (Help; nothing with the links off).
+     *
+     * @param string $anchor a heading of the feature's page (docs/tools/check-anchors.php finds them)
+     */
+    public static function h2(string $text, Settings $s, string $id, string $anchor, string $lang, string $attrs = ''): string
+    {
+        $link = Help::link($id, $anchor, $s->docsUrl, $lang);
+        return '<h2' . ($attrs !== '' ? ' ' . $attrs : '') . '>' . htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ($link !== '' ? ' ' . $link : '') . '</h2>';
+    }
+
+    /** @param array<string, mixed> $o home, homeLabel; help: the "?" link after the title (Help::link(), HTML) */
     public static function page(string $title, string $lang, string $body, array $o, string $css = '', string $script = ''): string
     {
         $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         return '<!doctype html><html lang="' . $e($lang) . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             . '<meta name="robots" content="noindex,nofollow"><title>' . $e($title) . '</title><style>' . self::CSS . $css . '</style></head><body>'
             . (is_string($o['home'] ?? null) ? '<header><a href="' . $e($o['home']) . '">← ' . $e(is_string($o['homeLabel'] ?? null) ? $o['homeLabel'] : 'Back') . '</a></header>' : '')
-            . '<main><h1>' . $e($title) . '</h1>' . $body . '</main>' . ($script !== '' ? '<script>' . $script . '</script>' : '') . '</body></html>';
+            . '<main><h1>' . $e($title) . (is_string($o['help'] ?? null) && $o['help'] !== '' ? ' ' . $o['help'] : '') . '</h1>' . $body . '</main>' . ($script !== '' ? '<script>' . $script . '</script>' : '') . '</body></html>';
     }
 
     private const CSS = <<<'CSS'
@@ -90,5 +102,5 @@ table{width:100%;border-collapse:collapse;font-size:14px}th{text-align:left;colo
 td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}.mono,code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
 .badge{display:inline-block;font-size:12px;padding:0 7px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
 .wrap{overflow-x:auto}
-CSS;
+CSS . Help::CSS;
 }

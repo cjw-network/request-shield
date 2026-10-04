@@ -10,6 +10,8 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield\Stats\Report;
 
+use CjwNetwork\RequestShield\Help;
+
 /**
  * "Visitors & pages" (proposal 0022, phase 1): one calm page -- six numbers,
  * each with its change against the period before, one chart (the number
@@ -29,7 +31,7 @@ final class VisitorsPage
             'tStopped' => 'Stopped', 'tMissing' => 'Not found', 'forms' => 'Forms', 'tForms' => 'Visitors\' forms', 'tBackend' => 'Editors (backend)',
             'from' => 'from', 'fromNone' => 'no page given', 'fromOther' => 'another website', 'fromSite' => 'this website (page not said)', 'fSaved' => 'saved', 'fErrors' => 'errors', 'fStopped' => 'stopped',
             'fCross' => 'from another website', 'fSent' => 'sent', 'fLive' => 'stopped: in the live view', 'crawlersAi' => 'Crawlers & AI', 'tSearch' => 'Search', 'tAi' => 'AI assistants', 'tTraining' => 'AI training',
-            'none' => 'Nothing in this period.', 'lastVisit' => 'last', 'linked' => 'linked from', 'people2' => 'people', 'crawlers2' => 'crawlers', 'bots2' => 'bots',
+            'none' => 'Nothing in this period: pick a longer one above, or come back after the next hour is counted.', 'lastVisit' => 'last', 'linked' => 'linked from', 'people2' => 'people', 'crawlers2' => 'crawlers', 'bots2' => 'bots',
             'refused' => 'refused', 'checked' => 'checked', 'throttled' => 'told to wait', 'verified' => 'verified visits', 'pathStarts' => 'path starts with', 'filter' => 'Filter',
             'clear' => 'all pages', 'subtree' => 'Subtree', 'viewsOf' => 'views',
         ],
@@ -39,7 +41,7 @@ final class VisitorsPage
             'tStopped' => 'Gestoppt', 'tMissing' => 'Nicht gefunden', 'forms' => 'Formulare', 'tForms' => 'Formulare der Besucher', 'tBackend' => 'Redaktion (Backend)',
             'from' => 'von', 'fromNone' => 'ohne Angabe', 'fromOther' => 'andere Website', 'fromSite' => 'diese Website (Seite ohne Angabe)', 'fSaved' => 'gespeichert', 'fErrors' => 'Fehler', 'fStopped' => 'gestoppt',
             'fCross' => 'von einer anderen Website', 'fSent' => 'gesendet', 'fLive' => 'gestoppt: in der Live-Ansicht', 'crawlersAi' => 'Crawler & KI', 'tSearch' => 'Suche', 'tAi' => 'KI-Assistenten', 'tTraining' => 'KI-Training',
-            'none' => 'Nichts in diesem Zeitraum.', 'lastVisit' => 'zuletzt', 'linked' => 'verlinkt von', 'people2' => 'Menschen', 'crawlers2' => 'Crawler', 'bots2' => 'Bots',
+            'none' => 'Nichts in diesem Zeitraum: oben einen längeren wählen, oder nach der nächsten gezählten Stunde wiederkommen.', 'lastVisit' => 'zuletzt', 'linked' => 'verlinkt von', 'people2' => 'Menschen', 'crawlers2' => 'Crawler', 'bots2' => 'Bots',
             'refused' => 'abgewiesen', 'checked' => 'geprüft', 'throttled' => 'gebremst', 'verified' => 'bestätigte Besuche', 'pathStarts' => 'Pfad beginnt mit', 'filter' => 'Filtern',
             'clear' => 'alle Seiten', 'subtree' => 'Unterbaum', 'viewsOf' => 'Aufrufe',
         ],
@@ -56,7 +58,7 @@ final class VisitorsPage
      *   forms?: array<string, array{sent: int, saved: int, error: int, refused: int, checked: int, throttled: int, cross-site: int, from: array<string, int>, stopped: int}>, backend?: array<string, array{sent: int, saved: int, error: int, refused: int, checked: int, throttled: int, cross-site: int, from: array<string, int>, stopped: int}>} $r StatsReport::build()
      * @param array<string, array<string, int>> $cur label => buckets of the period, every label (zeros too), in order
      * @param list<array<string, int>> $prev the period before, by position
-     * @param array{lang?: string, by?: string, action?: string, keep?: array<string, string|int>, link?: callable(string): string, clear?: string, path?: ?string, live?: (callable(string): string)|null} $o
+     * @param array{lang?: string, docs?: string, by?: string, action?: string, keep?: array<string, string|int>, link?: callable(string): string, clear?: string, path?: ?string, live?: (callable(string): string)|null} $o
      *   by: hour, day, week, month, year (the chart's labels); action, keep: the path filter's form; link: a section's subtree; clear: the address without the filter
      */
     public static function render(array $r, array $cur, array $prev, array $o = []): string
@@ -66,6 +68,9 @@ final class VisitorsPage
         $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $n = static fn (int $v): string => StatsReport::number($v, $lang);
         $by = (string) ($o['by'] ?? 'day');
+        // The cards' "?" into the docs (0031 F.9): where set docs-url says ("" with the links off).
+        $docs = $o['docs'] ?? Help::DOCS;
+        $help = static fn (string $anchor, string $id = 'RSF06-03'): string => Help::link($id, $anchor, $docs, $lang);
 
         // The numbers per point, now and before.
         $series = [];
@@ -132,14 +137,14 @@ final class VisitorsPage
                     . $e($n((int) $st['people']) . ' ' . $t['people2'] . ' · ' . $n((int) $st['crawlers']) . ' ' . $t['crawlers2'] . ' · ' . $n((int) $st['bots']) . ' ' . $t['bots2']) . '</p>';
             }
         }
-        $cards = self::card('vp-p', $t['pages'], $form, [$t['tPages'] => $pages, $t['tSections'] => $sections, $t['tStopped'] => $stopped, $t['tMissing'] => $missing], $t, $lang);
+        $cards = self::card('vp-p', $t['pages'], $form, [$t['tPages'] => $pages, $t['tSections'] => $sections, $t['tStopped'] => $stopped, $t['tMissing'] => $missing], $t, $lang, true, $help('the-statistics-page'));
 
         // Forms (proposal 0028): each with where it was sent from and how it ended; the editors' area apart.
         $forms = $r['forms'] ?? [];
         $backend = $r['backend'] ?? [];
         if ($forms !== [] || $backend !== []) {
             $live = $o['live'] ?? null;
-            $cards .= self::card('vp-f', $t['forms'], '', [$t['tForms'] => self::formRows($forms, true, $t, $lang, $live), $t['tBackend'] => self::formRows($backend, false, $t, $lang, $live)], $t, $lang);
+            $cards .= self::card('vp-f', $t['forms'], '', [$t['tForms'] => self::formRows($forms, true, $t, $lang, $live), $t['tBackend'] => self::formRows($backend, false, $t, $lang, $live)], $t, $lang, true, $help('forms-sent-from-where-how-they-ended'));
         }
 
         // Crawlers & AI: who reads the site for search engines and AI assistants (verified by address).
@@ -156,7 +161,7 @@ final class VisitorsPage
             usort($rows, static fn (array $a, array $b): int => $b[1] <=> $a[1]);
             $kinds[$k] = $rows;
         }
-        $cards .= self::card('vp-c', $t['crawlersAi'], '', [$t['tSearch'] => $kinds['search'], $t['tAi'] => $kinds['ai'], $t['tTraining'] => $kinds['training']], $t, $lang, false);
+        $cards .= self::card('vp-c', $t['crawlersAi'], '', [$t['tSearch'] => $kinds['search'], $t['tAi'] => $kinds['ai'], $t['tTraining'] => $kinds['training']], $t, $lang, false, $help('', 'RSF01-04'));
 
         // One under the other, each the full width: the pages' addresses (with their website) need room.
         return $h . $cards;
@@ -303,10 +308,10 @@ final class VisitorsPage
      * @param array<string, list<array{0: string, 1: int, 2: string, 3: ?string, 4?: string}>> $tabs title => rows (name, number, tooltip, link, a note shown under the name)
      * @param array<string, string> $t
      */
-    private static function card(string $id, string $title, string $top, array $tabs, array $t, string $lang, bool $code = true): string
+    private static function card(string $id, string $title, string $top, array $tabs, array $t, string $lang, bool $code = true, string $help = ''): string
     {
         $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-        $h = '<section class="card vtab"><h2>' . $e($title) . '</h2>';
+        $h = '<section class="card vtab"><h2>' . $e($title) . ($help !== '' ? ' ' . $help : '') . '</h2>';
         $i = 0;
         foreach ($tabs as $name => $_) {
             $h .= '<input type="radio" name="' . $id . '" id="' . $id . $i . '"' . ($i === 0 ? ' checked' : '') . '>';

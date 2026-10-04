@@ -596,7 +596,7 @@ return [
             same(7 * 6, substr_count($page, '<rect class="vcol"'), 'a point for each of the 7 days, the empty ones too');
             truthy(strpos($page, '<title>Sep 29: 3 (before: 2)</title>') !== false, 'a point\'s numbers, and the same day a week before, as its tooltip');
             truthy(strpos($page, '&lt;script&gt;x') !== false && strpos($page, '<script>x') === false, 'a path is never markup');
-            truthy(strpos($page, '<code>/.env</code>') !== false && strpos($page, '>Crawlers &amp; AI</h2>') !== false, 'the cards: pages (stopped) and crawlers & AI');
+            truthy(strpos($page, '<code>/.env</code>') !== false && strpos($page, '>Crawlers &amp; AI <a class="rs-help"') !== false, 'the cards: pages (stopped) and crawlers & AI');
             same(1, substr_count($page, '<script>'), 'one script: the refresh, which keeps the picked tabs');
             truthy(strpos($page, "querySelectorAll('input[type=radio]:checked')") !== false, 'the refresh keeps what was picked');
             // A range, this month, last month.

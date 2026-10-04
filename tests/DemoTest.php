@@ -432,6 +432,7 @@ $widget = function (string $prefix): void {
             same(200, $r['status']);
             $task = json_decode($r['body'], true);
             same([false, 'rss', 'Browser geprüft'], [$task['passed'], $task['field'], $task['texts']['checked']]);
+            same(['url' => \CjwNetwork\RequestShield\Help::DOCS . '/explained/browser-check.md', 'text' => 'Was ist diese Prüfung?'], $task['about'] ?? null, 'the box\'s "?": the check in plain words, in the visitor\'s language');
             truthy(strpos(implode("\n", $r['headers']), 'Cache-Control: no-store') !== false, 'never cached');
             [$payload] = solveInNode($task['challenge']);
             // The form with the answer -- and a file: straight through

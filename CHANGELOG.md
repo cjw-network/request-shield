@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Every page explains itself** (0031 step F.9, part 2): each page of the
+  dashboard -- rules & setup, live, lists, the login, the statistics' views
+  and cards -- has a `?` after its title and on every section, to the place in
+  the docs that explains it (`tests/UiHelpTest.php` follows every link to its
+  heading). A part with nothing to show says how it gets something ("a row
+  appears as soon as the shield refuses …", "pick a longer period …"). The
+  check page and the box in a form link visitors to the check in plain words
+  (the text `about`: "What is this check?"). A mistake on the command line
+  ends with where it is explained: the feature of the rule file's line, or
+  the settings page.
 - **The pages can explain themselves** (0031 step F.9, part 1): `Help` renders
   a feature's sentence (English, German) and its `?` link to the feature's
   page from `Vocabulary::TOPICS`; `set docs-url` says where the docs are (the

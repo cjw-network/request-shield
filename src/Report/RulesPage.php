@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield\Report;
 
+use CjwNetwork\RequestShield\Help;
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Store\Store;
 
@@ -49,7 +50,8 @@ final class RulesPage
             $h .= '<header class="bar"><div><a class="name" href="' . $e($o['home']) . '">← ' . $e($o['homeLabel'] ?? 'Back') . '</a></div></header>';
         }
         $h .= '<main>';
-        $h .= '<h1>' . $e($title) . '</h1><p class="lead">How this site is protected, in plain words — and what happens to any address you try.</p>';
+        $help = Help::link('RSF06-01', '', $s->docsUrl);
+        $h .= '<h1>' . $e($title) . ($help !== '' ? ' ' . $help : '') . '</h1><p class="lead">How this site is protected, in plain words — and what happens to any address you try.</p>';
         $versions = $s->origins['versions'] ?? [];
         if ($versions !== []) {
             $h .= '<p class="note">Rule sets: ' . implode(' · ', array_map(static fn (string $n, string $v): string => '<code>' . htmlspecialchars("$n $v", ENT_QUOTES) . '</code>', array_keys($versions), $versions)) . '</p>';
@@ -74,7 +76,7 @@ final class RulesPage
 
         // ── Try an address ───────────────────────────────────────────────────
         $action = $o['action'] ?? '';
-        $h .= '<section class="card" id="check"><h2>Try an address</h2><form method="get" action="' . $e($action) . '" class="try">'
+        $h .= '<section class="card" id="check">' . Frame::h2('Try an address', $s, 'RSF06-01', 'the-rule-tester', 'en') . '<form method="get" action="' . $e($action) . '" class="try">'
             . '<select name="method" aria-label="Kind of request">';
         foreach (array_unique(array_merge(['GET', 'POST'], $s->methods)) as $m) {
             $h .= '<option' . ($m === $method ? ' selected' : '') . '>' . $e($m) . '</option>';
@@ -100,7 +102,7 @@ final class RulesPage
         $h .= '</section>';
 
         // ── The rules ───────────────────────────────────────────────────────
-        $h .= '<h2>The rules</h2><p class="note">Each with its ID, where it is written and, from the log, how often it decided in the last 24 hours. The text is the comment after the rule in the rule file.</p>';
+        $h .= Frame::h2('The rules', $s, 'RSF06-01', 'the-rules', 'en') . '<p class="note">Each with its ID, where it is written and, from the log, how often it decided in the last 24 hours. The text is the comment after the rule in the rule file.</p>';
         // The counters of the last 7 days, from the plugins that keep them (RuleCounts, 0031 B.8).
         $counted = Counts::crawlers($s, 7, (float) $now);
         foreach (self::groups($s, $stats['claims'], $counted) as [$heading, $intro, $rows]) {
@@ -126,11 +128,11 @@ final class RulesPage
         }
 
         // ── Lately ──────────────────────────────────────────────────────────
-        $h .= '<h2>Lately</h2><section class="card" id="lately" data-live>';
+        $h .= Frame::h2('Lately', $s, 'RSF05-05', '', 'en') . '<section class="card" id="lately" data-live>';
         if ($s->logFile === null) {
             $h .= '<p class="intro">No log: <code>set log /path/shield.log</code> in the rule file shows here what was refused or checked.</p>';
         } elseif ($stats['recent'] === []) {
-            $h .= '<p class="intro">Nothing refused or checked in the last 24 hours.</p>';
+            $h .= '<p class="intro">Nothing refused or checked in the last 24 hours. A row appears as soon as the shield refuses or checks a request, such as a scanner asking for /.env.</p>';
         } else {
             $h .= '<table class="recent"><tr><th>When</th><th>Visitor</th><th>What happened</th><th>Address</th></tr>';
             foreach ($stats['recent'] as $r) {
@@ -546,7 +548,7 @@ ol.steps{list-style:none;margin:0;padding:0}ol.steps li{display:flex;gap:.7rem;p
 .diagram{overflow-x:auto;margin:.8rem 0}.diagram svg{min-width:40rem;max-width:100%;height:auto}details.explain{margin-top:.8rem;border-top:1px solid var(--line);padding-top:.6rem}details.explain summary{cursor:pointer;font-weight:600;color:var(--accent)}details.explain ol{padding-left:1.3rem}
 table.recent .icon{width:1.3rem;height:1.3rem;display:inline-flex;font-size:.75rem}
 @media (max-width:40rem){td.meta,td.hits{white-space:normal}table.recent th:nth-child(2),table.recent td:nth-child(2){display:none}}
-CSS;
+CSS . Help::CSS;
 
     /** Refreshes the summary, the counts and the latest activity every 10 seconds. */
     private const SCRIPT = <<<'JS'

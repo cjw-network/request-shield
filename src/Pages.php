@@ -28,7 +28,7 @@ interface Pages
     /** The refusal page: ctx status, decision, reason, retryAfter, texts (the visitor's language), lang, home, request. */
     public const ERROR = 'error';
 
-    /** The browser check: ctx challenge (the task), field (the solution cookie's name), secure, texts, lang, resend, home, logo. */
+    /** The browser check: ctx challenge (the task), field (the solution cookie's name), secure, texts, lang, resend, home, logo, about (the check in plain words, for visitors: a URL, or null with set docs-url off). */
     public const CHALLENGE = 'challenge';
 
     /** The dashboard's login form: ctx status, message, action, lang, texts, home, homeLabel, title. */

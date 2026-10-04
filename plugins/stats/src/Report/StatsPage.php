@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace CjwNetwork\RequestShield\Stats\Report;
 
 use CjwNetwork\RequestShield\Access;
+use CjwNetwork\RequestShield\Help;
 use CjwNetwork\RequestShield\Report\SetupPage;
 use CjwNetwork\RequestShield\Routes;
 use CjwNetwork\RequestShield\Settings;
@@ -50,11 +51,11 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
             'requests' => 'Requests', 'people' => 'People', 'crawlers' => 'Crawlers', 'bots' => 'Bots', 'checked' => 'Checked', 'refused' => 'Refused',
             'notFound' => 'Not found', 'through' => 'Let through', 'throttled' => 'Told to wait', 'who' => 'Who came', 'what' => 'What the shield did',
             'answers' => 'Answers', 'short' => 'In short', 'known' => 'Known crawlers', 'missing' => 'Pages not found', 'linked' => 'linked from',
-            'rules' => 'Rules that decided most', 'botfam' => 'Other bots', 'nothing' => 'Nothing yet.', 'claimed' => 'only claimed',
+            'rules' => 'Rules that decided most', 'botfam' => 'Other bots', 'nothing' => 'Nothing yet: the numbers come as requests arrive, counted per hour.', 'claimed' => 'only claimed',
             'allowed' => 'let through', 'last' => 'last visit', 'updated' => 'Updated', 'refresh' => 'refreshes every minute', 'hours48' => 'last 48 hours',
             'all' => 'all crawlers', 'kind.search' => 'search', 'kind.ai-search' => 'AI search', 'kind.ai-user' => 'AI, for a person', 'kind.ai-training' => 'AI training',
-            'noStats' => 'No statistics: switch them on with "set stats on" in the rule file.', 'sitemaps' => 'Sitemaps', 'noMaps' => 'No sitemap was asked for.',
-            'noReader' => 'not read by a verified crawler', 'times' => '×', 'top' => 'Most visited pages', 'noPages' => 'No page views counted yet (set stats … pages).', 'sections' => 'Most visited sections', 'topBlocked' => 'Pages the shield stopped most', 'sectionsBlocked' => 'Sections the shield stopped most', 'noBlocked' => 'The shield stopped no page in this period.', 'sortBy' => 'sorted by', 'blocked' => 'stopped', 'byViews' => 'views', 'byBlocked' => 'stopped (all)',
+            'noStats' => 'No statistics: switch them on with "set stats on" in the rule file.', 'sitemaps' => 'Sitemaps', 'noMaps' => 'No sitemap was asked for: search engines ask for one once robots.txt names it (Sitemap: https://…/sitemap.xml).',
+            'noReader' => 'not read by a verified crawler', 'times' => '×', 'top' => 'Most visited pages', 'noPages' => 'No page views counted yet: with set stats on, each page a person, a crawler or a bot reads is counted (an answer with 200 and HTML).', 'sections' => 'Most visited sections', 'topBlocked' => 'Pages the shield stopped most', 'sectionsBlocked' => 'Sections the shield stopped most', 'noBlocked' => 'The shield stopped no page in this period.', 'sortBy' => 'sorted by', 'blocked' => 'stopped', 'byViews' => 'views', 'byBlocked' => 'stopped (all)',
             'tabAll' => 'Overview', 'tabSite' => 'Visitors & pages', 'tabShield' => 'Protection', 'tabRules' => 'Rules & setup', 'ruleDetails' => 'all rules and settings', 'builtIn' => 'the fixed checks: kind of request, sizes, disguised addresses', 'filter' => 'Filter', 'pathStarts' => 'path starts with', 'subtree' => 'Subtree', 'views' => 'views', 'exact' => 'exact', 'approx' => 'the sum of its most visited pages', 'clear' => 'all pages', 'per' => 'per', 'hour' => 'hour', 'day' => 'day', 'week' => 'week', 'month' => 'month', 'year' => 'year',
         ],
         'de' => [
@@ -74,11 +75,11 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
             'requests' => 'Anfragen', 'people' => 'Menschen', 'crawlers' => 'Crawler', 'bots' => 'Bots', 'checked' => 'Geprüft', 'refused' => 'Abgewiesen',
             'notFound' => 'Nicht gefunden', 'through' => 'Durchgelassen', 'throttled' => 'Gebremst', 'who' => 'Wer kam', 'what' => 'Was der Schutz tat',
             'answers' => 'Antworten', 'short' => 'Kurz gesagt', 'known' => 'Bekannte Crawler', 'missing' => 'Nicht gefundene Seiten', 'linked' => 'verlinkt von',
-            'rules' => 'Regeln, die am meisten entschieden', 'botfam' => 'Andere Bots', 'nothing' => 'Noch nichts.', 'claimed' => 'nur behauptet',
+            'rules' => 'Regeln, die am meisten entschieden', 'botfam' => 'Andere Bots', 'nothing' => 'Noch nichts: Die Zahlen kommen mit den Anfragen, gezählt pro Stunde.', 'claimed' => 'nur behauptet',
             'allowed' => 'durchgelassen', 'last' => 'zuletzt', 'updated' => 'Stand', 'refresh' => 'aktualisiert sich jede Minute', 'hours48' => 'letzte 48 Stunden',
             'all' => 'alle Crawler', 'kind.search' => 'Suche', 'kind.ai-search' => 'KI-Suche', 'kind.ai-user' => 'KI, für eine Person', 'kind.ai-training' => 'KI-Training',
-            'noStats' => 'Keine Statistik: mit "set stats on" in der Regeldatei einschalten.', 'sitemaps' => 'Sitemaps', 'noMaps' => 'Keine Sitemap wurde abgefragt.',
-            'noReader' => 'von keinem bestätigten Crawler gelesen', 'times' => '×', 'top' => 'Meistbesuchte Seiten', 'noPages' => 'Noch keine Seitenaufrufe gezählt (set stats … pages).', 'sections' => 'Meistbesuchte Bereiche', 'topBlocked' => 'Am häufigsten blockierte Seiten', 'sectionsBlocked' => 'Am häufigsten blockierte Bereiche', 'noBlocked' => 'Der Schutz hat in diesem Zeitraum keine Seite blockiert.', 'sortBy' => 'sortiert nach', 'blocked' => 'blockiert', 'byViews' => 'Aufrufe', 'byBlocked' => 'blockiert (alle)',
+            'noStats' => 'Keine Statistik: mit "set stats on" in der Regeldatei einschalten.', 'sitemaps' => 'Sitemaps', 'noMaps' => 'Keine Sitemap wurde abgefragt: Suchmaschinen fragen danach, sobald robots.txt sie nennt (Sitemap: https://…/sitemap.xml).',
+            'noReader' => 'von keinem bestätigten Crawler gelesen', 'times' => '×', 'top' => 'Meistbesuchte Seiten', 'noPages' => 'Noch keine Seitenaufrufe gezählt: Mit set stats on zählt jede Seite, die ein Mensch, ein Crawler oder ein Bot liest (eine Antwort mit 200 und HTML).', 'sections' => 'Meistbesuchte Bereiche', 'topBlocked' => 'Am häufigsten blockierte Seiten', 'sectionsBlocked' => 'Am häufigsten blockierte Bereiche', 'noBlocked' => 'Der Schutz hat in diesem Zeitraum keine Seite blockiert.', 'sortBy' => 'sortiert nach', 'blocked' => 'blockiert', 'byViews' => 'Aufrufe', 'byBlocked' => 'blockiert (alle)',
             'tabAll' => 'Übersicht', 'tabSite' => 'Besucher & Seiten', 'tabShield' => 'Schutz', 'tabRules' => 'Regeln & Aufbau', 'ruleDetails' => 'alle Regeln und Einstellungen', 'builtIn' => 'die festen Prüfungen: Art der Anfrage, Größen, getarnte Adressen', 'filter' => 'Filtern', 'pathStarts' => 'Pfad beginnt mit', 'subtree' => 'Unterbaum', 'views' => 'Aufrufe', 'exact' => 'genau', 'approx' => 'Summe seiner meistbesuchten Seiten', 'clear' => 'alle Seiten', 'per' => 'pro', 'hour' => 'Stunde', 'day' => 'Tag', 'week' => 'Woche', 'month' => 'Monat', 'year' => 'Jahr',
         ],
     ];
@@ -105,6 +106,12 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         $t = self::T[$lang];
         $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $n = static fn (int $v): string => StatsReport::number($v, $lang);
+        // Each section's "?" into the docs (0031 F.9), the title's to the page as a whole.
+        $help = static function (string $anchor, string $id = 'RSF06-03') use ($s, $lang): string {
+            $link = Help::link($id, $anchor, $s->docsUrl, $lang);
+            return $link !== '' ? ' ' . $link : '';
+        };
+        $o['help'] = Help::link('RSF06-03', 'the-statistics-page', $s->docsUrl, $lang);
         $days = max(1, min(3660, $o['days'] ?? 7));
         $now = $o['now'] ?? time();
         // A range instead of the last days: from and to (YYYY-MM-DD), at most ten years.
@@ -289,9 +296,9 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
             'notFound' => $tile('notFound', self::sum($src, 'notFound'), 'nf', self::curve($hours, 'notFound')),
         ];
         $per = ' <small>' . $e($t['per'] . ' ' . $t[$by === 'hour' ? 'hour' : $by]) . '</small>';
-        $chartWho = '<section class="card"><h2>' . $e($t['who']) . $per . '</h2>'
+        $chartWho = '<section class="card"><h2>' . $e($t['who']) . $per . $help('what-is-counted-how') . '</h2>'
             . self::stacked($src, ['people' => [$t['people'], 'people'], 'crawlers' => [$t['crawlers'], 'crawlers'], 'bots' => [$t['bots'], 'bots']], $lang) . '</section>';
-        $chartWhat = '<section class="card"><h2>' . $e($t['what']) . $per . '</h2>'
+        $chartWhat = '<section class="card"><h2>' . $e($t['what']) . $per . $help('what-is-counted-how') . '</h2>'
             . self::stacked(array_map(static fn (array $b): array => ['through' => self::sum([$b], 'passed') + self::sum([$b], 'uncached'), 'checked' => self::sum([$b], 'checked'), 'throttled' => self::sum([$b], 'throttled'), 'refused' => self::sum([$b], 'refused')], $src),
                 ['through' => [$t['through'], 'through'], 'checked' => [$t['checked'], 'checked'], 'throttled' => [$t['throttled'], 'throttled'], 'refused' => [$t['refused'], 'refused']], $lang)
             . '</section>';
@@ -303,10 +310,10 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
             $groups[$g] = ($groups[$g] ?? 0) + $count;
         }
         ksort($groups);
-        $answers = '<section class="card"><h2>' . $e($t['answers']) . '</h2>' . ($r['statuses'] === [] ? '<p class="note">' . $e($t['nothing']) . '</p>'
+        $answers = '<section class="card"><h2>' . $e($t['answers']) . $help('what-is-counted-how') . '</h2>' . ($r['statuses'] === [] ? '<p class="note">' . $e($t['nothing']) . '</p>'
             : '<div class="donut">' . self::donut($groups, $lang) . '<ul class="legend">' . implode('', array_map(static fn ($code, int $c): string => '<li><span class="dot s' . $e(substr((string) $code, 0, 1)) . '"></span><b>' . $e((string) $code) . '</b> ' . $e($n($c)) . '</li>',
                 array_keys($r['statuses']), $r['statuses'])) . '</ul></div>') . '</section>';
-        $short = '<section class="card"><h2>' . $e($t['short']) . '</h2>' . ($r['sentences'] === [] ? '<p class="note">' . $e($t['nothing']) . '</p>'
+        $short = '<section class="card"><h2>' . $e($t['short']) . $help('what-it-does') . '</h2>' . ($r['sentences'] === [] ? '<p class="note">' . $e($t['nothing']) . '</p>'
             : '<ul class="short"><li>' . implode('</li><li>', array_map($e, $r['sentences'])) . '</li></ul>') . '</section>';
         $body = $h;
         $h = '';
@@ -320,7 +327,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         $link = static fn (string $p): string => $query($keep + ['path' => $p] + $sorted);
         $h = '';
         $views = $sort === 'views';
-        $h .= '<section class="card"><h2>' . $e($t[$views ? 'top' : 'topBlocked']) . '</h2><form class="filter" method="get" action="' . $e($action) . '">';
+        $h .= '<section class="card"><h2>' . $e($t[$views ? 'top' : 'topBlocked']) . $help('the-statistics-page') . '</h2><form class="filter" method="get" action="' . $e($action) . '">';
         foreach ($keep as $k => $v) {
             $h .= '<input type="hidden" name="' . $e((string) $k) . '" value="' . $e((string) $v) . '">';
         }
@@ -337,7 +344,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         }
         $h .= $r['pages'] === [] ? '<p class="note">' . $e($t[$views ? 'noPages' : 'noBlocked']) . '</p>' : self::rows($r['pages'], null, $t, $lang, $views);
         if ($r['folders'] !== []) {
-            $h .= '<h2 class="sub2">' . $e($t[$views ? 'sections' : 'sectionsBlocked']) . '</h2>' . self::rows($r['folders'], $link, $t, $lang, $views);
+            $h .= '<h2 class="sub2">' . $e($t[$views ? 'sections' : 'sectionsBlocked']) . $help('the-statistics-page') . '</h2>' . self::rows($r['folders'], $link, $t, $lang, $views);
         }
         $h .= '<p class="legend inline">' . ($views ? '<span class="dot people"></span>' . $e($t['people']) . ' <span class="dot crawlers"></span>' . $e($t['crawlers']) . ' <span class="dot bots"></span>' . $e($t['bots'])
             : '<span class="dot refused"></span>' . $e($t['refused']) . ' <span class="dot checked"></span>' . $e($t['checked']) . ' <span class="dot throttled"></span>' . $e($t['throttled'])) . '</p></section>';
@@ -348,7 +355,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         $seen = array_filter($r['crawlers'], static fn (array $c): bool => $c['seen'] > 0);
         uasort($seen, static fn (array $a, array $b): int => $b['seen'] <=> $a['seen']);
         $max = max(1, ...array_map(static fn (array $c): int => $c['seen'], array_values($seen) ?: [['seen' => 1]]));
-        $h .= '<section class="card"><h2>' . $e($t['known']) . '</h2>';
+        $h .= '<section class="card"><h2>' . $e($t['known']) . $help('', 'RSF01-04') . '</h2>';
         if ($seen === []) {
             $h .= '<p class="note">' . $e($t['nothing']) . '</p>';
         }
@@ -368,7 +375,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         $crawlersBlock = $h;
         $h = '';
         // Sitemaps: which exist (the answers), who read each, when last.
-        $h .= '<section class="card"><h2>' . $e($t['sitemaps']) . '</h2>';
+        $h .= '<section class="card"><h2>' . $e($t['sitemaps']) . $help('what-it-does') . '</h2>';
         if ($r['sitemaps'] === []) {
             $h .= '<p class="note">' . $e($t['noMaps']) . '</p>';
         } else {
@@ -412,11 +419,11 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         foreach ($r['bots'] as $family => $c) {
             $bots[] = [$e((string) $family), $c];
         }
-        $missingBlock = '<section class="card"><h2>' . $e($t['missing']) . '</h2>' . self::bars($missing, $lang, $t['nothing']) . '</section>';
-        $rulesBlock = $who !== '*' ? '<section class="card"><h2>' . $e($t['botfam']) . '</h2>' . self::bars($bots, $lang, $t['nothing']) . '</section>'
-            : '<section class="card"><h2>' . $e($t['rules']) . '</h2>' . self::bars($rules, $lang, $t['nothing'])
+        $missingBlock = '<section class="card"><h2>' . $e($t['missing']) . $help('what-it-does') . '</h2>' . self::bars($missing, $lang, $t['nothing']) . '</section>';
+        $rulesBlock = $who !== '*' ? '<section class="card"><h2>' . $e($t['botfam']) . $help('what-is-counted-how') . '</h2>' . self::bars($bots, $lang, $t['nothing']) . '</section>'
+            : '<section class="card"><h2>' . $e($t['rules']) . $help('', 'RSF05-05') . '</h2>' . self::bars($rules, $lang, $t['nothing'])
             . ($setup !== null ? '<p class="note"><a href="' . $e($links !== [] ? $setup . '?' . http_build_query(['days' => $days, 'lang' => $lang]) : $query(['view' => 'rules', 'days' => $days, 'lang' => $lang])) . '">' . $e($t['ruleDetails']) . ' →</a></p>' : '')
-            . '<h2>' . $e($t['botfam']) . '</h2>' . self::bars($bots, $lang, $t['nothing']) . '</section>';
+            . '<h2>' . $e($t['botfam']) . $help('what-is-counted-how') . '</h2>' . self::bars($bots, $lang, $t['nothing']) . '</section>';
         // Two views: the site's (for editors: visitors, pages, links, crawlers,
         // sitemaps) and the shield's (for admins: what it did, answers, rules, bots).
         $grid = static fn (string ...$cards): string => '<div class="grid2">' . implode('', $cards) . '</div>';
@@ -442,7 +449,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
                 $soon = $m === null ? $soon : (int) $soon + $m;
             }
             $h = $body . ($soon !== null ? '<p class="vnowl"><span class="dot crawlers"></span> ' . $e(sprintf($t['nowPeople'], $n($soon))) . '</p>' : '')
-                . VisitorsPage::render($r, $cur, $prev, ['lang' => $lang, 'by' => $by, 'action' => $action, 'keep' => $keep, 'link' => $link, 'clear' => $query($keep + $sorted), 'path' => $filter,
+                . VisitorsPage::render($r, $cur, $prev, ['lang' => $lang, 'docs' => $s->docsUrl, 'by' => $by, 'action' => $action, 'keep' => $keep, 'link' => $link, 'clear' => $query($keep + $sorted), 'path' => $filter,
                     // A form's stops, in the live view (the admin's only): its address, its website when several are read together.
                     'live' => isset($links['live']) ? static function (string $p) use ($links): string {
                         $slash = strpos($p, '/');
@@ -482,7 +489,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         $ctx = [$t, $lang, $most, $from, $to, $by];
         // Short headings, each explained on hover: the table fits, the curve at the end stays in view.
         $th = static fn (string $short, string $tip, string $class = 'n'): string => '<th class="' . $class . '" title="' . $e($tip) . '">' . $e($short) . '</th>';
-        $h = '<section class="card"><h2>' . $e($t['tabSites']) . ' <small>' . $e($t['sitesIntro']) . '</small></h2><div class="wrap"><table class="sites"><thead><tr>'
+        $h = '<section class="card"><h2>' . $e($t['tabSites']) . ' <small>' . $e($t['sitesIntro']) . '</small>' . (($l = Help::link('RSF06-03', 'all-websites-at-a-glance-rsstatssites', $s->docsUrl, $lang)) !== '' ? ' ' . $l : '') . '</h2><div class="wrap"><table class="sites"><thead><tr>'
             . $th($t['website'], $t['websiteTip'], 'sname') . $th($t['hViews'], $t['viewsTip'], 'snum') . $th('±', $t['changeTip']) . $th($t['hPeople'], $t['peopleTip'])
             . $th($t['hSearch'], $t['searchTip']) . $th($t['hAi'], $t['aiTip']) . $th($t['hBots'], $t['botsTip']) . $th($t['hStopped'], $t['stoppedTip']) . $th('404', $t['notFoundTip'])
             . $th($t['hCurve'], $t['curveTip'], 'scurve') . '</tr></thead><tbody>';
@@ -771,9 +778,9 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
     {
         $refresh = is_string($o['refresh'] ?? null) ? $o['refresh'] : '';
         return '<!doctype html><html lang="' . $e($lang) . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-            . '<meta name="robots" content="noindex,nofollow"><title>' . $e($title) . '</title><style>' . self::CSS . VisitorsPage::css() . '</style></head><body>'
+            . '<meta name="robots" content="noindex,nofollow"><title>' . $e($title) . '</title><style>' . self::CSS . VisitorsPage::css() . Help::CSS . '</style></head><body>'
             . (isset($o['home']) && is_string($o['home']) ? '<header><a href="' . $e($o['home']) . '">← ' . $e(is_string($o['homeLabel'] ?? null) ? $o['homeLabel'] : 'Back') . '</a></header>' : '')
-            . '<main><h1>' . $e($title) . '</h1><div id="stats"' . ($refresh !== '' ? ' data-refresh="' . $e($refresh) . '"' : '') . '>' . $body . '</div></main>'
+            . '<main><h1>' . $e($title) . (is_string($o['help'] ?? null) && $o['help'] !== '' ? ' ' . $o['help'] : '') . '</h1><div id="stats"' . ($refresh !== '' ? ' data-refresh="' . $e($refresh) . '"' : '') . '>' . $body . '</div></main>'
             . '<script>' . self::SCRIPT . '</script></body></html>';
     }
 

@@ -86,6 +86,15 @@ final class Widget
         .then(function (j) {
           if (!j) { finish('failed', texts.failed); return; }
           texts = j.texts || texts;
+          // The "?" next to the box, not in it: the box is a live region, read out on every change.
+          var next = box.nextSibling;
+          if (j.about && j.about.url && !(next && next.className === 'rs-about')) {
+            var a = document.createElement('a');
+            a.className = 'rs-about'; a.href = j.about.url; a.target = '_blank'; a.rel = 'noopener';
+            a.textContent = '?'; a.title = j.about.text || ''; a.setAttribute('aria-label', j.about.text || '?');
+            a.style.marginLeft = '.4em';
+            box.parentNode.insertBefore(a, box.nextSibling);
+          }
           if (j.passed) {
             // The pass holds until then: send before, or fetch a task first.
             expires = j.until ? +j.until * 1000 : 0;

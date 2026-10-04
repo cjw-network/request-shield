@@ -29,8 +29,9 @@ final class ChallengePage
      *   a form that was sent without a pass: its fields, to send it again after the check;
      *   false when it cannot be (files, too large): the visitor is asked to send it again
      * @param string|null $logo the site's logo for the ring's middle (ChallengeLogo, checked when the settings were read); null: a plain shield
+     * @param string|null $about where the check is explained for visitors (Help::explained(): set docs-url); null: no link
      */
-    public static function render(array $challenge, string $cookieName, bool $secure, array $texts = [], $resend = null, ?string $home = null, ?string $logo = null): string
+    public static function render(array $challenge, string $cookieName, bool $secure, array $texts = [], $resend = null, ?string $home = null, ?string $logo = null, ?string $about = null): string
     {
         $t = $texts + \CjwNetwork\RequestShield\Texts::all('en');
         if ($resend !== null) {
@@ -61,6 +62,7 @@ final class ChallengePage
             . '<noscript><p><strong>' . $e($t['noscript']) . '</strong></p></noscript>'
             . self::resendForm($resend, $t, $e)
             . ($home !== null ? '<p class="home"><a href="' . $e($home) . '">' . $e($t['home']) . '</a></p>' : '')
+            . ($about !== null ? '<p class="home"><a href="' . $e($about) . '" target="_blank" rel="noopener">' . $e($t['about']) . '</a></p>' : '')
             . '</main>'
             . '<script>var RS=' . $config . ';' . self::SCRIPT . '</script></body></html>';
     }

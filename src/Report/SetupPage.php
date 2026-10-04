@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield\Report;
 
+use CjwNetwork\RequestShield\Help;
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Store\ApcuStore;
 use CjwNetwork\RequestShield\Store\Store;
@@ -202,7 +203,7 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
         } else {
             $after[] = $t['x.statsOff'];
         }
-        $h .= '<section class="card" id="way"><h2>' . $e($t['way']) . '</h2><p class="note">' . $e($t['wayIntro']) . '</p>'
+        $h .= '<section class="card" id="way">' . Frame::h2($t['way'], $s, 'RSF06-01', 'the-way-of-a-request', $lang) . '<p class="note">' . $e($t['wayIntro']) . '</p>'
             . '<div class="diagram">' . Diagram::setup(array_map(static fn (array $st): array => ['label' => $st[4], 'name' => $st[5], 'on' => $st[1], 'what' => $st[3], 'stops' => $st[2] !== $t['a.pass'], 'feeds' => $st[0] === 'crawlers' && $so['enabled']], $steps),
                 ['request' => $t['x.request'], 'before' => $t['x.before'], 'site' => $t['x.site'], 'siteSub' => $t['x.siteSub'], 'answer' => $t['x.answer'], 'answerSub' => $t['x.answerSub'],
                 'after' => $t['x.after'], 'lines' => $after, 'feeds' => $t['x.feeds']]) . '</div><ol class="way">';
@@ -216,7 +217,7 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
         $h .= '</ol></section>';
 
         // ── The rules, as the rule files hold them ───────────────────────────
-        $h .= '<section class="card" id="rules"><h2>' . $e($t['rules']) . '</h2><p class="note">' . $e($t['rulesIntro']) . '</p>';
+        $h .= '<section class="card" id="rules">' . Frame::h2($t['rules'], $s, 'RSF06-01', 'the-rules', $lang) . '<p class="note">' . $e($t['rulesIntro']) . '</p>';
         $files = [];
         foreach (RulesPage::groups($s, [], null, $lang) as [$topic, , $rows]) {
             foreach ($rows as $r) {
@@ -335,7 +336,7 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
             $versions[] = "$name $v";
         }
         $groups['files'] = [$t['files'] => $list($files), $t['versions'] => $list($versions)];
-        $h .= '<section class="card" id="settings"><h2>' . $e($t['settings']) . '</h2><p class="note">' . $e($t['settingsIntro']) . '</p>';
+        $h .= '<section class="card" id="settings">' . Frame::h2($t['settings'], $s, 'RSF06-01', 'the-technical-settings', $lang) . '<p class="note">' . $e($t['settingsIntro']) . '</p>';
         foreach ($groups as $g => $rows) {
             // One group under the other: a name and its value per line, room for long paths.
             $h .= '<h3 class="rgroup">' . $e($t['g.' . $g]) . '</h3><table class="settings">';
@@ -387,7 +388,7 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
         $method = is_string($check['method'] ?? null) && preg_match('/^[A-Za-z]{1,10}$/', $check['method']) ? strtoupper($check['method']) : 'GET';
         $ip = is_string($check['ip'] ?? null) && @inet_pton(trim($check['ip'])) !== false ? trim($check['ip']) : ($o['ip'] ?? '198.51.100.7');
         $ua = is_string($check['ua'] ?? null) ? trim(substr($check['ua'], 0, 512)) : '';
-        $h = '<section class="card" id="try"><h2>' . $e($t['try']) . '</h2><p class="note">' . $e($t['tryIntro']) . '</p>'
+        $h = '<section class="card" id="try">' . Frame::h2($t['try'], $s, 'RSF06-01', 'the-rule-tester', $lang) . '<p class="note">' . $e($t['tryIntro']) . '</p>'
             . '<form class="filter try" method="get" action="' . $e($o['action'] ?? '') . '#try">';
         foreach ($o['keep'] ?? [] as $k => $v) {
             $h .= '<input type="hidden" name="' . $e((string) $k) . '" value="' . $e((string) $v) . '">';
@@ -506,7 +507,7 @@ final class SetupPage implements \CjwNetwork\RequestShield\RoutePage
             . '<p class="foot">' . htmlspecialchars(($lang === 'de' ? 'Stand ' : 'As of ') . date($lang === 'de' ? 'd.m.Y H:i:s' : 'Y-m-d H:i:s', (int) $now), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>';
         $label = is_string($ctx['homeLabel'] ?? null) ? $ctx['homeLabel'] : '';
         return \CjwNetwork\RequestShield\Response::html(200, Frame::page(($lang === 'de' ? 'Regeln & Einrichtung — ' : 'Rules & setup — ') . $label, $lang, $h,
-            ['home' => is_string($ctx['home'] ?? null) ? $ctx['home'] : '/', 'homeLabel' => $label], self::CSS));
+            ['home' => is_string($ctx['home'] ?? null) ? $ctx['home'] : '/', 'homeLabel' => $label, 'help' => Help::link('RSF06-01', '', $s->docsUrl, $lang)], self::CSS));
     }
 
     /** The page's own styling, on top of the frame's: cards, notes, the tester, tables. */

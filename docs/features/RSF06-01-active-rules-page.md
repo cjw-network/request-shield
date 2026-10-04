@@ -39,6 +39,55 @@ $ php bin/request-shield trace site.rules "POST https://www.example.org/page/abo
 This visitor gets "not allowed here" (405) …. Decided by site.rules:22.
 ```
 
+## Rules & setup in the dashboard
+
+The dashboard serves the same as its page **Rules & setup**
+(`/rs/waf/rules`), in four parts. Each part's heading has a `?` that opens
+its section here.
+
+### The rule tester
+
+An address (a full URL or a path), the kind of request, the visitor's IP and,
+if wanted, a User-Agent. Every step says what it makes of it, a diagram shows
+where the request ends, and the rule that decides links to its row. Nothing
+is counted: the pace shows the visitor's real counters.
+
+### The way of a request
+
+The checks in the order the shield runs them, each coloured when it is on
+and grey when it is off, each with what it answers and how it is switched.
+After them: what the log and the statistics write, and when.
+
+### The rules
+
+Every rule as the rule files hold it, one part per file: its ID, what it does
+(the comment after it), how it is written, its line, and how often it
+decided in the period shown. `/rs/waf/rules#rule-SITE-ADMIN` opens a rule's
+row.
+
+### The technical settings
+
+Everything the shield runs with, as compiled from the rule files: mode,
+proxies, limits, store, browser check (the secret only as "set" or "not
+set"), log, lists, feeds.
+
+### Help on every page
+
+Every page of the dashboard says in one sentence what it shows, and every
+section has a `?` that opens its place in these docs, with the feature's id
+in its title. A part with nothing to show yet says how it gets something.
+The links go where `set docs-url` says:
+
+```text
+set docs-url https://docs.example.org/request-shield   # a copy of your own
+set docs-url off                                       # no links; the sentences stay
+```
+
+The default is the repository's docs. The check page and the box inside a
+form link to [the browser check, in plain words](../explained/browser-check.md)
+for visitors. Error messages of the command line end with the address of
+their section.
+
 ## Use
 
 ```php

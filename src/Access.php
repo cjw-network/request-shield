@@ -311,7 +311,7 @@ final class Access
         $title = is_string($o['title'] ?? null) ? $o['title'] : $t['title'];
         // The site's own login form (the Pages hook, 0031 B.10), else the shield's.
         return PageHook::ask($s, Pages::ACCESS_LOGIN, ['status' => is_int($o['status'] ?? null) ? $o['status'] : 401, 'message' => $message, 'action' => $action, 'lang' => $lang, 'texts' => $t,
-            'home' => $o['home'] ?? null, 'homeLabel' => $o['homeLabel'] ?? null, 'title' => $title]) ?? Frame::page($title, $lang, $body, $o);
+            'home' => $o['home'] ?? null, 'homeLabel' => $o['homeLabel'] ?? null, 'title' => $title]) ?? Frame::page($title, $lang, $body, $o + ['help' => \CjwNetwork\RequestShield\Help::link('RSF06-03', 'who-sees-what-tokens-a-login-signed-links', $s->docsUrl, $lang)]);
     }
 
     /** A sign-out link for the pages: the current address with rs-logout. */

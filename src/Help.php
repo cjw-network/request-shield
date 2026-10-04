@@ -21,6 +21,11 @@ use CjwNetwork\RequestShield\Rules\Vocabulary;
  */
 final class Help
 {
+    /** How a "?" link and a sentence look on the pages (with their colours: --m, --a, --line). */
+    public const CSS = '.rs-help{display:inline-block;min-width:1.35em;height:1.35em;line-height:1.3em;margin-left:.3em;border:1px solid var(--line,#ccc);border-radius:999px;'
+        . 'font-size:12px;font-weight:600;text-align:center;text-decoration:none;color:var(--m,#5b6470);vertical-align:middle}.rs-help:hover,.rs-help:focus{color:var(--a,#2f62c9);border-color:var(--a,#2f62c9)}'
+        . '.rs-about{color:var(--m,#5b6470);margin:2px 0 12px}';
+
     /** The docs when the rules say nothing: the repository's, as published. */
     public const DOCS = 'https://github.com/cjw-network/request-shield/blob/main/docs';
 
@@ -32,6 +37,12 @@ final class Help
             return null;
         }
         return rtrim($docs, '/') . '/features/' . $id . '-' . $topic[0] . '.md' . ($anchor !== '' ? '#' . $anchor : '');
+    }
+
+    /** The browser check in plain words, for visitors (the check page, the box in a form); null with the links off. */
+    public static function explained(string $docs = self::DOCS): ?string
+    {
+        return $docs === '' ? null : rtrim($docs, '/') . '/explained/browser-check.md';
     }
 
     /** What a feature does, in one sentence; "" for an unknown id. */
@@ -65,6 +76,55 @@ final class Help
         $text = $sentence ?? self::sentence($id, $lang);
         $link = self::link($id, $anchor, $docs, $lang);
         return '<p class="rs-about">' . self::e($text) . ($link !== '' ? ' ' . $link : '') . '</p>';
+    }
+
+    /**
+     * The feature a line of a rule file is about: its word (an [ID] and
+     * "monitor" before it skipped), for `set` its key; null when none is known.
+     */
+    public static function featureOfLine(string $line): ?string
+    {
+        $words = preg_split('/\s+/', trim((string) preg_replace('/^\s*\[[^\]]*\]/', '', $line))) ?: [];
+        if (($words[0] ?? '') === 'monitor') {
+            array_shift($words);
+        }
+        $word = (string) ($words[0] ?? '');
+        if ($word === 'set' && isset($words[1])) {
+            $key = (string) preg_replace('/^text\..*/', 'set', $words[1]);
+            return Vocabulary::featureOf($key) ?? 'RSF05-02';
+        }
+        return $word === '' ? null : Vocabulary::featureOf($word);
+    }
+
+    /**
+     * Where a mistake is explained: a rule file's "<file>:<line>: …" by the
+     * feature of that line's word (rule files when none), a setting's "'<key>' must be …" by the
+     * settings page. Null when neither. A file named without its folder is
+     * looked for in $dirs (the folders of the rule files the command named).
+     *
+     * @param list<string> $dirs
+     */
+    public static function forError(string $message, string $docs = self::DOCS, array $dirs = []): ?string
+    {
+        $file = null;
+        if (preg_match('/^(?:request-shield: )?(\S+?):(\d+): /', $message, $m) === 1) {
+            foreach (array_merge([$m[1]], array_map(static fn (string $d): string => rtrim($d, '/') . '/' . $m[1], $dirs)) as $try) {
+                if (is_file($try) && is_readable($try)) {
+                    $file = $try;
+                    break;
+                }
+            }
+        }
+        if ($file !== null && isset($m[2])) {
+            $lines = @file($file, FILE_IGNORE_NEW_LINES);
+            // A word no feature knows (a typing mistake, an order): how rule files are written.
+            $id = is_array($lines) ? self::featureOfLine((string) ($lines[(int) $m[2] - 1] ?? '')) : null;
+            return self::see($id ?? 'RSF05-01', '', $docs);
+        }
+        if (preg_match("/'[A-Za-z.]+' must be /", $message) === 1) {
+            return self::see('RSF05-02', '', $docs);
+        }
+        return null;
     }
 
     /** For the command line: "see <url>", or the id and title with the links off. */

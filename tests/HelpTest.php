@@ -58,7 +58,7 @@ return [
         same('https://docs.example.org/rs', Settings::from(['docsUrl' => 'https://docs.example.org/rs/'])->docsUrl);
         same('/docs', Settings::from(['docsUrl' => '/docs'])->docsUrl);
         same('', Settings::from(['docsUrl' => 'off'])->docsUrl);
-        foreach (['javascript:alert(1)', 'docs', 'https://a b', 7] as $wrong) {
+        foreach (['javascript:alert(1)', 'docs', 'https://a b', '//evil.example/x', 7] as $wrong) {
             $thrown = false;
             try {
                 Settings::from(['docsUrl' => $wrong]);
@@ -66,6 +66,36 @@ return [
                 $thrown = strpos($e->getMessage(), 'docsUrl') !== false;
             }
             truthy($thrown, 'refused: ' . var_export($wrong, true));
+        }
+    },
+    'RSF06-01 a mistake on the command line ends with where it is explained: the feature of the line\'s word, rule files for a word nobody knows, settings for a value' => function (): void {
+        same('RSF02-03', Help::featureOfLine('[SITE-ADM] monitor restrict /admin/** to 192.0.2.0/24'));
+        same('RSF06-03', Help::featureOfLine('set stats on'), 'an extension\'s key: its feature');
+        same('RSF05-02', Help::featureOfLine('set text.de.title Moment'), 'a text: the settings');
+        same('RSF03-02', Help::featureOfLine('  set pass-ttl 1h   # a comment'));
+        same(null, Help::featureOfLine('frobnicate /x'));
+        same(null, Help::forError('nothing like a place', Help::DOCS));
+        if (!function_exists('exec')) {
+            skip('no exec');
+        }
+        $dir = sys_get_temp_dir() . '/rs-helpcli-' . getmypid() . '-' . mt_rand();
+        mkdir($dir);
+        try {
+            $cases = [
+                "host www.example.org\n[X-1] restrict /admin/** too 192.0.2.0/24\n" => 'RSF02-03-access-rules.md',
+                "limit requests lots\n" => 'RSF03-01-budgets.md',
+                "frobnicate /x\n" => 'RSF05-01-rule-files.md',
+                "set docs-url javascript:x\n" => 'RSF05-02-settings.md',
+            ];
+            foreach ($cases as $rules => $page) {
+                file_put_contents("$dir/site.rules", $rules);
+                exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' check ' . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
+                $text = implode("\n", $out);
+                unset($out);
+                truthy($code !== 0 && preg_match('#\n  see ' . preg_quote(Help::DOCS, '#') . '/features/' . preg_quote($page, '#') . '$#', $text) === 1, "$page: $text");
+            }
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
         }
     },
     'RSF06-01 every anchor is found: the docs\' links and the code\'s Help calls (check-anchors), and a missing one is named with file and line' => function (): void {

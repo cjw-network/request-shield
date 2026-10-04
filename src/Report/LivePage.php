@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace CjwNetwork\RequestShield\Report;
 
+use CjwNetwork\RequestShield\Help;
 use CjwNetwork\RequestShield\Rules\Lists;
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Texts;
@@ -38,7 +39,7 @@ final class LivePage implements \CjwNetwork\RequestShield\RoutePage
             'lv.flag' => 'refusals, bans, checks and the uncached (log-level flag)', 'lv.all' => 'everything that was not a plain pass (log-level all)', 'lv.off' => 'nothing (log-level off)',
             'time' => 'Time', 'site' => 'Website', 'client' => 'Address', 'request' => 'Request', 'what' => 'What happened', 'why' => 'Why', 'source' => 'From', 'rule' => 'Rule',
             'allSites' => 'all websites', 'allWhat' => 'everything', 'allSources' => 'all sources', 'search' => 'address or request …',
-            'pause' => 'Pause', 'resume' => 'Go on', 'waiting' => 'Go on (%d new)', 'shown' => '%d of %d rows', 'empty' => 'Nothing stopped yet.',
+            'pause' => 'Pause', 'resume' => 'Go on', 'waiting' => 'Go on (%d new)', 'shown' => '%d of %d rows', 'empty' => 'Nothing stopped yet: a row appears as soon as the shield refuses, checks or bans a request, such as a scanner asking for /.env.',
             'skipped' => '%d KB of the log were skipped (more than one read): the newest rows are shown.', 'keepOut' => 'keep out', 'unlist' => 'lists',
             'w.refused' => 'refused', 'w.banned' => 'banned', 'w.paused' => 'told to wait', 'w.checked' => 'checked', 'w.uncached' => 'not cached', 'w.passed' => 'let through', 'w.watched' => 'watched: would be ',
             's.list' => 'list', 's.ban' => 'ban', 's.feed' => 'feed', 's.own' => 'own rule', 's.builtin' => 'built-in rule', 's.pace' => 'pace', 's.crawler' => 'crawler policy', 's.shield' => 'basic check',
@@ -53,7 +54,7 @@ final class LivePage implements \CjwNetwork\RequestShield\RoutePage
             'lv.flag' => 'Abweisungen, Sperren, Prüfungen und nicht Gecachtes (log-level flag)', 'lv.all' => 'alles, was nicht einfach durchging (log-level all)', 'lv.off' => 'nichts (log-level off)',
             'time' => 'Zeit', 'site' => 'Website', 'client' => 'Adresse', 'request' => 'Anfrage', 'what' => 'Was geschah', 'why' => 'Warum', 'source' => 'Woher', 'rule' => 'Regel',
             'allSites' => 'alle Websites', 'allWhat' => 'alles', 'allSources' => 'alle Quellen', 'search' => 'Adresse oder Anfrage …',
-            'pause' => 'Anhalten', 'resume' => 'Weiter', 'waiting' => 'Weiter (%d neu)', 'shown' => '%d von %d Zeilen', 'empty' => 'Noch nichts aufgehalten.',
+            'pause' => 'Anhalten', 'resume' => 'Weiter', 'waiting' => 'Weiter (%d neu)', 'shown' => '%d von %d Zeilen', 'empty' => 'Noch nichts aufgehalten: Eine Zeile erscheint, sobald der Schutz eine Anfrage abweist, prüft oder sperrt, etwa einen Scanner, der nach /.env fragt.',
             'skipped' => '%d KB des Logs übersprungen (mehr als ein Lesen): die neuesten Zeilen stehen hier.', 'keepOut' => 'aussperren', 'unlist' => 'Listen',
             'w.refused' => 'abgewiesen', 'w.banned' => 'gesperrt', 'w.paused' => 'zum Warten geschickt', 'w.checked' => 'geprüft', 'w.uncached' => 'nicht gecacht', 'w.passed' => 'durchgelassen', 'w.watched' => 'beobachtet: wäre ',
             's.list' => 'Liste', 's.ban' => 'Sperre', 's.feed' => 'Feed', 's.own' => 'eigene Regel', 's.builtin' => 'eingebaute Regel', 's.pace' => 'Tempo', 's.crawler' => 'Crawler-Regel', 's.shield' => 'Grundprüfung',
@@ -244,6 +245,7 @@ final class LivePage implements \CjwNetwork\RequestShield\RoutePage
         /** @var array<string, string> $links */
         $links = array_filter((array) ($o['links'] ?? []), 'is_string');
         $h = Frame::tabs($s, $links, 'live', $lang);
+        $o['help'] = Help::link('RSF06-02', '', $s->docsUrl, $lang);
         $memory = self::fromMemory($s);
         $h .= '<p class="note">' . $e(sprintf($t['intro'], $every)) . ' '
             . ($memory ? $e(sprintf($t['memory'], Describe::span($s->liveKeep, $lang))) : ($s->logFile !== null ? $e(sprintf($t['level'], $t['lv.' . $s->logLevel] ?? $s->logLevel)) : '')) . '</p>'

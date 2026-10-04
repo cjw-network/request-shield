@@ -74,7 +74,7 @@ return [
             same(['-' => 1, '/kontakt' => 2, '/produkt/x' => 1, '=' => 1, '@evil.example' => 1], $from, 'from: the page (no query), this website without a page, none, another website by its host only');
             same([], $r['backend'], 'no editors\' area named');
             $html = VisitorsPage::render($r, [], [], ['lang' => 'en', 'live' => static fn (string $p): string => '/rs/waf/live?q=' . rawurlencode($p)]);
-            truthy(strpos($html, '<h2>Forms</h2>') !== false && strpos($html, 'Visitors&#039; forms') !== false, 'the card "Forms"');
+            truthy(strpos($html, '<h2>Forms <a class="rs-help"') !== false && strpos($html, 'Visitors&#039; forms') !== false, 'the card "Forms"');
             truthy(strpos($html, '3 saved · 1 errors · 2 stopped (1 from another website)') !== false, 'each form in words: ' . $html);
             truthy(strpos($html, 'this website (page not said) 1') !== false && strpos($html, 'another website evil.example 1') !== false && strpos($html, 'no page given 1') !== false, 'where from, in words');
             truthy(strpos($html, 'href="/rs/waf/live?q=%2Fkontakt"') !== false, 'stopped: a link to the live view');

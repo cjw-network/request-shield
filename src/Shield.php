@@ -1088,6 +1088,8 @@ final class Shield
             'challenge' => $task,
             'field' => $c->solutionCookie,
             'texts' => ['checking' => $texts['widget-checking'], 'checked' => $texts['widget-checked'], 'failed' => $texts['widget-failed']],
+            // The box's "?": the check in plain words, for visitors (set docs-url off: none).
+            'about' => ($about = Help::explained($this->settings->docsUrl)) !== null ? ['url' => $about, 'text' => $texts['about']] : null,
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP);
     }
 
@@ -1375,7 +1377,7 @@ final class Shield
         $c = $this->settings->challenge;
         return new Gate($c, Secret::resolve($c->secret, $this->settings->storeDir),
             $this->settings->crawlers === [] ? null : $this->crawlers(), $this->settings->ipv6Prefix, $this->store,
-            PageHook::asker($this->settings));
+            PageHook::asker($this->settings), $this->settings->docsUrl);
     }
 
     private ?Crawlers $crawlers = null;

@@ -336,7 +336,7 @@ keeps both the same.
 | `widget-path`, `widget-difficulty` | the browser check inside a form: its endpoint (`/request-shield`; unset: off) and difficulty ([docs](RSF03-03-browser-check-in-the-form.md)) |
 | `home` | a path (`/`) or an address: the shield's own pages (404, a pause, the check page) link to it, "To the home page" |
 | `language` | `auto` (default: the visitor's browser language among those there are texts for, else English) or a code: `de`, `en` |
-| `text.<key>`, `text.<lang>.<key>` | what visitors read (the rest of the line): for every language, or for one — `set text.de.title Einen Moment, bitte`. Keys: `title`, `text`, `noscript`, `nocookies`, `failed`, `try-again` (`%s` = seconds), `bad-request`, `no-access`, `not-found`, `not-allowed`, `too-long`, `too-many`, `too-large`, `error`. English and German are built in; another language comes with its texts (`text.fr.title …`) |
+| `text.<key>`, `text.<lang>.<key>` | what visitors read (the rest of the line): for every language, or for one — `set text.de.title Einen Moment, bitte`. Keys: `title`, `text`, `noscript`, `nocookies`, `failed`, `try-again` (`%s` = seconds), `about` (the check page's link for visitors, with `docs-url`), `bad-request`, `no-access`, `not-found`, `not-allowed`, `too-long`, `too-many`, `too-large`, `error`. English and German are built in; another language comes with its texts (`text.fr.title …`) |
 | `mode` | `off`, `monitor`, `enforce` (default), `strict` ([modes](RSF05-03-modes.md)) |
 | `crawler-verify` | `both` (default), `ranges` (the published address lists only: no DNS, for a DMZ), `dns` ([known crawlers](RSF01-04-known-crawlers.md)) |
 | `log`, `log-level`, `log-ip`, `log-max-size` | [the log](RSF05-05-log-and-rule-ids.md) |

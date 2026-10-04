@@ -94,6 +94,13 @@ final class Cli
     public static function main(array $argv): int
     {
         $args = array_slice($argv, 1);
+        // Where the rule files named are: a mistake names its file by name only (mistake()).
+        foreach ($args as $a) {
+            $named = strncmp($a, '--source=', 9) === 0 ? substr($a, 9) : $a;
+            if (substr($named, -6) === '.rules' || $named !== $a) {
+                self::$dirs[] = dirname($named);
+            }
+        }
         $sources = [];
         $rest = [];
         $ip = '198.51.100.7';
@@ -231,7 +238,7 @@ final class Cli
                     $read = RuleFile::read(array_merge($sources, [$file]));
                     $s = Settings::from($read['config']);
                 } catch (\InvalidArgumentException $e) {
-                    fwrite(STDERR, $e->getMessage() . "\n");
+                    self::mistake($e->getMessage());
                     exit(1);
                 }
                 $store = \CjwNetwork\RequestShield\Shield::storeFor($s);
@@ -310,7 +317,7 @@ final class Cli
                 }
                 $run = $show['html'] || $show['coverage'] ? Rules\Examples::run($files) : ['results' => [], 'without' => []];
             } catch (RuleFileException | \InvalidArgumentException $e) {
-                fwrite(STDERR, $e->getMessage() . "\n");
+                self::mistake($e->getMessage());
                 exit(2);
             }
             if ($show['markdown']) {
@@ -359,7 +366,7 @@ final class Cli
             try {
                 $run = \CjwNetwork\RequestShield\Rules\Examples::run($files, $testOpts['asWritten'], $testOpts['only']);
             } catch (\InvalidArgumentException $e) {
-                fwrite(STDERR, $e->getMessage() . "\n");
+                self::mistake($e->getMessage());
                 exit(2);
             }
             $counts = ['pass' => 0, 'fail' => 0, 'skip' => 0];
@@ -419,7 +426,7 @@ final class Cli
                 $siteSettings[$siteId] = Settings::from(RuleFile::read($files, $siteId)['config']);
             }
         } catch (\InvalidArgumentException $e) {
-            fwrite(STDERR, $e->getMessage() . "\n");
+            self::mistake($e->getMessage());
             exit(1);
         }
 
@@ -515,7 +522,7 @@ final class Cli
                 }
                 exit(0);
             } catch (\InvalidArgumentException | \RuntimeException $e) {
-                fwrite(STDERR, 'request-shield: ' . $e->getMessage() . "\n");
+                self::mistake('request-shield: ' . $e->getMessage());
                 exit(1);
             }
         }
@@ -580,7 +587,7 @@ final class Cli
                 touch($file);
                 echo ($command === 'deny' ? 'kept out' : 'let in') . " $address" . ($until !== null ? ' until ' . date('Y-m-d H:i', $until) : ' for good') . " ($id); every server reads it within its recheck\n";
             } catch (\InvalidArgumentException | \RuntimeException $e) {
-                fwrite(STDERR, 'request-shield: ' . $e->getMessage() . "\n");
+                self::mistake('request-shield: ' . $e->getMessage());
                 exit(1);
             }
             exit(0);
@@ -886,4 +893,19 @@ final class Cli
             . ' sections an hour on one folder level: the deepest levels are approximate there'
             . ($so['depth'] > 1 ? ' -- set stats-depth ' . ($so['depth'] - 1) . ' if the upper ones are enough' : '') . "\n"];
     }
+
+    /** @var list<string> the folders of the rule files the command line names */
+    private static array $dirs = [];
+
+    /**
+     * A mistake on stderr, and where it is explained (0031 F.9): the feature
+     * of the rule file's line it names, or the settings page -- from the
+     * repository's docs, the command line has no settings to ask yet.
+     */
+    private static function mistake(string $message): void
+    {
+        $see = Help::forError($message, Help::DOCS, array_values(array_unique(self::$dirs)));
+        fwrite(STDERR, $message . "\n" . ($see !== null ? '  ' . $see . "\n" : ''));
+    }
+
 }

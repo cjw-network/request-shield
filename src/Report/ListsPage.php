@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace CjwNetwork\RequestShield\Report;
 
 use CjwNetwork\RequestShield\Challenge\Secret;
+use CjwNetwork\RequestShield\Help;
 use CjwNetwork\RequestShield\IpAddress;
 use CjwNetwork\RequestShield\Rules\Lists;
 use CjwNetwork\RequestShield\Settings;
@@ -44,10 +45,10 @@ final class ListsPage implements \CjwNetwork\RequestShield\RoutePage
             'add' => 'Add an entry', 'kind' => 'List', 'deny' => 'keep out', 'exempt' => 'let in', 'address' => 'Address or range', 'for' => 'For', 'note' => 'Comment',
             'notePh' => 'why — say why, not who', 'f.1h' => '1 hour', 'f.1d' => '1 day', 'f.7d' => '7 days', 'f.30d' => '30 days', 'f.date' => 'until …', 'f.good' => 'for good (keep out only)',
             'confirm' => 'a wide range: I mean it', 'save' => 'Add', 'entries' => 'The entries', 'search' => 'Search', 'searchPh' => 'address, ID or comment',
-            'none' => 'No entries yet.', 'more' => '%s more — narrow the search.', 'id' => 'ID', 'until' => 'Until', 'added' => 'Added', 'good' => 'for good — review now and then',
+            'none' => 'No entries yet: add an address above, or keep one out from a row of the live view.', 'more' => '%s more — narrow the search.', 'id' => 'ID', 'until' => 'Until', 'added' => 'Added', 'good' => 'for good — review now and then',
             'ended' => 'ended', 'extend' => 'Extend', 'keepTime' => 'as it is', 'change' => 'Save', 'remove' => 'Remove',
             'ruleFiles' => 'Entries written in the rule files themselves are shown on the rules page and are not changed here.',
-            'bans' => 'Active bans', 'bansNone' => 'No address is banned right now.', 'bansApcu' => 'Bans of this server (APCu: each server has its own).',
+            'bans' => 'Active bans', 'bansNone' => 'No address is banned right now: a ban rule (ban …) bans an address for a while when it keeps knocking at closed doors.', 'bansApcu' => 'Bans of this server (APCu: each server has its own).',
             'lift' => 'Lift', 'again' => 'banned %d times today — keep out for good?', 'banned' => 'Address (network)',
             'm.added' => '%s: %s added (%s).', 'm.changed' => '%s changed.', 'm.removed' => '%s removed.', 'm.lifted' => 'The ban of %s is lifted.', 'm.noBan' => '%s is not banned.',
             'm.token' => 'The form was too old or not from this page — please try again.', 'm.noEntry' => 'There is no entry %s.', 'm.until' => 'Pick a day in the future.',
@@ -62,10 +63,10 @@ final class ListsPage implements \CjwNetwork\RequestShield\RoutePage
             'add' => 'Eintrag hinzufügen', 'kind' => 'Liste', 'deny' => 'aussperren', 'exempt' => 'hereinlassen', 'address' => 'Adresse oder Bereich', 'for' => 'Für', 'note' => 'Kommentar',
             'notePh' => 'warum — sagen Sie warum, nicht wer', 'f.1h' => '1 Stunde', 'f.1d' => '1 Tag', 'f.7d' => '7 Tage', 'f.30d' => '30 Tage', 'f.date' => 'bis …', 'f.good' => 'dauerhaft (nur aussperren)',
             'confirm' => 'ein großer Bereich: so gewollt', 'save' => 'Hinzufügen', 'entries' => 'Die Einträge', 'search' => 'Suchen', 'searchPh' => 'Adresse, ID oder Kommentar',
-            'none' => 'Noch keine Einträge.', 'more' => '%s weitere — die Suche eingrenzen.', 'id' => 'ID', 'until' => 'Bis', 'added' => 'Eingetragen', 'good' => 'dauerhaft — ab und zu prüfen',
+            'none' => 'Noch keine Einträge: oben eine Adresse eintragen, oder eine aus einer Zeile der Live-Ansicht aussperren.', 'more' => '%s weitere — die Suche eingrenzen.', 'id' => 'ID', 'until' => 'Bis', 'added' => 'Eingetragen', 'good' => 'dauerhaft — ab und zu prüfen',
             'ended' => 'abgelaufen', 'extend' => 'Verlängern', 'keepTime' => 'wie es ist', 'change' => 'Speichern', 'remove' => 'Entfernen',
             'ruleFiles' => 'Einträge, die in den Regeldateien selbst stehen, zeigt die Regelseite; sie werden hier nicht geändert.',
-            'bans' => 'Aktive Sperren', 'bansNone' => 'Gerade ist keine Adresse gesperrt.', 'bansApcu' => 'Sperren dieses Servers (APCu: jeder Server hat seine eigenen).',
+            'bans' => 'Aktive Sperren', 'bansNone' => 'Gerade ist keine Adresse gesperrt: Eine Sperrregel (ban …) sperrt eine Adresse für eine Weile, wenn sie immer wieder an verschlossene Türen klopft.', 'bansApcu' => 'Sperren dieses Servers (APCu: jeder Server hat seine eigenen).',
             'lift' => 'Aufheben', 'again' => 'heute %d-mal gesperrt — dauerhaft aussperren?', 'banned' => 'Adresse (Netz)',
             'm.added' => '%s: %s eingetragen (%s).', 'm.changed' => '%s geändert.', 'm.removed' => '%s entfernt.', 'm.lifted' => 'Die Sperre von %s ist aufgehoben.', 'm.noBan' => '%s ist nicht gesperrt.',
             'm.token' => 'Das Formular war zu alt oder nicht von dieser Seite — bitte noch einmal.', 'm.noEntry' => 'Es gibt keinen Eintrag %s.', 'm.until' => 'Bitte einen Tag in der Zukunft wählen.',
@@ -208,6 +209,7 @@ final class ListsPage implements \CjwNetwork\RequestShield\RoutePage
             . implode('', array_map(static fn ($k, $v): string => '<input type="hidden" name="' . $e((string) $k) . '" value="' . $e(is_scalar($v) ? (string) $v : '') . '">', array_keys($more), $more));
         /** @var array<string, string> $links */
         $links = array_filter((array) ($o['links'] ?? []), 'is_string');
+        $o['help'] = Help::link('RSF06-02', '', $s->docsUrl, $lang);
         $h = Frame::tabs($s, $links, 'lists', $lang) . '<p class="note">' . $e($t['intro']) . '</p>';
         $msg = is_array($o['message'] ?? null) ? $o['message'] : null;
         if ($msg !== null && is_string($msg['message'] ?? null)) {
@@ -224,7 +226,7 @@ final class ListsPage implements \CjwNetwork\RequestShield\RoutePage
         foreach (['1h', '1d', '7d', '30d', 'date', 'good'] as $f) {
             $fors .= '<option value="' . $f . '"' . ($f === $for ? ' selected' : '') . '>' . $e($t['f.' . $f]) . '</option>';
         }
-        $h .= '<form class="card add" method="post" action="' . $e($action) . '"><h2>' . $e($t['add']) . '</h2>' . $hidden('add')
+        $h .= '<form class="card add" method="post" action="' . $e($action) . '">' . Frame::h2($t['add'], $s, 'RSF01-02', 'the-list-files', $lang) . $hidden('add')
             . '<label>' . $e($t['kind']) . ' <select name="kind"><option value="deny"' . ($g('kind') !== 'exempt' ? ' selected' : '') . '>' . $e($t['deny']) . '</option><option value="exempt"'
             . ($g('kind') === 'exempt' ? ' selected' : '') . '>' . $e($t['exempt']) . '</option></select></label>'
             . '<label>' . $e($t['address']) . ' <input name="address" required maxlength="64" class="mono" value="' . $e($g('address')) . '" placeholder="203.0.113.7, 198.51.100.0/24"></label>'
@@ -236,7 +238,7 @@ final class ListsPage implements \CjwNetwork\RequestShield\RoutePage
         // The entries: newest first, searched.
         $q = $g('q');
         $found = Lists::find($dir, $q, self::SHOWN);
-        $h .= '<div class="card"><h2>' . $e($t['entries']) . '</h2><form method="get" action="' . $e($action) . '" class="search">'
+        $h .= '<div class="card">' . Frame::h2($t['entries'], $s, 'RSF01-02', 'the-list-files', $lang) . '<form method="get" action="' . $e($action) . '" class="search">'
             . '<input type="search" name="q" value="' . $e($q) . '" placeholder="' . $e($t['searchPh']) . '"><input type="hidden" name="lang" value="' . $lang . '"><button>' . $e($t['search']) . '</button></form>';
         if ($found['entries'] === []) {
             $h .= '<p class="note">' . $e($t['none']) . '</p>';
@@ -273,7 +275,7 @@ final class ListsPage implements \CjwNetwork\RequestShield\RoutePage
         $store = self::store($s, $o);
         $bans = $s->bans === [] ? [] : $store->marks('ban:', (float) $now);
         arsort($bans);
-        $h .= '<div class="card"><h2>' . $e($t['bans']) . '</h2>';
+        $h .= '<div class="card">' . Frame::h2($t['bans'], $s, 'RSF01-02', 'bans', $lang);
         if ($bans === []) {
             $h .= '<p class="note">' . $e($t['bansNone']) . '</p>';
         } else {
