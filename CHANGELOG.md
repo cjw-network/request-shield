@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   and what must get through; `request-shield check` and `test --junit` in CI
   like unit tests, `trace` for one request, monitor before enforce. Every rule
   and example on the page passes `test`.
+- **The API, part 4: its contract** (0031 step G.0, RSF06-05):
+  `tests/ApiContractTest.php` calls every endpoint every provider declares and
+  checks its answer against the schema the endpoint declares, and that
+  `Api::call()` and HTTP send the same bytes for every endpoint that reads --
+  a new endpoint is in it by itself. It found one mistake: `POST /lists`
+  without `for` now keeps an address out for a week, as the page's form does.
 - **The API, part 3: the statistics, the description, the feature** (0031
   step G.0, RSF06-05): the statistics add `GET /stats/report` and
   `GET /stats/sites` as an `ApiProvider` -- a customer's token gets its group

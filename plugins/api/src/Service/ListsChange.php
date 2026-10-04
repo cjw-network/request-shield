@@ -54,6 +54,9 @@ final class ListsChange implements ApiService
             }
         }
         $post['do'] = $do;
+        if ($do === 'add' && ($post['for'] ?? '') === '') {
+            $post['for'] = '7d';                // as the page's form starts: a week
+        }
         $done = ListsPage::handle($s, $post, ['ip' => $ctx['ip'], 'user' => 'api', 'ruleFile' => $ctx['ruleFile'], 'csrfChecked' => true, 'lang' => $ctx['lang'], 'now' => $ctx['now']]);
         if (!$done['ok']) {
             throw new ApiProblem(409, 'Conflict', $done['message']);
