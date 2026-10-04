@@ -252,7 +252,7 @@ return [
     'RSF06-05 writes only with set api-write on and only for the administrator: lists, reload -- with the dashboard\'s own checks' => function (): void {
         $dir = apiDir();
         try {
-            $rules = "restrict **/rs/** to 203.0.113.0/24\nset lists-dir $dir/lists\n" . apiTokens();
+            $rules = "restrict **/rs/** to 203.0.113.0/24\nset lists-dir $dir/lists\nset log $dir/shield.log\n" . apiTokens();
             $off = apiSettings($dir, $rules);
             same(403, Api::call($off, 'POST', '/lists', ['address' => '203.0.113.66'])['status'], 'off by default');
             $s = apiSettings($dir, $rules . "set api-write on\n");
@@ -268,6 +268,9 @@ return [
             same(409, $wide['status'], 'a wide range without confirm');
             $id = $list['entries'][0]['id'];
             same(true, Api::call($s, 'POST', '/lists/remove', ['id' => $id], '*', $ctx)['data']['ok']);
+            $log = (string) @file_get_contents("$dir/shield.log");
+            truthy(substr_count($log, 'api-write') === 2 && strpos($log, '/rs/api/v1/lists/remove') !== false && strpos($log, '203.0.113.66') === false,
+                'every write on the record, without its parameters: ' . $log);
             same(0, Api::call($s, 'GET', '/lists', ['q' => '203.0.113.66'])['data']['total'], 'taken out');
             same(409, Api::call($s, 'POST', '/lists/remove', ['id' => $id], '*', $ctx)['status'], 'gone already');
             same(400, Api::call($s, 'POST', '/lists/remove', [], '*', $ctx)['status'], 'id is missing');

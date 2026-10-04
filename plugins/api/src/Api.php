@@ -12,6 +12,9 @@ namespace CjwNetwork\RequestShield\Api;
 
 use CjwNetwork\RequestShield\ApiProblem;
 use CjwNetwork\RequestShield\ApiService;
+use CjwNetwork\RequestShield\Decision;
+use CjwNetwork\RequestShield\Log;
+use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Settings;
 use CjwNetwork\RequestShield\Shield;
 use CjwNetwork\RequestShield\Tier;
@@ -86,9 +89,34 @@ final class Api
             Shield::failed('api', "$method $path: " . $e->getMessage());
             return self::problem(new ApiProblem(500, 'Internal error', "$method $path failed; the server's error log has one line about it."));
         }
+        if ($ep['write']) {
+            self::audit($s, $method, $api['base'] . $path, $c);
+        }
         $tier = Tier::of($s, is_string($c['ruleFile']) ? Settings::cacheDirFor($c['ruleFile']) : sys_get_temp_dir());
         return ['status' => 200, 'headers' => [], 'data' => true,
             'body' => ['data' => $data, 'meta' => ['version' => Shield::VERSION, 'generated' => gmdate('Y-m-d\TH:i:s\Z', $now), 'tier' => $tier['tier']]]];
+    }
+
+    /**
+     * A write, for the record (0031 G.0): one line in the log (set log, at
+     * every log level) and an event to every sink -- what changed, by
+     * whom (the administrator), from which address. Never the parameters.
+     *
+     * @param array{who: string, ruleFile: ?string, now: int, ip: string, lang: string} $c
+     */
+    private static function audit(Settings $s, string $method, string $path, array $c): void
+    {
+        try {
+            $request = Request::fromServer(['REQUEST_METHOD' => $method, 'REQUEST_URI' => $path, 'HTTP_HOST' => 'request-shield-api',
+                'REMOTE_ADDR' => @inet_pton($c['ip']) !== false ? $c['ip'] : '127.0.0.1', 'HTTP_USER_AGENT' => 'request-shield API (' . $c['who'] . ')']);
+            $d = Decision::allowUncached('api write');
+            Log::note($s, $request, $d, 'api-write', (float) $c['now']);
+            if ($s->logFile !== null && !Log::wants($s->logLevel, $d)) {
+                Log::write($s, $request, $d, 'api-write', (float) $c['now']);   // a change is on the record at every log level
+            }
+        } catch (\Throwable $e) {
+            Shield::failed('api', "the write $method $path was done, its record failed: " . $e->getMessage());
+        }
     }
 
     /**

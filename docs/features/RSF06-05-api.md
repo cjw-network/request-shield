@@ -106,6 +106,9 @@ statistics add `/stats/report` and `/stats/sites` that way.
 - **Writes** (the lists, `reload`, `feeds/update`) only with `set api-write
   on`, for the administrator, with the dashboard's own checks: no trusted
   proxy, not the caller's own address, a wide range only with `confirm`.
+  Each write is on the record: a line in the log (rule `api-write`, the
+  method and the path, at every log level) and an event to every sink --
+  never its parameters.
 - **A session's POST** must come from this website (its `Origin`); a script
   sends a token instead. Other websites' pages only with `api-origins`.
 - **Never** the secret, a token's hash or the server's paths: a mistake in the

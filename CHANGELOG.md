@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   and what must get through; `request-shield check` and `test --junit` in CI
   like unit tests, `trace` for one request, monitor before enforce. Every rule
   and example on the page passes `test`.
+- **The API's writes are on the record** (0031 step G.0): each one is a line
+  in the log (rule `api-write`, the method and the path, at every log level)
+  and an event to every sink -- never its parameters.
 - **The API, part 5: the pages read it** (0031 step G.0, RSF06-05): the live
   view asks the API's `GET /live` for new rows, the statistics' JSON button
   opens `GET /stats/report`; the pages' own `?format=json` is gone. Without the
