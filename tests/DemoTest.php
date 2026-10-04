@@ -113,7 +113,7 @@ $examples = function (string $prefix): void {
             same('allow-uncached path not cacheable; rule=DEMO-CACHE', $r['shield']);
             // The statistics page: counted, the page not found listed with the link to it.
             $get('GET', '/no-such-page', ['Referer' => 'http://127.0.0.1/stats']);
-            $stats = json_decode($get('GET', '/rs/stats?format=json')['body'], true);
+            $stats = (array) (json_decode($get('GET', '/rs/api/v1/stats/report')['body'], true)['data'] ?? []);
             $missing = array_filter(array_keys((array) ($stats['notFound'] ?? [])), static fn ($p): bool => substr((string) $p, -13) === '/no-such-page');
             truthy($missing !== [], 'the page not found, counted (under its full path): ' . json_encode($stats['notFound'] ?? null));
             $one = $get('GET', '/rs/stats/visitors?days=30&by=week&site=127.0.0.1');
@@ -566,13 +566,14 @@ $panel = function (string $prefix): void {
         $r = $get('GET', '/rs/waf/live?lang=de');
         same(200, $r['status'], 'the live view');
         truthy(strpos($r['body'], 'SCAN-HIDDEN') !== false && strpos($r['body'], 'eingebaute Regel') !== false, 'the refusals, with where they came from');
+        truthy(preg_match('#data-feed="[^"]*/rs/api/v1/live\?lang=de"#', $r['body']) === 1, 'the page asks the API for new rows (0031 G.0)');
         truthy(strpos($r['body'], 'class="tab on" href="') !== false && strpos($r['body'], '/rs/waf/lists?lang=de') !== false, 'tabs to the lists (the firewall\'s pages under /rs/waf/)');
-        $first = json_decode($get('GET', '/rs/waf/live?format=json')['body'], true);
+        $first = (array) (json_decode($get('GET', '/rs/api/v1/live')['body'], true)['data'] ?? []);
         $rows = (array) ($first['rows'] ?? []);
         truthy(in_array('ban', array_column($rows, 'source'), true) && in_array(true, array_column($rows, 'watched'), true), 'the watched ban, in the live rows: ' . json_encode(array_column($rows, 'label')));
         same([], array_filter($rows, static fn (array $x): bool => strpos((string) $x['request'], '/rs/') !== false), 'the dashboard\'s own requests are not shown');
         $get('GET', '/.git/config');
-        $next = json_decode($get('GET', '/rs/waf/live?format=json&cursor=' . rawurlencode((string) $first['cursor']))['body'], true);
+        $next = (array) (json_decode($get('GET', '/rs/api/v1/live?cursor=' . rawurlencode((string) $first['cursor']))['body'], true)['data'] ?? []);
         same(['/.git/config'], array_values(array_unique(array_map(static fn (array $x): string => substr((string) $x['request'], -12), (array) $next['rows']))), 'with the cursor: only what is new');
         $what = array_column((array) $next['rows'], 'what');
         sort($what);
@@ -609,8 +610,10 @@ $customer = function (string $prefix): void {
         same(403, $get('GET', '/rs/waf/live', ['Cookie' => $cookie])['status'], 'never the firewall\'s pages');
         same(403, $get('GET', '/rs/stats/overview?format=json&site=' . rawurlencode('Customer B'), ['Cookie' => $cookie])['status'],
             'the overview is the administrator\'s (the route\'s role): a customer is refused, whatever site it asks for');
-        $json = json_decode($get('GET', '/rs/stats/visitors?format=json&site=' . rawurlencode('Customer B'), ['Cookie' => $cookie])['body'], true);
-        truthy(is_array($json) && ($json['site'] ?? null) !== 'Customer B', 'asking for another customer\'s site on its own page does not show it');
+        // The report through the API: another customer's group asked for, the own group answered.
+        $asked = json_decode($get('GET', '/rs/api/v1/stats/report?site=' . rawurlencode('group:customer-b'), ['Cookie' => $cookie])['body'], true);
+        $own = json_decode($get('GET', '/rs/api/v1/stats/report', ['Cookie' => $cookie])['body'], true);
+        truthy(isset($asked['data'], $own['data']) && json_encode($asked['data']) === json_encode($own['data']), 'asking for another customer\'s group gives its own: ' . substr((string) json_encode($asked), 0, 200));
         $out = $get('GET', '/rs/stats/sites?rs-logout=1', ['Cookie' => $cookie]);
         truthy(in_array($out['status'], [200, 303], true) && ($out['cookies']['rsd'] ?? 'x') === '', 'signed out: the cookie deleted');
     }, $prefix);

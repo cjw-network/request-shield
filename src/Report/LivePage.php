@@ -46,6 +46,7 @@ final class LivePage implements \CjwNetwork\RequestShield\RoutePage
             'whereRule' => 'where this rule is written', 'onList' => 'on the deny list', 'onFeed' => 'on the public list %s', 'error' => 'The live view cannot reach the server — trying again.',
             'memory' => 'From the live memory: the last requests stopped, with the full address, kept %s (set live on).', 'skippedRows' => '%d rows skipped (more than one read): the newest are shown.',
             'noMemory' => 'set live on: with set store memory nothing outlasts a request — the log is read instead.',
+            'noFeed' => 'The rows as the page was opened: it refreshes itself with the API (request-shield-api.php, set api on).',
         ],
         'de' => [
             'title' => 'Live', 'intro' => 'Was der Schutz gerade aufhält — das Neueste oben, alle %d Sekunden.',
@@ -61,6 +62,7 @@ final class LivePage implements \CjwNetwork\RequestShield\RoutePage
             'whereRule' => 'wo diese Regel steht', 'onList' => 'auf der Sperrliste', 'onFeed' => 'auf der öffentlichen Liste %s', 'error' => 'Die Live-Ansicht erreicht den Server nicht — neuer Versuch.',
             'memory' => 'Aus dem Live-Speicher: die zuletzt aufgehaltenen Anfragen, mit voller Adresse, gehalten %s (set live on).', 'skippedRows' => '%d Zeilen übersprungen (mehr als ein Lesen): die neuesten stehen hier.',
             'noMemory' => 'set live on: mit set store memory überdauert nichts eine Anfrage — stattdessen wird das Log gelesen.',
+            'noFeed' => 'Die Zeilen vom Öffnen der Seite: Sie aktualisiert sich mit der API (request-shield-api.php, set api on).',
         ],
     ];
 
@@ -274,6 +276,9 @@ final class LivePage implements \CjwNetwork\RequestShield\RoutePage
             . '<tbody id="rows"></tbody></table><p id="empty" class="note">' . $e($t['empty']) . '</p></div>';
         $js = ['whereRule' => $t['whereRule'], 'pause' => $t['pause'], 'resume' => $t['resume'], 'waiting' => $t['waiting'], 'shown' => $t['shown'], 'skipped' => $memory ? $t['skippedRows'] : $t['skipped'], 'keepOut' => $t['keepOut']];
         $feed = is_string($o['feed'] ?? null) ? $o['feed'] : '';
+        if ($feed === '') {
+            $h .= '<p class="note">' . $e($t['noFeed']) . '</p>';        // nothing asks for new rows
+        }
         $feed .= $feed === '' ? '' : (strpos($feed, '?') === false ? '?' : '&') . 'lang=' . $lang;   // the rows in the page's language
         $h = '<div id="live" data-feed="' . $e($feed) . '" data-lists="' . $e(is_string($o['lists'] ?? null) ? $o['lists'] : '') . '" data-every="' . $every . '"'
             . ' data-t="' . $e((string) json_encode($js, JSON_UNESCAPED_UNICODE)) . '" data-init="' . $e((string) json_encode($first, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)) . '">' . $h . '</div>';
@@ -366,6 +371,7 @@ CSS;
     fetch(feed + (feed.indexOf('?') < 0 ? '?' : '&') + 'cursor=' + encodeURIComponent(cursor), { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } })
       .then(function (r) { if (!r.ok) { throw r; } return r.json(); })
       .then(function (j) {
+        j = j.data || j;          // the API's envelope, or a site's own feed (LivePage::json())
         document.getElementById('error').hidden = true;
         cursor = j.cursor; skipped(j.skipped);
         if (!j.rows.length) { return; }
@@ -378,7 +384,8 @@ CSS;
 JS;
 
     /**
-     * The route (0031 B.6): the page, or with ?format=json the new rows since the cursor.
+     * The route (0031 B.6): the page; it asks the API's GET /live for the new rows
+     * (0031 G.0). Without the API the page shows the rows of the moment it was opened.
      *
      * @param array<string, mixed> $route
      * @param array<string, mixed> $ctx
@@ -392,12 +399,12 @@ JS;
         $lang = is_string($ctx['lang'] ?? null) ? $ctx['lang'] : 'auto';
         $accept = is_string($ctx['accept'] ?? null) ? $ctx['accept'] : null;
         $ip = is_string($ctx['ip'] ?? null) ? $ctx['ip'] : '';
-        $own = $links['live'] ?? ((is_string($ctx['prefix'] ?? null) ? $ctx['prefix'] : '') . (is_string($route['path'] ?? null) ? $route['path'] : ''));
-        if (($get['format'] ?? '') === 'json') {
-            return \CjwNetwork\RequestShield\Response::json(200, self::json($s, is_string($get['cursor'] ?? null) ? $get['cursor'] : null, ['lang' => Texts::language($lang, $accept), 'ip' => $ip, 'links' => $links]));
-        }
+        // The new rows come from the API (<dashboard-path>/api/v1/live), when it is there.
+        $api = $s->ext['api'] ?? null;
+        $feed = is_array($api) && ($api['enabled'] ?? false) === true && is_string($api['base'] ?? null) && isset($s->routes[$api['base'] . '/live'])
+            ? (is_string($ctx['prefix'] ?? null) ? $ctx['prefix'] : '') . $api['base'] . '/live' : '';
         $label = is_string($ctx['homeLabel'] ?? null) ? $ctx['homeLabel'] : '';
         return \CjwNetwork\RequestShield\Response::html(200, self::render($s, ['links' => $links, 'lang' => $lang, 'accept' => $accept, 'ip' => $ip, 'home' => is_string($ctx['home'] ?? null) ? $ctx['home'] : '/', 'homeLabel' => $label,
-            'feed' => $own . '?format=json', 'lists' => $links['lists'] ?? null, 'title' => 'Live — ' . $label]));
+            'feed' => $feed, 'lists' => $links['lists'] ?? null, 'title' => 'Live — ' . $label]));
     }
 }

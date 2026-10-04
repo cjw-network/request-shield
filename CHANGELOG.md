@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   and what must get through; `request-shield check` and `test --junit` in CI
   like unit tests, `trace` for one request, monitor before enforce. Every rule
   and example on the page passes `test`.
+- **The API, part 5: the pages read it** (0031 step G.0, RSF06-05): the live
+  view asks the API's `GET /live` for new rows, the statistics' JSON button
+  opens `GET /stats/report`; the pages' own `?format=json` is gone. Without the
+  API (the mini file alone, `set api off`) the live view shows the rows as it
+  was opened and says what refreshes it. A site that serves `LivePage::json()`
+  itself, as a feed of its own, keeps working.
 - **The API, part 4: its contract** (0031 step G.0, RSF06-05):
   `tests/ApiContractTest.php` calls every endpoint every provider declares and
   checks its answer against the schema the endpoint declares, and that

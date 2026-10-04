@@ -85,7 +85,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
     ];
 
     /**
-     * @param array{action?: string, view?: string, tabs?: bool, links?: array<string, string>, days?: int, by?: string, crawler?: ?string, path?: ?string, sort?: string, lang?: string, accept?: ?string, home?: string, homeLabel?: string,
+     * @param array{action?: string, api?: string, view?: string, tabs?: bool, links?: array<string, string>, days?: int, by?: string, crawler?: ?string, path?: ?string, sort?: string, lang?: string, accept?: ?string, home?: string, homeLabel?: string,
      *   title?: string, fragment?: bool, now?: int, stats?: Stats, check?: array<mixed>, ip?: string, from?: string, to?: string, store?: \CjwNetwork\RequestShield\Store\Store, site?: string|null, who?: string} $o
      *   who: who reads (Access::gate()): '*' everything (the default), a group's ID only its statistics;
      *   site: with stats-hosts, one website's numbers (a name of stats-hosts, or Stats::OTHER); without, all added up;
@@ -230,7 +230,9 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         foreach (['de' => 'DE', 'en' => 'EN'] as $l => $label) {
             $h .= '<a class="pill' . ($l === $lang ? ' on' : '') . '" href="' . $e($query(['view' => $view, 'days' => $days, 'by' => $by, 'lang' => $l] + $extra)) . '">' . $label . '</a>';
         }
-        $h .= '<a class="pill" href="' . $e($query(['days' => $days, 'by' => $by === 'hour' ? 'day' : $by, 'format' => 'json'] + $range + ($site !== null ? ['site' => $site] : []))) . '">JSON</a></div></div>';
+        // The same as JSON: the API's report (0031 G.0), where the API is.
+        $api = $o['api'] ?? '';
+        $h .= ($api !== '' ? '<a class="pill" href="' . $e($api . '/stats/report?' . http_build_query(['days' => $days, 'by' => $by === 'hour' ? 'day' : $by] + $range + ($site !== null ? ['site' => $site] : []))) . '">JSON</a>' : '') . '</div></div>';
         // The website switch (stats-hosts): all added up, one website, or the names the rules do not know.
         if (StatsExtension::of($s)['hosts'] !== [] && $view !== 'sites') {
             $chosen = false;
@@ -972,7 +974,7 @@ table.sites tr.sother td{color:var(--m)}table.sites .up{color:var(--crawlers)}ta
 CSS;
 
     /**
-     * The route (0031 B.6): what the counters say; ?format=json the report for a CMS. The
+     * The route (0031 B.6): what the counters say (as JSON: the API's /stats/report). The
      * route's key names the view (sites, all, site, shield).
      *
      * @param array<string, mixed> $route
@@ -991,17 +993,13 @@ CSS;
         $path = isset($get['path']) && is_string($get['path']) && $get['path'] !== '' ? $get['path'] : null;
         $from = is_string($get['from'] ?? null) ? $get['from'] : '';
         $to = is_string($get['to'] ?? null) ? $get['to'] : '';
-        if (($get['format'] ?? '') === 'json') {
-            $site = StatsExtension::siteFor($s, $who, $askedSite);
-            $o = ['by' => $by === null || $by === 'hour' ? 'day' : $by] + ($only !== null ? ['crawler' => $only] : [])
-                + ($path !== null ? ['path' => preg_match('#^[a-z0-9*+()][a-z0-9.*+()-]*/#i', $path) === 1 ? $path : '/' . ltrim($path, '/')] : [])
-                + (isset($get['sort']) && is_string($get['sort']) ? ['sort' => $get['sort']] : []) + ($site !== null ? ['site' => $site] : [])
-                + (preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) === 1 && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to) === 1 ? ['from' => str_replace('-', '', $from), 'to' => str_replace('-', '', $to)] : []);
-            return \CjwNetwork\RequestShield\Response::json(200, StatsReport::build($s, null, $days, null, $o), [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        }
         /** @var array<string, string> $links */
         $links = is_array($ctx['links'] ?? null) ? $ctx['links'] : [];
-        return \CjwNetwork\RequestShield\Response::html(200, self::render($s, ['view' => $view, 'who' => $who, 'links' => $links, 'days' => $days, 'crawler' => $only, 'path' => $path,
+        // The report as JSON: the API's /stats/report, where the API is (0031 G.0) -- the page links it.
+        $api = $s->ext['api'] ?? null;
+        $apiBase = is_array($api) && ($api['enabled'] ?? false) === true && is_string($api['base'] ?? null) && isset($s->routes[$api['base'] . '/stats/report'])
+            ? (is_string($ctx['prefix'] ?? null) ? $ctx['prefix'] : '') . $api['base'] : '';
+        return \CjwNetwork\RequestShield\Response::html(200, self::render($s, ['api' => $apiBase, 'view' => $view, 'who' => $who, 'links' => $links, 'days' => $days, 'crawler' => $only, 'path' => $path,
             'sort' => is_string($get['sort'] ?? null) ? $get['sort'] : '', 'lang' => is_string($ctx['lang'] ?? null) ? $ctx['lang'] : 'auto', 'accept' => is_string($ctx['accept'] ?? null) ? $ctx['accept'] : null,
             'fragment' => isset($get['fragment']), 'check' => $get, 'ip' => is_string($ctx['ip'] ?? null) ? $ctx['ip'] : '', 'from' => $from, 'to' => $to,
             'home' => is_string($ctx['home'] ?? null) ? $ctx['home'] : '/', 'homeLabel' => is_string($ctx['homeLabel'] ?? null) ? $ctx['homeLabel'] : '', 'site' => $askedSite] + ($by !== null ? ['by' => $by] : [])));

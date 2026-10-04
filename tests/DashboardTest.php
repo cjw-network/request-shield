@@ -15,7 +15,7 @@ use CjwNetwork\RequestShield\Tests\RsTestExtension;
 /**
  * A site behind the shield, the shield started by a prepend file that also
  * loads the test extension and the test plugins (tests/support/*.php; the
- * extension named in REQUEST_SHIELD_EXTENSIONS before the bootstrap defines
+ * statistics, the API and the test extension named in REQUEST_SHIELD_EXTENSIONS before the bootstrap defines
  * the shipped list). "__DIR__" in the rules is the test's directory.
  *
  * @param callable(callable(string, string=, array<string, string>=, ?string=): array{status: int, body: string, headers: list<string>}, string): void $body
@@ -26,7 +26,7 @@ function withDashboard(string $rules, callable $body): void
     mkdir("$dir/docroot", 0700, true);
     file_put_contents("$dir/docroot/index.php", '<?php echo "site " . ($_SERVER["REQUEST_SHIELD"] ?? "-") . " " . $_SERVER["REQUEST_URI"];');
     file_put_contents("$dir/site.rules", "set recheck 0\nset store file\nset store-dir $dir/store\n" . str_replace('__DIR__', $dir, $rules));
-    file_put_contents("$dir/prepend.php", '<?php define("REQUEST_SHIELD_EXTENSIONS", ["CjwNetwork\\\\RequestShield\\\\Stats\\\\StatsExtension", "CjwNetwork\\\\RequestShield\\\\Tests\\\\RsTestExtension"]);'
+    file_put_contents("$dir/prepend.php", '<?php define("REQUEST_SHIELD_EXTENSIONS", ["CjwNetwork\\\\RequestShield\\\\Stats\\\\StatsExtension", "CjwNetwork\\\\RequestShield\\\\Api\\\\ApiExtension", "CjwNetwork\\\\RequestShield\\\\Tests\\\\RsTestExtension"]);'
         . 'require ' . var_export(rsEntry(), true) . '; foreach (glob(' . var_export(__DIR__ . '/support/*.php', true) . ') as $f) { require $f; }' . "\n"
         . '\CjwNetwork\RequestShield\Shield::protectFile(' . var_export("$dir/site.rules", true) . ', null, ' . var_export("$dir/cache", true) . ');');
     $port = freePort();
@@ -82,8 +82,8 @@ return [
             same('private, no-store', dashHeader($r['headers'], 'Cache-Control'), 'never kept');
             same('noindex, nofollow', dashHeader($r['headers'], 'X-Robots-Tag'), 'never indexed');
             truthy(stripos(dashHeader($r['headers'], 'Content-Type'), 'text/html') === 0, 'HTML');
-            $json = json_decode($get('/rs/waf/live?format=json')['body'], true);
-            truthy(is_array($json) && array_key_exists('rows', $json), 'the live rows as JSON');
+            $json = json_decode($get('/rs/api/v1/live')['body'], true);
+            truthy(is_array($json) && array_key_exists('rows', (array) ($json['data'] ?? null)), 'the live rows as JSON, from the API: ' . substr((string) json_encode($json), 0, 300));
             same(200, $get('/rs/waf')['status'], 'the start alias');
             same(200, $get('/rs/waf/lists')['status'], 'the lists');
             same(200, $get('/rs/waf/rules?lang=de')['status'], 'rules and setup');

@@ -86,7 +86,8 @@ core's — the firewall's — pages live under `/rs/waf/`: **`/rs/waf/rules`** (
 & setup, below), `/rs/waf/live`, `/rs/waf/lists` ([live and lists](RSF06-02-live-and-lists.md));
 `/rs/waf` opens the live view. Every plugin gets its own prefix this way.
 The path names the view; the filters stay GET parameters
-(`?days=30&by=week&lang=de&path=/news/&crawler=CRAWL-GOOGLE`, `format=json`).
+(`?days=30&by=week&lang=de&path=/news/&crawler=CRAWL-GOOGLE`); the same as JSON is
+the [API](RSF06-05-api.md)'s `GET /rs/api/v1/stats/report`, which the page's JSON button opens.
 **The shield serves these pages itself** (0031 B.6): a request for one of
 them is answered before the site runs -- behind a `restrict` rule that covers
 it (`restrict **/rs/** to 192.0.2.0/24`: the office; `**` in front, so it holds
@@ -378,8 +379,10 @@ open (`Access::links()`). The site's own administrator is whoever passes the
 own backend can still call `StatsPage::render()` with `'who'` from a gate of
 its own, as the demo's `/customer-menu` makes a signed link with `Access::link()`.
 
-For the JSON (`?format=json`): the statistics pass `StatsExtension::siteFor($settings, $who, $_GET['site'] ?? null)` to
-`StatsReport::build()` -- a customer sees its group's websites, whatever it asks for.
+As JSON, the [API](RSF06-05-api.md)'s `GET /stats/report` and `GET /stats/sites`
+pass `StatsExtension::siteFor($settings, $who, $site)` to `StatsReport::build()` --
+a customer sees its group's websites, whatever it asks for, and not the rules
+that decided.
 
 ## What is counted how
 
