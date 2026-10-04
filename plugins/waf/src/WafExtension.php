@@ -46,6 +46,9 @@ final class WafExtension implements Extension
     /** The firewall's start (/waf, which is the live view), Rules & setup, Live and Lists. */
     public static function routes(array $compiled): array
     {
+        if (!class_exists(\CjwNetwork\RequestShield\Api\LiveRows::class)) {
+            return [];              // the pages read their data through the API's classes: without them, no page (check says so)
+        }
         $waf = is_string($compiled['base'] ?? null) ? $compiled['base'] : '/rs/waf';
         return [
             $waf => ['key' => 'live', 'tab' => null, 'role' => 'admin', 'order' => 60, 'page' => LivePage::class],
@@ -60,8 +63,10 @@ final class WafExtension implements Extension
         return ['examples' => Cli\ExamplesCommand::class];
     }
 
+    /** The pages without the API's classes: none is served. */
     public static function check(Settings $s): array
     {
-        return [];
+        return class_exists(\CjwNetwork\RequestShield\Api\LiveRows::class) ? []
+            : ['the WAF\'s pages need the API plugin (request-shield-api.php, loaded before request-shield-waf.php): without it they are not served'];
     }
 }

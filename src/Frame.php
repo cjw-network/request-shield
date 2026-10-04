@@ -20,7 +20,7 @@ final class Frame
     /**
      * The addresses of the dashboard's pages (every route with a tab, in
      * the tabs' order): the statistics plugin's below stats-path, the
-     * core's below <dashboard-path>/waf -- from the compiled routes.
+     * WAF plugin's below <dashboard-path>/waf -- from the compiled routes.
      *
      * @return array<string, string> key => address (sites with stats-hosts, all, site, shield, rules, live, lists …)
      */

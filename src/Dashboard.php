@@ -21,7 +21,7 @@ namespace CjwNetwork\RequestShield;
  * gate knows (dashboard-access). A route with
  * neither is refused -- `check` warns about it.
  *
- * In a build without the pages (the mini file has no src/Report), a route
+ * In a build without the pages (the mini file alone, without the WAF plugin), a route
  * answers 404: the shield still never hands its own addresses to the site.
  */
 final class Dashboard

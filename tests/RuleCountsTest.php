@@ -54,9 +54,10 @@ return [
             Vocabulary::reset();
         }
     },
-    'RSF06-04 the rules and setup page knows no plugin by name: src/Report has no StatsReport' => function (): void {
+    'RSF06-04 the rules and setup page knows no plugin by name: plugins/waf has no StatsReport' => function (): void {
         foreach (['RulesPage.php', 'SetupPage.php'] as $f) {
-            $code = (string) file_get_contents(dirname(__DIR__) . '/src/Report/' . $f);
+            truthy(is_file(dirname(__DIR__) . '/plugins/waf/src/' . $f), "$f is there");
+            $code = (string) file_get_contents(dirname(__DIR__) . '/plugins/waf/src/' . $f);
             truthy(strpos($code, 'StatsReport::') === false && strpos($code, 'StatsPage::') === false && strpos($code, "Report\\\\StatsPage") === false, "$f asks Counts, not the statistics: no StatsReport::/StatsPage:: call");
         }
         truthy(strpos((string) file_get_contents(dirname(__DIR__) . '/src/Counts.php'), 'hooks[\'ruleCounts\']') !== false, 'Counts reads the hook');
