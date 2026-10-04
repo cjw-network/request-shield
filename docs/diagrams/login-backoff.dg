@@ -1,0 +1,9 @@
+# use case: the sign-in, hardened -- three tries, then longer and longer.
+title Three wrong passwords go through; the fourth gets a pause and a ban of a minute, and every ban after it lasts twice as long
+row  try:box "A wrong password" "the site counts it: consume()" | budget:warnbox "3 in 15 minutes?" "limit logins" | next:okbox "Try again" "the site answers"
+row  pause:nobox "429, please wait" "the fourth: a pause" | ban:nobox "Banned" "1, 2, 4, 8 … minutes"
+arrow try -> budget
+arrow budget -> next "within" go
+arrow budget -> pause "past it"
+arrow pause -> ban "ban after 1 logins"
+note A right password counts nothing; set ban-max caps the ban, exempt keeps the office out of it.

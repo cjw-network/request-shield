@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **Use case: the sign-in, hardened -- three tries, then longer and longer**
+  (`docs/use-cases/login-backoff.md`): the application counts each wrong
+  password (`consume('logins', answer: true)`), `limit logins 3/15m on-demand
+  at /login` and `ban after 1 logins in 15m for 1m` with `ban-growth 2` --
+  three tries, then a pause and bans of 1, 2, 4, 8 minutes; or the browser
+  check instead, twice as hard each round. A test runs the page's own rules
+  and holds them to what it says.
 - **Error pages, part 1: the shield's own page** (proposal 0030, 0031 step G.1,
   RSF05-06): a refusal the shield answers itself gets the check page's frame --
   a quiet ring with a `:-(` drawn in SVG, or the site's logo (`set
