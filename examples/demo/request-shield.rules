@@ -41,6 +41,7 @@ include @tracking
 [DEMO-STRICT]       query strict                                  # any other parameter, or a value not of its type: 404
 
 [DEMO-FORMS]        allow POST  **/edit **/comment **/profile **/contact **/rs/waf/lists     # forms may only be sent to the edit, comment, profile and contact pages -- and the lists
+[DEMO-ORIGIN]       post-origin same missing allow                # a form only from the site's own pages; without Origin and Referer (a tool, an old browser) it passes
 
 # The admin area, as a block: the rules of one area in one place, the path
 # written once (the same as "restrict **/admin/** to 192.0.2.0/24").
@@ -187,6 +188,14 @@ expect GET /            from 198.51.100.200 403 by DEMO-FEED  # A single address
 expect GET /  ua "Mozilla/5.0 (compatible; DemoBot/1.0)" from 192.0.2.40 403 by DEMO-BOT-NO   # DemoBot from its own addresses: proved, and the site blocks it
 expect GET /  ua "Mozilla/5.0 (compatible; DemoBot/1.0)" from 198.51.100.7 answered          # the same name from elsewhere: only a claim, an ordinary visitor
 expect GET /  from 192.0.2.40 answered                                                       # a browser from DemoBot's addresses
+
+# demo: RSF02-04 forms-from-the-website Forms only from the website itself
+# A browser says where a form was sent from (Origin, else Referer). A form sent
+# from another website -- a page that makes the visitor's browser post here --
+# is refused; one from the site's own pages passes.
+expect POST https://www.example.org/edit header Origin:https://elsewhere.example 403 by DEMO-ORIGIN   # A form sent from another website
+expect POST https://www.example.org/edit header Origin:https://www.example.org answered              # from the site's own page
+expect POST https://www.example.org/edit answered                                                    # without Origin and Referer (missing allow): a tool, an old browser
 
 # demo: RSF04-01 cacheable-definition What a cache may keep
 # Every page passes; only some may be kept by a cache. Unknown paths and

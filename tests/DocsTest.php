@@ -41,10 +41,12 @@ return [
         if (!function_exists('exec')) {
             skip('no exec');
         }
-        // Exactly the tests whose names begin with the id: counted in the files themselves.
+        // Exactly the tests whose names begin with the id: as the runner loaded them (some are made at load time).
         $named = 0;
-        foreach (glob(__DIR__ . '/*Test.php') ?: [] as $f) {
-            $named += preg_match_all("/^ *'RSF02-04 /m", (string) file_get_contents($f));
+        foreach ((array) ($GLOBALS['RS_TEST_SETS'] ?? []) as $set) {
+            foreach (array_keys((array) $set) as $name) {
+                $named += strncmp((string) $name, 'RSF02-04 ', 9) === 0 ? 1 : 0;
+            }
         }
         exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__DIR__ . '/run.php') . ' RSF02-04 2>&1', $out, $code);
         $text = implode("\n", $out);

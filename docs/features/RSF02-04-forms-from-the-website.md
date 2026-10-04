@@ -99,3 +99,19 @@ method is all it looks at), **about 2–3 µs for a form** (reading the `Origin`
 the exception and API patterns, one host comparison), a little more when it
 refuses (the exempt addresses are looked up only then). A form request renders
 a whole page anyway.
+
+## Examples from the demo
+
+What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).
+
+<!-- examples: docs/tools/sync-examples.php from examples/demo/request-shield.rules -- do not edit; run the tool. -->
+**RSF02-04 · Forms only from the website itself**
+
+A browser says where a form was sent from (Origin, else Referer). A form sent from another website -- a page that makes the visitor's browser post here -- is refused; one from the site's own pages passes.
+
+| Request | The rules decide | |
+|---|---|---|
+| `POST https://www.example.org/edit` | no access (403) · rule DEMO-ORIGIN — from another address (198.51.100.7), with Origin: https://elsewhere.example | A form sent from another website |
+| `POST https://www.example.org/edit` | the site answers it — from another address (198.51.100.7), with Origin: https://www.example.org | from the site's own page |
+| `POST https://www.example.org/edit` | the site answers it — from another address (198.51.100.7) | without Origin and Referer (missing allow): a tool, an old browser |
+<!-- /examples -->

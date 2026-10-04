@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **The demo shows forms only from the website itself** (0031 step F.6,
+  RSF02-04): `post-origin same missing allow` -- a form sent from another
+  website is refused, one from the site's own pages passes, one without Origin
+  and Referer too. Every request-path feature has an end-to-end test now.
 - **The demo shows a crawler that proves who it is** (0031 step F.6,
   RSF01-04): DemoBot, a crawler of the demo's own with its address list in
   `examples/demo/crawlers/demo-bot.json` (documentation ranges), blocked by the
