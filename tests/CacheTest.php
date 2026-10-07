@@ -198,6 +198,12 @@ return [
                 same(3000.0, $mem->newest(['a']), '... until it runs out (or is dropped)');
                 $mem->purge(['c'], 4000.0);
                 same([4000.0, 4000.0], [$mem->newest(['c']), $file->newest(['c'])], 'a purge through APCu writes the file too');
+                // A purge whose file cannot be written (a file where its folder should be): said to
+                // have failed, and not kept in APCu either -- it must not count for a while and lapse.
+                $h = md5('t');
+                file_put_contents("$dir/tags/" . substr($h, 0, 2), 'not a folder');
+                truthy(!$mem->purge(['t'], 5000.0), 'a purge that cannot be written: false');
+                truthy($mem->newest(['t']) < 5000.0, '... and not in memory');
             }
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
