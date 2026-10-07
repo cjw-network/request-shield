@@ -130,7 +130,7 @@
         }).then(one);
       }
       // In order, so the bar reads left to right as the counter rises.
-      one().then(function () { go.disabled = false; });
+      one().catch(function () {}).then(function () { go.disabled = false; });
     });
   });
 

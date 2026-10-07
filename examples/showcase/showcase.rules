@@ -19,9 +19,9 @@ expect GET  /phpmyadmin/            from 198.51.100.13 404 by SCAN-DBTOOL    # .
 expect GET  /backup.sql             from 198.51.100.14 404 by SCAN-BACKUP    # ... for a forgotten backup
 
 include @tracking                                     # utm_*, fbclid, gclid: newsletter and ad links keep working
+expect GET  /?utm_source=newsletter from 198.51.100.19 answered              # A newsletter link: welcome
 include @attacks                                      # SQL injection, XSS, shell commands -- in the free text only
 expect GET  /?q=1%27%20UNION%20SELECT%20password%20FROM%20users-- from 198.51.100.15 403 by ATK-SQL-UNION   # SQL injection in the search
-expect GET  /?utm_source=newsletter from 198.51.100.19 answered              # A newsletter link: welcome
 
 [SHOW-PARAMS]  query page int   q text   lang word    # the parameters the site knows, and their types
 expect GET  /?page=2                from 198.51.100.16 answered              # A page number that is a number
