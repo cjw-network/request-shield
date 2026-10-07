@@ -268,21 +268,68 @@
     });
   });
 
-  // The page's own log, live: its end every few seconds while it is in view.
-  var logBox = document.getElementById('live-log');
-  if (logBox) {
-    var seen = false;
+  // The page's own log, docked bottom right on every part of the page: each line the shield wrote
+  // (set log), parsed into time, decision, status, rule and request; new ones light up.
+  var dock = document.getElementById('log-dock');
+  if (dock) {
+    var rows = dock.querySelector('.log-rows');
+    var head = dock.querySelector('.log-dock-head');
+    var badge = dock.querySelector('.log-new');
+    var known = {};
+    var first = true;
+    var unseen = 0;
+    var open = window.matchMedia ? !window.matchMedia('(max-width: 767px)').matches : true;
+    try { if (localStorage.getItem('rs-log-dock') === 'closed') { open = false; } } catch (e) {}
+    var setOpen = function (o) {
+      open = o;
+      dock.classList.toggle('closed', !o);
+      head.setAttribute('aria-expanded', o ? 'true' : 'false');
+      if (o) { unseen = 0; badge.hidden = true; }
+      try { localStorage.setItem('rs-log-dock', o ? 'open' : 'closed'); } catch (e) {}
+    };
+    setOpen(open);
+    head.addEventListener('click', function () { setOpen(!open); });
+    // 2026-10-07T21:09:33+00:00 198.51.100.0/24 reject 404 "blocked path" rule=SCAN-HIDDEN ref=X "GET http://…" "UA"
+    var shape = /^(\S+) (\S+) (\S+) (\d+) "([^"]*)"(?: rule=(\S+))?(?: ref=(\S+))? "(\S+) ([^"]*)" "([^"]*)"$/;
+    var kindOfAction = function (a) {
+      a = a.replace(/^monitor-/, '');
+      return a === 'reject' ? 'stop' : a === 'throttle' ? 'slow' : a === 'challenge' ? 'check' : 'pass';
+    };
+    var row = function (line) {
+      var m = shape.exec(line);
+      var li = el('li', 'log-row');
+      if (!m) { li.appendChild(el('code', '', line)); return li; }
+      li.classList.add('log-' + kindOfAction(m[3]));
+      li.appendChild(el('span', 'log-time', m[1].substr(11, 8)));
+      li.appendChild(el('span', 'log-act', m[3] + ' ' + m[4]));
+      li.appendChild(el('span', 'log-rule', m[6] || m[5]));
+      var path = m[9].replace(/^[a-z]+:\/\/[^\/]+/i, '');
+      var shown = path;
+      try { shown = decodeURIComponent(path); } catch (e) {}     // a broken %-escape is shown as it came
+      li.appendChild(el('code', 'log-req', m[8] + ' ' + (shown.length > 70 ? shown.substr(0, 70) + '…' : shown)));
+      li.title = line;
+      return li;
+    };
     var poll = function () {
       fetch('/__log', { credentials: 'omit', cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
-        var code = logBox.querySelector('code');
-        code.textContent = j.lines.length ? j.lines.join('\n') : logBox.getAttribute('data-empty');
-        logBox.scrollTop = logBox.scrollHeight;
+        var fresh = 0;
+        j.lines.forEach(function (line) {
+          if (known[line]) { return; }
+          known[line] = true;
+          var empty = rows.querySelector('.log-empty');
+          if (empty) { rows.removeChild(empty); }
+          var li = row(line);
+          if (!first) { li.classList.add('log-fresh'); fresh++; }
+          rows.appendChild(li);
+          while (rows.children.length > 40) { rows.removeChild(rows.firstChild); }
+        });
+        if (fresh && !open) { unseen += fresh; badge.textContent = '+' + unseen; badge.hidden = false; }
+        first = false;
+        rows.scrollTop = rows.scrollHeight;
       }).catch(function () {});
     };
-    if ('IntersectionObserver' in window) {
-      new IntersectionObserver(function (es) { seen = es[0].isIntersecting; if (seen) { poll(); } }).observe(logBox);
-    } else { seen = true; }
-    setInterval(function () { if (seen && !document.hidden) { poll(); } }, 3000);
+    poll();
+    setInterval(function () { if (!document.hidden) { poll(); } }, 2000);
   }
 
   // Install: copy a snippet as it is shown.

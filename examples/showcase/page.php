@@ -261,15 +261,6 @@ $client = [
   </div>
 </section>
 
-<section class="section pt-0">
-  <div class="container">
-    <div class="live-log">
-      <h3 class="h5 mb-1"><i class="bi bi-journal-text"></i> <?= $e($t['liveLogTitle']) ?> <span class="live-dot" aria-hidden="true"></span></h3>
-      <p class="small mb-2"><?= $e($t['liveLogLead']) ?></p>
-      <pre class="log-box mb-0" id="live-log" data-empty="<?= $e($t['liveLogEmpty']) ?>" aria-live="off"><code><?= $e($t['liveLogEmpty']) ?></code></pre>
-    </div>
-  </div>
-</section>
 
 <section class="section section-alt">
   <div class="container">
@@ -322,6 +313,17 @@ $client = [
     <p class="text-center mt-4"><i class="bi bi-eye"></i> <?= $t['installMonitor'] ?></p>
   </div>
 </section>
+
+<aside class="log-dock" id="log-dock" aria-label="<?= $e($t['liveLogTitle']) ?>" data-empty="<?= $e($t['liveLogEmpty']) ?>">
+  <button type="button" class="log-dock-head" aria-expanded="true" aria-controls="log-dock-body">
+    <span class="live-dot" aria-hidden="true"></span> <i class="bi bi-journal-text"></i> <?= $e($t['liveLogTitle']) ?>
+    <span class="log-new" hidden></span><i class="bi bi-chevron-down ms-auto log-toggle" aria-hidden="true"></i>
+  </button>
+  <div class="log-dock-body" id="log-dock-body">
+    <p class="log-dock-lead"><?= $e($t['liveLogLead']) ?></p>
+    <ol class="log-rows" aria-live="off"><li class="log-empty"><?= $e($t['liveLogEmpty']) ?></li></ol>
+  </div>
+</aside>
 
 <footer class="footer"><div class="container text-center small"><?= $e($t['footer']) ?></div></footer>
 

@@ -38,6 +38,10 @@ Open http://127.0.0.1:8090/ (`?lang=de` or `?lang=en`).
   runs. *Bot mode* tries once a second for a minute and draws which tries
   reached the page. These budgets cannot be decided by `request-shield test`
   (the page counts them); `tests/ShowcaseTest.php` sends them for real.
+- **The live log** is docked bottom right on every part of the page: the
+  end of the showcase's own log (`set log`, `/__log`, addresses masked),
+  each line as time, decision, status, rule and request, new ones lit up;
+  click its bar to fold it away (it remembers that).
 - **Install** shows the steps with real paths: the folder, `.htaccess`,
   `.user.ini`, `require` in `index.php` or `wp-config.php`, and a first rule
   file in `monitor` mode with `set log` -- without a log file, monitor mode

@@ -181,6 +181,31 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .live-log p { color: var(--rs-soft-ink); }
 .live-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--rs-coral); margin-left: 6px; vertical-align: middle; animation: pulse 1.6s ease-in-out infinite; }
 
+/* The docked live log */
+.log-dock { position: fixed; right: 16px; bottom: 16px; z-index: 1040; width: min(560px, calc(100vw - 32px)); background: #1f2a44; color: #e2e8f0;
+  border-radius: 18px; box-shadow: 0 20px 50px rgba(15, 23, 42, .35); overflow: hidden; }
+.log-dock-head { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px; background: #172036; color: #fff; border: 0; font-weight: 700; font-size: .9rem; text-align: left; }
+.log-dock-head .live-dot { margin-left: 0; background: var(--rs-coral); }
+.log-new { background: var(--rs-coral); color: #fff; border-radius: 999px; padding: 0 8px; font-size: .75rem; }
+.log-dock.closed .log-dock-body { display: none; }
+.log-dock.closed .log-toggle { transform: rotate(180deg); }
+.log-dock-lead { margin: 8px 14px 6px; font-size: .75rem; color: #b8c2d6; }
+.log-rows { list-style: none; margin: 0; padding: 0 8px 10px; max-height: 210px; overflow-y: auto; font-size: .76rem; }
+.log-row { display: grid; grid-template-columns: 4.6rem 6.6rem 8.5rem 1fr; gap: 8px; align-items: baseline; padding: 3px 6px; border-radius: 8px; border-left: 3px solid transparent; }
+.log-row code { color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-time { color: #94a3b8; font-variant-numeric: tabular-nums; }
+.log-act { font-weight: 700; }
+.log-rule { color: #93c5fd; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-stop { border-left-color: var(--rs-coral); } .log-stop .log-act { color: #fca5a5; }
+.log-check { border-left-color: var(--rs-sun); } .log-check .log-act { color: #fcd34d; }
+.log-slow { border-left-color: #fb923c; } .log-slow .log-act { color: #fdba74; }
+.log-pass .log-act { color: #86efac; }
+.log-fresh { animation: fresh 2.5s ease-out; }
+@keyframes fresh { from { background: rgba(147, 197, 253, .25); } to { background: transparent; } }
+.log-empty { color: #94a3b8; padding: 6px; }
+.footer { padding-bottom: 90px; }
+@media (max-width: 575px) { .log-row { grid-template-columns: 4.2rem 1fr; } .log-rule, .log-req { grid-column: 2; } }
+
 /* Install */
 .install-steps { max-width: 56rem; margin: 0 auto; }
 .code-box { position: relative; }
