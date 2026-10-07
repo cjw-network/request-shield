@@ -268,6 +268,23 @@
     });
   });
 
+  // The page's own log, live: its end every few seconds while it is in view.
+  var logBox = document.getElementById('live-log');
+  if (logBox) {
+    var seen = false;
+    var poll = function () {
+      fetch('/__log', { credentials: 'omit', cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+        var code = logBox.querySelector('code');
+        code.textContent = j.lines.length ? j.lines.join('\n') : logBox.getAttribute('data-empty');
+        logBox.scrollTop = logBox.scrollHeight;
+      }).catch(function () {});
+    };
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (es) { seen = es[0].isIntersecting; if (seen) { poll(); } }).observe(logBox);
+    } else { seen = true; }
+    setInterval(function () { if (seen && !document.hidden) { poll(); } }, 3000);
+  }
+
   // Install: copy a snippet as it is shown.
   document.querySelectorAll('.code-box .copy').forEach(function (b) {
     b.addEventListener('click', function () {

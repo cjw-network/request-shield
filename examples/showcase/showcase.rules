@@ -74,4 +74,5 @@ expect GET  /__try?n=1              from 198.51.100.28 answered              # (
 [SHOW-RS]      restrict /rs/** to 127.0.0.1 ::1        # the shield's own pages: only this machine
 expect GET  /rs/dashboard           from 198.51.100.27 403 by SHOW-RS        # The shield's own pages, from outside
 set         store-dir ${REQUEST_SHIELD_SHOWCASE_VAR:-/tmp/request-shield-showcase}
+set         log ${REQUEST_SHIELD_SHOWCASE_VAR:-/tmp/request-shield-showcase}/shield.log   # what the shield stopped, checked or slowed down; the page shows its end (/__log)
 set         recheck 0

@@ -159,6 +159,10 @@ return [
             }
             [$st, $xrs] = $get('GET', '/', ['X-Forwarded-For' => '203.0.113.66']);
             same(403, $st, 'the deny list, for real');
+            $log = json_decode($get('GET', '/__log')[2], true);
+            $lines = implode("\n", is_array($log) ? $log['lines'] : []);
+            truthy(strpos($lines, 'rule=SCAN-HIDDEN') !== false && strpos($lines, 'rule=SHOW-DENY') !== false && strpos($lines, '198.51.100.11') === false,
+                'the page shows the end of its log: the tries above in it, the addresses masked -- ' . substr($lines, -300));
             [$st, $xrs] = $get('GET', '/login');
             truthy($st === 429 && strpos($xrs, 'challenge') === 0, 'you, on this machine: the login checks you too (exempt none) -- ' . $xrs);
             [$st, , , , $raw] = $get('GET', '/__login');

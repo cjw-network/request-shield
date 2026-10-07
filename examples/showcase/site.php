@@ -123,6 +123,26 @@ if ($path === '/account/login' && $method === 'POST') {
     showcaseJson(200, ['ok' => false]);
     return;
 }
+if ($path === '/__log') {
+    // The end of the shield's own log (set log): what it stopped, checked or slowed down, addresses
+    // masked (log-ip masked, the default). The showcase runs on your machine; a real site keeps its log to itself.
+    $file = Shield::active()?->settings->logFile;
+    $lines = [];
+    if (is_string($file) && is_file($file)) {
+        $size = (int) filesize($file);
+        $h = fopen($file, 'rb');
+        if ($h !== false) {
+            fseek($h, max(0, $size - 16384));
+            $lines = array_slice(array_values(array_filter(explode("\n", (string) stream_get_contents($h)), 'strlen')), -14);
+            fclose($h);
+        }
+        if ($size > 16384 && $lines !== []) {
+            array_shift($lines);    // the first may be cut in the middle
+        }
+    }
+    showcaseJson(200, ['lines' => $lines]);
+    return;
+}
 if ($path === '/__login') {
     // "See the check": the pass forgotten first, so the login checks again (a pass holds an hour).
     setcookie('rsp', '', ['expires' => 1, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);

@@ -261,6 +261,16 @@ $client = [
   </div>
 </section>
 
+<section class="section pt-0">
+  <div class="container">
+    <div class="live-log">
+      <h3 class="h5 mb-1"><i class="bi bi-journal-text"></i> <?= $e($t['liveLogTitle']) ?> <span class="live-dot" aria-hidden="true"></span></h3>
+      <p class="small mb-2"><?= $e($t['liveLogLead']) ?></p>
+      <pre class="log-box mb-0" id="live-log" data-empty="<?= $e($t['liveLogEmpty']) ?>" aria-live="off"><code><?= $e($t['liveLogEmpty']) ?></code></pre>
+    </div>
+  </div>
+</section>
+
 <section class="section section-alt">
   <div class="container">
     <div class="section-head"><h2><?= $e($t['checkTitle']) ?></h2></div>
@@ -300,7 +310,11 @@ $client = [
           </div>
         <?php else: ?>
           <?= $code($snippet) ?>
-          <?php if ($i === 2): ?><div class="mt-3"><?= $code($t['installCheck']) ?></div><?php endif ?>
+          <?php if ($i === 2): ?><div class="mt-3"><?= $code($t['installCheck']) ?></div>
+            <p class="mt-4 mb-2 fw-bold"><i class="bi bi-journal-text"></i> <?= $e($t['installLogTitle']) ?></p>
+            <pre class="log-box mb-1"><code><?= $e($t['installLog']) ?></code></pre>
+            <p class="small text-secondary mb-0"><?= $e($t['installLogLegend']) ?></p>
+          <?php endif ?>
         <?php endif ?>
       </div>
       <?php endforeach ?>

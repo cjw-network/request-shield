@@ -175,6 +175,12 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .bot-summary { font-weight: 700; color: var(--rs-ink); }
 .counter .form-control { border-radius: 999px; }
 
+/* Logs */
+.log-box { background: #1f2a44; color: #e2e8f0; border-radius: 16px; padding: 14px 16px; font-size: .78rem; line-height: 1.6; white-space: pre; overflow-x: auto; max-height: 340px; overflow-y: auto; }
+.live-log { background: #fff; border: 1px solid var(--rs-line); border-radius: 24px; padding: 22px; }
+.live-log p { color: var(--rs-soft-ink); }
+.live-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--rs-coral); margin-left: 6px; vertical-align: middle; animation: pulse 1.6s ease-in-out infinite; }
+
 /* Install */
 .install-steps { max-width: 56rem; margin: 0 auto; }
 .code-box { position: relative; }
