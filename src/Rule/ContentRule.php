@@ -48,7 +48,7 @@ final class ContentRule implements Rule
                 continue;
             }
             $content = $request->content($target);
-            if ($content === '' || (!isset($content[self::LONG]) && @preg_match($all, $content) !== 1)) {
+            if ($content === '' || (!isset($content[self::LONG - 1]) && @preg_match($all, $content) !== 1)) {
                 continue;
             }
             if (self::matched($this->rules, $this->exceptions, $target, $request) !== null) {
