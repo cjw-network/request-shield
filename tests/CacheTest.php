@@ -300,6 +300,23 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF04-03 roles (0039): a harmless cookie is never a session cookie -- the session\'s MAC is the same with or without it' => function (): void {
+        if (!\CjwNetwork\RequestShield\Capability::apcu()) {
+            skip('APCu not enabled (php -d apc.enable_cli=1): roles need it');
+        }
+        $dir = cacheDir();
+        try {
+            $p = new CachePlugin(cacheSettings($dir, "set http-cache on\nset http-cache-hosts www.example.org\nset http-cache-session-cookie sess*\nset http-cache-cookies sess_ga*\n"));
+            $of = new \ReflectionMethod($p, 'sessionOf');
+            $of->setAccessible(true);
+            $alone = $of->invoke($p, cacheReq('/', ['Cookie' => 'sess=abc']));
+            truthy(is_string($alone), 'a session cookie: a MAC');
+            same($alone, $of->invoke($p, cacheReq('/', ['Cookie' => 'sess=abc; sess_ga=1'])), 'a cookie that is harmless and looks like a session: not part of it');
+            same(null, $of->invoke($p, cacheReq('/', ['Cookie' => 'sess_ga=1'])), 'only a harmless one: no session');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'RSF04-03 end to end, a page per role (0039): the application names the role (cacheContext), the next request with that session cookie gets the role\'s page -- not another role\'s, not with a forged cookie, not after logout or a purge of rs-context; only pages called shared' => function (): void {
         $fpm = fpmBinary();
         if (!function_exists('proc_open') || $fpm === null) {

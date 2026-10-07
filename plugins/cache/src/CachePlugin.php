@@ -43,7 +43,7 @@ use CjwNetwork\RequestShield\Settings;
  * MAC(secret, the session cookie) -> role in APCu, and a later request with
  * that cookie gets the page kept for the role -- when the application said
  * the page is the same for everyone with it (shared, or Vary: X-User-Hash /
- * X-User-Context-Hash). Such a page leaves as private and without that Vary.
+ * X-User-Context-Hash). Such a page leaves as private.
  */
 final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandler
 {
