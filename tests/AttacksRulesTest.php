@@ -228,6 +228,18 @@ return [
         // not "union"); that is the documented limit of the normalisation.
         truthy(strncmp(attacksDecide($s, '/?id=1%20un/**/ion'), 'allow', 5) === 0, 'un/**/ion is not union');
     },
+    'RSF02-06 attacks: a long value is looked at pattern by pattern -- the same answers as a short one' => function (): void {
+        $s = attacksRules();
+        $pad = 'q=' . str_repeat('what+is+new+in+the+shop+', 12) . '&';        // well past ContentRule::LONG (128)
+        same('reject attack', attacksDecide($s, "/?{$pad}id=1+union+select+2"), 'an attack at the end of a long query');
+        same('ATK-SQL-UNION', attacksRuleId($s, "/?{$pad}id=1+union+select+2"), 'named by its rule');
+        same('ATK-XSS-TAG', attacksRuleId($s, "/?id=%3Cscript%3E&{$pad}"), 'at the start');
+        truthy(strncmp(attacksDecide($s, "/?{$pad}page=2"), 'allow', 5) === 0, 'a long, clean query passes');
+        $open = attacksRules("unblock [ATK-SQL-UNION@1] at /reports/**\n");
+        truthy(strncmp(attacksDecide($open, "/reports/x?{$pad}id=1+union+select+2"), 'allow', 5) === 0, 'an exception holds for a long one too');
+        same('reject attack', attacksDecide($open, "/reports/x?{$pad}id=1+union+select+2&u=%3Cscript%3E"), '... for its rule only');
+        same('reject attack', attacksDecide($s, '/', ['HTTP_X_LONG' => str_repeat('a', 200) . '${jndi:ldap://x}']), 'a long header');
+    },
     'RSF02-06 attacks: taken back and replaced like every other rule' => function (): void {
         // One rule by its ID; the rest stay.
         $s = attacksRules("unblock [ATK-XSS-URL@1]\n");

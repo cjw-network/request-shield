@@ -17,13 +17,18 @@ use CjwNetwork\RequestShield\Settings;
 /**
  * Attack patterns in the query string and the headers -- SQL injection, XSS,
  * code and shell injection, file inclusion, attack tools (rules/attacks.rules,
- * after the OWASP Core Rule Set's first level). Every target is matched
- * against one expression of all its patterns, so a clean request costs one
- * preg_match per target; only a hit looks for the pattern (for the rule's ID
- * and the exceptions).
+ * after the OWASP Core Rule Set's first level). A short value is matched
+ * against one expression of all the target's patterns (one call); a longer
+ * one pattern by pattern -- PCRE finds a pattern's fixed text (union,
+ * <script) quickly on its own and loses that in the one expression, which
+ * was twice as slow on a clean 1 KB query. The first pattern that matches,
+ * and that no exception lets through, refuses.
  */
 final class ContentRule implements Rule
 {
+    /** From this length on, pattern by pattern (measured: equal at about 100 bytes) */
+    private const LONG = 128;
+
     /**
      * @param array<string, string> $index target => the combined expression
      * @param list<array{target: string, patterns: list<string>}> $rules
@@ -43,7 +48,10 @@ final class ContentRule implements Rule
                 continue;
             }
             $content = $request->content($target);
-            if ($content !== '' && @preg_match($all, $content) === 1 && self::matched($this->rules, $this->exceptions, $target, $request) !== null) {
+            if ($content === '' || (!isset($content[self::LONG]) && @preg_match($all, $content) !== 1)) {
+                continue;
+            }
+            if (self::matched($this->rules, $this->exceptions, $target, $request) !== null) {
                 return Decision::reject(403, 'attack');
             }
         }

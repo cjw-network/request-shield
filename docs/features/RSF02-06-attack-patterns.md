@@ -91,6 +91,18 @@ Measured on PHP 8.3 with OPcache, a passing request, the decision alone:
 | with `@attacks`, one free-text parameter | about 5.8 µs |
 
 The patterns are compiled with the rules; nothing is read per request.
+The cost grows with the length of what is looked at. A value under 128 bytes
+is matched against one expression of all the patterns (one call); a longer
+one pattern by pattern, which PCRE does faster there -- a passing request
+with all attack rules, PHP 8.3 (another measurement than the table above:
+the request read from `$_SERVER` each time, and every other check):
+
+| query | one expression | from 128 bytes on, pattern by pattern |
+|---|---|---|
+| 22 bytes | about 21 µs | (unchanged) |
+| 96 bytes | about 30 µs | (unchanged) |
+| 297 bytes | about 50 µs | about 36 µs |
+| 1 KB | about 143 µs | about 70 µs |
 
 ## Limits
 

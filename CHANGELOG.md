@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- **The attack rules look at a long value twice as fast**: from 128 bytes
+  on, a value is matched pattern by pattern instead of against one
+  expression of all of them -- PCRE finds each pattern's fixed text quickly
+  on its own and loses that in the one expression. A passing request with
+  all attack rules and a 1 KB query: about 143 -> 70 µs, 297 bytes about
+  50 -> 36 µs; short values are matched as before (one call).
+
 ### Fixed
 - **Log4Shell with a lookup inside a lookup is refused** (`ATK-JNDI@2`,
   attack rules `2026.10.2`): `${${lower:j}ndi:ldap://…}` and
