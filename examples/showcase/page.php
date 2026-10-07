@@ -315,10 +315,13 @@ $client = [
 </section>
 
 <aside class="log-dock" id="log-dock" aria-label="<?= $e($t['liveLogTitle']) ?>" data-empty="<?= $e($t['liveLogEmpty']) ?>">
-  <button type="button" class="log-dock-head" aria-expanded="true" aria-controls="log-dock-body">
-    <span class="live-dot" aria-hidden="true"></span> <i class="bi bi-journal-text"></i> <?= $e($t['liveLogTitle']) ?>
-    <span class="log-new" hidden></span><i class="bi bi-chevron-down ms-auto log-toggle" aria-hidden="true"></i>
-  </button>
+  <div class="log-dock-top">
+    <button type="button" class="log-dock-head" aria-expanded="true" aria-controls="log-dock-body">
+      <span class="live-dot" aria-hidden="true"></span> <i class="bi bi-journal-text"></i> <?= $e($t['liveLogTitle']) ?>
+      <span class="log-new" hidden></span><i class="bi bi-chevron-down ms-auto log-toggle" aria-hidden="true"></i>
+    </button>
+    <button type="button" class="log-dock-wide" aria-pressed="false" title="<?= $e($t['liveLogWide']) ?>" aria-label="<?= $e($t['liveLogWide']) ?>"><i class="bi bi-arrows-angle-expand"></i></button>
+  </div>
   <div class="log-dock-body" id="log-dock-body">
     <div class="log-dock-bar">
       <p class="log-dock-lead"><?= $e($t['liveLogLead']) ?> <?= $e($t['liveLogMasked']) ?>.</p>

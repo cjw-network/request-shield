@@ -291,6 +291,18 @@
     };
     setOpen(open);
     head.addEventListener('click', function () { setOpen(!open); });
+    // Wider: across the page and taller -- for long lines, the original view above all.
+    var wideBtn = dock.querySelector('.log-dock-wide');
+    var setWide = function (w) {
+      dock.classList.toggle('wide', w);
+      wideBtn.setAttribute('aria-pressed', w ? 'true' : 'false');
+      wideBtn.querySelector('i').className = 'bi ' + (w ? 'bi-arrows-angle-contract' : 'bi-arrows-angle-expand');
+      try { localStorage.setItem('rs-log-wide', w ? '1' : '0'); } catch (e) {}
+    };
+    var wideAtStart = false;
+    try { wideAtStart = localStorage.getItem('rs-log-wide') === '1'; } catch (e) {}
+    setWide(wideAtStart);
+    wideBtn.addEventListener('click', function () { setWide(!dock.classList.contains('wide')); if (!open) { setOpen(true); } });
     // 2026-10-07T21:09:33+00:00 198.51.100.0/24 reject 404 "blocked path" rule=SCAN-HIDDEN ref=X "GET http://…" "UA"
     var shape = /^(\S+) (\S+) (\S+) (\d+) "([^"]*)"(?: rule=(\S+))?(?: claimed=(\S+))?(?: ref=(\S+))? "(\S+) ([^"]*)" "([^"]*)"$/;
     var kindOfAction = function (a) {
