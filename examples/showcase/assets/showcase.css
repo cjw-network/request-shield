@@ -187,7 +187,7 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .log-dock-wide:hover, .log-dock-wide:focus-visible { color: #fff; background: rgba(255, 255, 255, .08); }
 .log-dock.wide { width: calc(100vw - 32px); }
 .log-dock.wide .log-rows { max-height: min(55vh, 520px); font-size: .8rem; }
-.log-dock.wide .log-row { grid-template-columns: 4.6rem 8.6rem 8rem 22rem 1fr; }
+@media (min-width: 576px) { .log-dock.wide .log-row { grid-template-columns: 4.6rem 8.6rem 8rem 22rem 1fr; } }
 .log-act { white-space: nowrap; }
 .log-dock-head { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; padding: 10px 14px; background: #172036; color: #fff; border: 0; font-weight: 700; font-size: .9rem; text-align: left; }
 .log-dock-head .live-dot { margin-left: 0; background: var(--rs-coral); }
