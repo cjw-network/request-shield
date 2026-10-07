@@ -4,6 +4,7 @@
   --rs-soft-ink: #55627a;
   --rs-mint: #10b981;
   --rs-mint-dark: #047857;
+  --rs-mint-deeper: #065f46;
   --rs-mint-bg: #e7f8f0;
   --rs-sky-bg: #e8f3ff;
   --rs-sun: #f59e0b;
@@ -35,18 +36,18 @@ h1, h2, h3, h4 { letter-spacing: -.01em; }
     linear-gradient(180deg, #f3fbf7, #f4f9ff);
 }
 .hero h1 { color: var(--rs-ink); line-height: 1.05; }
-.hero h1 span { color: var(--rs-mint); }
+.hero h1 span { color: var(--rs-mint-dark); }
 .hero .lead { color: var(--rs-soft-ink); max-width: 36rem; }
 .eyebrow { display: inline-block; padding: 6px 14px; border-radius: 999px; background: var(--rs-mint-bg); color: var(--rs-mint-dark);
   font-weight: 700; font-size: .85rem; }
 
 .btn { border-radius: 999px; }
-.btn-accent { background: var(--rs-mint); border-color: var(--rs-mint); color: #fff; font-weight: 700; box-shadow: 0 8px 20px rgba(16, 185, 129, .28); }
-.btn-accent:hover, .btn-accent:focus { background: var(--rs-mint-dark); border-color: var(--rs-mint-dark); color: #fff; }
+.btn-accent { background: var(--rs-mint-dark); border-color: var(--rs-mint-dark); color: #fff; font-weight: 700; box-shadow: 0 8px 20px rgba(16, 185, 129, .28); }
+.btn-accent:hover, .btn-accent:focus { background: var(--rs-mint-deeper); border-color: var(--rs-mint-deeper); color: #fff; }
 .btn-soft { background: #fff; border: 1px solid var(--rs-line); color: var(--rs-ink); font-weight: 600; }
 .btn-soft:hover { border-color: var(--rs-mint); color: var(--rs-mint-dark); }
-.btn-outline-accent { border: 2px solid var(--rs-mint); color: var(--rs-mint-dark); font-weight: 700; background: #fff; }
-.btn-outline-accent:hover { background: var(--rs-mint); color: #fff; }
+.btn-outline-accent { border: 2px solid var(--rs-mint-dark); color: var(--rs-mint-dark); font-weight: 700; background: #fff; }
+.btn-outline-accent:hover { background: var(--rs-mint-dark); color: #fff; }
 
 /* The mascot and its stream */
 .mascot-row { display: flex; align-items: center; gap: 14px; margin-bottom: -18px; position: relative; z-index: 2; padding-left: 10px; }
@@ -92,12 +93,12 @@ h1, h2, h3, h4 { letter-spacing: -.01em; }
 pre.card-paper { padding: 16px; font-size: .85rem; }
 .rules { position: relative; padding: 8px 0 16px; box-shadow: 0 24px 60px rgba(120, 100, 40, .12); transform: rotate(-.3deg); }
 .rules::before { content: ""; position: absolute; top: -12px; left: 50%; width: 120px; height: 26px; margin-left: -60px; background: rgba(250, 204, 21, .45); border-radius: 4px; transform: rotate(2deg); }
-.rules-head { padding: 12px 22px; color: #8a7a4a; font-size: .85rem; font-weight: 700; }
+.rules-head { padding: 12px 22px; color: #6f6238; font-size: .85rem; font-weight: 700; }
 .rule-line { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; padding: 6px 22px; border-radius: 10px; margin: 0 8px; }
 .rule-line:hover { background: rgba(16, 185, 129, .07); }
 .rule-code { color: #0f5132; white-space: pre-wrap; word-break: break-word; font-size: .88rem; font-weight: 600; }
 .rule-note { color: var(--rs-soft-ink); font-size: .95rem; }
-.rule-comment .rule-code { color: #9a8a5a; grid-column: 1 / -1; font-family: var(--bs-font-monospace); font-weight: 400; }
+.rule-comment .rule-code { color: #6f6238; grid-column: 1 / -1; font-family: var(--bs-font-monospace); font-weight: 400; }
 .rule-gap { height: 10px; }
 @media (max-width: 767px) { .rule-line { grid-template-columns: 1fr; gap: 2px; } .rule-note { padding-left: 1rem; } .rules { transform: none; } }
 
@@ -153,7 +154,7 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 /* Steps */
 .step, .install { position: relative; background: #fff; border-radius: 24px; padding: 32px 26px 26px; border: 1px solid var(--rs-line); }
 .step-n { position: absolute; top: -16px; left: 24px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
-  background: var(--rs-mint); color: #fff; font-weight: 800; box-shadow: 0 6px 14px rgba(16, 185, 129, .3); }
+  background: var(--rs-mint-dark); color: #fff; font-weight: 800; box-shadow: 0 6px 14px rgba(16, 185, 129, .3); }
 .step-icon { font-size: 2rem; color: var(--rs-mint-dark); display: block; margin-bottom: 8px; }
 
 .footer { background: #f0f4f9; color: var(--rs-soft-ink); padding: 30px 0; }
