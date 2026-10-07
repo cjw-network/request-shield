@@ -46,7 +46,7 @@ not keep:
 
 | Signal | Already known from | Weight (first guess) |
 |---|---|---|
-| the fullest budget's fill | the budget check (`Decision::$level`) | 0–40, rising with the fill |
+| the fullest budget's fill | the budget check: `Decision::$level`, set **only** on a check or a pause (`Decision::challenge()`, `spent()`); a request let through gets the shared `Decision::allow()` with no fill -- for watched rows, see *What it costs* | 0–40, rising with the fill |
 | checks asked for and not solved by this client | **new:** a counter per bucket, raised on the check page (a path that is slow anyway), cleared by a pass | 10 each, up to 30 |
 | claims to be a crawler, is not | the crawler check (`Decision::$claimed`) | 30 |
 | on a feed ([0025](0025-blocklist-feeds.md)) that does not refuse on its own | the IP table | 25 |
@@ -76,8 +76,14 @@ nobody else understands. (*Open question 2.*)
   written anyway (well under a microsecond).
 - **"Watched" on:** the number for **every request that passes** -- this is
   the one part that runs on the passing path, so it is opt-in and measured
-  with `bench/overhead.php` before it is offered. The signals it reads are
-  in memory already; reading two headers is the only new work.
+  with `bench/overhead.php` before it is offered. Its new work: reading two
+  headers, and **carrying the budgets' fill on a request let through** --
+  today the budget check counts but does not hand the fill on, and a
+  passing request gets the one shared `Decision::allow()`. With
+  `live-watch` on, the budget check keeps its highest fill (one float, set
+  where it compares the counts anyway) for the sink to read; with it off,
+  nothing changes. Without that, a watched row would miss its strongest
+  signal, the client at 90 % of its budget.
 
 ## Not in this proposal
 
@@ -101,8 +107,9 @@ nobody else understands. (*Open question 2.*)
    the row and the log line (`LogStats::parse()` reads it, an old line has
    none); unit tests per signal, an end-to-end test through the live page.
 2. The live view: the bar, the labels, a filter "risk ≥ …", sorting by it.
-3. `set live-watch <n>`: the watched rows, with the benchmark before and
-   after.
+3. `set live-watch <n>`: the budgets' fill carried on the passing path
+   (only with it on), the watched rows, with the benchmark before and after
+   -- on and off.
 4. Afterwards, from what the numbers show: the proposal for letting them
    choose the difficulty.
 
