@@ -15,7 +15,7 @@ revision here is newer — the rule itself applies at once.
 
 | Rule | Revision | Matches |
 |---|---|---|
-| `ATK-SQL-FUNC` | 1 (new) | SQL injection through the database's own functions: `extractvalue(`, `updatexml(`, `load_file(`, `into outfile '…'` / `into dumpfile '…'`, `@@version` and other server variables, `xp_cmdshell`. The words alone ("load file into outfile tutorial") pass. |
+| `ATK-SQL-FUNC` | 1 (new) | SQL injection through the database's own functions: `extractvalue(`, `updatexml(`, `load_file(`, `into outfile '…'` / `into dumpfile '…'`, `@@version` and other server variables (also `@@global.…`, `@@session.…`), `xp_cmdshell`. The words alone ("load file into outfile tutorial") pass. |
 | `ATK-JNDI` | 2 | also a lookup inside a lookup -- `${${lower:j}ndi:…}`, `${${upper:j}${upper:n}di:…}` -- and the lookups `lower:`, `upper:`, `ctx:`, `main:`, `spring:`; revision 1 let the nested ones through. Two placeholders side by side (`${amount} of ${count}`) still pass. |
 
 The attack rules also see the body of MySQL's versioned comments

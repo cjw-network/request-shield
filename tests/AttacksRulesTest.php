@@ -82,6 +82,9 @@ return [
             ['/?id=1+into+outfile+%27/var/www/html/s.php%27', [], 'ATK-SQL-FUNC'],
             ['/?id=1+into+dumpfile+%22/tmp/x%22', [], 'ATK-SQL-FUNC'],
             ['/?v=@@datadir', [], 'ATK-SQL-FUNC'],
+            ['/?id=1+into+outfile%22/tmp/x%22', [], 'ATK-SQL-FUNC'],                     // no space before the quote
+            ['/?v=@@global.version', [], 'ATK-SQL-FUNC'],
+            ['/?v=@@version_comment', [], 'ATK-SQL-FUNC'],
             ['/?c=master..xp_cmdshell', [], 'ATK-SQL-FUNC'],
             // cross-site scripting
             ['/?q=%3Cscript%3Ealert(1)%3C/script%3E', [], 'ATK-XSS-TAG'],
