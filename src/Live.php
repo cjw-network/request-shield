@@ -97,7 +97,7 @@ final class Live implements Sink
             'time' => (int) $now, 'client' => $request->clientIp, 'action' => ($monitor ? 'monitor-' : '') . $d->action, 'status' => $d->status,
             'reason' => substr($d->reason, 0, 60), 'rule' => $rule === null ? null : substr($rule, 0, 120), 'claimed' => $d->claimed,
             'method' => substr($request->method, 0, 10), 'url' => substr($request->scheme . '://' . $request->host . $request->rawUri, 0, 300),
-            'agent' => substr((string) $request->header('user-agent'), 0, 150),
+            'agent' => substr((string) $request->header('user-agent'), 0, 150), 'wait' => $d->retryAfter > 0 ? $d->retryAfter : null,
         ]], $s->liveKeep);
     }
 
