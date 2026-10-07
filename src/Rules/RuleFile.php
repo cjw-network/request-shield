@@ -908,6 +908,9 @@ final class RuleFile
                 while ($args !== [] && in_array($args[0], self::METHODS, true)) {
                     $methods[] = (string) array_shift($args);
                 }
+                if ($args !== [] && in_array(strtoupper($args[0]), self::METHODS, true)) {
+                    throw new RuleFileException("$at: challenge " . strtoupper($args[0]) . " … -- methods are written in capitals (\"{$args[0]}\" would be a path)");
+                }
                 if ($methods !== [] && $args === []) {
                     throw new RuleFileException("$at: challenge <METHODS> <paths> -- which paths? (challenge POST ** for every form)");
                 }

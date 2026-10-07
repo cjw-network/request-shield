@@ -666,6 +666,7 @@ return [
         rulesFail(['site.rules' => "match /a/** {\n  restrict /b to 192.0.2.1\n}\n"], 'site.rules:2', 'inside match: restrict to <addresses>');
         rulesFail(['site.rules' => "match /a/** {\n  challenge /b\n}\n"], 'site.rules:2', 'challenge takes no paths');
         rulesFail(['site.rules' => "challenge POST\n"], 'site.rules:1', 'which paths?');
+        rulesFail(['site.rules' => "challenge post /x\n"], 'site.rules:1', 'methods are written in capitals');
         $s = rulesFrom("challenge POST PUT **\nchallenge /login\nchallenge DELETE /x/** max-age 5m\nchallenge POST /y\nchallenge /y\nmatch /shop/** {\n  challenge POST\n}\n");
         $c = $s->challenge;
         same(['POST', 'PUT'], $c->alwaysMethods[$c->alwaysPaths[0]] ?? null, 'challenge POST PUT **: the methods, first');
