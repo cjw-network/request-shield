@@ -29,23 +29,37 @@ use CjwNetwork\RequestShield\Settings;
  *   set http-cache-cookies _ga* _pk_*  cookies that do not make a page someone's own (default: analytics, the pass)
  *   set http-cache-max-object 1M       the largest answer kept
  *   set http-cache-dir /var/cache/rs   where (default: <store-dir>/http-cache)
+ *   set http-cache-purgers 127.0.0.1 ::1   who may purge with a request (PURGE, PURGEKEYS; default: this machine)
+ *   set http-cache-purge-token …       or anyone who sends it as X-Invalidate-Token (16 characters or more)
+ *   set http-cache-tag-headers X-My-Tags   a header with tags besides the known ones (TAG_HEADERS)
  */
 final class CacheExtension implements Extension, ApiProvider
 {
     /** Cookies that do not make a page someone's own: analytics, and the shield's pass. */
     public const COOKIES = ['_ga', '_ga_*', '_gid', '_gat*', '_pk_*', '_fbp', 'rsp'];
 
+    /**
+     * The headers an answer's tags come in (0039): Varnish's xkey (Ibexa,
+     * Exponential Platform), FOSHttpCache's X-Cache-Tags, LiteSpeed's, the
+     * CDNs', Magento's. Read, and taken out of the answer: they name content.
+     */
+    public const TAG_HEADERS = ['xkey', 'x-cache-tags', 'x-litespeed-tag', 'surrogate-key', 'cache-tag', 'edge-cache-tag', 'x-magento-tags'];
+
+    /** Who may purge with a request when nothing is set: this machine (as Symfony's AppCache). */
+    public const PURGERS = ['127.0.0.1', '::1'];
+
     public static function id(): string
     {
         return 'cache';
     }
 
-    /** @return array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>} */
+    /** @return array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>} */
     public static function of(Settings $s): array
     {
         $o = $s->ext['cache'] ?? null;
-        /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>} $o */
-        $o = is_array($o) && isset($o['dir']) ? $o : ['enabled' => false, 'ttl' => 300, 'cookies' => self::COOKIES, 'maxObject' => 1048576, 'dir' => '', 'hosts' => []];
+        /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>} $o */
+        $o = is_array($o) && isset($o['dir']) ? $o : ['enabled' => false, 'ttl' => 300, 'cookies' => self::COOKIES, 'maxObject' => 1048576, 'dir' => '', 'hosts' => [],
+            'purgers' => self::PURGERS, 'token' => '', 'tagHeaders' => self::TAG_HEADERS];
         // The folder: the one set, else below the store directory -- resolved here, so the compiled
         // settings do not depend on where they were compiled.
         $o['dir'] = $o['dir'] !== '' ? $o['dir'] : $s->storeDir . '/http-cache';
@@ -67,11 +81,14 @@ final class CacheExtension implements Extension, ApiProvider
         }, 'maxObject');
         $v->set('http-cache-hosts', 'words', 'the site\'s host names as visitors send them, a port written out (www.example.org example.org:8080) -- only these are kept', null, 'hosts');
         $v->set('http-cache-dir', 'path', 'where the answers are kept (default <store-dir>/http-cache)', null, 'dir');
+        $v->set('http-cache-purgers', 'words', 'the addresses that may purge with a request -- PURGE, PURGEKEYS (default 127.0.0.1 ::1)', null, 'purgers');
+        $v->set('http-cache-purge-token', 'string', 'or anyone who sends this as X-Invalidate-Token (16 characters or more; never shown)', null, 'token');
+        $v->set('http-cache-tag-headers', 'words', 'a header with an answer\'s tags besides the known ones (xkey, X-Cache-Tags, X-LiteSpeed-Tag, Surrogate-Key, Cache-Tag, Edge-Cache-Tag, X-Magento-Tags)', null, 'tagHeaders');
     }
 
     /**
      * @param array<string, mixed> $raw
-     * @return array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>}
+     * @return array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>}
      */
     public static function compile(array $raw, Settings $base): array
     {
@@ -81,8 +98,29 @@ final class CacheExtension implements Extension, ApiProvider
         $max = $raw['maxObject'] ?? 1048576;
         $dir = $raw['dir'] ?? '';
         $hosts = $raw['hosts'] ?? [];
-        if (!is_bool($enabled) || !is_int($ttl) || $ttl < 0 || !is_int($max) || $max < 1 || !is_string($dir) || !is_array($cookies) || !is_array($hosts)) {
-            throw Settings::wrong('ext.cache', 'enabled on/off, ttl seconds, maxObject bytes, dir a folder, cookies names, hosts names');
+        $purgers = $raw['purgers'] ?? self::PURGERS;
+        $token = $raw['token'] ?? '';
+        $tagHeaders = $raw['tagHeaders'] ?? [];
+        if (!is_bool($enabled) || !is_int($ttl) || $ttl < 0 || !is_int($max) || $max < 1 || !is_string($dir) || !is_array($cookies) || !is_array($hosts)
+            || !is_array($purgers) || !is_string($token) || !is_array($tagHeaders)) {
+            throw Settings::wrong('ext.cache', 'enabled on/off, ttl seconds, maxObject bytes, dir a folder, cookies names, hosts names, purgers addresses, token a word, tagHeaders names');
+        }
+        $ranges = [];
+        foreach ($purgers as $p) {
+            if (!is_string($p) || !self::range($p)) {
+                throw Settings::wrong('ext.cache.purgers', 'addresses or ranges (127.0.0.1 ::1 10.0.0.0/8)');
+            }
+            $ranges[] = $p;
+        }
+        if ($token !== '' && preg_match('/^[\x21-\x7e]{16,}$/', $token) !== 1) {
+            throw Settings::wrong('ext.cache.token', 'a word of 16 characters or more');   // never the value: it is a credential
+        }
+        $headers = self::TAG_HEADERS;
+        foreach ($tagHeaders as $h) {
+            if (!is_string($h) || preg_match('/^[A-Za-z0-9-]{1,64}$/', $h) !== 1) {
+                throw Settings::wrong('ext.cache.tagHeaders', 'header names (X-My-Tags)');
+            }
+            $headers[] = strtolower($h);
         }
         $names2 = [];
         foreach ($hosts as $h) {
@@ -98,7 +136,16 @@ final class CacheExtension implements Extension, ApiProvider
             }
             $names[] = $c;
         }
-        return ['enabled' => $enabled, 'ttl' => $ttl, 'cookies' => $names, 'maxObject' => $max, 'dir' => $dir, 'hosts' => $names2];
+        return ['enabled' => $enabled, 'ttl' => $ttl, 'cookies' => $names, 'maxObject' => $max, 'dir' => $dir, 'hosts' => $names2,
+            'purgers' => $ranges, 'token' => $token, 'tagHeaders' => array_values(array_unique($headers))];
+    }
+
+    /** An address, or a range of them (10.0.0.0/8). */
+    private static function range(string $p): bool
+    {
+        $parts = explode('/', $p, 2);
+        $bin = @inet_pton($parts[0]);
+        return $bin !== false && (!isset($parts[1]) || (ctype_digit($parts[1]) && (int) $parts[1] <= strlen($bin) * 8));
     }
 
     public static function plugins(array $compiled): array

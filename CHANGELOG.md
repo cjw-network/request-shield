@@ -76,6 +76,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **The HTTP cache speaks the CMSes' dialects: tags and purges** (0031 step
+  G.4, part 1; proposal 0039): an answer's tags (`xkey`, `X-Cache-Tags`,
+  `X-LiteSpeed-Tag`, `Surrogate-Key`, `Cache-Tag`, `Edge-Cache-Tag`,
+  `X-Magento-Tags`, `X-Location-Id`, `http-cache-tag-headers`) are kept with
+  it and taken out of what the visitor gets; `PURGE` (an address, or tags in
+  `key` / `X-Cache-Tags`, or `X-Location-Id`) and `PURGEKEYS` (`xkey-purge`)
+  from `http-cache-purgers` or with `X-Invalidate-Token`
+  (`http-cache-purge-token`) make the answers out of date -- Exponential
+  Platform's and Ibexa's purge settings work unchanged; `X-LiteSpeed-Purge`
+  in any answer purges too; `cache … purge --tag=` and the API's
+  `tags`. A plugin may answer a method the site does not take before the
+  rules (`MethodHandler`); anyone else gets the 405 as before.
+
 - **`set file-mode` and `set dir-mode`: the modes of what the shield
   writes**, for servers with rules for new folders and files: `0600` and
   `0700` by default; a group (`0640`, `0750`), an inherited group (`02770`).

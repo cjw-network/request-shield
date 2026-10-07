@@ -139,3 +139,89 @@ function pluginFeature(string $name): bool
 {
     return preg_match('/^RSF(06-\d{2}|04-03)\b/', $name) === 1;
 }
+
+/**
+ * PHP-FPM of the PHP the tests run on (TESTS_PHP_FPM, else php-fpm<major.minor>
+ * or php-fpm), or null. For what the built-in server cannot take: it answers
+ * methods it does not know (PURGE, PURGEKEYS) with 501 before any script runs.
+ */
+function fpmBinary(): ?string
+{
+    $given = getenv('TESTS_PHP_FPM');
+    if (is_string($given) && $given !== '') {
+        return is_executable($given) ? $given : null;
+    }
+    $v = PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION;
+    foreach (["/usr/sbin/php-fpm$v", "/usr/sbin/php-fpm", dirname(PHP_BINARY, 2) . '/sbin/php-fpm'] as $path) {
+        if (is_executable($path)) {
+            return $path;
+        }
+    }
+    return null;
+}
+
+/**
+ * PHP-FPM in the foreground on 127.0.0.1:$port, its files in $dir; returns
+ * the process (proc_terminate() ends it) once it listens. The restrictions
+ * of TESTS_HOSTING=minimal apply as for serverPhp().
+ *
+ * @return resource
+ */
+function startFpm(string $fpm, string $dir, int $port)
+{
+    $values = getenv('TESTS_HOSTING') === 'minimal' ? "php_admin_value[apc.enabled] = 0\nphp_admin_value[memory_limit] = 64M\n" : '';
+    file_put_contents("$dir/fpm.conf", "[global]\nerror_log = $dir/fpm.log\npid = $dir/fpm.pid\n[www]\nlisten = 127.0.0.1:$port\n"
+        . "pm = static\npm.max_children = 2\nclear_env = no\ncatch_workers_output = yes\n$values");
+    $proc = proc_open(sprintf('exec %s -F -y %s -p %s > %s 2>&1', escapeshellarg($fpm), escapeshellarg("$dir/fpm.conf"), escapeshellarg($dir), escapeshellarg("$dir/fpm.out")), [], $pipes);
+    if (!is_resource($proc)) {
+        throw new RuntimeException('php-fpm did not start');
+    }
+    for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
+        usleep(100000);
+    }
+    return $proc;
+}
+
+/**
+ * One request to FastCGI on 127.0.0.1:$port, as a web server sends it:
+ * $params are the CGI variables (REQUEST_METHOD, SCRIPT_FILENAME,
+ * HTTP_* …). Returns [status, headers as sent, body].
+ *
+ * @param array<string, string> $params
+ * @return array{0: int, 1: string, 2: string}
+ */
+function fcgi(int $port, array $params, string $stdin = ''): array
+{
+    $f = fsockopen('127.0.0.1', $port, $no, $err, 5);
+    if ($f === false) {
+        throw new RuntimeException("fastcgi: $err");
+    }
+    $record = static fn (int $type, string $content): string => pack('CCnnCx', 1, $type, 1, strlen($content), 0) . $content;
+    $len = static fn (int $n): string => $n < 128 ? chr($n) : pack('N', $n | 0x80000000);
+    $pairs = '';
+    foreach ($params as $k => $v) {
+        $pairs .= $len(strlen($k)) . $len(strlen($v)) . $k . $v;
+    }
+    fwrite($f, $record(1, pack('nCx5', 1, 0)) . $record(4, $pairs) . $record(4, '') . ($stdin !== '' ? $record(5, $stdin) : '') . $record(5, ''));
+    $out = '';
+    while (!feof($f)) {
+        $head = fread($f, 8);
+        if ($head === false || strlen($head) < 8) {
+            break;
+        }
+        $h = unpack('Cversion/Ctype/nid/nlength/Cpadding', $head);
+        $content = $h['length'] > 0 ? (string) stream_get_contents($f, $h['length']) : '';
+        if ($h['padding'] > 0) {
+            fread($f, $h['padding']);
+        }
+        if ($h['type'] === 6) {
+            $out .= $content;
+        } elseif ($h['type'] === 3) {
+            break;
+        }
+    }
+    fclose($f);
+    [$headers, $body] = explode("\r\n\r\n", $out, 2) + ['', ''];
+    $status = preg_match('/^Status: (\d{3})/mi', $headers, $m) === 1 ? (int) $m[1] : 200;
+    return [$status, $headers, $body];
+}

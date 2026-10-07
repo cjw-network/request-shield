@@ -79,4 +79,4 @@ Below `<dashboard-path>/api/v1` (`/rs/api/v1` by default), guarded like the dash
 | Endpoint | Who | What it answers |
 |---|---|---|
 | `GET /cache` | admin | The HTTP cache: on or off, how many answers it holds, how many bytes. |
-| `POST /cache/purge` | admin, a write | Empties the HTTP cache, or the addresses below a path -- after a page changed.<br>`path`: only the addresses below it: /news/ (every website); none: everything |
+| `POST /cache/purge` | admin, a write | Empties the HTTP cache, or the addresses below a path -- after a page changed.<br>`path`: only the addresses below it: /news/ (every website); none: everything<br>`tags`: only the answers with one of these tags: c52 l2 (as xkey names them); out of date at once, removed when they run out |

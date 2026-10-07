@@ -1382,6 +1382,9 @@ paths:
                 path:
                   type: "string"
                   description: "only the addresses below it: /news/ (every website); none: everything"
+                tags:
+                  type: "string"
+                  description: "only the answers with one of these tags: c52 l2 (as xkey names them); out of date at once, removed when they run out"
       responses:
         "200":
           description: "The answer"

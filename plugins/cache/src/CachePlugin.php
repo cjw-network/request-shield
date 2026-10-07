@@ -11,7 +11,10 @@ declare(strict_types=1);
 namespace CjwNetwork\RequestShield\Cache;
 
 use CjwNetwork\RequestShield\Decision;
+use CjwNetwork\RequestShield\Capability;
 use CjwNetwork\RequestShield\Handler;
+use CjwNetwork\RequestShield\IpAddress;
+use CjwNetwork\RequestShield\MethodHandler;
 use CjwNetwork\RequestShield\Plugin;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Response;
@@ -26,13 +29,26 @@ use CjwNetwork\RequestShield\Settings;
  * without Set-Cookie and without private, no-store or no-cache. The addresses
  * a cache may keep are the shield's (cache-path, cache-query), on the host
  * names http-cache-hosts lists, exactly as sent (a port is another name).
+ *
+ * Tags and purges (0031 G.4, proposal 0039): an answer's tags (xkey,
+ * X-Cache-Tags, … -- Tags) are kept with it and taken out of what the
+ * visitor gets; a purge -- a PURGE or PURGEKEYS request from
+ * http-cache-purgers or with the token, an X-LiteSpeed-Purge in any answer --
+ * makes every answer with one of its tags out of date at once.
  */
-final class CachePlugin implements Plugin, Handler
+final class CachePlugin implements Plugin, Handler, MethodHandler
 {
-    /** Headers never kept: they belong to one answer, or the web server makes them. */
-    private const DROP = ['set-cookie', 'date', 'age', 'x-rs', 'x-rs-monitor', 'x-rs-cache', 'server-timing', 'content-length', 'transfer-encoding', 'connection', 'keep-alive'];
+    /** Headers never kept: they belong to one answer, or the web server makes them, or they are for a cache (tags: TAG_HEADERS). */
+    private const DROP = ['set-cookie', 'date', 'age', 'x-rs', 'x-rs-monitor', 'x-rs-cache', 'server-timing', 'content-length', 'transfer-encoding', 'connection', 'keep-alive',
+        'x-litespeed-purge', 'surrogate-control', 'x-location-id'];
 
-    /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>} */
+    /** At most this many tags on one answer: one with more is not kept (its purges could not all be followed). */
+    private const MAX_TAGS = 500;
+
+    /** The tag every answer has for its address (path and query, any host): PURGE <address> purges it. */
+    private const ADDRESS = 'rs-url:';
+
+    /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>} */
     private array $o;
 
     private string $body = '';
@@ -42,6 +58,11 @@ final class CachePlugin implements Plugin, Handler
 
     /** The script has ended (the shutdown functions run before the last buffers are sent). */
     private bool $ending = false;
+
+    /** @var list<string>|null the answer's headers as the application set them, before the tags were taken out (null: not sent yet) */
+    private ?array $sent = null;
+
+    private ?Tags $tags = null;
 
     public function __construct(Settings $settings)
     {
@@ -58,14 +79,21 @@ final class CachePlugin implements Plugin, Handler
 
     public function handle(Request $request, Decision $decision): ?Response
     {
-        if (!$this->o['enabled'] || !$decision->cacheable() || ($request->method !== 'GET' && $request->method !== 'HEAD') || !$this->anonymous($request)
+        if (!$this->o['enabled']) {
+            return null;
+        }
+        if (!$decision->cacheable() || ($request->method !== 'GET' && $request->method !== 'HEAD') || !$this->anonymous($request)
             || !$this->ownHost($request) || !self::plainAddress($request)) {
+            $this->watchHeaders();      // not for the cache, but its tags go and its purges count
             return null;
         }
         $key = $request->cacheKey();
         $cache = new FileCache($this->o['dir']);
         $now = microtime(true);
         $hit = $cache->get($key, $now);
+        if ($hit !== null && $this->tags()->purgedSince($hit['tags'], $hit['born'])) {
+            $hit = null;            // purged since its request began: asked again (and kept anew)
+        }
         if ($hit !== null) {
             $headers = [...$hit['headers'], 'Age: ' . max(0, (int) $now - $hit['stored']), 'X-RS-Cache: hit'];
             $etag = self::header($hit['headers'], 'etag');
@@ -74,6 +102,7 @@ final class CachePlugin implements Plugin, Handler
             }
             return new Response($hit['status'], $headers, $request->method === 'HEAD' ? '' : $hit['body']);
         }
+        $this->watchHeaders();
         if (headers_sent() || $request->method !== 'GET') {
             return null;
         }
@@ -86,7 +115,7 @@ final class CachePlugin implements Plugin, Handler
         // The application's answer, caught as it is sent and kept when it is public -- and whole: what
         // the application throws away (ob_clean), an answer it ends before the script does, one larger
         // than http-cache-max-object (not held in memory either) is not kept.
-        ob_start(function (string $buffer, int $phase) use ($cache, $key, $request): string {
+        ob_start(function (string $buffer, int $phase) use ($cache, $key, $request, $now): string {
             if (($phase & PHP_OUTPUT_HANDLER_CLEAN) !== 0) {
                 $this->spoiled = true;
             } elseif (!$this->spoiled) {
@@ -96,7 +125,7 @@ final class CachePlugin implements Plugin, Handler
             if ($this->spoiled) {
                 $this->body = '';
             } elseif (($phase & PHP_OUTPUT_HANDLER_FINAL) !== 0 && $this->ending) {
-                $this->keep($cache, $key, (int) http_response_code(), headers_list(), $this->body, $request->path);
+                $this->keep($cache, $key, (int) http_response_code(), $this->sent ?? headers_list(), $this->body, $request->path, $now);
             }
             return $buffer;
         });
@@ -109,25 +138,217 @@ final class CachePlugin implements Plugin, Handler
      * an Expires gone by), not encoded by the application (gzip it made would
      * go to visitors who did not ask for it), no Vary but on encoding; for its
      * own s-maxage or max-age, else http-cache-ttl; at most
-     * http-cache-max-object bytes. Every line of a header counts.
+     * http-cache-max-object bytes. Every line of a header counts. Its tags (Tags)
+     * go with it, and the tag of its address; not kept: a page with ESI (its
+     * fragments are not put together here), a LiteSpeed tag "private:", more
+     * than MAX_TAGS tags.
      *
      * @param list<string> $headers headers_list()
+     * @param ?float $born when its request began: a purge after it makes it out of date
      */
-    public function keep(FileCache $cache, string $key, int $status, array $headers, string $body, string $path = ''): bool
+    public function keep(FileCache $cache, string $key, int $status, array $headers, string $body, string $path = '', ?float $born = null): bool
     {
         if (strlen($body) > $this->o['maxObject'] || self::refusal($status, $headers, $this->o['ttl']) !== null) {
             return false;
         }
         $cc = strtolower((string) self::header($headers, 'cache-control'));
         $ttl = preg_match('/\bs-maxage=(\d+)/', $cc, $m) === 1 || preg_match('/\bmax-age=(\d+)/', $cc, $m) === 1 ? (int) $m[1] : $this->o['ttl'];
+        if (stripos((string) self::header($headers, 'surrogate-control'), 'ESI/') !== false) {
+            return false;           // ESI: fragments for a cache to put together -- left to the application
+        }
+        $tags = $this->tagsOf($headers);
+        if ($tags === null) {
+            return false;
+        }
+        $tags[] = self::ADDRESS . self::address($key);
         $kept = [];
         foreach ($headers as $h) {
             $name = strtolower(trim((string) strstr($h, ':', true)));
-            if ($name !== '' && !in_array($name, self::DROP, true)) {
+            if ($name !== '' && !in_array($name, self::DROP, true) && !in_array($name, $this->o['tagHeaders'], true)) {
                 $kept[] = $h;
             }
         }
-        return $cache->put($key, $status, $kept, $body, $ttl, microtime(true), $path);
+        $now = microtime(true);
+        return $cache->put($key, $status, $kept, $body, min($ttl, Tags::MAX_AGE), $now, $path, array_values(array_unique($tags)), $born ?? $now);
+    }
+
+    /**
+     * A request with a method the site does not take (MethodHandler): a
+     * purge in the dialects of Varnish/FOSHttpCache, Ibexa and Exponential
+     * Platform, from http-cache-purgers or with X-Invalidate-Token -- or
+     * null, and the rules refuse it as any unknown method (405): no hint that
+     * a cache is there.
+     *
+     *   PURGE <address>                          that address (path and query, every host)
+     *   PURGE / + key: a b                       tags (Exponential Platform; key: ez-all, all of it)
+     *   PURGE / + X-Cache-Tags: a,b              tags (FOSHttpCache, Ibexa "local")
+     *   PURGE / + X-Location-Id: * | 12 | (1|2)  everything, or location-12 … (Exponential's older calls)
+     *   PURGEKEYS / + xkey-purge: a b            tags (Ibexa with Varnish; xkey-softpurge: the same, for now)
+     */
+    public function handleMethod(Request $request): ?Response
+    {
+        if (!$this->o['enabled'] || ($request->method !== 'PURGE' && $request->method !== 'PURGEKEYS') || !$this->mayPurge($request)) {
+            return null;
+        }
+        $tags = self::purgeOf($request);
+        if ($tags === null) {
+            return new Response(400, ['Content-Type: text/plain; charset=utf-8', 'Cache-Control: no-store'], "Nothing to purge\n");
+        }
+        if (!$this->tags()->purge($tags, microtime(true))) {
+            return new Response(500, ['Content-Type: text/plain; charset=utf-8', 'Cache-Control: no-store'], "Not purged\n");
+        }
+        return new Response(200, ['Content-Type: text/plain; charset=utf-8', 'Cache-Control: no-store'], "Purged\n");
+    }
+
+    /**
+     * What a purge request names: tags, Tags::ALL, or the tag of its address;
+     * null when it names nothing that can be purged.
+     *
+     * @return list<string>|null
+     */
+    public static function purgeOf(Request $request): ?array
+    {
+        if ($request->method === 'PURGEKEYS') {
+            $tags = Tags::split((string) ($request->header('xkey-purge') ?? $request->header('xkey-softpurge')));
+            return $tags !== [] ? $tags : null;
+        }
+        $key = $request->header('key') ?? $request->header('x-cache-tags');
+        if ($key !== null) {
+            $tags = Tags::split($key);
+            return $tags !== [] ? $tags : null;
+        }
+        $location = $request->header('x-location-id');
+        if ($location !== null) {
+            $location = trim($location);
+            if ($location === '*' || $location === '.*') {
+                return [Tags::ALL];
+            }
+            if (preg_match('/^\(?(\d+(?:\|\d+)*)\)?$/', $location, $m) !== 1) {
+                return null;
+            }
+            return array_map(static fn (string $id): string => "location-$id", explode('|', $m[1]));
+        }
+        return [self::ADDRESS . self::address($request->cacheKey())];
+    }
+
+    /**
+     * Purges what the application names in its answer (LiteSpeed's way, any
+     * method): "X-LiteSpeed-Purge: tag=c52, /news/, *" -- tags, addresses,
+     * everything; "private, …" is a browser's own cache, not this one.
+     */
+    public function purgeFromAnswer(string $value): void
+    {
+        $items = array_values(array_filter(array_map('trim', explode(',', $value)), static fn (string $i): bool => $i !== ''));
+        if ($items === [] || strtolower($items[0]) === 'private') {
+            return;
+        }
+        $tags = [];
+        foreach ($items as $item) {
+            if ($item === '*') {
+                $tags[] = Tags::ALL;
+            } elseif (strncasecmp($item, 'tag=', 4) === 0) {
+                foreach (Tags::split(substr($item, 4)) as $t) {
+                    $tags[] = strncasecmp($t, 'public:', 7) === 0 ? substr($t, 7) : $t;
+                }
+            } elseif ($item[0] === '/') {
+                $tags[] = self::ADDRESS . self::address($item);
+            }
+        }
+        if ($tags !== []) {
+            $this->tags()->purge($tags, microtime(true));
+        }
+    }
+
+    /**
+     * The tags an answer carries in the headers http-cache-tag-headers knows,
+     * a LiteSpeed "public:" taken off; null when it may not be kept (a
+     * "private:" tag, more than MAX_TAGS).
+     *
+     * @param list<string> $headers
+     * @return list<string>|null
+     */
+    private function tagsOf(array $headers): ?array
+    {
+        $tags = [];
+        foreach ($this->o['tagHeaders'] as $name) {
+            foreach (Tags::split((string) self::header($headers, $name)) as $t) {
+                if (strncasecmp($t, 'private:', 8) === 0) {
+                    return null;    // LiteSpeed: for one visitor's private cache
+                }
+                $tags[] = strncasecmp($t, 'public:', 7) === 0 ? substr($t, 7) : $t;
+            }
+        }
+        $location = trim((string) self::header($headers, 'x-location-id'));
+        if (ctype_digit($location)) {
+            $tags[] = "location-$location";     // Exponential's older header
+        }
+        return count($tags) > self::MAX_TAGS ? null : $tags;
+    }
+
+    /**
+     * Before the answer's headers go out (any answer, while the cache is
+     * on): its purges are done, its tags and purges taken out -- they name
+     * content and are for a cache, not for the visitor. headers_list() as it
+     * was is kept for keep(): once sent, the headers cannot change.
+     */
+    private function watchHeaders(): void
+    {
+        if (headers_sent()) {
+            return;
+        }
+        header_register_callback(function (): void {
+            $list = headers_list();
+            $this->sent = $list;
+            $purge = self::header($list, 'x-litespeed-purge');
+            if ($purge !== null) {
+                $this->purgeFromAnswer($purge);
+            }
+            foreach ($list as $h) {
+                $name = strtolower(trim((string) strstr($h, ':', true)));
+                if ($name === 'x-litespeed-purge' || in_array($name, $this->o['tagHeaders'], true)) {
+                    header_remove($name);
+                }
+            }
+        });
+    }
+
+    /**
+     * May purge: X-Invalidate-Token equal to http-cache-purge-token, or an
+     * address on http-cache-purgers -- the client's address as the shield
+     * found it; one that came through a proxy the shield does not trust (it
+     * sent forwarding headers) never counts as the proxy's own.
+     */
+    private function mayPurge(Request $request): bool
+    {
+        $token = $request->header('x-invalidate-token');
+        if ($this->o['token'] !== '' && $token !== null && hash_equals($this->o['token'], $token)) {
+            return true;
+        }
+        if (!$request->viaTrustedProxy) {
+            foreach (['x-forwarded-for', 'forwarded', 'x-real-ip', 'via'] as $h) {
+                if ($request->header($h) !== null) {
+                    return false;
+                }
+            }
+        }
+        return IpAddress::inRanges($request->clientIp, $this->o['purgers']);
+    }
+
+    /**
+     * The address part of a key or of an address as a purge names it --
+     * path and sorted query, as Request::cacheKey() makes them; no scheme,
+     * no host (a purge from 127.0.0.1 names no host the visitors use).
+     */
+    public static function address(string $keyOrUri): string
+    {
+        $uri = preg_replace('#^[a-z][a-z0-9+.-]*://[^/?]*#i', '', $keyOrUri) ?? $keyOrUri;
+        $key = Request::fromServer(['REQUEST_URI' => $uri === '' ? '/' : $uri, 'REQUEST_METHOD' => 'GET', 'HTTP_HOST' => 'h'])->cacheKey();
+        return substr($key, strlen('http://h'));
+    }
+
+    private function tags(): Tags
+    {
+        return $this->tags ??= new Tags($this->o['dir'], Capability::apcu());
     }
 
     /**

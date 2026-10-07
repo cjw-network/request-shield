@@ -262,6 +262,30 @@ final class Shield
     }
 
     /**
+     * The first plugin with the MethodHandler capability that answers a
+     * request with a method the site does not take (0031 G.4), or null: the
+     * rules decide. One that throws is noted once a minute and skipped.
+     */
+    public function handleMethod(Request $request): ?Response
+    {
+        foreach ($this->plugins() as $plugin) {
+            if (!$plugin instanceof MethodHandler) {
+                continue;
+            }
+            try {
+                $response = $plugin->handleMethod($request);
+            } catch (\Throwable $e) {
+                self::failed('handler', get_class($plugin) . ' failed to answer ' . $request->method . ', the rules decide: ' . $e->getMessage());
+                continue;
+            }
+            if ($response !== null) {
+                return $response;
+            }
+        }
+        return null;
+    }
+
+    /**
      * The rule chain (0031 C.1): every step in the order the shield checks,
      * the stages' steps without a rule where their settings are not in use.
      * Derived from the rules when first asked (a trace, the rules page) --
@@ -371,6 +395,15 @@ final class Shield
             self::$rule = null;
             $_SERVER['REQUEST_SHIELD'] = Decision::ALLOW;
             return self::$current;
+        }
+        // A method the site does not take, answered by a plugin before the rules (MethodHandler,
+        // 0031 G.4): an HTTP cache's PURGE from its purgers -- for a GET, one array access.
+        if (($s->hooks['methodHandler'] ?? []) !== [] && !in_array($request->method, $s->methods, true)) {
+            $response = $shield->handleMethod($request);
+            if ($response !== null) {
+                $response->send();
+                exit;
+            }
         }
         $now = microtime(true);
         $decided = $shield->decide($request, $now);

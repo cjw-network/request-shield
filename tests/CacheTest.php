@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use CjwNetwork\RequestShield\Cache\CachePlugin;
 use CjwNetwork\RequestShield\Cache\FileCache;
+use CjwNetwork\RequestShield\Cache\Tags;
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rules\RuleFile;
@@ -167,6 +168,194 @@ return [
             truthy($code === 0 && strpos(implode("\n", $out), 'removed') === 0, implode("\n", $out));
             [$h7] = $get('/index.php?page=2');
             truthy(strpos($h7, 'X-RS-Cache: miss') !== false, 'after purge: asked again');
+        } finally {
+            proc_terminate($proc);
+            proc_close($proc);
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'RSF04-03 the purge times (0039): files, with APCu a copy for Tags::MEMORY seconds -- a purge from another process (the command line) counts once it has run out' => function (): void {
+        $dir = cacheDir();
+        try {
+            $file = new Tags($dir, false);
+            same(0.0, $file->newest(['a', 'b']), 'nothing purged');
+            truthy($file->purge(['a'], 1000.5) && $file->newest(['a', 'b']) === 1000.5 && $file->newest(['b']) === 0.0, 'one tag');
+            $file->purge([Tags::ALL], 2000.25);
+            same(2000.25, $file->newest(['b']), 'everything: every tag');
+            truthy(!$file->purgedSince(['b'], 2000.5) && $file->purgedSince(['b'], 2000.25) && $file->purgedSince(['a'], 1000.0), 'purged since: at or after the time');
+            // An answer made after the last purge of anything reads no tag: a tag's time written
+            // past the last purge (no purge() does that) is not seen.
+            $h = md5('x');
+            @mkdir("$dir/tags/" . substr($h, 0, 2), 0750, true);
+            file_put_contents("$dir/tags/" . substr($h, 0, 2) . "/$h", '9999.0');
+            truthy(!$file->purgedSince(['x'], 2500.0) && $file->newest(['x']) === 9999.0, 'nothing purged since: one read, no tag read');
+            if (\CjwNetwork\RequestShield\Capability::apcu()) {
+                $mem = new Tags($dir, true);
+                same(2000.25, $mem->newest(['a']), 'APCu: read from the files the first time');
+                $file->purge(['a'], 3000.0);
+                same(2000.25, $mem->newest(['a']), 'a purge only in the files: the copy lags ...');
+                apcu_delete(new \APCUIterator('/^rshield:hc:/'));
+                same(3000.0, $mem->newest(['a']), '... until it runs out (or is dropped)');
+                $mem->purge(['c'], 4000.0);
+                same([4000.0, 4000.0], [$mem->newest(['c']), $file->newest(['c'])], 'a purge through APCu writes the file too');
+            }
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'RSF04-03 tags (0039): kept with the answer, taken out of what is kept; a purge of one of them, of its address or of everything makes it out of date' => function (): void {
+        foreach ([\CjwNetwork\RequestShield\Capability::apcu()] as $apcu) {      // as the plugin finds it; the other way: Tags' own test
+            $dir = cacheDir();
+            try {
+                $s = cacheSettings($dir, "set http-cache on\nset http-cache-hosts www.example.org\nset http-cache-tag-headers X-My-Tags\n");
+                $p = new CachePlugin($s);
+                $c = new FileCache("$dir/store/http-cache");
+                $tags = new Tags("$dir/store/http-cache", $apcu);
+                $born = microtime(true) - 1;
+                $h = ['Content-Type: text/html', 'xkey: content-52 location-2 ez-all', 'X-Cache-Tags: c1,c2', 'X-My-Tags: mine', 'X-LiteSpeed-Tag: public:ls1', 'Surrogate-Key: sk1', 'X-Location-Id: 7'];
+                truthy($p->keep($c, cacheReq('/a?b=2&a=1')->cacheKey(), 200, $h, 'A', '/a', $born), 'kept');
+                $a = $c->get(cacheReq('/a?b=2&a=1')->cacheKey(), microtime(true));
+                same(['Content-Type: text/html'], $a['headers'] ?? null, 'no tag header is kept: they name content');
+                same(['content-52', 'location-2', 'ez-all', 'c1', 'c2', 'ls1', 'sk1', 'mine', 'location-7', 'rs-url:/a?a=1&b=2'], $a['tags'] ?? null, 'the tags, LiteSpeed\'s public: off, the address');
+                truthy($tags->newest($a['tags'] ?? []) < ($a['born'] ?? 0), 'nothing purged yet');
+                $tags->purge(['other'], microtime(true));
+                truthy($tags->newest($a['tags'] ?? []) < ($a['born'] ?? 0), 'another tag: still good');
+                truthy($p->handle(cacheReq('/a?a=1&b=2'), Decision::allow()) !== null, 'a hit');
+                foreach ([['location-7'], ['rs-url:' . CachePlugin::address('/a?b=2&a=1')], [Tags::ALL]] as $purged) {
+                    $c->put(cacheReq('/a?a=1&b=2')->cacheKey(), 200, [], 'A', 60, microtime(true), '/a', $a['tags'] ?? [], microtime(true));
+                    truthy($p->handle(cacheReq('/a?a=1&b=2'), Decision::allow()) !== null, 'kept again: a hit');
+                    usleep(1000);
+                    $tags->purge($purged, microtime(true));
+                    $stale = (new CachePlugin($s))->handle(cacheReq('/a?a=1&b=2'), Decision::allow());
+                    same(null, $stale, 'purged ' . implode(' ', $purged) . ': out of date' . ($apcu ? ' (APCu)' : ''));
+                }
+                $t2 = new Tags("$dir/store/http-cache", $apcu);
+                truthy($t2->newest(['zzz']) > 0.0, 'everything was purged: any tag is out of date for older answers');
+                // What is not kept.
+                foreach ([[[...$h, 'Surrogate-Control: content="ESI/1.0"'], 'ESI'], [['X-LiteSpeed-Tag: private:u1'], 'a LiteSpeed private: tag'],
+                    [['xkey: ' . implode(' ', range(1, 501))], 'more than 500 tags']] as [$hh, $why]) {
+                    truthy(!$p->keep($c, cacheReq('/n')->cacheKey(), 200, $hh, 'N'), "not kept: $why");
+                }
+            } finally {
+                exec('rm -rf ' . escapeshellarg($dir));
+            }
+        }
+    },
+    'RSF04-03 purges as requests (0039): Exponential Platform\'s, Ibexa\'s and FOSHttpCache\'s dialects, only from http-cache-purgers or with the token -- anyone else meets the rules (null)' => function (): void {
+        $dir = cacheDir();
+        try {
+            $s = cacheSettings($dir, "set http-cache on\nset http-cache-hosts www.example.org\nset http-cache-purge-token s3cret-token-0123456789\n");
+            truthy(in_array(CachePlugin::class, $s->hooks['methodHandler'] ?? [], true), 'the plugin answers methods the site does not take');
+            $local = static fn (string $uri, array $h, string $m = 'PURGE'): Request => Request::fromServer(['REQUEST_URI' => $uri, 'REQUEST_METHOD' => $m,
+                'HTTP_HOST' => '127.0.0.1', 'REMOTE_ADDR' => '127.0.0.1'] + array_combine(array_map(static fn ($k) => 'HTTP_' . strtoupper(str_replace('-', '_', $k)), array_keys($h)), array_values($h)));
+            foreach ([
+                [['/', ['key' => 'content-52 location-2']], ['content-52', 'location-2'], 'Exponential: PURGE + key'],
+                [['/', ['key' => 'ez-all']], ['ez-all'], 'Exponential: key: ez-all (every page carries it)'],
+                [['/', ['X-Location-Id' => '*']], [Tags::ALL], 'Exponential\'s older call: everything'],
+                [['/', ['X-Location-Id' => '(1|22|3)']], ['location-1', 'location-22', 'location-3'], 'Exponential\'s older call: locations'],
+                [['/', ['X-Location-Id' => '12']], ['location-12'], 'one location'],
+                [['/', ['X-Cache-Tags' => 'c1,c2']], ['c1', 'c2'], 'FOSHttpCache / Ibexa local: X-Cache-Tags'],
+                [['/', ['xkey-purge' => 'c1 l2'], 'PURGEKEYS'], ['c1', 'l2'], 'Ibexa with Varnish: PURGEKEYS + xkey-purge'],
+                [['/', ['xkey-softpurge' => 'c9'], 'PURGEKEYS'], ['c9'], 'xkey-softpurge: a purge, for now'],
+                [['/news/?b=1&a=2', []], ['rs-url:/news/?a=2&b=1'], 'PURGE <address>: its address, the query sorted'],
+                [['/', ['X-Location-Id' => 'drop table']], null, 'nothing that can be purged'],
+                [['/', [], 'PURGEKEYS'], null, 'PURGEKEYS without keys'],
+            ] as [$args, $want, $why]) {
+                same($want, CachePlugin::purgeOf($local(...$args)), $why);
+            }
+            $p = new CachePlugin($s);
+            same(200, $p->handleMethod($local('/', ['key' => 'c1']))->status ?? 0, 'from this machine: purged');
+            same(null, $p->handleMethod(cacheReq('/', ['key' => 'c1'], 'PURGE')), 'from anywhere else: the rules decide (405)');
+            same(null, $p->handleMethod($local('/', ['key' => 'c1', 'X-Forwarded-For' => '203.0.113.9'])), 'through a proxy the shield does not trust: not this machine');
+            same(200, $p->handleMethod(cacheReq('/', ['key' => 'c1', 'X-Invalidate-Token' => 's3cret-token-0123456789'], 'PURGE'))->status ?? 0, 'with the token: purged');
+            same(null, $p->handleMethod(cacheReq('/', ['key' => 'c1', 'X-Invalidate-Token' => 's3cret-token-012345678x'], 'PURGE')), 'a wrong token');
+            same(null, $p->handleMethod($local('/', [], 'BAN')), 'BAN: not taken (patterns need an index)');
+            same(400, $p->handleMethod($local('/', [], 'PURGEKEYS'))->status ?? 0, 'a purger\'s request that names nothing: 400');
+            $p->purgeFromAnswer('public, tag=public:c7, /x?b=1&a=1');
+            $t = new Tags("$dir/store/http-cache", \CjwNetwork\RequestShield\Capability::apcu());
+            truthy($t->newest(['c7']) > 0.0 && $t->newest(['rs-url:/x?a=1&b=1']) > 0.0 && $t->newest(['c1']) > 0.0 && $t->newest(['c8']) === 0.0, 'X-LiteSpeed-Purge in an answer: tags and addresses');
+            $p->purgeFromAnswer('private, *');
+            same(0.0, $t->newest(['c8']), 'private, *: a browser\'s cache, not this one');
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' cache ' . escapeshellarg("$dir/site.rules") . ' purge --tag=c8,c9 2>&1', $out, $code);
+            truthy($code === 0 && (new Tags("$dir/store/http-cache", false))->newest(['c9']) > 0.0, 'the command line: purge --tag= ' . implode("\n", $out));
+            same(['removed' => 0], \CjwNetwork\RequestShield\Cache\Api\Purge::handle($s, ['tags' => 'c10'], []), 'the API: tags');
+            truthy((new Tags("$dir/store/http-cache", false))->newest(['c10']) > 0.0, '... purged');
+            foreach (["set http-cache-purge-token short\n" => 'a short token', "set http-cache-purgers localhost\n" => 'a name, not an address'] as $bad => $why) {
+                try {
+                    cacheSettings($dir, "set http-cache on\n$bad");
+                    throw new TestFailure("accepted: $why");
+                } catch (\InvalidArgumentException $e) {
+                    truthy(strpos($e->getMessage(), 'short') === false || $why !== 'a short token', 'the token is never in the message');
+                }
+            }
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'RSF04-03 end to end, Exponential Platform\'s dialect (0039): xkey kept and taken out, PURGE + key from 127.0.0.1 makes its pages run again, X-Location-Id: * everything, an address; a stranger\'s PURGE gets 405; X-LiteSpeed-Purge in a POST\'s answer' => function (): void {
+        $fpm = fpmBinary();
+        if (!function_exists('proc_open') || $fpm === null) {
+            skip('no PHP-FPM here (TESTS_PHP_FPM): the built-in server refuses PURGE itself');
+        }
+        $dir = cacheDir();
+        mkdir("$dir/docroot");
+        file_put_contents("$dir/docroot/index.php", '<?php
+            file_put_contents(__DIR__ . "/../runs", "x", FILE_APPEND);
+            if ($_SERVER["REQUEST_METHOD"] === "POST") { header("X-LiteSpeed-Purge: tag=content-60"); echo "saved"; return; }
+            $id = (int) ($_GET["id"] ?? 52);
+            header("Cache-Control: public, s-maxage=600");
+            header("xkey: content-$id location-" . ($id + 100) . " ez-all");
+            echo "page $id " . hrtime(true);');
+        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset http-cache on\ncache-query id\nset http-cache-hosts www.example.org\n");
+        $port = freePort();
+        $proc = startFpm($fpm, $dir, $port);
+        try {
+            // As nginx hands it to PHP-FPM: what the purge client sent -- the method, the address, the headers.
+            $send = static function (string $method, string $uri, array $headers = [], string $body = '', string $from = '127.0.0.1') use ($port, $dir): array {
+                $params = ['REQUEST_METHOD' => $method, 'REQUEST_URI' => $uri, 'QUERY_STRING' => (string) parse_url($uri, PHP_URL_QUERY),
+                    'SCRIPT_FILENAME' => "$dir/docroot/index.php", 'SCRIPT_NAME' => '/index.php', 'DOCUMENT_ROOT' => "$dir/docroot", 'SERVER_PROTOCOL' => 'HTTP/1.1',
+                    'SERVER_NAME' => 'www.example.org', 'SERVER_PORT' => '80', 'REMOTE_ADDR' => $from, 'HTTP_HOST' => 'www.example.org',
+                    'REQUEST_SHIELD_CONFIG' => "$dir/site.rules", 'PHP_VALUE' => 'auto_prepend_file=' . rsEntry()];
+                foreach ($headers as $k => $v) {
+                    $params['HTTP_' . strtoupper(str_replace('-', '_', $k))] = $v;
+                }
+                if ($body !== '') {
+                    $params += ['CONTENT_TYPE' => 'application/x-www-form-urlencoded', 'CONTENT_LENGTH' => (string) strlen($body)];
+                }
+                return fcgi($port, $params, $body);
+            };
+            $runs = static fn (): int => strlen((string) @file_get_contents("$dir/runs"));
+            [, $h1] = $send('GET', '/index.php?id=52');
+            [, $h2, $b2] = $send('GET', '/index.php?id=52');
+            truthy(strpos($h1, 'X-RS-Cache: miss') !== false && strpos($h2, 'X-RS-Cache: hit') !== false && $runs() === 1, "kept: $h2");
+            truthy(stripos($h1 . $h2, 'xkey') === false, 'xkey never reaches the visitor: ' . $h1);
+            $send('GET', '/index.php?id=60');
+            [$st, , $pb] = $send('PURGE', '/', ['key' => 'content-52']);
+            same([200, "Purged\n"], [$st, $pb], 'PURGE + key from 127.0.0.1');
+            [, $h3, $b3] = $send('GET', '/index.php?id=52');
+            truthy(strpos($h3, 'X-RS-Cache: miss') !== false && $b3 !== $b2, "purged: the page runs again ($h3)");
+            [, $h4] = $send('GET', '/index.php?id=60');
+            truthy(strpos($h4, 'X-RS-Cache: hit') !== false, 'another content: still kept');
+            [$st5] = $send('PURGE', '/', ['key' => 'ez-all', 'X-Forwarded-For' => '203.0.113.9']);
+            same(405, $st5, 'a PURGE that came through an untrusted proxy: 405, as any unknown method');
+            same(405, $send('PURGE', '/', ['key' => 'ez-all'], '', '203.0.113.9')[0], 'a stranger\'s PURGE: 405');
+            [, $h6] = $send('GET', '/index.php?id=60');
+            truthy(strpos($h6, 'X-RS-Cache: hit') !== false, '... and nothing purged');
+            [$st7] = $send('POST', '/index.php', [], 'a=1');
+            same(200, $st7, 'a form');
+            [, $h8] = $send('GET', '/index.php?id=60');
+            truthy(strpos($h8, 'X-RS-Cache: miss') !== false, 'the POST\'s answer purged content-60 (X-LiteSpeed-Purge)');
+            $send('GET', '/index.php?id=60');
+            same(200, $send('PURGE', '/index.php?id=60')[0], 'PURGE <address>');
+            [, $h9] = $send('GET', '/index.php?id=60');
+            truthy(strpos($h9, 'X-RS-Cache: miss') !== false, 'the address purged');
+            $send('GET', '/index.php?id=52');
+            same(200, $send('PURGE', '/', ['X-Location-Id' => '*'])[0], 'X-Location-Id: *');
+            [, $h10] = $send('GET', '/index.php?id=52');
+            truthy(strpos($h10, 'X-RS-Cache: miss') !== false, 'everything purged');
+            same(200, $send('PURGEKEYS', '/', ['xkey-purge' => 'content-52'])[0], 'Ibexa\'s PURGEKEYS too');
+            [, $h11] = $send('GET', '/index.php?id=52');
+            truthy(strpos($h11, 'X-RS-Cache: miss') !== false, 'purged by PURGEKEYS');
         } finally {
             proc_terminate($proc);
             proc_close($proc);

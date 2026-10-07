@@ -13,7 +13,7 @@ namespace CjwNetwork\RequestShield\Cache;
 /**
  * The HTTP cache's store (0031 G.2): one file per address, under a folder of
  * the store directory -- a line of JSON (status, headers, when kept, until
- * when), then the body. Written to a temporary file and renamed, so a reader
+ * when, its tags and when its request began: Tags), then the body. Written to a temporary file and renamed, so a reader
  * never sees half a page; an expired one is removed when it is read.
  */
 final class FileCache
@@ -25,7 +25,7 @@ final class FileCache
     /**
      * What is kept for a key, unless it has expired.
      *
-     * @return array{status: int, headers: list<string>, body: string, stored: int, expires: int}|null
+     * @return array{status: int, headers: list<string>, body: string, stored: int, expires: int, tags: list<string>, born: float}|null
      */
     public function get(string $key, float $now): ?array
     {
@@ -45,24 +45,32 @@ final class FileCache
             @unlink($file);
             return null;
         }
+        $born = $meta['born'] ?? null;
         return ['status' => $meta['status'], 'headers' => array_values(array_filter($meta['headers'], 'is_string')), 'body' => (string) substr($data, $nl + 1),
-            'stored' => $meta['stored'], 'expires' => $meta['expires']];
+            'stored' => $meta['stored'], 'expires' => $meta['expires'], 'tags' => array_values(array_filter(is_array($meta['tags'] ?? null) ? $meta['tags'] : [], 'is_string')),
+            'born' => is_float($born) || is_int($born) ? (float) $born : (float) $meta['stored']];
     }
 
     /**
      * Keeps an answer; one store in a hundred also removes what has expired
-     * in one of the 256 folders, so the cache cleans up by itself.
+     * in one of the 256 folders (and the purge times run out there), so the
+     * cache cleans up by itself.
      *
      * @param list<string> $headers
      * @param string $path the address's path, for a purge below a path
+     * @param list<string> $tags what purges it (Tags)
+     * @param ?float $born when its request began (default $now): a purge after it makes it out of date
      */
-    public function put(string $key, int $status, array $headers, string $body, int $ttl, float $now, string $path = ''): bool
+    public function put(string $key, int $status, array $headers, string $body, int $ttl, float $now, string $path = '', array $tags = [], ?float $born = null): bool
     {
         if (mt_rand(1, 100) === 1) {
-            $this->sweep(sprintf('%02x', mt_rand(0, 255)), $now);
+            $folder = sprintf('%02x', mt_rand(0, 255));
+            $this->sweep($folder, $now);
+            (new Tags($this->dir, false))->sweep($folder, $now);
         }
         $file = $this->path($key);
-        $meta = json_encode(['key' => $key, 'path' => $path, 'status' => $status, 'headers' => $headers, 'stored' => (int) $now, 'expires' => (int) $now + $ttl], JSON_UNESCAPED_SLASHES);
+        $meta = json_encode(['key' => $key, 'path' => $path, 'status' => $status, 'headers' => $headers, 'stored' => (int) $now, 'expires' => (int) $now + $ttl,
+            'tags' => $tags, 'born' => $born ?? $now], JSON_UNESCAPED_SLASHES);
         if ($meta === false) {
             return false;           // a header that is no UTF-8: not kept, rather than a file that never reads
         }

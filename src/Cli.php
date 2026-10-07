@@ -162,6 +162,8 @@ final class Cli
                 $period['crawler'] = substr($a, 10);
             } elseif (strncmp($a, '--path=', 7) === 0) {
                 $period['path'] = '/' . ltrim(substr($a, 7), '/');
+            } elseif (strncmp($a, '--tag=', 6) === 0) {
+                $period['tag'] = substr($a, 6);
             } elseif (preg_match('/^--sort=(views|blocked|refused|checked|throttled)$/', $a, $m) === 1) {
                 $period['sort'] = $m[1];
             } elseif (strncmp($a, '--ua=', 5) === 0) {
