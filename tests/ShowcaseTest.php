@@ -48,7 +48,7 @@ function withShowcase(callable $body): void
                 }
             }
             return [$status, $xrs, $body, $type, implode("\n", $http_response_header ?? [])];
-        });
+        }, $port);
     } finally {
         proc_terminate($proc);
         proc_close($proc);
@@ -73,7 +73,10 @@ return [
     'RSF05-04 the showcase: request-shield test decides every try its page shows, and they all hold' => function (): void {
         exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' test ' . escapeshellarg(dirname(__DIR__) . '/examples/showcase/showcase.rules') . ' 2>&1', $out, $code);
         same(0, $code, implode("\n", array_slice($out, -5)));
-        truthy(strpos(implode("\n", $out), 'without an example') === false, 'every rule has its example: ' . implode("\n", array_slice($out, -2)));
+        // The budgets the pages count themselves (on-demand) cannot be decided by test: their own test below sends real requests.
+        $last = (string) end($out);
+        truthy(strpos($last, 'without an example') === false || preg_match('/without an example: (SHOW-SEARCH, SHOW-LOGINS|SHOW-LOGINS, SHOW-SEARCH)$/', $last) === 1,
+            'every rule has its example, but the page-counted budgets: ' . $last);
         truthy(count(showcaseTriesForTest()) >= 20, 'the page reads the tries from the rules');
     },
     'RSF05-04 the showcase speaks German too: every try and every explained rule has its German sentence' => function (): void {
@@ -98,6 +101,31 @@ return [
             }
         }
         same(array_keys($texts['de']), array_keys($texts['en']), 'the same words in both languages');
+    },
+    'RSF03-01 the showcase\'s pages that count for themselves: the search, 5 a minute, then a pause that doubles; the sign-in, 3 wrong passwords, then the same -- a right one counts nothing' => function (): void {
+        withShowcase(static function (callable $get, int $port): void {
+            $ip = '198.18.200.' . mt_rand(1, 250);
+            for ($i = 1; $i <= 5; $i++) {
+                [$st, , $body] = $get('GET', '/search?q=php', ['X-Forwarded-For' => $ip]);
+                truthy($st === 200 && strpos($body, '"results"') !== false, "search $i: answered by the page");
+            }
+            [$st, $xrs] = $get('GET', '/search?q=php', ['X-Forwarded-For' => $ip]);
+            truthy($st === 429 && strpos($xrs, 'rule=SHOW-SEARCH') !== false, "the sixth: the shield answers for the page ($xrs)");
+            [$st, $xrs, , , $raw] = $get('GET', '/search?q=php', ['X-Forwarded-For' => $ip]);
+            truthy($st === 429 && strpos($xrs, 'throttle banned') === 0 && preg_match('/^Retry-After: [1-5]\r?$/mi', $raw) === 1, "then a pause of 5 seconds, before the page runs ($xrs)");
+            $form = static fn (string $pw, string $from): array => $get('POST', '/account/login', ['X-Forwarded-For' => $from, 'Origin' => "http://127.0.0.1:$port"], 'user=demo&password=' . $pw);
+            $ip = '198.18.201.' . mt_rand(1, 250);
+            for ($i = 1; $i <= 3; $i++) {
+                [$st, , $body] = $form('falsch', $ip);
+                same([200, '{"ok":false}'], [$st, $body], "wrong password $i: the page says so");
+            }
+            [$st, $xrs] = $form('falsch', $ip);
+            truthy($st === 429 && strpos($xrs, 'rule=SHOW-LOGINS') !== false, "the fourth: the shield answers ($xrs)");
+            $other = '198.18.202.' . mt_rand(1, 250);
+            for ($i = 1; $i <= 5; $i++) {
+                same([200, '{"ok":true}'], [$form('sesam', $other)[0], $form('sesam', $other)[2]], "the right password, again and again: nothing counted ($i)");
+            }
+        });
     },
     'RSF05-04 the showcase as its README runs it: the page, its own files, and every try a real request answered as its card says' => function (): void {
         withShowcase(static function (callable $get): void {

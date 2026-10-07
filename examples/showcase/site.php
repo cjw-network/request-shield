@@ -104,6 +104,25 @@ if ($path === '/__try') {
     showcaseJson(200, ['status' => $d->passes() ? 200 : $d->status, 'action' => $d->action, 'reason' => $d->reason, 'rule' => $t['rule'], 'verdict' => $t['verdict']]);
     return;
 }
+if ($path === '/search') {
+    // The search counts itself (on-demand): past 5 a minute the shield answers instead -- a 429 with
+    // Retry-After, and a pause for this visitor that doubles each time (ban-growth).
+    Shield::active()?->consume('searches', null, null, true);
+    $q = trim((string) ($_GET['q'] ?? ''));
+    $hits = $q === '' ? [] : [['title' => 'Getting started', 'url' => '/'], ['title' => 'The rules', 'url' => '/#rules'], ['title' => 'Try it', 'url' => '/#try']];
+    showcaseJson(200, ['q' => $q, 'results' => $hits]);
+    return;
+}
+if ($path === '/account/login' && $method === 'POST') {
+    // A right password counts nothing; a wrong one is counted -- past 3 in 15 minutes the shield answers.
+    if (hash_equals('sesam', (string) ($_POST['password'] ?? ''))) {
+        showcaseJson(200, ['ok' => true]);
+        return;
+    }
+    Shield::active()?->consume('logins', null, null, true);
+    showcaseJson(200, ['ok' => false]);
+    return;
+}
 if ($path === '/__login') {
     // "See the check": the pass forgotten first, so the login checks again (a pass holds an hour).
     setcookie('rsp', '', ['expires' => 1, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);

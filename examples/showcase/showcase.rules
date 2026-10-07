@@ -33,7 +33,7 @@ expect GET  /?debug=1               from 198.51.100.18 404 by SHOW-STRICT    # A
 expect GET  /                       from 198.51.100.25 times 61 check by SHOW-PACE   # 61 pages in a minute: the invisible check
 expect GET  /                       from 198.51.100.26 times 121 429 by SHOW-PACE    # 121 in a minute: a pause
 
-[SHOW-FORMS]   allow POST /contact                    # forms may only be sent to the contact page
+[SHOW-FORMS]   allow POST /contact /account/login     # forms may only be sent to the contact page and the sign-in
 expect POST /search                 from 198.51.100.22 405 by SHOW-FORMS     # A POST where no form is
 [SHOW-ORIGIN]  post-origin same                       # ... and only from the site's own pages
 expect POST https://www.example.org/contact header Origin:https://www.example.org from 198.51.100.20 answered             # The contact form, from the site
@@ -51,6 +51,13 @@ expect GET  /login                  from 198.51.100.24 with pass answered    # .
 
 [SHOW-DENY]    deny 203.0.113.66                      # an address kept out for good
 expect GET  /                       from 203.0.113.66  403 by SHOW-DENY      # An address on the deny list
+
+[SHOW-SEARCH]     limit searches 5/min on-demand at /search          # the search counts itself: 5 searches a minute per visitor
+[SHOW-SEARCH-BAN] ban after 1 searches in 1m for 5s                  # past them a pause: 5 seconds, then 10, 20, 40 …
+[SHOW-LOGINS]     limit logins 3/15m on-demand at /account/login     # the sign-in counts wrong passwords: 3 in 15 minutes
+[SHOW-LOGIN-BAN]  ban after 1 logins in 15m for 5s                   # then a pause: 5 seconds, then 10, 20, 40 …
+set         ban-growth 2                              # every pause twice as long as the one before
+set         ban-max 5m                                # but never longer than five minutes
 
 crawlers ai-training block                            # verified AI training crawlers: no
 

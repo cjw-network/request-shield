@@ -24,8 +24,8 @@ h1, h2, h3, h4 { letter-spacing: -.01em; }
 .navbar { background: rgba(255, 255, 255, .85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--rs-line); }
 .navbar-brand { font-weight: 800; color: var(--rs-ink) !important; }
 .logo { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; background: var(--rs-mint); color: #fff; }
-.nav-link { color: var(--rs-soft-ink) !important; font-weight: 600; }
-.nav-link:hover, .nav-link.active { color: var(--rs-mint-dark) !important; }
+.navbar .nav-link { color: var(--rs-soft-ink) !important; font-weight: 600; }
+.navbar .nav-link:hover, .navbar .nav-link.active { color: var(--rs-mint-dark) !important; }
 
 /* Hero */
 .hero {
@@ -162,6 +162,26 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .burst-row { padding: 2px 0; }
 .burst-row > * { margin-right: 8px; }
 .result-xrs-inline { color: var(--rs-soft-ink); word-break: break-all; }
+
+/* Pages that count for themselves */
+.timeline { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 3px; min-height: 30px; }
+.tick { display: inline-block; width: 10px; height: 18px; border-radius: 5px; }
+.tick-pass { background: var(--rs-mint-dark); }
+.tick-check { background: var(--rs-sun); }
+.tick-stop { background: var(--rs-coral); opacity: .75; }
+.tick-block { display: inline-flex; flex-wrap: wrap; align-items: flex-end; gap: 3px; position: relative; padding-top: 16px; }
+.tick-label { position: absolute; top: 0; left: 0; font-size: .7rem; font-weight: 700; color: #b4322d; white-space: nowrap; }
+.timeline-legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--rs-soft-ink); }
+.bot-summary { font-weight: 700; color: var(--rs-ink); }
+.counter .form-control { border-radius: 999px; }
+
+/* Install */
+.install-steps { max-width: 56rem; margin: 0 auto; }
+.code-box { position: relative; }
+.code-box .copy { position: absolute; top: 8px; right: 8px; font-size: .8rem; padding: 2px 10px; }
+.code-box pre { padding: 16px 16px 14px; font-size: .86rem; white-space: pre; overflow-x: auto; }
+.install-tabs .nav-link { border-radius: 999px; font-weight: 700; color: var(--rs-ink); font-family: var(--bs-font-monospace); font-size: .9rem; }
+.install-tabs .nav-link.active { background: var(--rs-mint-dark); color: #fff; }
 
 /* Steps */
 .step, .install { position: relative; background: #fff; border-radius: 24px; padding: 32px 26px 26px; border: 1px solid var(--rs-line); }

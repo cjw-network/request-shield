@@ -157,6 +157,127 @@
     });
   });
 
+  // Pages that count for themselves: the search and the sign-in. Each box is one made-up visitor;
+  // the shield's answer to it is real -- a 429 with Retry-After once the page's own count is spent.
+  var self = words.self;
+  function fmt(s) { var a = Array.prototype.slice.call(arguments, 1); return s.replace(/%[ds]/g, function () { return String(a.shift()); }); }
+  function newIp() { return '198.18.' + Math.floor(Math.random() * 250 + 1) + '.' + Math.floor(Math.random() * 250 + 1); }
+  document.querySelectorAll('.counter').forEach(function (box) {
+    var kindOf = box.getAttribute('data-kind');
+    var form = box.querySelector('.counter-form');
+    var answer = box.querySelector('.counter-answer');
+    var line = box.querySelector('.timeline');
+    var summary = box.querySelector('.bot-summary');
+    var bot = box.querySelector('.bot-go');
+    var ip, running = false;
+    function visitor() {
+      ip = newIp();
+      box.querySelector('.visitor').textContent = '· ' + fmt(self.visitor, ip);
+      answer.textContent = ''; line.textContent = ''; summary.textContent = '';
+    }
+    visitor();
+    // One try: the search for the term in the box, or the sign-in with the password in the box.
+    function attempt(value) {
+      var opts = { headers: { 'X-Forwarded-For': ip }, credentials: 'omit', cache: 'no-store' };
+      var url = '/search?q=' + encodeURIComponent(value);
+      if (kindOf === 'login') {
+        url = '/account/login';
+        opts.method = 'POST';
+        opts.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        opts.body = 'user=demo&password=' + encodeURIComponent(value);
+      }
+      return fetch(url, opts).then(function (r) {
+        if (r.status === 429) {
+          // "throttle banned": refused before the page ran; any other 429: the page counted and
+          // its limit was spent -- the shield answered for it, and a new, longer pause begins.
+          var banned = /^throttle banned/.test(r.headers.get('X-RS') || '');
+          return { reached: false, banned: banned, wait: parseInt(r.headers.get('Retry-After') || '0', 10) };
+        }
+        return r.json().then(function (j) { return { reached: true, data: j }; });
+      });
+    }
+    function say(got, value) {
+      answer.textContent = '';
+      var p = el('div', 'result-say result-' + (got.reached ? (kindOf === 'login' && !got.data.ok ? 'check' : 'pass') : 'stop'));
+      var text;
+      if (!got.reached && !got.banned) { p.appendChild(el('i', 'bi bi-hourglass-top')); text = self.limit; }
+      else if (!got.reached) { p.appendChild(el('i', 'bi bi-hourglass-split')); text = fmt(self.pause, got.wait); }
+      else if (kindOf === 'search') { p.appendChild(el('i', 'bi bi-emoji-smile-fill')); text = fmt(self.hits, got.data.results.length, value); }
+      else if (got.data.ok) { p.appendChild(el('i', 'bi bi-emoji-smile-fill')); text = self.welcome; }
+      else { p.appendChild(el('i', 'bi bi-x-circle')); text = self.wrong; }
+      p.appendChild(el('span', '', text));
+      answer.appendChild(p);
+    }
+    var go = form.querySelector('button');
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      if (go.disabled) { return; }
+      go.disabled = true;
+      var value = form.querySelector(kindOf === 'login' ? '[name=password]' : '[name=q]').value;
+      attempt(value).then(function (got) { say(got, value); }).catch(function (e) { answer.textContent = String(e); })
+        .then(function () { go.disabled = running; });
+    });
+    box.querySelector('.new-visitor').addEventListener('click', function () { if (!running) { visitor(); } });
+    // Bot mode: one try a second for a minute -- the timeline shows which reached the page, and
+    // how long each pause lasted (measured: the run of refused seconds).
+    bot.addEventListener('click', function () {
+      if (running) { running = false; return; }
+      running = true;
+      go.disabled = true;
+      bot.querySelector('span').textContent = self.botStop;
+      line.textContent = ''; summary.textContent = '';
+      var value = kindOf === 'login' ? 'falsch' : 'bot';
+      var total = 60, i = 0, reached = 0, block = null;
+      var start = Date.now();
+      function close() {
+        if (block) { block.label.textContent = fmt(self.blockFor, block.n); block = null; }
+      }
+      function tick() {
+        if (!running || i >= total) {
+          close();
+          running = false;
+          go.disabled = false;
+          bot.querySelector('span').textContent = self.botGo;
+          summary.textContent = fmt(self.botSummary, reached, i);
+          return;
+        }
+        var n = i++;
+        attempt(value).then(function (got) {
+          var cell = el('span', 'tick tick-' + (got.reached ? 'pass' : got.banned ? 'stop' : 'check'));
+          cell.title = (n + 1) + 's: ' + (got.reached ? 'reached' : got.banned ? 'refused, Retry-After ' + got.wait : 'limit spent, a pause begins');
+          if (got.reached) { reached++; close(); line.appendChild(cell); }
+          else {
+            // A pause starts with the second the limit was spent (yellow) and runs through the refused ones.
+            if (!got.banned) { close(); }
+            if (!block) {
+              var group = el('span', 'tick-block');
+              block = { n: 0, group: group, label: el('span', 'tick-label', '') };
+              group.appendChild(block.label);
+              line.appendChild(group);
+            }
+            block.n++;
+            block.group.insertBefore(cell, block.label);
+            block.label.textContent = fmt(self.blockFor, block.n);
+          }
+          summary.textContent = fmt(self.botSummary, reached, n + 1);
+        }).catch(function () {}).then(function () {
+          setTimeout(tick, Math.max(0, start + i * 1000 - Date.now()));
+        });
+      }
+      tick();
+    });
+  });
+
+  // Install: copy a snippet as it is shown.
+  document.querySelectorAll('.code-box .copy').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var text = b.parentNode.querySelector('code').textContent;
+      var label = b.lastChild.textContent;
+      var done = function () { b.lastChild.textContent = ' ' + b.getAttribute('data-copied'); setTimeout(function () { b.lastChild.textContent = label; }, 1500); };
+      if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done, function () {}); }
+    });
+  });
+
   // The hero's stream: the plain tries, sent one by one, twice round.
   var stream = document.getElementById('stream');
   if (stream) {

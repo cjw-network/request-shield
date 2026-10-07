@@ -4,8 +4,11 @@ One page that shows what request-shield does, in plain words, in German and
 English — and lets you try it. From the repository's root:
 
 ```bash
-php -S 127.0.0.1:8090 examples/showcase/router.php
+PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8090 examples/showcase/router.php
 ```
+
+(Several workers, so the page's own requests -- the stream, a bot -- do not
+wait for each other; `php -S` alone answers one request at a time.)
 
 Open http://127.0.0.1:8090/ (`?lang=de` or `?lang=en`).
 
@@ -27,6 +30,18 @@ Open http://127.0.0.1:8090/ (`?lang=de` or `?lang=en`).
   lets a page forge `Origin`.
 - **The burst** sends 125 page views from one made-up visitor: 60 through, 60
   with the browser check, 5 paused.
+- **Pages that count for themselves:** the search (`/search`, 5 a minute) and
+  the sign-in (`/account/login`, 3 wrong passwords in 15 minutes; the right
+  one is `sesam`) call `Shield::active()?->consume(…, answer: true)`; past
+  their limit the shield answers instead, and a ban that doubles each time
+  (`ban-growth 2`: 5 s, 10 s, 20 s …) keeps the visitor out before the page
+  runs. *Bot mode* tries once a second for a minute and draws which tries
+  reached the page. These budgets cannot be decided by `request-shield test`
+  (the page counts them); `tests/ShowcaseTest.php` sends them for real.
+- **Install** shows the steps with real paths: the folder, `.htaccess`,
+  `.user.ini`, `require` in `index.php` or `wp-config.php`, and a first rule
+  file in `monitor` mode with `set log` -- without a log file, monitor mode
+  has nowhere to say what it would have done.
 - **The browser check** for real: *open the login* in a new tab. It forgets
   your pass first (`/__login`), so the ring comes every time; the rules make
   the check a little harder than a real site would (`difficulty-min 500000`),

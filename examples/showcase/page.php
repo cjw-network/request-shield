@@ -64,7 +64,7 @@ $outcomeLabel = static fn (string $o): string => $t['outcome'][$o] ?? $o;
 $badge = static fn (string $o): string => $o === 'answered' ? 'pass' : ($o === 'check' ? 'check' : 'stop');
 $client = [
     'tries' => $tries,
-    'words' => ['outcome' => $t['outcome'], 'say' => $t['say'], 'details' => $t['details'], 'send' => $t['send'], 'sent' => $t['sent'], 'from' => $t['from'], 'tries' => array_map($tr, array_column($tries, 'text', 'n'))],
+    'words' => ['self' => $t['self'], 'outcome' => $t['outcome'], 'say' => $t['say'], 'details' => $t['details'], 'send' => $t['send'], 'sent' => $t['sent'], 'from' => $t['from'], 'tries' => array_map($tr, array_column($tries, 'text', 'n'))],
 ];
 ?><!doctype html>
 <html lang="<?= $lang ?>">
@@ -190,7 +190,36 @@ $client = [
     <?php foreach ($groups as $g => $list): ?>
     <div class="try-group">
       <h3 class="h4"><?= $e($t['groups'][$g][0]) ?></h3><p class="text-secondary"><?= $e($t['groups'][$g][1]) ?></p>
-      <?php if ($g === 'pace'): ?>
+      <?php if ($g === 'self'): ?>
+        <div class="row g-4">
+          <?php foreach (['search', 'login'] as $w): $x = $t['self']; ?>
+          <div class="col-lg-6"><div class="card-try counter h-100" data-kind="<?= $w ?>">
+            <h4 class="h5 mb-1"><i class="bi <?= $w === 'search' ? 'bi-search' : 'bi-key' ?>"></i> <?= $e($x[$w . 'Title']) ?></h4>
+            <p class="text-secondary mb-2"><?= $e($x[$w . 'Lead']) ?></p>
+            <form class="counter-form d-flex flex-wrap gap-2" novalidate>
+              <?php if ($w === 'search'): ?>
+                <input class="form-control flex-grow-1" name="q" value="php" aria-label="<?= $e($x['searchPlaceholder']) ?>" placeholder="<?= $e($x['searchPlaceholder']) ?>" style="min-width: 10rem; flex-basis: 10rem">
+                <button class="btn btn-accent" type="submit"><i class="bi bi-search"></i> <?= $e($x['searchGo']) ?></button>
+              <?php else: ?>
+                <input class="form-control" name="user" value="demo" aria-label="<?= $e($x['user']) ?>" style="max-width: 8rem" readonly>
+                <input class="form-control flex-grow-1" name="password" type="password" value="falsch" aria-label="<?= $e($x['password']) ?>" style="min-width: 8rem; flex-basis: 8rem">
+                <button class="btn btn-accent" type="submit"><i class="bi bi-box-arrow-in-right"></i> <?= $e($x['loginGo']) ?></button>
+              <?php endif ?>
+            </form>
+            <?php if ($w === 'login'): ?><p class="small text-secondary mb-0 mt-1"><i class="bi bi-lightbulb"></i> <?= $e($x['pwHint']) ?></p><?php endif ?>
+            <div class="counter-answer mt-2" aria-live="polite"></div>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+              <button class="btn btn-sm btn-outline-accent bot-go"><i class="bi bi-robot"></i> <span><?= $e($x['botGo']) ?></span></button>
+              <button class="btn btn-sm btn-soft new-visitor"><i class="bi bi-person-plus"></i> <?= $e($x['newVisitor']) ?></button>
+            </div>
+            <div class="timeline mt-3" aria-hidden="true"></div>
+            <div class="timeline-legend small mt-1"><span><i class="sq sq-pass"></i> <?= $e($x['legendReached']) ?></span> <span><i class="sq sq-check"></i> <?= $e($x['legendLimit']) ?></span> <span><i class="sq sq-stop"></i> <?= $e($x['legendRefused']) ?></span>
+              <span class="visitor text-secondary"></span></div>
+            <p class="bot-summary small mt-1 mb-0" aria-live="polite"></p>
+          </div></div>
+          <?php endforeach ?>
+        </div>
+      <?php elseif ($g === 'pace'): ?>
         <?php $limits = array_column($list, 'times'); sort($limits); ?>
         <div class="burst card-try" data-check="<?= (int) $limits[0] ?>" data-pause="<?= (int) end($limits) ?>">
           <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
@@ -251,11 +280,29 @@ $client = [
 <section id="install" class="section">
   <div class="container">
     <div class="section-head"><h2><?= $e($t['installTitle']) ?></h2></div>
-    <div class="row g-4">
-      <?php $code = ["request-shield.php\nmy-site.rules", "auto_prepend_file = /var/www/request-shield.php", "include @tracking\ninclude @attacks\nlimit requests 120/min challenge-at 60\nrestrict /admin/** to 192.0.2.0/24"]; ?>
-      <?php foreach ($t['install'] as $i => [$title, $text]): ?>
-      <div class="col-lg-4"><div class="install h-100"><div class="step-n"><?= $i + 1 ?></div><h3 class="h5"><?= $e($title) ?></h3><p><?= $e($text) ?></p>
-        <pre class="card-paper mb-0"><code><?= $e($code[$i]) ?></code></pre></div></div>
+    <?php $code = static fn (string $c): string => '<div class="code-box"><button type="button" class="btn btn-sm btn-soft copy" data-copied="' . $e($t['copied']) . '"><i class="bi bi-clipboard"></i> ' . $e($t['copy']) . '</button><pre class="card-paper mb-0"><code>' . $e($c) . '</code></pre></div>'; ?>
+    <div class="install-steps">
+      <?php foreach ($t['install'] as $i => [$title, $text, $snippet]): ?>
+      <div class="install mb-4"><div class="step-n"><?= $i + 1 ?></div>
+        <h3 class="h5"><?= $e($title) ?></h3><p><?= $e($text) ?></p>
+        <?php if ($i === 1): ?>
+          <ul class="nav nav-pills install-tabs mb-3" role="tablist">
+            <?php foreach ($t['installWays'] as $k => [$label]): ?>
+            <li class="nav-item" role="presentation"><button class="nav-link<?= $k === 0 ? ' active' : '' ?>" id="way-<?= $k ?>-tab" data-bs-toggle="pill" data-bs-target="#way-<?= $k ?>" type="button" role="tab" aria-controls="way-<?= $k ?>" aria-selected="<?= $k === 0 ? 'true' : 'false' ?>"><?= $e($label) ?></button></li>
+            <?php endforeach ?>
+          </ul>
+          <div class="tab-content">
+            <?php foreach ($t['installWays'] as $k => [, $snip, $hint]): ?>
+            <div class="tab-pane fade<?= $k === 0 ? ' show active' : '' ?>" id="way-<?= $k ?>" role="tabpanel" aria-labelledby="way-<?= $k ?>-tab" tabindex="0">
+              <?= $code($snip) ?><p class="small text-secondary mt-2 mb-0"><i class="bi bi-info-circle"></i> <?= $e($hint) ?></p>
+            </div>
+            <?php endforeach ?>
+          </div>
+        <?php else: ?>
+          <?= $code($snippet) ?>
+          <?php if ($i === 2): ?><div class="mt-3"><?= $code($t['installCheck']) ?></div><?php endif ?>
+        <?php endif ?>
+      </div>
       <?php endforeach ?>
     </div>
     <p class="text-center mt-4"><i class="bi bi-eye"></i> <?= $t['installMonitor'] ?></p>
