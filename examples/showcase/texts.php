@@ -108,7 +108,7 @@ return [
                 'Oder per .htaccess / .user.ini: Dann ist auch jede PHP-Datei geschützt, die WordPress nicht selbst lädt.'],
         ],
         'copy' => 'Kopieren', 'copied' => 'Kopiert',
-        'installMonitor' => 'Erst beobachten: Mit <code>set mode monitor</code> weist der Shield niemanden ab und schreibt ins Log (<code>set log</code>), was er getan hätte — jede Zeile beginnt mit <code>monitor-</code>. Ohne <code>set log</code> gibt es keine Log-Datei.',
+        'installMonitor' => 'Erst beobachten: Mit <code>set mode monitor</code> weist der Shield niemanden ab und schreibt ins Log (<code>set log</code>), was er getan hätte — in jeder dieser Zeilen steht <code>monitor-reject</code>, <code>monitor-throttle</code> … Ohne <code>set log</code> gibt es keine Log-Datei.',
         'footer' => 'request-shield · MIT-Lizenz · eine Demo, die auf deinem Rechner läuft',
         'notes' => [
             'every rule\'s name starts with SHOW-: decisions and the log name it' => 'jede Regel heißt SHOW-…: Entscheidungen und Log nennen den Namen',
@@ -256,7 +256,7 @@ return [
                 'Or by .htaccess / .user.ini: then every PHP file is protected too, also those WordPress does not load itself.'],
         ],
         'copy' => 'Copy', 'copied' => 'Copied',
-        'installMonitor' => 'Watch first: with <code>set mode monitor</code> the shield refuses nobody and writes to its log (<code>set log</code>) what it would have done — each line starts with <code>monitor-</code>. Without <code>set log</code> there is no log file.',
+        'installMonitor' => 'Watch first: with <code>set mode monitor</code> the shield refuses nobody and writes to its log (<code>set log</code>) what it would have done — each of these lines says <code>monitor-reject</code>, <code>monitor-throttle</code> … Without <code>set log</code> there is no log file.',
         'footer' => 'request-shield · MIT licence · a demo running on your own machine',
         'notes' => [],
         'tries' => [],
