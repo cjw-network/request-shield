@@ -22,6 +22,13 @@ return [
         'heroRules' => 'So einfach sind die Regeln',
         'streamTitle' => 'Was ich gerade entscheide — live',
         'stats' => [['~10 µs', 'pro Anfrage'], ['0', 'Abhängigkeiten'], ['1', 'Datei'], ['PHP 8.0+', 'läuft überall']],
+        'promiseTitle' => 'Schutz, der niemanden ausschließt',
+        'promises' => [
+            ['bi-universal-access-circle', 'Barrierefrei', 'Kein Bilderrätsel, kein Audio-Captcha, kein Klick auf Ampeln. Der Check läuft unsichtbar — auch mit Screenreader, Tastatur oder ohne Maus.'],
+            ['bi-eye-slash', 'Ohne Tracking', 'Keine Cookies zum Wiedererkennen, kein Fingerprinting, kein Profil. Nur ein kurzer, signierter Pass — technisch notwendig.'],
+            ['bi-shield-lock', 'Ohne Drittanbieter', 'Kein Google, kein Cloudflare, kein CDN — kein fremder Dienst bekommt deine Besucher zu sehen.'],
+            ['bi-house-heart', 'Auf deinem eigenen Server', 'Eine PHP-Datei, deine Regeln, deine Logs. Läuft auf jedem Hosting mit PHP 8.0 — auch auf einfachem Shared Hosting.'],
+        ],
         'whatTitle' => 'Was er tut — ohne dass du etwas merkst',
         'whatLead' => 'Die meisten Anfragen an eine Website kommen nicht von Menschen. request-shield sortiert sie aus, bevor sie Rechenzeit kosten.',
         'features' => [
@@ -132,6 +139,13 @@ return [
         'heroRules' => 'See how simple the rules are',
         'streamTitle' => 'What I decide right now — live',
         'stats' => [['~10 µs', 'per request'], ['0', 'dependencies'], ['1', 'file'], ['PHP 8.0+', 'runs anywhere']],
+        'promiseTitle' => 'Protection that shuts nobody out',
+        'promises' => [
+            ['bi-universal-access-circle', 'Accessible', 'No picture puzzles, no audio captcha, no clicking traffic lights. The check runs invisibly — with a screen reader, a keyboard or no mouse too.'],
+            ['bi-eye-slash', 'No tracking', 'No cookies to recognise anyone, no fingerprinting, no profile. Only a short, signed pass — technically necessary.'],
+            ['bi-shield-lock', 'No third party', 'No Google, no Cloudflare, no CDN — no outside service ever sees your visitors.'],
+            ['bi-house-heart', 'On your own server', 'One PHP file, your rules, your logs. Runs on any hosting with PHP 8.0 — simple shared hosting included.'],
+        ],
         'whatTitle' => 'What it does — without anyone noticing',
         'whatLead' => 'Most requests to a website do not come from people. request-shield sorts them out before they cost computing time.',
         'features' => [

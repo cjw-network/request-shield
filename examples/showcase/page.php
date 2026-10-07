@@ -107,6 +107,11 @@ $client = [
           <a class="btn btn-accent btn-lg" href="#try"><i class="bi bi-play-fill"></i> <?= $e($t['heroTry']) ?></a>
           <a class="btn btn-soft btn-lg" href="#rules"><?= $e($t['heroRules']) ?></a>
         </div>
+        <ul class="promise-badges list-unstyled d-flex flex-wrap gap-2 mt-4 mb-0">
+          <?php foreach ($t['promises'] as [$icon, $title]): ?>
+          <li><a href="#promise"><i class="bi <?= $e($icon) ?>"></i> <?= $e($title) ?></a></li>
+          <?php endforeach ?>
+        </ul>
       </div>
       <div class="col-lg-6">
         <div class="mascot-row">
@@ -133,6 +138,20 @@ $client = [
     </div>
   </div>
 </header>
+
+<section id="promise" class="promise">
+  <div class="container">
+    <h2 class="promise-title"><?= $e($t['promiseTitle']) ?></h2>
+    <div class="row g-4">
+      <?php foreach ($t['promises'] as [$icon, $title, $text]): ?>
+      <div class="col-sm-6 col-lg-3"><div class="promise-card h-100">
+        <div class="promise-icon"><i class="bi <?= $e($icon) ?>"></i></div>
+        <h3 class="h5"><?= $e($title) ?></h3><p class="mb-0"><?= $e($text) ?></p>
+      </div></div>
+      <?php endforeach ?>
+    </div>
+  </div>
+</section>
 
 <section id="what" class="section">
   <div class="container">
