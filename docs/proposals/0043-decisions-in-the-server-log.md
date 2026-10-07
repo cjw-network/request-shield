@@ -90,8 +90,7 @@ set server-log-level stop        # stop (default) | flag | all -- as log-level
 
 ```apache
 # mod_headers: copy the shield's header into a note, then remove it from the answer
-Header note X-RS-Log rs                 # an answer the server counts a success (200, a redirect)
-Header always note X-RS-Log rs          # and a refusal (403, 404, 429) -- both tables
+Header always note X-RS-Log rs          # "always": a 200 and a refusal alike
 Header unset X-RS-Log
 Header always unset X-RS-Log
 LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" rs=\"%{rs}n\"" combined_rs
@@ -100,9 +99,18 @@ CustomLog ${APACHE_LOG_DIR}/access.log combined_rs
 
 `Header note` exists for exactly this (mod_headers: *"useful if a header
 sent by a CGI or proxied resource is configured to be unset but should also
-be logged"*). Whether a refusal's header (a 403 from PHP-FPM) sits in the
-table `Header note` reads or in the "always" one is to be confirmed by the
-end-to-end test before the docs promise it. With mod_php and `set
+be logged"*). **Tried** on Apache 2.4.41 with a CGI that sends the header
+with a 200 and with a 403:
+
+| Configuration | The visitor sees `X-RS-Log` | The access log |
+|---|---|---|
+| no `Header` lines | yes -- the leak | `rs="-"` |
+| `Header note` + both unsets | no | `rs="-"` (nothing noted) |
+| `Header note` **and** `Header always note` + both unsets | no | `rs="-"` -- the second overwrites the first |
+| **`Header always note` + both unsets** | **no** | **`rs="challenge requests SHOW-PACE -"`, `rs="reject attack ATK-SQL-UNION SKVD-YB3R"`** |
+
+So: `always note`, once. PHP-FPM behind `proxy_fcgi` is to be tried the same
+way in the end-to-end test before the docs promise it. With mod_php and `set
 server-log note`, the `Header` lines are not needed: `%{rs}n` reads the note
 the shield set.
 
