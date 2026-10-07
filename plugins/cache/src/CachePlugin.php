@@ -90,6 +90,9 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
     /** The application said this answer is the same for everyone with the role. */
     private bool $shared = false;
 
+    /** The application named the role during this request (cacheContext()): only then is its answer kept for the role. */
+    private bool $named = false;
+
     public function __construct(Settings $settings)
     {
         $this->settings = $settings;
@@ -161,8 +164,9 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
             }
             if ($this->spoiled) {
                 $this->body = '';
-            } elseif (($phase & PHP_OUTPUT_HANDLER_FINAL) !== 0 && $this->ending && ($this->session === null || $this->context !== null)) {
-                // A signed-in visitor's answer only under the role named by now, and only when shared.
+            } elseif (($phase & PHP_OUTPUT_HANDLER_FINAL) !== 0 && $this->ending && ($this->session === null || ($this->context !== null && $this->named))) {
+                // A signed-in visitor's answer only under the role the application named in this request
+                // (a remembered role is no proof: the session may have ended), and only when shared.
                 $this->keep($cache, $this->keyFor($key), (int) http_response_code(), $this->sent ?? headers_list(), $this->body, $request->path, $now,
                     $this->session !== null);
             }
@@ -187,8 +191,8 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
      * adapter's cacheContext(..., shared: true), which also stands for its
      * Cache-Control, or Vary on X-User-Hash / X-User-Context-Hash -- and
      * leaves as "private, no-cache" (no cache behind, no browser keeps one
-     * role's page for another). The Vary on the role's hash is the shield's
-     * to follow: taken out of what is kept, for anonymous pages too.
+     * role's page for another). The Vary on the role's hash stays in the
+     * answer: a cache in front of the shield still varies by it.
      *
      * @param list<string> $headers headers_list()
      * @param ?float $born when its request began: a purge after it makes it out of date
@@ -215,17 +219,14 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
         if ($tags === null) {
             return false;
         }
-        $tags[] = self::ADDRESS . self::address($key);
+        $tags[] = self::ADDRESS . self::address((string) strstr($key . "\n", "\n", true));     // the address, not the role's suffix
         if ($role) {
             $tags[] = self::CONTEXT;
         }
         $kept = [];
         foreach ($headers as $h) {
             $name = strtolower(trim((string) strstr($h, ':', true)));
-            if ($name === 'vary') {
-                $rest = self::varyWithoutHash($h);
-                $kept = $rest !== null ? [...$kept, $rest] : $kept;
-            } elseif ($role && ($name === 'cache-control' || $name === 'pragma' || $name === 'expires')) {
+            if ($role && ($name === 'cache-control' || $name === 'pragma' || $name === 'expires')) {
                 continue;
             } elseif ($name !== '' && !in_array($name, self::DROP, true) && !in_array($name, $this->o['tagHeaders'], true)) {
                 $kept[] = $h;
@@ -370,24 +371,14 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
                 $this->purgeFromAnswer($purge);
             }
             $vary = array_filter(array_map('trim', explode(',', strtolower((string) self::header($list, 'vary')))));
-            $byHash = array_intersect($vary, self::HASH_VARY) !== [];
+            $byHash = array_intersect($vary, self::HASH_VARY) !== [];       // left in the answer: a cache in front varies by it
             foreach ($list as $h) {
                 $name = strtolower(trim((string) strstr($h, ':', true)));
                 if ($name === 'x-litespeed-purge' || $name === 'x-location-id' || in_array($name, $this->o['tagHeaders'], true)) {
                     header_remove($name);
                 }
             }
-            if ($byHash) {
-                // The role's hash is the shield's to vary by; no cache behind it, no browser has it.
-                header_remove('Vary');
-                foreach (self::lines($list, 'vary') as $line) {
-                    $rest = self::varyWithoutHash($line);
-                    if ($rest !== null) {
-                        header($rest, false);
-                    }
-                }
-            }
-            if ($this->session !== null && $this->context !== null && ($this->shared || $byHash)) {
+            if ($this->session !== null && $this->context !== null && $this->named && ($this->shared || $byHash)) {
                 // A page for a role: never kept by a cache behind the shield, nor by a browser for another role.
                 header('Cache-Control: private, no-cache');
                 header_remove('Expires');
@@ -418,6 +409,7 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
         apcu_store($this->contextKey($session), [microtime(true), $context], $this->o['contextTtl']);
         $this->session = $session;
         $this->context = $context;
+        $this->named = true;
         $this->shared = $this->shared || $shared;
     }
 
@@ -430,6 +422,7 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
         }
         $this->context = null;
         $this->shared = false;
+        $this->named = false;
     }
 
     /**
@@ -459,8 +452,8 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
         $pairs = [];
         foreach (explode(';', (string) $request->header('cookie')) as $pair) {
             $name = trim((string) strstr($pair . '=', '=', true));
-            if ($name !== '' && self::matches($name, $this->o['sessionCookies'])) {
-                $pairs[] = trim($pair);
+            if ($name !== '' && !self::matches($name, $this->o['cookies']) && self::matches($name, $this->o['sessionCookies'])) {
+                $pairs[] = trim($pair);     // as visitor() reads them: a harmless cookie is never a session
             }
         }
         if ($pairs === []) {
@@ -490,8 +483,8 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
      */
     private function visitor(Request $request): string
     {
-        if ($request->header('authorization') !== null) {
-            return 'own';
+        if ($request->header('authorization') !== null || $request->header('x-user-hash') !== null || $request->header('x-user-context-hash') !== null) {
+            return 'own';       // a role's hash sent by the client: an application that believes it would make a role's page
         }
         $who = 'anonymous';
         foreach (explode(';', (string) $request->header('cookie')) as $pair) {
@@ -516,18 +509,6 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
             }
         }
         return false;
-    }
-
-    /** A Vary line without the role's hash headers; null when nothing is left. */
-    private static function varyWithoutHash(string $line): ?string
-    {
-        $rest = [];
-        foreach (explode(',', substr($line, (int) strpos($line, ':') + 1)) as $v) {
-            if (trim($v) !== '' && !in_array(strtolower(trim($v)), self::HASH_VARY, true)) {
-                $rest[] = trim($v);
-            }
-        }
-        return $rest === [] ? null : 'Vary: ' . implode(', ', $rest);
     }
 
     /**
@@ -633,17 +614,6 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
     {
         $names = $request->queryNames();
         return count($names) === count(array_unique($names)) && preg_match('/%(2f|3f|23)/i', $request->path) !== 1;
-    }
-
-    /**
-     * Every line of a header, whole ("Vary: Accept-Encoding").
-     *
-     * @param list<string> $headers
-     * @return list<string>
-     */
-    private static function lines(array $headers, string $name): array
-    {
-        return array_values(array_filter($headers, static fn (string $h): bool => strncasecmp($h, $name . ':', strlen($name) + 1) === 0));
     }
 
     /**

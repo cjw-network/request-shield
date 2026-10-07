@@ -105,23 +105,31 @@ role, editors get the editors' page from the cache, members the members'
   starts. The key is the session cookie itself: whoever has it *is* that
   user; an unknown or forged cookie finds nothing, and the application
   runs. A role cookie the browser could set was rejected for that reason.
-- **Which pages:** only those the application calls the same for everyone
-  with the role -- `cacheContext(..., shared: true)` (it also stands for the
+- **Which pages:** only those the application names the role for **in
+  that request** (a role remembered from earlier is no proof: the session
+  may have ended) and calls the same for everyone with the role --
+  `cacheContext(..., shared: true)` (it also stands for the
   page's `Cache-Control`; kept for `http-cache-ttl` when the page says
   `no-cache`), or `Vary: X-User-Hash` / `X-User-Context-Hash`, as
   FOSHttpCache applications send it. Any other answer to a signed-in
   visitor is not kept. A page that holds one user's data -- a nonce, a
   name, a cart -- must not be called shared.
-- **How it leaves:** `Cache-Control: private, no-cache`, without the Vary
-  on the hash -- no cache behind the shield and no browser keeps one role's
-  page for another.
+- **How it leaves:** `Cache-Control: private, no-cache` -- no cache behind
+  the shield and no browser keeps one role's page for another. The `Vary`
+  on the hash stays, for a cache in front. An anonymous page with that
+  `Vary` is kept as before; a request that sends `X-User-Hash` or
+  `X-User-Context-Hash` itself is never answered from the cache nor kept
+  (an application that believes the header would make a role's page).
 - **Which cookies:** `http-cache-session-cookie` names the session cookies
   (`wordpress_logged_in_* eZSESSID* PHPSESSID`). A request with any other
   cookie besides those and the harmless ones (a cart) is the visitor's own,
   as before.
 - **Roles changed:** a purge of the tag `rs-context` forgets every
   remembered role and every role's page; `forgetContext()` in the logout
-  hook forgets one session.
+  hook forgets one session. Without either, a visitor whose roles changed
+  gets the old role's page from the cache until the application runs for
+  them again -- at most `http-cache-context-ttl`. A role's page is purged
+  by its address like any page.
 - **Needs APCu:** without it a session cookie means the site answers, as
   before.
 

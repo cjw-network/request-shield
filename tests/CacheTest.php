@@ -314,10 +314,11 @@ return [
             $login = $_COOKIE["wordpress_logged_in_abc"] ?? null;
             if (isset($_GET["logout"])) { $shield?->forgetContext(); echo "bye"; return; }
             $role = $login === null ? "anonymous" : (strncmp($login, "ed", 2) === 0 ? "editor" : "author");
-            if ($login !== null) { $shield?->cacheContext($role, !isset($_GET["own"])); }
+            if ($login !== null && !isset($_GET["silent"])) { $shield?->cacheContext($role, !isset($_GET["own"])); }
+            if (isset($_GET["fos"])) { header("Vary: X-User-Hash"); }
             header("Cache-Control: public, s-maxage=600");
             echo "page for $role " . hrtime(true);');
-        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset http-cache on\ncache-query own logout\nset http-cache-hosts www.example.org\n"
+        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset http-cache on\ncache-query own logout silent fos\nset http-cache-hosts www.example.org\n"
             . "set http-cache-session-cookie wordpress_logged_in_*\nset http-cache-purgers 127.0.0.1 ::1\n");
         $port = freePort();
         $proc = startFpm($fpm, $dir, $port);
@@ -358,6 +359,17 @@ return [
             $as('ed-1', '/index.php?logout=1');
             truthy(!$hit($as('ed-1')), 'after logout (forgetContext) the session finds no role');
             truthy($hit($as('ed-1')), '... until the application names it again');
+            truthy(!$hit($as('ed-1', '/index.php?silent=1&fos=1')) && !$hit($as('ed-1', '/index.php?silent=1&fos=1')),
+                'a remembered role, but the application did not name it in this request (a session ended): not kept for the role');
+            $as('ed-1');
+            truthy($hit($as('ed-1')), 'the editors\' page is kept ...');
+            same(200, $send('PURGE', '/index.php')[0], 'PURGE <address>');
+            truthy(!$hit($as('ed-1')), '... and purged by its address like any page');
+            $send('GET', '/index.php?fos=1');
+            $r = $send('GET', '/index.php?fos=1');
+            truthy($hit($r) && stripos($r[1], 'Vary: X-User-Hash') !== false, 'Vary on the role\'s hash: kept for anonymous visitors, and left in the answer for a cache in front: ' . $r[1]);
+            $forged = $send('GET', '/index.php?fos=1', ['X-User-Hash' => 'editors-hash']);
+            truthy(!$hit($forged) && !$hit($send('GET', '/index.php?fos=1', ['X-User-Hash' => 'editors-hash'])), 'a role\'s hash sent by the client: the application answers, nothing is kept or given from the cache');
             same(200, $send('PURGE', '/', ['key' => 'rs-context'])[0], 'PURGE + key: rs-context (roles changed)');
             truthy(!$hit($as('au-1')), 'the roles and the role\'s pages purged');
         } finally {
