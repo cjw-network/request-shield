@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **ALTCHA's widget v3 tested against the shield** (`tests/AltchaWidgetTest.php`):
+  the widget's own code (3.3.0), run in Node, solves the shield's task and
+  the shield accepts its answer -- bound to its client, budget and expiry.
+  The test runs when `ALTCHA_WIDGET` names an unpacked `altcha` npm package
+  and Node has WebCrypto (18+); it is skipped otherwise.
 - **Proposal 0040 in a PHP application server** (Draft): the shield in
   Qbix / Exponential Velocity (PHP's own web server with long-lived
   workers) -- the settings loaded once before the workers fork, a hook
