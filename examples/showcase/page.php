@@ -320,7 +320,13 @@ $client = [
     <span class="log-new" hidden></span><i class="bi bi-chevron-down ms-auto log-toggle" aria-hidden="true"></i>
   </button>
   <div class="log-dock-body" id="log-dock-body">
-    <p class="log-dock-lead"><?= $e($t['liveLogLead']) ?></p>
+    <div class="log-dock-bar">
+      <p class="log-dock-lead"><?= $e($t['liveLogLead']) ?> <?= $e($t['liveLogMasked']) ?>.</p>
+      <div class="btn-group btn-group-sm log-mode" role="group">
+        <button type="button" class="btn btn-light active" data-mode="nice" aria-pressed="true"><?= $e($t['liveLogNice']) ?></button>
+        <button type="button" class="btn btn-outline-light" data-mode="raw" aria-pressed="false"><?= $e($t['liveLogRaw']) ?></button>
+      </div>
+    </div>
     <ol class="log-rows" aria-live="off"><li class="log-empty"><?= $e($t['liveLogEmpty']) ?></li></ol>
   </div>
 </aside>

@@ -114,6 +114,7 @@ return [
         'liveLogTitle' => 'Das Log dieser Seite — live',
         'liveLogLead' => 'Was der Shield hier gerade abweist, prüft oder bremst, wie es in seiner Log-Datei steht (set log). Klick ein paar Karten an.',
         'liveLogEmpty' => 'Noch nichts im Log — schick oben eine Anfrage.',
+        'liveLogNice' => 'Aufbereitet', 'liveLogRaw' => 'Original', 'liveLogMasked' => 'Adressen anonymisiert auf ihr Netz (log-ip masked)',
         'installMonitor' => 'Erst beobachten: Mit <code>set mode monitor</code> weist der Shield niemanden ab und schreibt ins Log (<code>set log</code>), was er getan hätte — in jeder dieser Zeilen steht <code>monitor-reject</code>, <code>monitor-throttle</code> … Ohne <code>set log</code> gibt es keine Log-Datei.',
         'footer' => 'request-shield · MIT-Lizenz · eine Demo, die auf deinem Rechner läuft',
         'notes' => [
@@ -268,6 +269,7 @@ return [
         'liveLogTitle' => 'This page\'s log — live',
         'liveLogLead' => 'What the shield refuses, checks or slows down here right now, as its log file has it (set log). Click a few cards.',
         'liveLogEmpty' => 'Nothing in the log yet — send a request above.',
+        'liveLogNice' => 'Readable', 'liveLogRaw' => 'Original', 'liveLogMasked' => 'Addresses masked to their network (log-ip masked)',
         'installMonitor' => 'Watch first: with <code>set mode monitor</code> the shield refuses nobody and writes to its log (<code>set log</code>) what it would have done — each of these lines says <code>monitor-reject</code>, <code>monitor-throttle</code> … Without <code>set log</code> there is no log file.',
         'footer' => 'request-shield · MIT licence · a demo running on your own machine',
         'notes' => [],

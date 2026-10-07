@@ -275,7 +275,9 @@
     var rows = dock.querySelector('.log-rows');
     var head = dock.querySelector('.log-dock-head');
     var badge = dock.querySelector('.log-new');
-    var known = {};
+    var prev = [];          // the last poll's lines: what follows them is new
+    var lines = [];         // every line shown, for switching between readable and original
+    var mode = 'nice';
     var first = true;
     var unseen = 0;
     var open = window.matchMedia ? !window.matchMedia('(max-width: 767px)').matches : true;
@@ -290,7 +292,7 @@
     setOpen(open);
     head.addEventListener('click', function () { setOpen(!open); });
     // 2026-10-07T21:09:33+00:00 198.51.100.0/24 reject 404 "blocked path" rule=SCAN-HIDDEN ref=X "GET http://…" "UA"
-    var shape = /^(\S+) (\S+) (\S+) (\d+) "([^"]*)"(?: rule=(\S+))?(?: ref=(\S+))? "(\S+) ([^"]*)" "([^"]*)"$/;
+    var shape = /^(\S+) (\S+) (\S+) (\d+) "([^"]*)"(?: rule=(\S+))?(?: claimed=(\S+))?(?: ref=(\S+))? "(\S+) ([^"]*)" "([^"]*)"$/;
     var kindOfAction = function (a) {
       a = a.replace(/^monitor-/, '');
       return a === 'reject' ? 'stop' : a === 'throttle' ? 'slow' : a === 'challenge' ? 'check' : 'pass';
@@ -298,26 +300,32 @@
     var row = function (line) {
       var m = shape.exec(line);
       var li = el('li', 'log-row');
-      if (!m) { li.appendChild(el('code', '', line)); return li; }
+      if (mode === 'raw' || !m) { li.classList.add('log-raw'); li.appendChild(el('code', '', line)); return li; }
       li.classList.add('log-' + kindOfAction(m[3]));
       li.appendChild(el('span', 'log-time', m[1].substr(11, 8)));
+      li.appendChild(el('span', 'log-ip', m[2]));
       li.appendChild(el('span', 'log-act', m[3] + ' ' + m[4]));
-      li.appendChild(el('span', 'log-rule', m[6] || m[5]));
-      var path = m[9].replace(/^[a-z]+:\/\/[^\/]+/i, '');
+      li.appendChild(el('span', 'log-rule', (m[6] || '-') + ' · ' + m[5]));
+      var path = m[10].replace(/^[a-z]+:\/\/[^\/]+/i, '');
       var shown = path;
       try { shown = decodeURIComponent(path); } catch (e) {}     // a broken %-escape is shown as it came
-      li.appendChild(el('code', 'log-req', m[8] + ' ' + (shown.length > 70 ? shown.substr(0, 70) + '…' : shown)));
+      li.appendChild(el('code', 'log-req', m[9] + ' ' + (shown.length > 70 ? shown.substr(0, 70) + '…' : shown)));
       li.title = line;
       return li;
     };
     var poll = function () {
       fetch('/__log', { credentials: 'omit', cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
         var fresh = 0;
-        j.lines.forEach(function (line) {
-          if (known[line]) { return; }
-          known[line] = true;
+        // The longest end of the last poll that starts this one: the lines after it are new -- so
+        // the same request twice in a second (the same line) is shown twice.
+        var cur = j.lines, n = Math.min(prev.length, cur.length);
+        while (n > 0 && prev.slice(prev.length - n).join('\n') !== cur.slice(0, n).join('\n')) { n--; }
+        prev = cur;
+        cur.slice(n).forEach(function (line) {
           var empty = rows.querySelector('.log-empty');
           if (empty) { rows.removeChild(empty); }
+          lines.push(line);
+          if (lines.length > 40) { lines.shift(); }
           var li = row(line);
           if (!first) { li.classList.add('log-fresh'); fresh++; }
           rows.appendChild(li);
@@ -328,6 +336,17 @@
         rows.scrollTop = rows.scrollHeight;
       }).catch(function () {});
     };
+    dock.querySelectorAll('.log-mode button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        mode = b.getAttribute('data-mode');
+        dock.querySelectorAll('.log-mode button').forEach(function (o) {
+          var on = o === b;
+          o.classList.toggle('active', on); o.classList.toggle('btn-light', on); o.classList.toggle('btn-outline-light', !on);
+          o.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        if (lines.length) { rows.textContent = ''; lines.forEach(function (line) { rows.appendChild(row(line)); }); rows.scrollTop = rows.scrollHeight; }
+      });
+    });
     poll();
     setInterval(function () { if (!document.hidden) { poll(); } }, 2000);
   }
