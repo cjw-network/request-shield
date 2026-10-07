@@ -59,6 +59,10 @@ return [
             'HTTP_X_THING' => 'a    b',
         ]);
         same('x=union select 1&y=a b', $r->content('query'), 'decoded twice, "+" a space, /**/ a space, lower case');
+        same('id=1 union select 1', Request::fromServer(['REQUEST_URI' => '/?id=1%2F%2A!50000UnIoN%2A%2F%2F%2A!SELECT%2A%2F1'])->content('query'),
+            'a MySQL versioned comment is code to MySQL: its body stays, the comment marks go');
+        same('id=1 union select 1', Request::fromServer(['REQUEST_URI' => '/?id=1/*M!100100UNION*/SELECT/**/1'])->content('query'),
+            'MariaDB\'s /*M! too');
         same('bad bot', $r->content('header:user-agent'), 'one header by name');
         same('', $r->content('header:x-missing'), 'a header not sent');
         truthy(strpos($r->content('headers'), 'a b') !== false, 'headers: every HTTP_ value, white space collapsed');

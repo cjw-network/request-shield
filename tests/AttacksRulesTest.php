@@ -61,6 +61,8 @@ return [
             ['/?id=1%20UNION%20SELECT%20user,password%20FROM%20users', [], 'ATK-SQL-UNION'],
             ['/?id=-1%20UNION%20ALL%20SELECT%201,2,3', [], 'ATK-SQL-UNION'],
             ['/?id=1%20union%20distinct%20select%20x', [], 'ATK-SQL-UNION'],
+            ['/?id=1/*!50000UNION*//*!50000SELECT*/1,2', [], 'ATK-SQL-UNION'],    // MySQL's versioned comments: code to MySQL
+            ['/?id=1/*!UNION*/+/*M!100100SELECT*/+1', [], 'ATK-SQL-UNION'],
             ['/?id=1%20and%20sleep(5)', [], 'ATK-SQL-TIME'],
             ['/?id=benchmark(5000000,md5(1))', [], 'ATK-SQL-TIME'],
             ['/?id=1;waitfor+delay+%270:0:5%27--', [], 'ATK-SQL-TIME'],

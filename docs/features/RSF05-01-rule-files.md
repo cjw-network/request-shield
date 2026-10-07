@@ -125,8 +125,9 @@ block anywhere \$\{env:                 # path, query and every header
 ```
 
 Matched after the value is normalised — decoded twice, lower case, SQL
-comments and runs of white space as one space — so `%2527` or `UnIoN/**/SeLeCt`
-do not get past; the answer is 403 and the log and trace name the rule. Form
+comments and runs of white space as one space (the body of MySQL's versioned
+`/*!50000UNION*/` stays: MySQL runs it) — so `%2527`, `UnIoN/**/SeLeCt` or
+`/*!50000UNION*/SELECT` do not get past; the answer is 403 and the log and trace name the rule. Form
 contents (POST bodies) are not looked at. `unblock`, `unblock at` and `replace`
 work for these rules exactly as for path blocks; `rules/attacks.rules`
 (`include @attacks`) is a reviewed set, after the OWASP Core Rule Set's first

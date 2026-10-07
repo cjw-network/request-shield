@@ -267,7 +267,9 @@ final class Request
         }
         $v = strtolower($v);
         if (strpos($v, '/*') !== false) {
-            $v = (string) preg_replace('#/\*.*?\*/#s', ' ', $v);
+            // A comment is a space -- except MySQL's versioned one (/*!50000union*/,
+            // MariaDB's /*m!100100 ...*/), whose body MySQL runs: that body stays.
+            $v = (string) preg_replace(['#/\*m?!\d*(.*?)\*/#s', '#/\*.*?\*/#s'], [' $1 ', ' '], $v);
         }
         // Runs of white space as one space -- only when there are any: most
         // values have single spaces, and the expression is the costly part.
