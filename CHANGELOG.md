@@ -22,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **Proposal 0043 the shield's decision in the web server's access log**
+  (Draft): a header meant for the server's log (`X-RS-Log: reject attack
+  ATK-SQL-UNION <ref>`, `set server-log header`) or Apache's note
+  (`apache_note`, mod_php), noted by the server and taken out of the answer
+  (Apache `Header note` + `unset`, nginx `$upstream_http_x_rs_log` +
+  `fastcgi_hide_header`); one log with the shield's decision, every request
+  at no extra write, fail2ban at the firewall; nothing on the passing path at
+  the default level.
 - **A showcase** (`examples/showcase`): one page in German and English that
   shows what the shield does and lets you try it -- the rule file of a small
   website (about fifteen lines, real values) beside what each rule means, and
