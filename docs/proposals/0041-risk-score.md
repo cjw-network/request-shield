@@ -40,13 +40,13 @@ it.
 
 ## Where the number comes from
 
-Signals the request path has **already worked out**, plus two that are
-read only when a row is written -- nothing on a request the live view does
-not keep:
+Most signals the request path has **already worked out**; two are read
+only when a row is written (the bans, the headers); two are **new** (the
+budget's fill, the unsolved checks):
 
 | Signal | Already known from | Weight (first guess) |
 |---|---|---|
-| the fullest budget's fill (its count against its limit) | **new:** the budget check (`BudgetRule::check()`) has the count, but hands on only `Decision::$level` -- set only when it asks for the check (`challenge()`, `spent()`), measured from `challengeAt` to the limit, and absent for a budget without `challengeAt`; a request let through gets the shared `Decision::allow()` with nothing. The ratio count/limit is computed where the counts are compared -- see *What it costs* | 0–40, rising with the fill |
+| the fullest budget's fill (its count against its limit) | **new:** `BudgetRule::check()` has the count but hands on only `Decision::$level`, which is not the fill (below) -- the ratio count/limit is computed where the counts are compared, see *What it costs* | 0–40, rising with the fill |
 | checks asked for and not solved by this client | **new:** a counter per bucket, raised on the check page (a path that is slow anyway), cleared by a pass | 10 each, up to 30 |
 | claims to be a crawler, is not | the crawler check (`Decision::$claimed`) | 30 |
 | on a feed ([0025](0025-blocklist-feeds.md)) that does not refuse on its own | the IP table | 25 |
@@ -70,30 +70,38 @@ nobody else understands. (*Open question 2.*)
 
 ## What it costs
 
+**The budget's fill is the one new number on the request path.** Today
+`BudgetRule::check()` counts and compares, then hands on only
+`Decision::$level`: set only when it asks for the check (`challenge()`,
+`spent()`), measured from `challengeAt` to the limit, absent for a budget
+without `challengeAt` and for a pause (`throttle`); a request let through
+gets the one shared `Decision::allow()` with nothing. So with the live view
+on, the budget check keeps its highest count/limit ratio for the sink to
+read -- one division and one float per budget, where it compares the
+counts anyway -- for every request it counts, because a stopped row needs
+it as much as a watched one. With the live view off, the check is as
+today.
+
 - **Live view off** (the default): nothing. The number is made in the live
-  view's sink, not in the decision.
-- **Live view on, only stopped requests:** a few additions per row that is
-  written anyway (well under a microsecond).
-- **"Watched" on:** the number for **every request that passes** -- this is
-  the one part that runs on the passing path, so it is opt-in and measured
-  with `bench/overhead.php` before it is offered. Its new work: reading two
-  headers, and **carrying the budgets' fill on a request let through** --
-  today the budget check counts but does not hand the fill on, and a
-  passing request gets the one shared `Decision::allow()`. With
-  `live-watch` on, the budget check keeps its highest count/limit ratio
-  (one division and one float, where it compares the counts anyway) for
-  the sink to read; with it off, nothing changes. Rows the shield stopped
-  or checked need it too: a pause by `throttle` carries no level at all. Without that, a watched row would miss its strongest
-  signal, the client at 90 % of its budget.
+  view's sink, not in the decision, and the ratio is not kept.
+- **Live view on, only stopped requests:** the ratio on every counted
+  request (a division, well under a microsecond), and a few additions per
+  row that is written anyway. Measured with `bench/overhead.php`, on and
+  off, before it is offered.
+- **"Watched" on:** additionally the number for **every request that
+  passes**, and two headers read -- opt-in, measured the same way. Without
+  the ratio, a watched row would miss its strongest signal, the client at
+  90 % of its budget.
 
 ## Not in this proposal
 
 - **The number deciding anything.** First it is shown, so its weights can
   be judged against real traffic. A later step could let it choose the
-  check's difficulty (between `difficulty min` and `max`, as the budget's
-  fill does today) -- what Sentinel calls "adaptive". That gets its own
-  proposal, with the evidence from this one. Fail safe: a number never
-  refuses a request on its own.
+  check's difficulty (between `difficulty min` and `max`, as
+  `Decision::$level` -- the count past `challengeAt` -- does today), what
+  Sentinel calls "adaptive". That gets its own proposal, with the
+  evidence from this one. Fail safe: a number never refuses a request on
+  its own.
 - **Machine learning, outside reputation services, fingerprints.** Sentinel
   scores with its own models and threat feeds; the shield stays a file on
   the server that sends nothing anywhere. Feeds the operator chose
@@ -104,20 +112,23 @@ nobody else understands. (*Open question 2.*)
 
 ## Plan
 
-1. The weight table and the number in `Live::push()`, one field `risk` in
-   the row and the log line (`LogStats::parse()` reads it, an old line has
-   none); unit tests per signal, an end-to-end test through the live page.
+1. The budget check keeps its count/limit ratio while the live view is
+   on (benchmark on and off); the weight table and the number in
+   `Live::push()`, one field `risk` in the row and the log line
+   (`LogStats::parse()` reads it, an old line has none); unit tests per
+   signal, an end-to-end test through the live page.
 2. The live view: the bar, the labels, a filter "risk ≥ …", sorting by it.
-3. `set live-watch <n>`: the budgets' fill carried on the passing path
-   (only with it on), the watched rows, with the benchmark before and after
-   -- on and off.
+3. `set live-watch <n>`: the watched rows (the number and two headers on
+   every passing request), with the benchmark before and after -- on and
+   off.
 4. Afterwards, from what the numbers show: the proposal for letting them
    choose the difficulty.
 
 ## Open questions for the owner
 
-1. **Watched rows at all?** They are the useful part, and the only one with
-   a cost on the passing path. *Recommendation: yes, opt-in, threshold 50.*
+1. **Watched rows at all?** They are the useful part, and the larger cost
+   on the passing path (the ratio alone costs little more than nothing).
+   *Recommendation: yes, opt-in, threshold 50.*
 2. **Fixed weights or settings?** *Recommendation: fixed, shown on the rules
    page; settings once there is evidence that sites need different ones.*
 3. **The number in the log file too,** or only in the live view?
