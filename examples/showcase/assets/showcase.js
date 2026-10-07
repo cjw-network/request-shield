@@ -58,17 +58,28 @@
     return e;
   }
 
+  var faces = { pass: 'bi-emoji-smile-fill', check: 'bi-hourglass-split', stop: 'bi-shield-fill-check' };
+
   function show(card, t, got) {
     var box = card.querySelector('.try-result');
     box.textContent = '';
     var ok = got.outcome === t.outcome && (t.by === null || got.rule === t.by);
+    // First in words, with a face; the technical part folded away.
+    var say = el('div', 'result-say result-' + kind(got.outcome));
+    say.appendChild(el('i', 'bi ' + faces[kind(got.outcome)]));
+    say.appendChild(el('span', '', words.say[got.outcome] || label(got.outcome)));
+    if (ok) { say.appendChild(el('i', 'bi bi-check2 ms-auto result-ok')); }
+    box.appendChild(say);
+    var more = el('details', 'result-details');
+    more.appendChild(el('summary', '', words.details));
     var line = el('div', 'result-line');
     line.appendChild(el('span', 'pill pill-' + kind(got.outcome), label(got.outcome)));
     line.appendChild(el('span', 'result-status', 'HTTP ' + got.status));
     if (got.rule) { line.appendChild(el('span', 'rule-id', got.rule)); }
-    line.appendChild(el('i', 'bi ' + (ok ? 'bi-check-circle-fill text-success' : 'bi-exclamation-triangle-fill text-warning') + ' ms-auto'));
-    box.appendChild(line);
-    if (got.xrs) { box.appendChild(el('code', 'result-xrs', 'X-RS: ' + got.xrs)); }
+    more.appendChild(line);
+    more.appendChild(el('div', 'result-from', words.from + ' ' + box.getAttribute('data-from')));
+    if (got.xrs) { more.appendChild(el('code', 'result-xrs', 'X-RS: ' + got.xrs)); }
+    box.appendChild(more);
     card.classList.remove('is-pass', 'is-check', 'is-stop');
     card.classList.add('is-' + kind(got.outcome), 'flash');
     setTimeout(function () { card.classList.remove('flash'); }, 600);

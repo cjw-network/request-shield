@@ -64,7 +64,7 @@ $outcomeLabel = static fn (string $o): string => $t['outcome'][$o] ?? $o;
 $badge = static fn (string $o): string => $o === 'answered' ? 'pass' : ($o === 'check' ? 'check' : 'stop');
 $client = [
     'tries' => $tries,
-    'words' => ['outcome' => $t['outcome'], 'send' => $t['send'], 'sent' => $t['sent'], 'from' => $t['from'], 'tries' => array_map($tr, array_column($tries, 'text', 'n'))],
+    'words' => ['outcome' => $t['outcome'], 'say' => $t['say'], 'details' => $t['details'], 'send' => $t['send'], 'sent' => $t['sent'], 'from' => $t['from'], 'tries' => array_map($tr, array_column($tries, 'text', 'n'))],
 ];
 ?><!doctype html>
 <html lang="<?= $lang ?>">
@@ -78,7 +78,7 @@ $client = [
 </head>
 <body data-bs-spy="scroll" data-bs-target="#nav">
 
-<nav id="nav" class="navbar navbar-expand-lg navbar-dark fixed-top">
+<nav id="nav" class="navbar navbar-expand-lg navbar-light fixed-top">
   <div class="container">
     <a class="navbar-brand d-flex align-items-center gap-2" href="#top"><span class="logo"><i class="bi bi-shield-check"></i></span> request-shield</a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu" aria-controls="menu" aria-expanded="false" aria-label="Menu"><span class="navbar-toggler-icon"></span></button>
@@ -88,8 +88,8 @@ $client = [
         <li class="nav-item"><a class="nav-link" href="#<?= $k ?>"><?= $e($t['nav'][$k]) ?></a></li>
         <?php endforeach ?>
         <li class="nav-item ms-lg-3"><div class="btn-group btn-group-sm" role="group" aria-label="Language">
-          <a class="btn <?= $lang === 'de' ? 'btn-light' : 'btn-outline-light' ?>" href="/?lang=de" hreflang="de">DE</a>
-          <a class="btn <?= $lang === 'en' ? 'btn-light' : 'btn-outline-light' ?>" href="/?lang=en" hreflang="en">EN</a>
+          <a class="btn <?= $lang === 'de' ? 'btn-dark' : 'btn-outline-dark' ?>" href="/?lang=de" hreflang="de">DE</a>
+          <a class="btn <?= $lang === 'en' ? 'btn-dark' : 'btn-outline-dark' ?>" href="/?lang=en" hreflang="en">EN</a>
         </div></li>
       </ul>
     </div>
@@ -105,11 +105,22 @@ $client = [
         <p class="lead my-4"><?= $e($t['heroLead']) ?></p>
         <div class="d-flex flex-wrap gap-3">
           <a class="btn btn-accent btn-lg" href="#try"><i class="bi bi-play-fill"></i> <?= $e($t['heroTry']) ?></a>
-          <a class="btn btn-outline-light btn-lg" href="#rules"><?= $e($t['heroRules']) ?></a>
+          <a class="btn btn-soft btn-lg" href="#rules"><?= $e($t['heroRules']) ?></a>
         </div>
       </div>
       <div class="col-lg-6">
-        <div class="stream card-glass" aria-live="polite">
+        <div class="mascot-row">
+          <svg class="mascot" viewBox="0 0 120 130" width="104" height="112" aria-hidden="true" focusable="false">
+            <path d="M60 6 L108 24 V62 C108 94 86 116 60 124 C34 116 12 94 12 62 V24 Z" fill="#34d399" stroke="#059669" stroke-width="4" stroke-linejoin="round"/>
+            <path d="M60 16 L98 30 V62 C98 88 80 106 60 113 Z" fill="#6ee7b7" opacity=".55"/>
+            <circle cx="44" cy="58" r="6" fill="#064e3b"/><circle cx="76" cy="58" r="6" fill="#064e3b"/>
+            <circle cx="46" cy="56" r="2" fill="#fff"/><circle cx="78" cy="56" r="2" fill="#fff"/>
+            <circle cx="34" cy="74" r="6" fill="#fda4af" opacity=".8"/><circle cx="86" cy="74" r="6" fill="#fda4af" opacity=".8"/>
+            <path d="M44 78 Q60 94 76 78" fill="none" stroke="#064e3b" stroke-width="5" stroke-linecap="round"/>
+          </svg>
+          <div class="bubble"><?= $e($t['mascot']) ?></div>
+        </div>
+        <div class="stream card-soft" aria-live="polite">
           <div class="stream-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="ms-2"><?= $e($t['streamTitle']) ?></span></div>
           <ul id="stream" class="stream-list"></ul>
         </div>
@@ -140,7 +151,7 @@ $client = [
 <section id="rules" class="section section-alt">
   <div class="container">
     <div class="section-head"><h2><?= $e($t['rulesTitle']) ?></h2><p class="lead"><?= $e($t['rulesLead']) ?></p></div>
-    <div class="rules card-code">
+    <div class="rules card-paper">
       <div class="rules-head"><i class="bi bi-file-earmark-text"></i> showcase.rules</div>
       <?php foreach ($ruleLines as $r): ?>
         <?php if ($r['code'] === '' && $r['note'] === ''): ?><div class="rule-gap"></div>
@@ -183,14 +194,14 @@ $client = [
         <div class="col-md-6 col-xl-4"><div class="card-try h-100" data-n="<?= $try['n'] ?>" data-mode="<?= $mode ?>">
           <div class="try-text"><?= $e($tr($try['text'])) ?></div>
           <code class="try-request"><span class="m"><?= $e($try['method']) ?></span> <?= $e(rawurldecode($try['url'])) ?></code>
-          <div class="try-meta small"><?= $e($t['from']) ?> <?= $e($try['from']) ?> · <?= $e($t['expected']) ?>:
+          <div class="try-meta small"><?= $e($t['expected']) ?>:
             <span class="pill pill-<?= $badge($try['outcome']) ?>"><?= $e($outcomeLabel($try['outcome'])) ?></span><?= $try['by'] !== null ? ' <span class="rule-id">' . $e($try['by']) . '</span>' : '' ?></div>
           <?php if ($mode === 'pass'): ?>
             <p class="small text-secondary mt-2 mb-2"><?= $e($t['passCard']) ?></p>
             <a class="btn btn-sm btn-outline-accent mt-auto" href="/__login" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> <?= $e($t['openLogin']) ?></a>
           <?php else: ?>
             <?php if ($mode === 'server'): ?><p class="small text-secondary mt-2 mb-2"><i class="bi bi-info-circle"></i> <?= $e($t['simulated']) ?></p><?php endif ?>
-            <div class="try-result" aria-live="polite"></div>
+            <div class="try-result" aria-live="polite" data-from="<?= $e($try['from']) ?>"></div>
             <button class="btn btn-sm btn-outline-accent mt-auto try-go"><i class="bi bi-send"></i> <span><?= $e($t['send']) ?></span></button>
           <?php endif ?>
         </div></div>
@@ -225,7 +236,7 @@ $client = [
       <?php $code = ["request-shield.php\nmy-site.rules", "auto_prepend_file = /var/www/request-shield.php", "include @tracking\ninclude @attacks\nlimit requests 120/min challenge-at 60\nrestrict /admin/** to 192.0.2.0/24"]; ?>
       <?php foreach ($t['install'] as $i => [$title, $text]): ?>
       <div class="col-lg-4"><div class="install h-100"><div class="step-n"><?= $i + 1 ?></div><h3 class="h5"><?= $e($title) ?></h3><p><?= $e($text) ?></p>
-        <pre class="card-code mb-0"><code><?= $e($code[$i]) ?></code></pre></div></div>
+        <pre class="card-paper mb-0"><code><?= $e($code[$i]) ?></code></pre></div></div>
       <?php endforeach ?>
     </div>
     <p class="text-center mt-4"><i class="bi bi-eye"></i> <?= $t['installMonitor'] ?></p>
