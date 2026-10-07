@@ -51,7 +51,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   every example of it a card whose button sends a real request; a burst of
   125 page views shows the invisible check and the pause. Bootstrap is kept
   beside it, nothing is loaded from elsewhere; `tests/ShowcaseTest.php` holds
-  the page to its rules.
+  the page to its rules. A section on Exponential shows the rules of
+  `examples/exponential` by their sections, each example decided on the
+  server with those rules as `request-shield test` decides it.
 - **ALTCHA's widget v3 tested against the shield** (`tests/AltchaWidgetTest.php`):
   the widget's own code (3.3.0), run in Node, solves the shield's task and
   the shield accepts its answer -- bound to its client, budget and expiry.

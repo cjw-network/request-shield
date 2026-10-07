@@ -63,8 +63,8 @@ function showcaseTriesForTest(): array
         // site.php routes a request when included; only its function is wanted here.
         $src = (string) file_get_contents(dirname(__DIR__) . '/examples/showcase/site.php');
         $start = strpos($src, 'function showcaseTries');
-        $end = strpos($src, "\n}\n", (int) $start);
-        eval(substr($src, (int) $start, (int) $end - (int) $start + 3));
+        $end = strpos($src, '/** @param array<string, mixed> $data */');
+        eval(substr($src, (int) $start, (int) $end - (int) $start));    // showcaseTries(), showcaseExpect(), exponentialGroups()
     }
     return showcaseTries(dirname(__DIR__) . '/examples/showcase/showcase.rules');
 }
@@ -150,6 +150,25 @@ return [
             same(415, $msg(['Cookie' => $c[1], 'Content-Type' => 'text/plain'])[0], 'the API checks its own content: JSON only');
         });
     },
+    'RSF05-04 the showcase\'s Exponential example: every example of examples/exponential, decided on the server with its rules, as request-shield test decides it' => function (): void {
+        showcaseTriesForTest();                     // loads exponentialGroups() too
+        $groups = exponentialGroups(dirname(__DIR__) . '/examples/exponential');
+        truthy(count($groups) >= 4 && array_sum(array_map(static fn (array $g): int => count($g['tries']), $groups)) >= 50, 'the sections and their examples');
+        withShowcase(static function (callable $get) use ($groups): void {
+            // "Check all": every example in one request -- one by one they would run into SHOW-PACE.
+            $all = json_decode($get('GET', '/__exp?n=0')[2], true);
+            foreach ($groups as $g) {
+                foreach ($g['tries'] as $x) {
+                    $j = $all['results'][(string) $x['n']] ?? null;
+                    truthy(is_array($j) && ($j['ok'] ?? false) === true, $g['title'] . ': ' . $x['method'] . ' ' . $x['url'] . ' -- ' . json_encode($j));
+                }
+            }
+            $last = end($groups)['tries'];
+            $x = end($last);
+            same($all['results'][(string) $x['n']], json_decode($get('GET', '/__exp?n=' . $x['n'])[2], true), 'one example alone, as in all of them');
+            same(404, $get('GET', '/__exp?n=9999')[0], 'no such example');
+        });
+    },
     'RSF05-04 the showcase as its README runs it: the page, its own files, and every try a real request answered as its card says' => function (): void {
         withShowcase(static function (callable $get): void {
             [$st, , $page] = $get('GET', '/?lang=de');
@@ -159,7 +178,8 @@ return [
             [$st, , , $type] = $get('GET', '/assets/showcase.css');
             truthy($st === 200 && strpos($type, 'text/css') === 0, 'its own styles, as CSS');
             same(200, $get('GET', '/assets/vendor/bootstrap/bootstrap.min.css')[0], 'Bootstrap from the page\'s own folder, not from elsewhere');
-            truthy(preg_match('#(src|href)="(https?:)?//#', $page) !== 1, 'nothing loaded from another host');
+            truthy(preg_match('#\bsrc="(https?:)?//#', $page) !== 1 && preg_match('#<link[^>]+href="(https?:)?//#', $page) !== 1,
+                'nothing loaded from another host (a link to the docs is a link, not a load)');
             foreach (showcaseTriesForTest() as $t) {
                 if ($t['times'] > 1 || $t['pass'] || $t['text'][0] === '(') {
                     continue;           // the burst, the pass, the page's own: decided by request-shield test above

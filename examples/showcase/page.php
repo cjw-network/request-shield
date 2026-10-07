@@ -65,7 +65,7 @@ foreach (file(__DIR__ . '/showcase.rules', FILE_IGNORE_NEW_LINES) ?: [] as $line
 }
 
 $outcomeLabel = static fn (string $o): string => $t['outcome'][$o] ?? $o;
-$badge = static fn (string $o): string => $o === 'answered' ? 'pass' : ($o === 'check' ? 'check' : 'stop');
+$badge = static fn (string $o): string => in_array($o, ['answered', 'passes', 'uncached'], true) ? 'pass' : ($o === 'check' ? 'check' : 'stop');
 $client = [
     'tries' => $tries,
     'words' => ['api' => $t['api'], 'self' => $t['self'], 'outcome' => $t['outcome'], 'say' => $t['say'], 'details' => $t['details'], 'send' => $t['send'], 'sent' => $t['sent'], 'from' => $t['from'], 'tries' => array_map($tr, array_column($tries, 'text', 'n'))],
@@ -88,7 +88,7 @@ $client = [
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu" aria-controls="menu" aria-expanded="false" aria-label="Menu"><span class="navbar-toggler-icon"></span></button>
     <div class="collapse navbar-collapse" id="menu">
       <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
-        <?php foreach (['what', 'rules', 'try', 'install'] as $k): ?>
+        <?php foreach (['what', 'rules', 'try', 'exponential', 'install'] as $k): ?>
         <li class="nav-item"><a class="nav-link" href="#<?= $k ?>"><?= $e($t['nav'][$k]) ?></a></li>
         <?php endforeach ?>
         <li class="nav-item ms-lg-3"><div class="btn-group btn-group-sm" role="group" aria-label="Language">
@@ -292,7 +292,42 @@ $client = [
 </section>
 
 
-<section class="section section-alt">
+<?php $x = $t['exp']; $expGroups = exponentialGroups(dirname(__DIR__) . '/exponential'); ?>
+<section id="exponential" class="section section-alt">
+  <div class="container">
+    <div class="section-head"><h2><?= $e($x['title']) ?></h2><p class="lead"><?= $e($x['lead']) ?></p></div>
+    <div class="row g-4 mb-4 align-items-start">
+      <div class="col-lg-6"><p class="mb-2"><?= $e($x['how']) ?></p>
+        <pre class="card-paper mb-2"><code>// config.php, next to index.php: before the kernel and its cache
+Shield::protectFile(__DIR__ . '/settings/request-shield/exponential-admin-uri.rules');</code></pre>
+        <a class="small" href="https://github.com/cjw-network/request-shield/blob/main/docs/use-cases/exponential.md" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> <?= $e($x['why']) ?></a></div>
+      <div class="col-lg-6"><p class="small text-secondary mb-2"><i class="bi bi-info-circle"></i> <?= $e($x['decided']) ?></p>
+        <button class="btn btn-accent exp-all" type="button"><i class="bi bi-lightning-charge-fill"></i> <?= $e($x['checkAll']) ?></button>
+        <span class="exp-summary ms-2 fw-bold" data-text="<?= $e($x['summary']) ?>"></span></div>
+    </div>
+    <?php foreach ($expGroups as $gi => $grp): ?>
+    <details class="exp-group card-try mb-3"<?= $gi === 0 ? ' open' : '' ?>>
+      <summary class="d-flex align-items-center gap-2"><span class="h5 mb-0"><?= $e($x['groups'][$grp['title']] ?? $grp['title']) ?></span>
+        <span class="badge text-bg-light"><?= count($grp['tries']) ?></span><span class="exp-group-sum small text-secondary ms-auto"></span></summary>
+      <?php if ($grp['rules'] !== []): ?><p class="small text-secondary mt-3 mb-1"><?= $e($x['rules']) ?></p>
+      <pre class="card-paper exp-rules mb-3"><code><?= $e(implode("\n", $grp['rules'])) ?></code></pre><?php endif ?>
+      <ol class="exp-rows">
+        <?php foreach ($grp['tries'] as $ex): ?>
+        <li class="exp-row" data-n="<?= (int) $ex['n'] ?>" data-outcome="<?= $e($ex['outcome']) ?>" data-by="<?= $e((string) $ex['by']) ?>">
+          <code class="exp-req"><span class="m"><?= $e($ex['method']) ?></span> <?= $e(rawurldecode($ex['url'])) ?><?= $ex['times'] > 1 ? ' × ' . (int) $ex['times'] : '' ?><?= $ex['pass'] ? ' · pass' : '' ?></code>
+          <span class="exp-want"><span class="pill pill-<?= $badge($ex['outcome']) ?>"><?= $e($outcomeLabel($ex['outcome'])) ?></span><?= $ex['by'] !== null ? ' <span class="rule-id">' . $e($ex['by']) . '</span>' : '' ?></span>
+          <span class="exp-got"></span>
+          <button class="btn btn-sm btn-outline-accent exp-go" type="button"><?= $e($x['check']) ?></button>
+          <?php if ($ex['text'] !== ''): ?><small class="exp-note"><?= $e($ex['text']) ?></small><?php endif ?>
+        </li>
+        <?php endforeach ?>
+      </ol>
+    </details>
+    <?php endforeach ?>
+  </div>
+</section>
+
+<section class="section">
   <div class="container">
     <div class="section-head"><h2><?= $e($t['checkTitle']) ?></h2></div>
     <div class="row g-4">

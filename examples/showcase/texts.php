@@ -13,7 +13,7 @@ declare(strict_types=1);
 return [
     'de' => [
         'title' => 'request-shield — Bots raus, Menschen rein',
-        'nav' => ['what' => 'Was er tut', 'rules' => 'Die Regeln', 'try' => 'Ausprobieren', 'install' => 'Installation'],
+        'nav' => ['what' => 'Was er tut', 'rules' => 'Die Regeln', 'try' => 'Ausprobieren', 'exponential' => 'Exponential', 'install' => 'Installation'],
         'heroEyebrow' => 'Dein freundlicher Türsteher für PHP-Websites',
         'heroTitle' => 'Bots raus.<br><span>Menschen rein.</span>',
         'heroLead' => 'request-shield lässt deine Besucher herein und schickt Scanner, Spam und hektische Bots höflich weiter — bevor WordPress, Symfony oder dein CMS auch nur aufwachen. Ohne Captcha, ohne Cloud, in einer einzigen Datei.',
@@ -66,6 +66,15 @@ return [
         'burstGo' => '125 Anfragen senden',
         'burstLegend' => ['durch', 'Browser-Check', 'Pause'],
         'burstLog' => 'Die Anfragen anzeigen',
+        'exp' => [
+            'title' => 'Beispiel: eine Exponential-Website',
+            'lead' => 'Exponential (das CMS mit Siteaccesses, URL-Aliasen und Admin-Oberfläche) bekommt, was jedes CMS bekommt: Scraper zählen Knotennummern durch, Scanner fragen nach settings/site.ini, Bots posten überallhin und hämmern auf die Suche. Der Kernel braucht für jede dieser Anfragen 20 bis 150 ms PHP und Datenbank — der Shield antwortet vorher.',
+            'how' => 'Drei Regeldateien in examples/exponential und eine Zeile in config.php:',
+            'decided' => 'Diese Beispiele entscheidet der Server mit den echten Exponential-Regeln (Admin unter /admin, scharf geschaltet), genau wie request-shield test — ohne mitzuzählen. Eine zweite Website lässt sich in dieser Seite nicht echt aufrufen.',
+            'checkAll' => 'Alle prüfen', 'check' => 'Prüfen', 'rules' => 'Die Regeln', 'why' => 'Warum jede Regel: docs/use-cases/exponential.md', 'summary' => '%d von %d wie erwartet',
+            'groups' => ['The site' => 'Die Website', 'System URLs in the frontend' => 'Systemadressen im Frontend', 'Forms' => 'Formulare', 'Search' => 'Suche',
+                'Pace and bans' => 'Tempo und Sperren', 'The shield itself' => 'Der Shield selbst', 'Admin (/admin)' => 'Admin (/admin)'],
+        ],
         'api' => [
             'formTitle' => 'Ein Formular, das JSON an die API schickt', 'formLead' => 'Wie bei einer modernen Website: Das Formular sendet per fetch() ein JSON an POST /api/v1/messages. Die Schritte darunter sind echt.',
             'name' => 'Name', 'message' => 'Nachricht', 'send' => 'Senden', 'bot' => 'Als Bot senden (ohne Browser, neue Adresse)', 'forget' => 'Pass vergessen',
@@ -98,7 +107,7 @@ return [
         'say' => ['answered' => 'Herein! Die Seite kommt an.', 'check' => 'Kurzer, unsichtbarer Check — Menschen merken nichts.', '403' => 'Freundlich, aber bestimmt: kein Zutritt.',
             '404' => 'Hier gibt es nichts zu holen.', '405' => 'Das geht an dieser Stelle nicht.', '429' => 'Kurze Pause, bitte.', '400' => 'Das ist keine gültige Anfrage.'],
         'details' => 'Details',
-        'outcome' => ['answered' => 'durchgelassen', 'check' => 'Browser-Check', '403' => 'abgewiesen', '404' => 'gibt es nicht', '405' => 'nicht erlaubt', '429' => 'Pause', '400' => 'kaputte Anfrage'],
+        'outcome' => ['passes' => 'durchgelassen', 'uncached' => 'durch, nicht gecacht', 'answered' => 'durchgelassen', 'check' => 'Browser-Check', '403' => 'abgewiesen', '404' => 'gibt es nicht', '405' => 'nicht erlaubt', '429' => 'Pause', '400' => 'kaputte Anfrage'],
         'checkTitle' => 'Der Browser-Check, den niemand sieht',
         'checkSteps' => [
             ['bi-hourglass-split', 'Der Browser bekommt eine kleine Rechenaufgabe', 'Signiert, an seine Adresse gebunden, nach wenigen Minuten abgelaufen.'],
@@ -201,7 +210,7 @@ return [
     ],
     'en' => [
         'title' => 'request-shield — bots out, people in',
-        'nav' => ['what' => 'What it does', 'rules' => 'The rules', 'try' => 'Try it', 'install' => 'Install'],
+        'nav' => ['what' => 'What it does', 'rules' => 'The rules', 'try' => 'Try it', 'exponential' => 'Exponential', 'install' => 'Install'],
         'heroEyebrow' => 'A friendly doorkeeper for PHP websites',
         'heroTitle' => 'Bots out.<br><span>People in.</span>',
         'heroLead' => 'request-shield lets your visitors in and politely sends scanners, spam and hasty bots on their way — before WordPress, Symfony or your CMS even wake up. No captcha, no cloud, one single file.',
@@ -254,6 +263,15 @@ return [
         'burstGo' => 'Send 125 requests',
         'burstLegend' => ['through', 'browser check', 'pause'],
         'burstLog' => 'Show the requests',
+        'exp' => [
+            'title' => 'Example: an Exponential website',
+            'lead' => 'Exponential (the CMS with siteaccesses, URL aliases and an admin interface) gets what every CMS gets: scrapers counting through node numbers, scanners asking for settings/site.ini, bots posting everywhere and hammering the search. The kernel spends 20 to 150 ms of PHP and database on each — the shield answers first.',
+            'how' => 'Three rule files in examples/exponential and one line in config.php:',
+            'decided' => 'These examples are decided on the server with the real Exponential rules (the admin as /admin, switched on), exactly as request-shield test does — nothing counted. A second website cannot really be called from inside this page.',
+            'checkAll' => 'Check them all', 'check' => 'Check', 'rules' => 'The rules', 'why' => 'Why each rule: docs/use-cases/exponential.md', 'summary' => '%d of %d as expected',
+            'groups' => ['The site' => 'The site', 'System URLs in the frontend' => 'System URLs in the frontend', 'Forms' => 'Forms', 'Search' => 'Search',
+                'Pace and bans' => 'Pace and bans', 'The shield itself' => 'The shield itself', 'Admin (/admin)' => 'Admin (/admin)'],
+        ],
         'api' => [
             'formTitle' => 'A form that sends JSON to the API', 'formLead' => 'As on a modern website: the form sends JSON with fetch() to POST /api/v1/messages. The steps below are real.',
             'name' => 'Name', 'message' => 'Message', 'send' => 'Send', 'bot' => 'Send as a bot (no browser, a new address)', 'forget' => 'Forget the pass',
@@ -286,7 +304,7 @@ return [
         'say' => ['answered' => 'Come in! The page is delivered.', 'check' => 'A quick, invisible check — people notice nothing.', '403' => 'Friendly but firm: no entry.',
             '404' => 'Nothing to find here.', '405' => 'That is not possible here.', '429' => 'A short pause, please.', '400' => 'That is no valid request.'],
         'details' => 'Details',
-        'outcome' => ['answered' => 'let through', 'check' => 'browser check', '403' => 'refused', '404' => 'not found', '405' => 'not allowed', '429' => 'pause', '400' => 'broken request'],
+        'outcome' => ['passes' => 'let through', 'uncached' => 'through, not cached', 'answered' => 'let through', 'check' => 'browser check', '403' => 'refused', '404' => 'not found', '405' => 'not allowed', '429' => 'pause', '400' => 'broken request'],
         'checkTitle' => 'The browser check nobody sees',
         'checkSteps' => [
             ['bi-hourglass-split', 'The browser gets a small sum to work out', 'Signed, bound to its address, expired after a few minutes.'],

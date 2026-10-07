@@ -438,6 +438,53 @@
     });
   }
 
+  // The Exponential example: each row decided on the server with the Exponential rules (/__exp), as
+  // request-shield test does; a group and the whole section can be checked in one go.
+  var expKind = function (o) { return o === 'answered' || o === 'passes' || o === 'uncached' ? 'pass' : o === 'check' ? 'check' : 'stop'; };
+  var expShow = function (row, j) {
+    var got = row.querySelector('.exp-got');
+    got.textContent = '';
+    if (!j) { return false; }
+    got.appendChild(el('span', 'pill pill-' + expKind(j.got), label(j.got)));
+    got.appendChild(el('span', 'result-status', ' HTTP ' + j.http + (j.rule ? ' · ' + j.rule : '')));
+    got.appendChild(el('i', 'bi ' + (j.ok ? 'bi-check-circle-fill text-success' : 'bi-exclamation-triangle-fill text-warning') + ' ms-1'));
+    row.classList.toggle('exp-ok', !!j.ok);
+    row.classList.toggle('exp-bad', !j.ok);
+    return !!j.ok;
+  };
+  var expRun = function (row) {
+    var btn = row.querySelector('.exp-go');
+    btn.disabled = true;
+    return fetch('/__exp?n=' + row.getAttribute('data-n'), { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json(); })
+      .then(function (j) { return expShow(row, j); }).catch(function () { return false; }).then(function (ok) { btn.disabled = false; return ok; });
+  };
+  var expSum = function () {
+    var sum = document.querySelector('.exp-summary');
+    if (!sum) { return; }
+    var rows = document.querySelectorAll('.exp-row'), done = document.querySelectorAll('.exp-row.exp-ok, .exp-row.exp-bad');
+    sum.textContent = done.length ? fmt(sum.getAttribute('data-text'), document.querySelectorAll('.exp-row.exp-ok').length, done.length) + (done.length < rows.length ? ' …' : '') : '';
+    document.querySelectorAll('.exp-group').forEach(function (g) {
+      var ok = g.querySelectorAll('.exp-row.exp-ok').length, all = g.querySelectorAll('.exp-row').length, seen = g.querySelectorAll('.exp-row.exp-ok, .exp-row.exp-bad').length;
+      g.querySelector('.exp-group-sum').textContent = seen ? ok + ' / ' + all + ' ✓' : '';
+    });
+  };
+  document.querySelectorAll('.exp-row .exp-go').forEach(function (b) {
+    b.addEventListener('click', function () { expRun(b.closest('.exp-row')).then(expSum); });
+  });
+  var expAll = document.querySelector('.exp-all');
+  if (expAll) {
+    expAll.addEventListener('click', function () {
+      expAll.disabled = true;
+      document.querySelectorAll('.exp-group').forEach(function (g) { g.open = true; });
+      // All of them decided in one request (n=0), shown row by row.
+      fetch('/__exp?n=0', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+        return Array.prototype.slice.call(document.querySelectorAll('.exp-row')).reduce(function (p, row) {
+          return p.then(function () { expShow(row, (j.results || {})[row.getAttribute('data-n')]); expSum(); return new Promise(function (r) { setTimeout(r, 40); }); });
+        }, Promise.resolve());
+      }).catch(function () {}).then(function () { expAll.disabled = false; });
+    });
+  }
+
   // The hero's stream: the plain tries, sent one by one, twice round.
   var stream = document.getElementById('stream');
   if (stream) {

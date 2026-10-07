@@ -49,6 +49,14 @@ Open http://127.0.0.1:8090/ (`?lang=de` or `?lang=en`).
   "Why these rules?" explains each one -- and that `post-origin` does not
   apply to an API (programs send no Origin; CORS protects against other
   websites), and that the API checks its JSON itself.
+- **Exponential**: the rules of `examples/exponential` (the CMS with
+  siteaccesses, URL aliases and its admin), section by section as the files
+  have them, each with its examples. *Check* decides one on the server
+  (`/__exp`) with those rules -- the admin as `/admin`, switched on, a fresh
+  store each time -- exactly as `request-shield test` does; *Check all*
+  decides them in one request (one by one they would run into `SHOW-PACE`).
+  A second website cannot be opened from this page, so nothing here is a
+  real request to it.
 - **The live log** is docked bottom right on every part of the page: the
   end of the showcase's own log (`set log`, `/__log`, addresses masked),
   each line as time, decision, status, rule and request, new ones lit up;

@@ -37,33 +37,82 @@ function showcaseTries(string $file): array
         if (strncmp(ltrim($line), 'expect ', 7) !== 0) {
             continue;
         }
-        $line = ltrim($line);       // an example inside a match block is indented
-        $hash = strpos($line, ' # ');
-        $text = $hash !== false ? trim(substr($line, $hash + 3)) : '';
-        $words = preg_split('/\s+/', trim(substr($hash !== false ? substr($line, 0, $hash) : $line, 7))) ?: [];
-        $try = ['n' => count($tries), 'method' => (string) array_shift($words), 'url' => (string) array_shift($words), 'headers' => [], 'from' => '198.51.100.1',
-            'pass' => false, 'times' => 1, 'outcome' => '', 'by' => null, 'text' => $text, 'section' => $section];
-        while ($words !== []) {
-            $w = (string) array_shift($words);
-            if ($w === 'from') {
-                $try['from'] = (string) array_shift($words);
-            } elseif ($w === 'header') {
-                [$name, $value] = explode(':', (string) array_shift($words), 2) + [1 => ''];
-                $try['headers'][$name] = $value;
-            } elseif ($w === 'times') {
-                $try['times'] = (int) array_shift($words);
-            } elseif ($w === 'with') {
-                array_shift($words);
-                $try['pass'] = true;
-            } elseif ($w === 'by') {
-                $try['by'] = (string) array_shift($words);
-            } else {
-                $try['outcome'] = $w;
-            }
-        }
+        $try = showcaseExpect($line, count($tries), $section);
         $tries[] = $try;
     }
     return $tries;
+}
+
+/**
+ * One "expect" line as the page shows it: method, address, headers, from, pass,
+ * times, the outcome and rule, its comment.
+ *
+ * @return array{n: int, method: string, url: string, headers: array<string, string>, from: string, pass: bool, times: int, outcome: string, by: ?string, text: string, section: string}
+ */
+function showcaseExpect(string $line, int $n, string $section): array
+{
+    $line = ltrim($line);       // an example inside a match block is indented
+    $hash = strpos($line, ' # ');
+    $text = $hash !== false ? trim(substr($line, $hash + 3)) : '';
+    $words = preg_split('/\s+/', trim(substr($hash !== false ? substr($line, 0, $hash) : $line, 7))) ?: [];
+    $try = ['n' => $n, 'method' => (string) array_shift($words), 'url' => (string) array_shift($words), 'headers' => [], 'from' => \CjwNetwork\RequestShield\Rules\RuleFile::EXAMPLE_FROM,
+        'pass' => false, 'times' => 1, 'outcome' => '', 'by' => null, 'text' => $text, 'section' => $section];
+    while ($words !== []) {
+        $w = (string) array_shift($words);
+        if ($w === 'from') {
+            $try['from'] = (string) array_shift($words);
+        } elseif ($w === 'header') {
+            [$name, $value] = explode(':', (string) array_shift($words), 2) + [1 => ''];
+            $try['headers'][$name] = $value;
+        } elseif ($w === 'times') {
+            $try['times'] = (int) array_shift($words);
+        } elseif ($w === 'with') {
+            array_shift($words);
+            $try['pass'] = true;
+        } elseif ($w === 'by') {
+            $try['by'] = (string) array_shift($words);
+        } else {
+            $try['outcome'] = $w;
+        }
+    }
+    return $try;
+}
+
+/**
+ * The Exponential example's rules and examples (examples/exponential), by the
+ * sections of its files ("# 1. System URLs in the frontend"): the rule lines
+ * and the examples written below them.
+ *
+ * @param string $dir examples/exponential
+ * @return list<array{title: string, rules: list<string>, tries: list<array{n: int, method: string, url: string, headers: array<string, string>, from: string, pass: bool, times: int, outcome: string, by: ?string, text: string, section: string, at: string}>}>
+ */
+function exponentialGroups(string $dir): array
+{
+    $groups = [];
+    $n = 0;
+    foreach (['exponential.rules' => null, 'exponential-admin-uri.rules' => 'Admin (/admin)'] as $file => $title) {
+        if ($title !== null) {
+            $groups[] = ['title' => $title, 'rules' => [], 'tries' => []];
+        }
+        foreach (file("$dir/$file", FILE_IGNORE_NEW_LINES) ?: [] as $i => $line) {
+            if (preg_match('/^# \d+\. (.+)$/', $line, $m) === 1) {
+                $groups[] = ['title' => $m[1], 'rules' => [], 'tries' => []];
+                continue;
+            }
+            $g = count($groups) - 1;
+            $t = ltrim($line);
+            if ($g < 0 || $t === '' || $t[0] === '#') {
+                continue;
+            }
+            if (strncmp($t, 'expect ', 7) === 0) {
+                $groups[$g]['tries'][] = showcaseExpect($t, $n++, (string) $groups[$g]['title']) + ['at' => "$file:" . ($i + 1)];
+                continue;
+            }
+            $hash = strpos($line, ' # ');
+            $groups[$g]['rules'][] = rtrim($hash !== false ? substr($line, 0, $hash) : $line);
+        }
+    }
+    return array_values(array_filter($groups, static fn (array $g): bool => $g['tries'] !== []));
 }
 
 /** @param array<string, mixed> $data */
@@ -91,6 +140,46 @@ $path = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PA
 $method = (string) ($_SERVER['REQUEST_METHOD'] ?? 'GET');
 $tries = showcaseTries(__DIR__ . '/showcase.rules');
 
+if ($path === '/__exp') {
+    // The Exponential example's examples, decided as request-shield test does: with its rules
+    // (demo.rules: the admin as /admin), each on a fresh store -- nothing counted here. n=0 decides
+    // them all in one request ("check all": 77 requests would run into SHOW-PACE).
+    $want = (int) ($_GET['n'] ?? -1);
+    $found = [];
+    foreach (exponentialGroups(dirname(__DIR__) . '/exponential') as $g) {
+        foreach ($g['tries'] as $x) {
+            if ($want === 0 || $x['n'] === $want) {
+                $found[] = $x;
+            }
+        }
+    }
+    if ($found === []) {
+        showcaseJson(404, ['error' => 'no such example']);
+        return;
+    }
+    // Switched on as request-shield test has it (EXP-BAN ships watched), with a secret of its own,
+    // no log and no live view -- an example never touches the Exponential demo's files.
+    $c = \CjwNetwork\RequestShield\Rules\RuleFile::switchedOn([dirname(__DIR__) . '/exponential/demo.rules']);
+    unset($c['monitorRules']);
+    $c['storeDir'] = (getenv('REQUEST_SHIELD_SHOWCASE_VAR') ?: '/tmp/request-shield-showcase') . '/exponential';
+    $c['store'] = 'memory';
+    $c['challenge'] = (is_array($c['challenge'] ?? null) ? $c['challenge'] : []);
+    $c['challenge']['secret'] = bin2hex(random_bytes(32));
+    $c['challenge']['dnsLookups'] = 0;
+    $c['log'] = (is_array($c['log'] ?? null) ? $c['log'] : []);
+    $c['log']['file'] = null;
+    $c['live'] = ['enabled' => false];
+    $settings = \CjwNetwork\RequestShield\Settings::from($c);
+    $results = [];
+    foreach ($found as $x) {
+        $r = \CjwNetwork\RequestShield\Rules\Examples::one($settings, ['method' => $x['method'], 'url' => $x['url'], 'outcome' => $x['outcome'], 'by' => $x['by'],
+            'rule' => null, 'from' => $x['from'], 'pass' => $x['pass'], 'times' => $x['times'], 'headers' => $x['headers'], 'text' => null, 'at' => $x['at'],
+            'site' => null, 'ua' => null, 'demo' => null]);
+        $results[(string) $x['n']] = ['got' => $r['got'], 'http' => $r['http'], 'rule' => $r['gotRule'], 'ok' => $r['status'] === 'pass'];
+    }
+    showcaseJson(200, $want === 0 ? ['results' => $results] : $results[(string) $want]);
+    return;
+}
 if ($path === '/__try') {
     $try = $tries[(int) ($_GET['n'] ?? -1)] ?? null;
     $shield = Shield::active();

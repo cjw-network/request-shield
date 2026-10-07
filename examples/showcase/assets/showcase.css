@@ -163,6 +163,20 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .burst-row > * { margin-right: 8px; }
 .result-xrs-inline { color: var(--rs-soft-ink); word-break: break-all; }
 
+/* The Exponential example */
+.exp-group > summary { cursor: pointer; list-style: none; }
+.exp-group > summary::-webkit-details-marker { display: none; }
+.exp-group > summary::before { content: "\F285"; font-family: bootstrap-icons; margin-right: 6px; transition: transform .2s; }
+.exp-group[open] > summary::before { transform: rotate(90deg); }
+.exp-rules { padding: 12px 14px; font-size: .78rem; white-space: pre; overflow-x: auto; }
+.exp-rows { list-style: none; padding: 0; margin: 0; }
+.exp-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.1fr) auto; gap: 10px; align-items: center; padding: 8px 6px; border-top: 1px solid var(--rs-line); }
+.exp-row .exp-req { background: #f3f6fb; border-radius: 8px; padding: 3px 8px; word-break: break-all; color: var(--rs-ink); }
+.exp-row .exp-note { grid-column: 1 / -1; color: var(--rs-soft-ink); margin-top: -4px; }
+.exp-row.exp-ok { background: linear-gradient(90deg, var(--rs-mint-bg), transparent 60%); }
+.exp-row.exp-bad { background: linear-gradient(90deg, var(--rs-coral-bg), transparent 60%); }
+@media (max-width: 767px) { .exp-row { grid-template-columns: 1fr auto; } .exp-want, .exp-got { grid-column: 1 / -1; } }
+
 /* The API */
 .json-steps { list-style: none; padding: 0; margin: 0; font-size: .86rem; }
 .json-step { padding: 6px 10px 6px 30px; border-radius: 10px; margin-bottom: 4px; position: relative; word-break: break-word; }
