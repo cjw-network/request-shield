@@ -17,7 +17,7 @@
 # or opened where it is needed ("unblock [ATK-XSS-TAG@1] at /admin/** for …").
 
 ids ATK required
-version 2026.09.1
+version 2026.10.2
 
 # --- SQL injection -----------------------------------------------------------
 [ATK-SQL-UNION@1]   block query union(\s+(all|distinct))?\s+select\b                                     # SQL injection: UNION SELECT
@@ -40,7 +40,7 @@ version 2026.09.1
 [ATK-WRAPPER@1]     block query \b(php|phar|zip|data|expect|glob|file)://                                        # PHP stream wrappers in the address: php://filter, phar://, data://
 
 # --- Log4Shell and template injection, anywhere ------------------------------------
-[ATK-JNDI@1]        block anywhere \$\{[^}]{0,40}(jndi|j\$\{|:-j)|\$\{(env|sys|java|date|base64):              # Log4Shell: ${jndi:ldap://…}, anywhere in the request
+[ATK-JNDI@2]        block anywhere \$\{[^}]{0,40}(jndi|j\$\{|:-j)|\$\{(env|sys|java|date|base64|lower|upper|ctx|main|spring):|\$\{[^}]{0,40}\$\{   # Log4Shell: ${jndi:ldap://…}, also nested (${${lower:j}ndi:…}), anywhere in the request
 
 # --- attack tools -----------------------------------------------------------------------
 [ATK-UA-TOOLS@1]    block header User-Agent \b(sqlmap|nikto|nmap|masscan|zgrab|zmeu|jorgee|wpscan|nuclei|acunetix|nessus|openvas|netsparker|dirbuster|gobuster|ffuf|wfuzz|havij|commix|fimap)\b   # attack tools by their name: sqlmap, nikto, nuclei, wpscan …

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- **Log4Shell with a lookup inside a lookup is refused** (`ATK-JNDI@2`,
+  attack rules `2026.10.2`): `${${lower:j}ndi:ldap://…}` and
+  `${${upper:j}${upper:n}di:…}` got past revision 1. Revision 2 refuses a
+  `${` inside a `${` and the lookups `lower:`, `upper:`, `ctx:`, `main:`,
+  `spring:`; two placeholders side by side still pass. A site that named
+  `[ATK-JNDI@1]` is told by `check`. Found by comparing with Mini-WAF's rules.
 - **MySQL's versioned comments no longer hide SQL injection**: the attack
   rules saw `1/*!50000UNION*//*!50000SELECT*/1` as `1 1` -- every comment
   became a space, but MySQL runs the body of `/*!…*/` (and MariaDB of

@@ -75,7 +75,7 @@ The shipped rules:
 | `ATK-SHELL` | shell commands in the address: ; cat /etc/passwd, \| wget http://…, $(id) |
 | `ATK-LFI` | reading the server's files: ../../, /etc/passwd |
 | `ATK-WRAPPER` | PHP stream wrappers in the address: php://filter, phar://, data:// |
-| `ATK-JNDI` | Log4Shell: ${jndi:ldap://…}, anywhere in the request |
+| `ATK-JNDI` | Log4Shell: ${jndi:ldap://…}, also nested (${${lower:j}ndi:…}), anywhere in the request |
 | `ATK-UA-TOOLS` | attack tools by their name: sqlmap, nikto, nuclei, wpscan … |
 | `ATK-EXPLOIT` | paths of well-known exploits: PHPUnit eval-stdin, routers, Laravel Ignition, stored keys |
 

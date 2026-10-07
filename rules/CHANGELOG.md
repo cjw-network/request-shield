@@ -9,6 +9,17 @@ names the revision it reviewed (`unblock [SCAN-BACKUP@1] at /downloads/**`) is
 warned by `bin/request-shield check` and the active rules page when the
 revision here is newer — the rule itself applies at once.
 
+## 2026.10.2
+
+`attacks.rules` (`include @attacks`):
+
+| Rule | Revision | Matches |
+|---|---|---|
+| `ATK-JNDI` | 2 | also a lookup inside a lookup -- `${${lower:j}ndi:…}`, `${${upper:j}${upper:n}di:…}` -- and the lookups `lower:`, `upper:`, `ctx:`, `main:`, `spring:`; revision 1 let the nested ones through. Two placeholders side by side (`${amount} of ${count}`) still pass. |
+
+The attack rules also see the body of MySQL's versioned comments
+(`/*!50000UNION*/`): the value they are matched against changed, no rule did.
+
 ## 2026.10.1
 
 No rule changed what it matches (no revision raised). `scanners.rules` and
