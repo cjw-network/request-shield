@@ -24,7 +24,7 @@ return [
         'stats' => [['~10 µs', 'pro Anfrage'], ['0', 'Abhängigkeiten'], ['1', 'Datei'], ['PHP 8.0+', 'läuft überall']],
         'promiseTitle' => 'Schutz, der niemanden ausschließt',
         'promises' => [
-            ['bi-universal-access-circle', 'Barrierefrei', 'Kein Bilderrätsel, kein Audio-Captcha, kein Klick auf Ampeln. Der Check läuft von selbst — niemand muss etwas lesen, hören oder bedienen. Er braucht nur JavaScript und Cookies.'],
+            ['bi-universal-access-circle', 'Barrierefrei', 'Kein Bilderrätsel, kein Audio-Captcha, kein Klick auf Ampeln. Der Check läuft von selbst — niemand muss etwas lesen, hören oder bedienen, und ein Screenreader sagt an, wenn er nicht weiterkommt. Er braucht nur JavaScript und Cookies.'],
             ['bi-eye-slash', 'Ohne Tracking', 'Kein Tracking-Cookie, kein Profil. Nur ein kurzer, signierter Pass für die Sicherheit — gebunden an Adressgruppe und Browser, nach einer Stunde vorbei.'],
             ['bi-shield-lock', 'Ohne Drittanbieter', 'Kein Google, kein Cloudflare, kein CDN — der Check läuft auf deinem Server. Nur die Prüfung echter Crawler fragt einen DNS-Resolver, und die lässt sich abschalten.'],
             ['bi-house-heart', 'Auf deinem eigenen Server', 'Eine PHP-Datei, deine Regeln, deine Logs. Läuft mit PHP 8.0 und sonst nichts — auch auf einfachem Shared Hosting; mit einem beschreibbaren Ordner mit allem, ohne ihn mit den Regeln.'],
@@ -141,7 +141,7 @@ return [
         'stats' => [['~10 µs', 'per request'], ['0', 'dependencies'], ['1', 'file'], ['PHP 8.0+', 'runs anywhere']],
         'promiseTitle' => 'Protection that shuts nobody out',
         'promises' => [
-            ['bi-universal-access-circle', 'Accessible', 'No picture puzzles, no audio captcha, no clicking traffic lights. The check runs by itself — nobody has to read, hear or operate anything. All it needs is JavaScript and cookies.'],
+            ['bi-universal-access-circle', 'Accessible', 'No picture puzzles, no audio captcha, no clicking traffic lights. The check runs by itself — nobody has to read, hear or operate anything, and a screen reader is told when it cannot go on. All it needs is JavaScript and cookies.'],
             ['bi-eye-slash', 'No tracking', 'No tracking cookie, no profile. Only a short, signed pass for security — tied to the address group and the browser, gone after an hour.'],
             ['bi-shield-lock', 'No third party', 'No Google, no Cloudflare, no CDN — the check runs on your server. Only the check of real crawlers asks a DNS resolver, and it can be switched off.'],
             ['bi-house-heart', 'On your own server', 'One PHP file, your rules, your logs. Runs on PHP 8.0 and nothing else — simple shared hosting included; with a writable folder in full, without one with the rules.'],
