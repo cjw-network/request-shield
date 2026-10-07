@@ -166,6 +166,8 @@ return [
             $last = end($groups)['tries'];
             $x = end($last);
             same($all['results'][(string) $x['n']], json_decode($get('GET', '/__exp?n=' . $x['n'])[2], true), 'one example alone, as in all of them');
+            $first = $groups[0]['tries'][0];
+            same($all['results'][(string) $first['n']], json_decode($get('GET', '/__exp?n=' . $first['n'])[2], true), 'the first one alone too (n=0 is all of them)');
             same(404, $get('GET', '/__exp?n=9999')[0], 'no such example');
         });
     },

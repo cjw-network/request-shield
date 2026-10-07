@@ -84,12 +84,17 @@ function showcaseExpect(string $line, int $n, string $section): array
  * and the examples written below them.
  *
  * @param string $dir examples/exponential
- * @return list<array{title: string, rules: list<string>, tries: list<array{n: int, method: string, url: string, headers: array<string, string>, from: string, pass: bool, times: int, outcome: string, by: ?string, text: string, section: string, at: string}>}>
+ * @return list<array{title: string, rules: list<string>, tries: list<array{n: int, method: string, url: string, headers: array<string, string>, from: string, pass: bool, times: int, outcome: string, by: ?string, rule: ?string, ua: ?string, site: ?string, text: string, section: string, at: string}>}>
  */
 function exponentialGroups(string $dir): array
 {
+    // The examples as RuleFile reads them (quotes, ua, header names and all), by their place.
+    $read = [];
+    foreach (\CjwNetwork\RequestShield\Rules\RuleFile::read(["$dir/demo.rules"])['examples'] as $x) {
+        $read[$x['at']] = $x;
+    }
     $groups = [];
-    $n = 0;
+    $n = 1;                     // from 1: n=0 at /__exp means all of them
     foreach (['exponential.rules' => null, 'exponential-admin-uri.rules' => 'Admin (/admin)'] as $file => $title) {
         if ($title !== null) {
             $groups[] = ['title' => $title, 'rules' => [], 'tries' => []];
@@ -105,7 +110,13 @@ function exponentialGroups(string $dir): array
                 continue;
             }
             if (strncmp($t, 'expect ', 7) === 0) {
-                $groups[$g]['tries'][] = showcaseExpect($t, $n++, (string) $groups[$g]['title']) + ['at' => "$file:" . ($i + 1)];
+                $x = $read["$file:" . ($i + 1)] ?? null;
+                if ($x !== null) {
+                    $hash = strpos($t, ' # ');
+                    $groups[$g]['tries'][] = ['n' => $n++, 'method' => $x['method'], 'url' => $x['url'], 'headers' => $x['headers'], 'from' => $x['from'],
+                        'pass' => $x['pass'], 'times' => $x['times'], 'outcome' => $x['outcome'], 'by' => $x['by'], 'rule' => $x['rule'], 'ua' => $x['ua'], 'site' => $x['site'],
+                        'text' => $hash !== false ? trim(substr($t, $hash + 3)) : '', 'section' => (string) $groups[$g]['title'], 'at' => $x['at']];
+                }
                 continue;
             }
             $hash = strpos($line, ' # ');
@@ -143,7 +154,7 @@ $tries = showcaseTries(__DIR__ . '/showcase.rules');
 if ($path === '/__exp') {
     // The Exponential example's examples, decided as request-shield test does: with its rules
     // (demo.rules: the admin as /admin), each on a fresh store -- nothing counted here. n=0 decides
-    // them all in one request ("check all": 77 requests would run into SHOW-PACE).
+    // them all in one request ("check all": one request each would run into SHOW-PACE).
     $want = (int) ($_GET['n'] ?? -1);
     $found = [];
     foreach (exponentialGroups(dirname(__DIR__) . '/exponential') as $g) {
@@ -173,8 +184,8 @@ if ($path === '/__exp') {
     $results = [];
     foreach ($found as $x) {
         $r = \CjwNetwork\RequestShield\Rules\Examples::one($settings, ['method' => $x['method'], 'url' => $x['url'], 'outcome' => $x['outcome'], 'by' => $x['by'],
-            'rule' => null, 'from' => $x['from'], 'pass' => $x['pass'], 'times' => $x['times'], 'headers' => $x['headers'], 'text' => null, 'at' => $x['at'],
-            'site' => null, 'ua' => null, 'demo' => null]);
+            'rule' => $x['rule'], 'from' => $x['from'], 'pass' => $x['pass'], 'times' => $x['times'], 'headers' => $x['headers'], 'text' => null, 'at' => $x['at'],
+            'site' => $x['site'], 'ua' => $x['ua'], 'demo' => null]);
         $results[(string) $x['n']] = ['got' => $r['got'], 'http' => $r['http'], 'rule' => $r['gotRule'], 'ok' => $r['status'] === 'pass'];
     }
     showcaseJson(200, $want === 0 ? ['results' => $results] : $results[(string) $want]);
