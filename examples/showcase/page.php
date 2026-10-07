@@ -74,7 +74,7 @@ $client = [
   <title><?= $e($t['title']) ?></title>
   <link rel="stylesheet" href="/assets/vendor/bootstrap/bootstrap.min.css">
   <link rel="stylesheet" href="/assets/vendor/bootstrap-icons/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="/assets/showcase.css">
+  <link rel="stylesheet" href="/assets/showcase.css?v=<?= (int) @filemtime(__DIR__ . '/assets/showcase.css') ?>">
 </head>
 <body data-bs-spy="scroll" data-bs-target="#nav">
 
@@ -338,6 +338,6 @@ $client = [
 
 <script id="showcase-data" type="application/json"><?= json_encode($client, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?></script>
 <script src="/assets/vendor/bootstrap/bootstrap.bundle.min.js"></script>
-<script src="/assets/showcase.js"></script>
+<script src="/assets/showcase.js?v=<?= (int) @filemtime(__DIR__ . '/assets/showcase.js') ?>"></script>
 </body>
 </html>

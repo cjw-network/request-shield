@@ -9,7 +9,9 @@ $path = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PA
 if (strncmp($path, '/assets/', 8) === 0 && strpos($path, '..') === false && is_file(__DIR__ . $path)) {
     $types = ['css' => 'text/css', 'js' => 'text/javascript', 'woff2' => 'font/woff2', 'woff' => 'font/woff', 'svg' => 'image/svg+xml', 'png' => 'image/png'];
     header('Content-Type: ' . ($types[pathinfo($path, PATHINFO_EXTENSION)] ?? 'application/octet-stream'));
-    header('Cache-Control: public, max-age=3600');
+    // The page names its own files with their version (?v=…), so a browser may keep them; asked
+    // without it, it asks again (a changed file is seen at once).
+    header('Cache-Control: ' . (isset($_GET['v']) || strncmp($path, '/assets/vendor/', 15) === 0 ? 'public, max-age=86400' : 'no-cache'));
     readfile(__DIR__ . $path);
     return true;
 }

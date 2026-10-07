@@ -81,7 +81,7 @@ function showcaseAnswer(int $status, string $title, string $text): void
     header('Content-Type: text/html; charset=utf-8');
     $e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
     echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>', $e($title), '</title>',
-        '<link rel="stylesheet" href="/assets/vendor/bootstrap/bootstrap.min.css"><link rel="stylesheet" href="/assets/showcase.css"></head>',
+        '<link rel="stylesheet" href="/assets/vendor/bootstrap/bootstrap.min.css"><link rel="stylesheet" href="/assets/showcase.css?v=' . (int) @filemtime(__DIR__ . '/assets/showcase.css') . '"></head>',
         '<body class="answer-page"><main class="container py-5"><p class="eyebrow">request-shield showcase</p><h1>', $e($title), '</h1><p class="lead">', $e($text),
         '</p><a class="btn btn-primary" href="/">Back to the showcase</a></main></body></html>';
 }
