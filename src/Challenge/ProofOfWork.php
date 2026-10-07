@@ -88,7 +88,6 @@ final class ProofOfWork
             && is_string($params['c']) && hash_equals($this->tag($bucket), $params['c']);
     }
 
-    /** The challenge a payload answers (to use a solution only once), or null. */
     /** The budget a solution was made for (a spent budget's check), or null. */
     public static function budgetOf(string $payload): ?string
     {
@@ -104,6 +103,7 @@ final class ProofOfWork
         return isset($params['b']) && is_string($params['b']) ? $params['b'] : null;
     }
 
+    /** The challenge a payload answers (to use a solution only once), or null. */
     public static function challengeOf(string $payload): ?string
     {
         $b64 = strtr($payload, '-_', '+/');
