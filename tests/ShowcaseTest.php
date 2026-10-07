@@ -92,7 +92,7 @@ return [
             if (strncmp($line, "# The showcase's own settings", 29) === 0) {
                 break;
             }
-            if (!$on || strncmp($line, 'expect ', 7) === 0) {
+            if (!$on || strncmp(ltrim($line), 'expect ', 7) === 0) {
                 continue;
             }
             $note = strncmp(ltrim($line), '#', 1) === 0 ? trim(ltrim(trim($line), '#')) : (strpos($line, ' # ') !== false ? trim(substr($line, (int) strpos($line, ' # ') + 3)) : '');
@@ -127,6 +127,29 @@ return [
             }
         });
     },
+    'RSF02-04 the showcase\'s API: products as JSON or XML; a JSON message needs a pass -- 429 with the task, solved and sent again 201, then straight through; a bot gets only the task' => function (): void {
+        withShowcase(static function (callable $get, int $port): void {
+            $ip = '198.18.210.' . mt_rand(1, 250);
+            [$st, , $body, $type] = $get('GET', '/api/v1/products', ['X-Forwarded-For' => $ip]);
+            truthy($st === 200 && strpos($type, 'application/json') === 0 && isset(json_decode($body, true)['products']), "products as JSON ($type)");
+            [$st, , $body, $type] = $get('GET', '/api/v1/products?format=xml', ['X-Forwarded-For' => $ip]);
+            truthy($st === 200 && strpos($type, 'application/xml') === 0 && @simplexml_load_string($body) !== false, "... as XML ($type)");
+            [$st, , $body, $type] = $get('GET', '/api/v1/products?page=2%27', ['X-Forwarded-For' => $ip]);
+            truthy($st === 404 && strpos($type, 'application/json') === 0, 'a refusal on the API is JSON too (api-path): ' . $body);
+            $msg = static fn (array $h): array => $get('POST', '/api/v1/messages', $h + ['X-Forwarded-For' => $ip, 'Origin' => "http://127.0.0.1:$port", 'Content-Type' => 'application/json'],
+                '{"name":"Ada","message":"Hallo"}');
+            [$st, $xrs, $body, , $raw] = $msg([]);
+            truthy($st === 429 && preg_match('/^Request-Shield-Challenge: (\S+)/mi', $raw, $m) === 1, "a message without a pass: the check, the task in a header ($xrs)");
+            $task = json_decode((string) base64_decode(strtr($m[1], '-_', '+/')), true);
+            $answer = solveInPhp($task);
+            [$st, , $body, , $raw] = $msg(['Request-Shield-Solution' => $answer]);
+            truthy($st === 201 && strpos($body, '"ok":true') !== false && preg_match('/^Set-Cookie: (rsp=[^;]+)/mi', $raw, $c) === 1, "solved and sent again: it arrives, with a pass ($body)");
+            same(201, $msg(['Cookie' => $c[1]])[0], 'the next one with the pass: straight through');
+            [$st, , $body] = $get('POST', '/api/v1/messages', ['X-Forwarded-For' => '198.18.211.' . mt_rand(1, 250), 'Content-Type' => 'application/json'], '{"name":"Bot","message":"spam"}');
+            truthy($st === 429 && strpos($body, '"challenge"') !== false, 'a bot without a browser: 429 and the task, nothing more');
+            same(415, $msg(['Cookie' => $c[1], 'Content-Type' => 'text/plain'])[0], 'the API checks its own content: JSON only');
+        });
+    },
     'RSF05-04 the showcase as its README runs it: the page, its own files, and every try a real request answered as its card says' => function (): void {
         withShowcase(static function (callable $get): void {
             [$st, , $page] = $get('GET', '/?lang=de');
@@ -145,7 +168,7 @@ return [
                 if ($t['headers'] !== []) {
                     // A form from another website: the page asks the server to decide it.
                     $j = json_decode($get('GET', '/__try?n=' . $t['n'])[2], true);
-                    $got = in_array($j['action'] ?? '', ['allow', 'allow-uncached'], true) ? 'answered' : (string) ($j['status'] ?? 0);
+                    $got = ($j['action'] ?? '') === 'challenge' ? 'check' : (in_array($j['action'] ?? '', ['allow', 'allow-uncached'], true) ? 'answered' : (string) ($j['status'] ?? 0));
                     same($t['outcome'], $got, $t['text']);
                     continue;
                 }
@@ -159,6 +182,8 @@ return [
             }
             [$st, $xrs] = $get('GET', '/', ['X-Forwarded-For' => '203.0.113.66']);
             same(403, $st, 'the deny list, for real');
+            $get('GET', '/.env', ['X-Forwarded-For' => '198.51.100.11']);     // the last two lines of the log: sent right before
+            $get('GET', '/', ['X-Forwarded-For' => '203.0.113.66']);
             $log = json_decode($get('GET', '/__log')[2], true);
             $lines = implode("\n", is_array($log) ? $log['lines'] : []);
             truthy(strpos($lines, 'rule=SCAN-HIDDEN') !== false && strpos($lines, 'rule=SHOW-DENY') !== false && strpos($lines, '198.51.100.11') === false,

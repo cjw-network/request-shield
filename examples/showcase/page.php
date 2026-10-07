@@ -25,11 +25,15 @@ $groupOf = static function (string $section): ?string {
         return 'scan';
     }
     return ['@tracking' => 'params', 'SHOW-PARAMS' => 'params', 'SHOW-STRICT' => 'params', 'SHOW-PACE' => 'pace', 'SHOW-FORMS' => 'forms', 'SHOW-ORIGIN' => 'forms',
-        'SHOW-ADMIN' => 'access', 'SHOW-LOGIN' => 'access', 'SHOW-DENY' => 'access', 'SHOW-RS' => 'access'][$section] ?? null;
+        'SHOW-ADMIN' => 'access', 'SHOW-LOGIN' => 'access', 'SHOW-DENY' => 'access', 'SHOW-RS' => 'access',
+        'SHOW-API-POST' => 'api', 'SHOW-API-QUERY' => 'api', 'SHOW-API-PACE' => 'api', 'SHOW-API-WRITE' => 'api'][$section] ?? null;
 };
 $groups = array_fill_keys(array_keys($t['groups']), []);
 foreach ($tries as $try) {
     $g = $groupOf($try['section']);
+    if ($g === 'api' && $try['pass']) {
+        continue;       // a message with a pass: the JSON form below shows it, step by step
+    }
     if ($g !== null) {
         $groups[$g][] = $try;
     }
@@ -43,7 +47,7 @@ foreach (file(__DIR__ . '/showcase.rules', FILE_IGNORE_NEW_LINES) ?: [] as $line
     if (strncmp($line, "# The showcase's own settings", 29) === 0) {
         break;
     }
-    if (!$on || strncmp($line, 'expect ', 7) === 0) {
+    if (!$on || strncmp(ltrim($line), 'expect ', 7) === 0) {
         continue;
     }
     if (trim($line) === '') {
@@ -64,7 +68,7 @@ $outcomeLabel = static fn (string $o): string => $t['outcome'][$o] ?? $o;
 $badge = static fn (string $o): string => $o === 'answered' ? 'pass' : ($o === 'check' ? 'check' : 'stop');
 $client = [
     'tries' => $tries,
-    'words' => ['self' => $t['self'], 'outcome' => $t['outcome'], 'say' => $t['say'], 'details' => $t['details'], 'send' => $t['send'], 'sent' => $t['sent'], 'from' => $t['from'], 'tries' => array_map($tr, array_column($tries, 'text', 'n'))],
+    'words' => ['api' => $t['api'], 'self' => $t['self'], 'outcome' => $t['outcome'], 'say' => $t['say'], 'details' => $t['details'], 'send' => $t['send'], 'sent' => $t['sent'], 'from' => $t['from'], 'tries' => array_map($tr, array_column($tries, 'text', 'n'))],
 ];
 ?><!doctype html>
 <html lang="<?= $lang ?>">
@@ -236,12 +240,38 @@ $client = [
           <details class="burst-log mt-2"><summary><?= $e($t['burstLog']) ?></summary><ol class="burst-list"></ol></details>
         </div>
       <?php else: ?>
+      <?php if ($g === 'api'): $a = $t['api']; ?>
+        <div class="row g-4 mb-4">
+          <div class="col-lg-7"><div class="card-try api-form h-100">
+            <h4 class="h5 mb-1"><i class="bi bi-braces-asterisk"></i> <?= $e($a['formTitle']) ?></h4>
+            <p class="text-secondary mb-2"><?= $e($a['formLead']) ?></p>
+            <form class="json-form d-grid gap-2" novalidate>
+              <input class="form-control" name="name" value="Ada" aria-label="<?= $e($a['name']) ?>" placeholder="<?= $e($a['name']) ?>">
+              <textarea class="form-control" name="message" rows="2" aria-label="<?= $e($a['message']) ?>" placeholder="<?= $e($a['message']) ?>">Hallo request-shield!</textarea>
+              <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-accent" type="submit"><i class="bi bi-send"></i> <?= $e($a['send']) ?></button>
+                <button class="btn btn-sm btn-soft json-bot" type="button"><i class="bi bi-robot"></i> <?= $e($a['bot']) ?></button>
+                <button class="btn btn-sm btn-soft json-forget" type="button"><i class="bi bi-eraser"></i> <?= $e($a['forget']) ?></button>
+              </div>
+            </form>
+            <ol class="json-steps mt-3" aria-live="polite"></ol>
+          </div></div>
+          <div class="col-lg-5"><div class="card-try why h-100">
+            <h4 class="h5 mb-2"><i class="bi bi-question-circle"></i> <?= $e($a['whyTitle']) ?></h4>
+            <dl class="why-list mb-0">
+              <?php foreach ($a['why'] as [$rule, $because]): ?>
+              <dt><code><?= $e($rule) ?></code></dt><dd><?= $e($because) ?></dd>
+              <?php endforeach ?>
+            </dl>
+          </div></div>
+        </div>
+      <?php endif ?>
       <div class="row g-3">
         <?php foreach ($list as $try): ?>
-        <?php $mode = $try['pass'] ? 'pass' : ($try['headers'] !== [] ? 'server' : 'live'); ?>
-        <div class="col-md-6 col-xl-4"><div class="card-try h-100" data-n="<?= $try['n'] ?>" data-mode="<?= $mode ?>">
+        <?php $mode = $try['pass'] ? 'pass' : ($try['headers'] !== [] ? 'server' : ($try['times'] > 1 ? 'repeat' : 'live')); ?>
+        <div class="col-md-6 col-xl-4"><div class="card-try h-100" data-n="<?= $try['n'] ?>" data-mode="<?= $mode ?>" data-times="<?= (int) $try['times'] ?>">
           <div class="try-text"><?= $e($tr($try['text'])) ?></div>
-          <code class="try-request"><span class="m"><?= $e($try['method']) ?></span> <?= $e(rawurldecode($try['url'])) ?></code>
+          <code class="try-request"><span class="m"><?= $e($try['method']) ?></span> <?= $e(rawurldecode($try['url'])) ?><?= $try['times'] > 1 ? ' × ' . (int) $try['times'] : '' ?></code>
           <div class="try-meta small"><?= $e($t['expected']) ?>:
             <span class="pill pill-<?= $badge($try['outcome']) ?>"><?= $e($outcomeLabel($try['outcome'])) ?></span><?= $try['by'] !== null ? ' <span class="rule-id">' . $e($try['by']) . '</span>' : '' ?></div>
           <?php if ($mode === 'pass'): ?>
@@ -338,6 +368,7 @@ $client = [
 
 <script id="showcase-data" type="application/json"><?= json_encode($client, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?></script>
 <script src="/assets/vendor/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="/rs-check/widget.js"></script>
 <script src="/assets/showcase.js?v=<?= (int) @filemtime(__DIR__ . '/assets/showcase.js') ?>"></script>
 </body>
 </html>

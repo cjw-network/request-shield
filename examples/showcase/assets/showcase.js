@@ -89,7 +89,19 @@
     var t = tries[card.getAttribute('data-n')];
     var btn = card.querySelector('.try-go');
     btn.disabled = true;
-    var send = card.getAttribute('data-mode') === 'server' ? server : live;
+    var cardMode = card.getAttribute('data-mode');
+    var send = cardMode === 'server' ? server : live;
+    if (cardMode === 'repeat') {
+      // Sent as often as the example says, by a new visitor each time the button is pressed: the last answer counts.
+      var times = parseInt(card.getAttribute('data-times'), 10);
+      var visitor = Object.assign({}, t, { from: '198.18.' + Math.floor(Math.random() * 250 + 1) + '.' + Math.floor(Math.random() * 250 + 1) });
+      card.querySelector('.try-result').setAttribute('data-from', visitor.from);       // the details name who really sent it
+      send = function () {
+        var k = 0, last = null;
+        var next = function () { return k++ < times ? live(visitor).then(function (g) { last = g; return next(); }) : Promise.resolve(last); };
+        return next();
+      };
+    }
     return send(t).then(function (got) { show(card, t, got); }).catch(function (e) {
       card.querySelector('.try-result').textContent = String(e);
     }).then(function () {
@@ -372,6 +384,59 @@
       if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done, function () {}); }
     });
   });
+
+  // The JSON form: fetch() sends JSON to the API; the shield asks for the check (429, the task in
+  // Request-Shield-Challenge), the page solves it with the shield's own solver (widget.js: RS.solve)
+  // and sends again with Request-Shield-Solution -- every step shown as it happens.
+  var jf = document.querySelector('.json-form');
+  if (jf) {
+    var aw = words.api;
+    var steps = document.querySelector('.json-steps');
+    var step = function (cls, text) { var li = el('li', 'json-step json-' + cls, text); steps.appendChild(li); return li; };
+    var body = function () { return JSON.stringify({ name: jf.querySelector('[name=name]').value, message: jf.querySelector('[name=message]').value }); };
+    var post = function (headers) {
+      var h = Object.assign({ 'Content-Type': 'application/json' }, headers || {});
+      return fetch('/api/v1/messages', { method: 'POST', headers: h, body: body(), credentials: 'same-origin', cache: 'no-store' })
+        .then(function (r) { return r.text().then(function (t) { return { r: r, text: t }; }); });
+    };
+    var answer = function (res) {
+      step(res.r.ok ? 'ok' : 'stop', fmt(aw.done, res.r.status, res.text.length > 160 ? res.text.substr(0, 160) + '…' : res.text));
+      if (res.r.ok) { step('note', aw.pass); }
+    };
+    var go = jf.querySelector('[type=submit]');
+    jf.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      if (go.disabled) { return; }
+      go.disabled = true;
+      steps.textContent = '';
+      step('send', aw.sent);
+      post().then(function (res) {
+        var task = res.r.headers.get('Request-Shield-Challenge');
+        if (res.r.status !== 429 || !task || !window.RS || !RS.solve) { return answer(res); }
+        step('check', aw.challenge);
+        var c = JSON.parse(atob(task.replace(/-/g, '+').replace(/_/g, '/')));
+        var started = Date.now();
+        return new Promise(function (done) {
+          RS.solve(c, function (number, took) {
+            step('solved', fmt(aw.solved, Date.now() - started));
+            step('send', aw.resend);
+            post({ 'Request-Shield-Solution': RS.payload(c, number, took) }).then(answer).then(done, done);
+          });
+        });
+      }).catch(function (e) { step('stop', String(e)); }).then(function () { go.disabled = false; });
+    });
+    jf.querySelector('.json-bot').addEventListener('click', function () {
+      steps.textContent = '';
+      step('send', aw.sent);
+      var ip = '198.18.' + Math.floor(Math.random() * 250 + 1) + '.' + Math.floor(Math.random() * 250 + 1);
+      fetch('/api/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': ip }, body: body(), credentials: 'omit', cache: 'no-store' })
+        .then(function (r) { return r.text().then(function (t) { step('stop', fmt(aw.done, r.status, t.length > 160 ? t.substr(0, 160) + '…' : t)); step('note', aw.botDone); }); })
+        .catch(function (e) { step('stop', String(e)); });
+    });
+    jf.querySelector('.json-forget').addEventListener('click', function () {
+      fetch('/__forget', { credentials: 'same-origin', cache: 'no-store' }).then(function () { steps.textContent = ''; step('note', aw.forgotten); });
+    });
+  }
 
   // The hero's stream: the plain tries, sent one by one, twice round.
   var stream = document.getElementById('stream');

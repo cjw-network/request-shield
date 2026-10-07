@@ -38,6 +38,17 @@ Open http://127.0.0.1:8090/ (`?lang=de` or `?lang=en`).
   runs. *Bot mode* tries once a second for a minute and draws which tries
   reached the page. These budgets cannot be decided by `request-shield test`
   (the page counts them); `tests/ShowcaseTest.php` sends them for real.
+- **An API** in a block of its own (`match /api/** { … }`, `api-path /api/**`):
+  products as JSON or XML (`GET /api/v1/products?format=xml`), typed
+  parameters, 30 calls a minute, and `challenge POST` for every write. A JSON
+  form sends `fetch()` to `POST /api/v1/messages` and shows each step: 429
+  with the task in `Request-Shield-Challenge`, solved by the shield's own
+  solver (`/rs-check/widget.js`, `RS.solve`), sent again with
+  `Request-Shield-Solution`, 201 and a pass; the next message goes straight
+  through. *Send as a bot* shows what a script without a browser gets.
+  "Why these rules?" explains each one -- and that `post-origin` does not
+  apply to an API (programs send no Origin; CORS protects against other
+  websites), and that the API checks its JSON itself.
 - **The live log** is docked bottom right on every part of the page: the
   end of the showcase's own log (`set log`, `/__log`, addresses masked),
   each line as time, decision, status, rule and request, new ones lit up;

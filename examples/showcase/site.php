@@ -34,9 +34,10 @@ function showcaseTries(string $file): array
             $section = '@' . $m[1];
             continue;
         }
-        if (strncmp($line, 'expect ', 7) !== 0) {
+        if (strncmp(ltrim($line), 'expect ', 7) !== 0) {
             continue;
         }
+        $line = ltrim($line);       // an example inside a match block is indented
         $hash = strpos($line, ' # ');
         $text = $hash !== false ? trim(substr($line, $hash + 3)) : '';
         $words = preg_split('/\s+/', trim(substr($hash !== false ? substr($line, 0, $hash) : $line, 7))) ?: [];
@@ -104,6 +105,50 @@ if ($path === '/__try') {
     showcaseJson(200, ['status' => $d->passes() ? 200 : $d->status, 'action' => $d->action, 'reason' => $d->reason, 'rule' => $t['rule'], 'verdict' => $t['verdict']]);
     return;
 }
+// The API (match /api/** in the rules): what is left for it to check is its own business -- the
+// shield has already let through only GET or POST, typed parameters, a visitor within its pace,
+// and for a POST one that holds a pass. The body is not the shield's: the API reads its JSON itself.
+if (strncmp($path, '/api/v1/products', 16) === 0 && $method === 'GET') {
+    $all = [['id' => 1, 'name' => 'Shield, small', 'price' => 9.5], ['id' => 2, 'name' => 'Shield, large', 'price' => 19.0],
+        ['id' => 3, 'name' => 'Pass, one hour', 'price' => 0.0], ['id' => 4, 'name' => 'Rule file', 'price' => 0.0]];
+    $page = max(1, (int) ($_GET['page'] ?? 1));
+    $limit = min(50, max(1, (int) ($_GET['limit'] ?? 10)));
+    $items = array_slice($all, ($page - 1) * $limit, $limit);
+    $xml = ($_GET['format'] ?? '') === 'xml' || (!isset($_GET['format']) && stripos((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'xml') !== false);
+    header('Cache-Control: no-store');
+    if ($xml) {
+        header('Content-Type: application/xml; charset=utf-8');
+        $x = static fn (string $s): string => htmlspecialchars($s, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+        echo '<?xml version="1.0" encoding="UTF-8"?>', "\n<products page=\"$page\">\n";
+        foreach ($items as $i) {
+            echo '  <product id="', (int) $i['id'], '"><name>', $x($i['name']), '</name><price>', number_format($i['price'], 2, '.', ''), "</price></product>\n";
+        }
+        echo "</products>\n";
+        return;
+    }
+    showcaseJson(200, ['page' => $page, 'products' => $items]);
+    return;
+}
+if ($path === '/api/v1/messages' && $method === 'POST') {
+    // JSON only, checked by the API: the shield has made sure a browser sent it (a pass), not what it says.
+    if (stripos((string) ($_SERVER['CONTENT_TYPE'] ?? ''), 'application/json') !== 0) {
+        showcaseJson(415, ['error' => 'send JSON (Content-Type: application/json)']);
+        return;
+    }
+    $in = json_decode((string) file_get_contents('php://input', false, null, 0, 16384), true);
+    $name = is_array($in) && is_string($in['name'] ?? null) ? trim($in['name']) : '';
+    $message = is_array($in) && is_string($in['message'] ?? null) ? trim($in['message']) : '';
+    if ($name === '' || $message === '' || strlen($name) > 100 || strlen($message) > 2000) {
+        showcaseJson(422, ['error' => 'name and message, at most 100 and 2000 characters']);
+        return;
+    }
+    showcaseJson(201, ['ok' => true, 'id' => bin2hex(random_bytes(4)), 'note' => 'a showcase: nothing is kept']);
+    return;
+}
+if (strncmp($path, '/api/', 5) === 0) {
+    showcaseJson(404, ['error' => 'no such endpoint']);
+    return;
+}
 if ($path === '/search') {
     // The search counts itself (on-demand): past 5 a minute the shield answers instead -- a 429 with
     // Retry-After, and a pause for this visitor that doubles each time (ban-growth).
@@ -142,6 +187,12 @@ if ($path === '/__log') {
         }
     }
     showcaseJson(200, ['lines' => $lines]);
+    return;
+}
+if ($path === '/__forget') {
+    // "Forget the pass" (the JSON form): the next message asks for the check again.
+    setcookie('rsp', '', ['expires' => 1, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
+    http_response_code(204);
     return;
 }
 if ($path === '/__login') {

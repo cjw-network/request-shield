@@ -163,6 +163,20 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .burst-row > * { margin-right: 8px; }
 .result-xrs-inline { color: var(--rs-soft-ink); word-break: break-all; }
 
+/* The API */
+.json-steps { list-style: none; padding: 0; margin: 0; font-size: .86rem; }
+.json-step { padding: 6px 10px 6px 30px; border-radius: 10px; margin-bottom: 4px; position: relative; word-break: break-word; }
+.json-step::before { position: absolute; left: 10px; font-family: bootstrap-icons; }
+.json-send { background: var(--rs-sky-bg); } .json-send::before { content: "\F6C0"; color: #2563eb; }
+.json-check { background: var(--rs-sun-bg); color: #92400e; } .json-check::before { content: "\F41F"; }
+.json-solved { background: var(--rs-mint-bg); color: var(--rs-mint-dark); } .json-solved::before { content: "\F26A"; }
+.json-ok { background: var(--rs-mint-bg); color: var(--rs-mint-dark); font-weight: 700; } .json-ok::before { content: "\F26A"; }
+.json-stop { background: var(--rs-coral-bg); color: #b4322d; } .json-stop::before { content: "\F622"; }
+.json-note { color: var(--rs-soft-ink); font-style: italic; }
+.why-list dt { margin-top: 10px; } .why-list dt:first-child { margin-top: 0; }
+.why-list dt code { color: var(--rs-mint-dark); font-size: .85rem; }
+.why-list dd { margin: 2px 0 0; color: var(--rs-soft-ink); font-size: .92rem; }
+
 /* Pages that count for themselves */
 .timeline { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 3px; min-height: 30px; }
 .tick { display: inline-block; width: 10px; height: 18px; border-radius: 5px; }

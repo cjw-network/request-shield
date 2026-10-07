@@ -17,6 +17,7 @@ expect GET  /.env                   from 198.51.100.11 404 by SCAN-HIDDEN    # A
 expect GET  /.git/config            from 198.51.100.12 404 by SCAN-HIDDEN    # ... for your source code
 expect GET  /phpmyadmin/            from 198.51.100.13 404 by SCAN-DBTOOL    # ... for a database tool
 expect GET  /backup.sql             from 198.51.100.14 404 by SCAN-BACKUP    # ... for a forgotten backup
+expect DELETE /api/v1/products/7    from 198.51.100.44 405                   # A method the site does not take (built in: GET, HEAD, POST, OPTIONS)
 
 include @tracking                                     # utm_*, fbclid, gclid: newsletter and ad links keep working
 expect GET  /?utm_source=newsletter from 198.51.100.19 answered              # A newsletter link: welcome
@@ -59,6 +60,23 @@ expect GET  /                       from 203.0.113.66  403 by SHOW-DENY      # A
 set         ban-growth 2                              # every pause twice as long as the one before
 set         ban-max 5m                                # but never longer than five minutes
 
+# The API: a form sends JSON to it, other programs read products as JSON or XML.
+api-path /api/**                                      # a check there is JSON with a header, never a page a program cannot show
+match /api/** {
+  [SHOW-API-POST]   allow POST                         # a POST is let in here (and only where a rule allows it); PUT, DELETE … get 405 anyway
+  expect POST https://www.example.org/api/v1/messages header Origin:https://www.example.org from 198.51.100.47 with pass answered   # A message with a pass: it arrives
+  [SHOW-API-QUERY]  query page int   limit int   format /(json|xml)/   # its parameters, typed: anything else 404 (query strict)
+  expect GET  /api/v1/products                from 198.51.100.40 answered              # The product list, as JSON
+  expect GET  /api/v1/products?format=xml     from 198.51.100.41 answered              # ... as XML
+  expect GET  /api/v1/products?page=2%27      from 198.51.100.42 404 by SHOW-STRICT    # A page "number" that is not one
+  expect GET  /api/v1/products?debug=1        from 198.51.100.43 404 by SHOW-STRICT    # A parameter the API does not know
+  [SHOW-API-PACE]   limit api 30/min                   # per visitor: 30 calls a minute, then 429 with Retry-After
+  expect GET  /api/v1/products                from 198.51.100.45 times 31 429 by SHOW-API-PACE   # 31 calls in a minute: a pause
+  [SHOW-API-WRITE]  challenge POST                     # every write needs a pass: a browser solves the task unseen, a script pays per request
+  expect POST https://www.example.org/api/v1/messages header Origin:https://www.example.org from 198.51.100.46 check by SHOW-API-WRITE   # A message without a pass: the check, as JSON
+  expect POST https://www.example.org/api/v1/messages header Origin:https://spam.example from 198.51.100.48 check by SHOW-API-WRITE      # ... from another website: post-origin does not apply to an API (programs send no Origin) -- the check does, and the browser's CORS
+}
+
 crawlers ai-training block                            # verified AI training crawlers: no
 
 # The showcase's own settings (a real site keeps the defaults).
@@ -69,6 +87,7 @@ set         difficulty-max 500000
 [SHOW-EXEMPT]  exempt none                            # this machine is counted and checked too (by default it is exempt: a site's own monitoring)
 expect GET  /login                  from 127.0.0.1     check by SHOW-LOGIN   # (you, on this machine: checked too -- not a card)
 set         dashboard-path /rs
+set         widget-path /rs-check                     # the check's script (widget.js): the page solves the API's task with it
 [SHOW-TRY]     query n int at /__try                  # the page's own address for the one try a browser cannot send
 expect GET  /__try?n=1              from 198.51.100.28 answered              # (the page's own address: not a card)
 [SHOW-RS]      restrict /rs/** to 127.0.0.1 ::1        # the shield's own pages: only this machine
