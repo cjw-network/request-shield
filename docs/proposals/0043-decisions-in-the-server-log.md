@@ -73,8 +73,11 @@ set server-log-level stop        # stop (default) | flag | all -- as log-level
 - **`header`:** the answer carries `X-RS-Log: <action> <reason> <rule> <ref>`,
   each part a word (`-` when there is none), at most 120 bytes:
   `reject attack ATK-SQL-UNION SKVD-YB3R`, `challenge requests SHOW-PACE -`,
-  `monitor-reject blocked-path SCAN-HIDDEN -`. Short, without spaces inside a
-  part, so a log parser splits it without quoting rules.
+  `monitor-reject blocked-path SCAN-HIDDEN -`. Short, and each part one word:
+  a reason or a budget name with spaces (`blocked path`, `method not allowed
+  here`) gets `-` for them, and `"`, control characters and anything outside
+  visible ASCII are left out -- so a log parser splits the value at spaces
+  and it cannot break the quoted field it stands in.
 - **`note`:** with Apache's mod_php the shield calls `apache_note('rs', …)`
   instead -- no header at all, nothing to unset. `check` says when `note` is
   set but the server is not mod_php (the value then goes nowhere).
@@ -87,7 +90,8 @@ set server-log-level stop        # stop (default) | flag | all -- as log-level
 
 ```apache
 # mod_headers: copy the shield's header into a note, then remove it from the answer
-Header note X-RS-Log rs
+Header note X-RS-Log rs                 # an answer the server counts a success (200, a redirect)
+Header always note X-RS-Log rs          # and a refusal (403, 404, 429) -- both tables
 Header unset X-RS-Log
 Header always unset X-RS-Log
 LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" rs=\"%{rs}n\"" combined_rs
@@ -120,7 +124,7 @@ rule to remove it); to be tried before it is documented.
 ```ini
 # filter.d/request-shield.conf
 [Definition]
-failregex = ^<HOST> .* rs="(reject|throttle) [a-z-]+ [A-Z0-9@.:-]+ \S+"$
+failregex = ^<HOST> .* rs="(reject|throttle) \S+ \S+ \S+"$
 ```
 
 A refusal at the firewall is cheaper than a refusal in PHP -- for the
@@ -141,7 +145,8 @@ shared hosting without a firewall.)
 
 1. `set server-log`, `set server-log-level`; the header (or the note) where
    the decision is made (`Shield::protect()`, `Responder`), its value one
-   function (`Log::serverValue()`), tested; a cached answer carries none
+   function (`Log::serverValue()`: each part one word, spaces as `-`, no `"`
+   or control characters), tested; a cached answer carries none
    (the cache plugin drops it like `X-RS`).
 2. `check`: a warning when it is on (the header must be unset by the
    server; `note` without mod_php).
