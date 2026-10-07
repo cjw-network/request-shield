@@ -57,9 +57,13 @@ crawlers ai-training block                            # verified AI training cra
 # The showcase's own settings (a real site keeps the defaults).
 set         debug-header on                           # X-RS: <decision> on every answer, so the page can show it
 set         crawler-verify ranges                     # no DNS lookups from a demo
+set         difficulty-min 500000                     # the check a little harder, so you can watch the ring (a real site keeps the default, 50000)
+set         difficulty-max 500000
+[SHOW-EXEMPT]  exempt none                            # this machine is counted and checked too (by default it is exempt: a site's own monitoring)
+expect GET  /login                  from 127.0.0.1     check by SHOW-LOGIN   # (you, on this machine: checked too -- not a card)
 set         dashboard-path /rs
 [SHOW-TRY]     query n int at /__try                  # the page's own address for the one try a browser cannot send
-expect GET  /__try?n=1              from 198.51.100.28 answered              # (the page's own: not a card)
+expect GET  /__try?n=1              from 198.51.100.28 answered              # (the page's own address: not a card)
 [SHOW-RS]      restrict /rs/** to 127.0.0.1 ::1        # the shield's own pages: only this machine
 expect GET  /rs/dashboard           from 198.51.100.27 403 by SHOW-RS        # The shield's own pages, from outside
 set         store-dir ${REQUEST_SHIELD_SHOWCASE_VAR:-/tmp/request-shield-showcase}

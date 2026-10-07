@@ -27,7 +27,11 @@ Open http://127.0.0.1:8090/ (`?lang=de` or `?lang=en`).
   lets a page forge `Origin`.
 - **The burst** sends 125 page views from one made-up visitor: 60 through, 60
   with the browser check, 5 paused.
-- **The browser check** for real: *open the login* in a new tab.
+- **The browser check** for real: *open the login* in a new tab. It forgets
+  your pass first (`/__login`), so the ring comes every time; the rules make
+  the check a little harder than a real site would (`difficulty-min 500000`),
+  so you can watch it, and count this machine too (`exempt none` -- by
+  default the shield leaves its own machine alone).
 
 Bootstrap 5.3.8 and Bootstrap Icons 1.13.1 are in `assets/vendor/` (MIT, their
 licences beside them): the page loads nothing from another host. The store

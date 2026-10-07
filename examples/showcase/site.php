@@ -104,6 +104,12 @@ if ($path === '/__try') {
     showcaseJson(200, ['status' => $d->passes() ? 200 : $d->status, 'action' => $d->action, 'reason' => $d->reason, 'rule' => $t['rule'], 'verdict' => $t['verdict']]);
     return;
 }
+if ($path === '/__login') {
+    // "See the check": the pass forgotten first, so the login checks again (a pass holds an hour).
+    setcookie('rsp', '', ['expires' => 1, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
+    header('Location: /login', true, 303);
+    return;
+}
 if ($path === '/contact') {
     if ($method === 'POST') {
         showcaseJson(200, ['ok' => true, 'message' => 'Thank you -- your message arrived (a showcase: nothing is sent).']);

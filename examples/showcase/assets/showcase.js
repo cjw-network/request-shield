@@ -137,7 +137,7 @@
   // The hero's stream: the plain tries, sent one by one, twice round.
   var stream = document.getElementById('stream');
   if (stream) {
-    var plain = data.tries.filter(function (t) { return t.times === 1 && !t.pass && Object.keys(t.headers).length === 0 && t.section !== 'SHOW-TRY'; });
+    var plain = data.tries.filter(function (t) { return t.times === 1 && !t.pass && Object.keys(t.headers).length === 0 && t.text.charAt(0) !== '('; });
     var i = 0;
     var tick = function () {
       if (i >= plain.length * 2) { return; }

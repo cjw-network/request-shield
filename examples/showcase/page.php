@@ -185,7 +185,7 @@ $client = [
             <span class="pill pill-<?= $badge($try['outcome']) ?>"><?= $e($outcomeLabel($try['outcome'])) ?></span><?= $try['by'] !== null ? ' <span class="rule-id">' . $e($try['by']) . '</span>' : '' ?></div>
           <?php if ($mode === 'pass'): ?>
             <p class="small text-secondary mt-2 mb-2"><?= $e($t['passCard']) ?></p>
-            <a class="btn btn-sm btn-outline-accent mt-auto" href="/login" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> <?= $e($t['openLogin']) ?></a>
+            <a class="btn btn-sm btn-outline-accent mt-auto" href="/__login" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> <?= $e($t['openLogin']) ?></a>
           <?php else: ?>
             <?php if ($mode === 'server'): ?><p class="small text-secondary mt-2 mb-2"><i class="bi bi-info-circle"></i> <?= $e($t['simulated']) ?></p><?php endif ?>
             <div class="try-result" aria-live="polite"></div>
@@ -210,7 +210,7 @@ $client = [
       <?php endforeach ?>
     </div>
     <div class="text-center mt-4">
-      <a class="btn btn-accent btn-lg" href="/login" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> <?= $e($t['checkTry']) ?></a>
+      <a class="btn btn-accent btn-lg" href="/__login" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> <?= $e($t['checkTry']) ?></a>
       <p class="small text-secondary mt-3"><?= $e($t['checkNote']) ?></p>
     </div>
   </div>

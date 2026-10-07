@@ -79,7 +79,7 @@ return [
     'RSF05-04 the showcase speaks German too: every try and every explained rule has its German sentence' => function (): void {
         $texts = require dirname(__DIR__) . '/examples/showcase/texts.php';
         foreach (showcaseTriesForTest() as $t) {
-            if ($t['section'] !== 'SHOW-TRY') {
+            if ($t['text'][0] !== '(') {           // "(…)": an example of the page's own, not a card
                 truthy(isset($texts['de']['tries'][$t['text']]), 'German for the try: ' . $t['text']);
             }
         }
@@ -110,8 +110,8 @@ return [
             same(200, $get('GET', '/assets/vendor/bootstrap/bootstrap.min.css')[0], 'Bootstrap from the page\'s own folder, not from elsewhere');
             truthy(preg_match('#(src|href)="(https?:)?//#', $page) !== 1, 'nothing loaded from another host');
             foreach (showcaseTriesForTest() as $t) {
-                if ($t['times'] > 1 || $t['pass']) {
-                    continue;           // the burst and the pass: decided by request-shield test above
+                if ($t['times'] > 1 || $t['pass'] || $t['text'][0] === '(') {
+                    continue;           // the burst, the pass, the page's own: decided by request-shield test above
                 }
                 $uri = (string) preg_replace('#^[a-z]+://[^/]+#', '', $t['url']);
                 if ($t['headers'] !== []) {
@@ -131,6 +131,10 @@ return [
             }
             [$st, $xrs] = $get('GET', '/', ['X-Forwarded-For' => '203.0.113.66']);
             same(403, $st, 'the deny list, for real');
+            [$st, $xrs] = $get('GET', '/login');
+            truthy($st === 429 && strpos($xrs, 'challenge') === 0, 'you, on this machine: the login checks you too (exempt none) -- ' . $xrs);
+            [$st, , , ] = $get('GET', '/__login');
+            same(303, $st, '"see the check": the pass forgotten, on to the login');
         });
     },
 ];
