@@ -673,6 +673,12 @@ return [
         same([['DELETE'], 300], [$c->alwaysMethods[$c->alwaysPaths[2]] ?? null, $c->alwaysMaxAge[$c->alwaysPaths[2]] ?? null], 'with max-age');
         same(false, isset($c->alwaysMethods[$c->alwaysPaths[3]]), 'the same paths again without methods: every method');
         same(['POST'], $c->alwaysMethods[$c->alwaysPaths[4]] ?? null, 'inside a match block: challenge POST');
+        $s = rulesFrom("ids T\n[T-1] challenge POST /x max-age 5m\nreplace [T-1] challenge /y\nchallenge LICENSE\nchallenge POST README\n");
+        $c = $s->challenge;
+        $onX = static fn (array $map): array => array_values(array_filter(array_keys($map), static fn (string $p): bool => strpos($p, '/x') !== false));
+        same([[], []], [$onX($c->alwaysMethods), $onX($c->alwaysMaxAge)], 'replace drops what belonged to the old path: its methods, its max-age (and the settings still compile)');
+        same(3, count($c->alwaysPaths), 'the new path, and LICENSE, README: paths, not methods');
+        same([['POST']], array_values($c->alwaysMethods), 'challenge POST README: POST is a method, README the path');
         rulesFail(['site.rules' => "match /a/** {\n  allow POST /b\n}\n"], 'site.rules:2', 'inside match: allow <METHODS>');
         rulesFail(['site.rules' => "match /a/** {\n  unblock [SCAN-HIDDEN] at /b\n}\n"], 'site.rules:2', 'the block is where');
         rulesFail(['site.rules' => "match /a/** {\n  host a.example\n}\n"], 'site.rules:2', 'host does not go inside a match block');

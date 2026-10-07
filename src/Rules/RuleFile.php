@@ -31,6 +31,9 @@ use CjwNetwork\RequestShield\Texts;
  */
 final class RuleFile
 {
+    /** The methods challenge takes before its paths -- the HTTP ones, so a path such as LICENSE stays a path. */
+    private const METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'CONNECT', 'TRACE', 'PROPFIND', 'PROPPATCH', 'MKCOL', 'COPY', 'MOVE', 'LOCK', 'UNLOCK', 'REPORT', 'SEARCH', 'PURGE'];
+
     /** The kinds of crawler (rules/crawlers.rules) and what a site may do with them. */
     public const KINDS = ['search', 'ai-search', 'ai-user', 'ai-training'];
 
@@ -902,7 +905,7 @@ final class RuleFile
                 // challenge [<METHODS>] <paths>: the methods first, as with allow -- challenge POST **
                 // checks every form and every endpoint sent to, not the pages that show them.
                 $methods = [];
-                while ($args !== [] && preg_match('/^[A-Z]+$/', $args[0]) === 1) {
+                while ($args !== [] && in_array($args[0], self::METHODS, true)) {
                     $methods[] = (string) array_shift($args);
                 }
                 if ($methods !== [] && $args === []) {
@@ -1111,16 +1114,28 @@ final class RuleFile
                 continue;
             }
             $keep = [];
+            $dropped = [];
             foreach ($list as $p) {
                 if (is_string($p) && ($this->origins[$key][$p] ?? null) === $id) {
                     $found = true;
                     unset($this->origins[$key][$p]);
+                    $dropped[] = $p;
                     continue;
                 }
                 $keep[] = $p;
             }
             if (!$probe) {
                 $this->put($key, $keep);
+                if ($key === 'challenge.alwaysPaths' && $dropped !== []) {
+                    // What belongs to a checked path goes with it: its max-age and its methods.
+                    foreach (['challenge.alwaysMaxAge', 'challenge.alwaysMethods'] as $by) {
+                        $map = (array) $this->get($by);
+                        foreach ($dropped as $p) {
+                            unset($map[$p]);
+                        }
+                        $this->put($by, $map);
+                    }
+                }
             }
         }
         $mine = [];
@@ -1487,7 +1502,7 @@ final class RuleFile
             case 'challenge':
                 // challenge [<METHODS>] inside a block: the methods only, the paths are the block's.
                 foreach ($args as $a) {
-                    if (preg_match('/^[A-Z]+$/', $a) !== 1) {
+                    if (!in_array($a, self::METHODS, true)) {
                         throw new RuleFileException("$at: inside match, challenge takes no paths -- they are the block's (methods may stand: challenge POST)");
                     }
                 }
