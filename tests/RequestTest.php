@@ -63,6 +63,9 @@ return [
             'a MySQL versioned comment is code to MySQL: its body stays, the comment marks go');
         same('id=1 union select 1', Request::fromServer(['REQUEST_URI' => '/?id=1/*M!100100UNION*/SELECT/**/1'])->content('query'),
             'MariaDB\'s /*M! too');
+        same('id=1 union select', Request::fromServer(['REQUEST_URI' => '/?id=1/*!/**/union*/select'])->content('query'), 'a comment inside one: MySQL runs the body as code');
+        same('id=1 union select ', Request::fromServer(['REQUEST_URI' => '/?id=1/*!union/*!select*/*/'])->content('query'), 'one inside another');
+        same('id=1 x', Request::fromServer(['REQUEST_URI' => '/?id=1/*a/*!union*/x'])->content('query'), 'inside a plain comment: never run, gone with it');
         same('bad bot', $r->content('header:user-agent'), 'one header by name');
         same('', $r->content('header:x-missing'), 'a header not sent');
         truthy(strpos($r->content('headers'), 'a b') !== false, 'headers: every HTTP_ value, white space collapsed');

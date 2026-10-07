@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **MySQL's versioned comments no longer hide SQL injection**: the attack
   rules saw `1/*!50000UNION*//*!50000SELECT*/1` as `1 1` -- every comment
   became a space, but MySQL runs the body of `/*!…*/` (and MariaDB of
-  `/*M!…*/`). Their body now stays; only the comment marks go. Found by
+  `/*M!…*/`). Their body now stays; only the comment marks go -- a plain
+  comment inside one (`/*!/**/UNION*/`) goes first. Found by
   comparing with Mini-WAF's rules.
 - **The check inside the form works with `query strict`**: the shield names
   its script `widget.js?v=<version>`, and `query strict` refused that `v`

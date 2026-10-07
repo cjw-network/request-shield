@@ -18,8 +18,9 @@ library, each with examples (`expect`) that `request-shield test` checks.
 Before matching, the shield normalises the value: decoded twice, lower case,
 SQL comments and runs of white space as one space -- `%2527`,
 `UnIoN/**/SeLeCt` and `%3Cscript%3E` do not get past. MySQL's versioned
-comments (`/*!50000UNION*/`, MariaDB's `/*M!100100 … */`) are code to MySQL:
-their body stays, only the comment marks go.
+comments (`/*!50000UNION*/`, MariaDB's `/*M!100100…*/`) are code to MySQL:
+their body stays, only the comment marks go -- a plain comment inside one
+(`/*!/**/UNION*/`) goes first.
 
 ## Use cases
 

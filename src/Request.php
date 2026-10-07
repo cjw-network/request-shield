@@ -268,8 +268,17 @@ final class Request
         $v = strtolower($v);
         if (strpos($v, '/*') !== false) {
             // A comment is a space -- except MySQL's versioned one (/*!50000union*/,
-            // MariaDB's /*m!100100 ...*/), whose body MySQL runs: that body stays.
-            $v = (string) preg_replace(['#/\*m?!\d*(.*?)\*/#s', '#/\*.*?\*/#s'], [' $1 ', ' '], $v);
+            // MariaDB's /*m!100100 ...*/), whose body MySQL runs as code: that body
+            // stays. Plain comments go first (one inside a versioned body is code's
+            // comment: /*!/**/union*/), then the versioned ones, a few times over for
+            // one inside another.
+            for ($i = 0; $i < 3 && strpos($v, '/*') !== false; $i++) {
+                $w = (string) preg_replace(['#/\*(?!m?!).*?\*/#s', '#/\*m?!\d*(.*?)\*/#s'], [' ', ' $1 '], $v);
+                if ($w === $v) {
+                    break;
+                }
+                $v = $w;
+            }
         }
         // Runs of white space as one space -- only when there are any: most
         // values have single spaces, and the expression is the costly part.
