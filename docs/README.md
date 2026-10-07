@@ -103,7 +103,9 @@
   [0037 named values: an address range, a set of paths, written once](proposals/0037-named-values.md) (draft) ·
   [0038 without JavaScript, and without friction: a fallback and invisible signals](proposals/0038-checks-without-friction.md) (draft) ·
   [0039 a page cache that speaks the known dialects: tags, purges, roles, memory](proposals/0039-cache-compatible.md) (draft) ·
-  [0040 in a PHP application server: Qbix and Exponential Velocity](proposals/0040-php-app-servers.md) (draft)
+  [0040 in a PHP application server: Qbix and Exponential Velocity](proposals/0040-php-app-servers.md) (draft) ·
+  [0041 a risk score per request, shown in the live view](proposals/0041-risk-score.md) (draft) ·
+  [0042 a harder task for forms: ALTCHA's v2 work](proposals/0042-pow-v2-for-forms.md) (draft)
   (0007 is unused)
 - **Roadmap for 0012–0016** (the reasons in [0012](proposals/0012-dashboard.md#roadmap-for-00120016)):
   counters and crawler statistics first (they answer "did GPTBot crawl the

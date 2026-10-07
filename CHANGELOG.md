@@ -23,6 +23,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   the shield accepts its answer -- bound to its client, budget and expiry.
   The test runs when `ALTCHA_WIDGET` names an unpacked `altcha` npm package
   and Node has WebCrypto (18+); it is skipped otherwise.
+- **Proposal 0041 a risk score per request** (Draft): a number from 0 to 100
+  in the live view, made from what the shield already knows (a budget's
+  fill, a false crawler, a feed, unsolved checks, earlier bans), with the
+  signals as labels; "watched" rows for near misses that passed (opt-in);
+  shown first, deciding nothing.
+- **Proposal 0042 a harder task for forms** (Draft): ALTCHA's v2 work
+  (PBKDF2, Argon2id) for the check inside the form only -- memory-hard, so
+  a GPU bot is no faster than a browser, at a measured 2-32 ms per check on
+  the server; why ALTCHA's PHP library is not used (PHP 8.1, a Composer
+  dependency), what is taken from it under its MIT licence instead.
 - **Proposal 0040 in a PHP application server** (Draft): the shield in
   Qbix / Exponential Velocity (PHP's own web server with long-lived
   workers) -- the settings loaded once before the workers fork, a hook
