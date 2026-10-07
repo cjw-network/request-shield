@@ -80,7 +80,8 @@ does not turn itself on.
 2026-09-30T10:12:03+00:00 198.51.100.0/24 monitor-reject 404 "blocked path" rule=SITE-OLD "GET https://www.example.org/old-api/v1" "curl/8.5"
 ```
 
-- The line of a watched decision starts with `monitor-`, at the log level of
+- In the line of a watched decision the action starts with `monitor-`
+  (`monitor-reject`, after the time and the address), at the log level of
   the decision it would have been (`set log-level stop` shows what would have
   been refused).
 - `X-RS: monitor reject blocked path; rule=…` (mode `monitor`) and
