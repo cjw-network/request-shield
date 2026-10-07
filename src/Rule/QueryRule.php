@@ -42,8 +42,9 @@ final class QueryRule implements Rule
 
     /**
      * @param array{exact: array<string, string>, globs: array<string, string>, local: list<array{paths: list<string>, exact: array<string, string>, globs: array<string, string>}>} $index from index()
+     * @param ?string $own the shield's own addresses (widget-path and "/"): widget.js?v=…, its task -- answered by the shield, never by the site
      */
-    public function __construct(array $index, private bool $strict = false)
+    public function __construct(array $index, private bool $strict = false, private ?string $own = null)
     {
         ['exact' => $this->exact, 'globs' => $this->globs, 'local' => $this->local] = $index;
     }
@@ -73,6 +74,10 @@ final class QueryRule implements Rule
     public function check(Request $request, float $now): ?Decision
     {
         if ($request->query === '') {
+            return null;
+        }
+        // The shield's own script and task carry its own parameters (widget.js?v=<version>): not the site's to declare.
+        if ($this->own !== null && strncmp($request->path, $this->own, strlen($this->own)) === 0) {
             return null;
         }
         $path = $this->local === [] ? '' : $request->matchPath();

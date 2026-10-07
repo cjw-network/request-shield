@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- **The check inside the form works with `query strict`**: the shield names
+  its script `widget.js?v=<version>`, and `query strict` refused that `v`
+  with 404 unless the site declared it -- the shield's own addresses under
+  `widget-path` are now left alone by the parameter check.
 - **The check page tells screen readers when the check cannot finish**: its
   sentence is a live status (`role="status"`: polite by itself), so the
   reason (no cookies, a loop) is announced when it appears; the ring stays

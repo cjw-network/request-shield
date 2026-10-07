@@ -156,6 +156,13 @@ return [
         same(404, queryDecide($s, '/?page=1&utmsource=x')[1], 'only its names');
         same([Decision::REJECT, 404, 'unknown parameter', 'site.rules:3'], queryDecide($s, '/?x=1'), 'the site\'s strict line');
     },
+    'RSF02-05 query strict leaves the shield\'s own addresses alone: widget.js?v=<version> under widget-path loads' => function (): void {
+        $s = querySettings("query page int\nquery strict\nset widget-path /rs-check\n");
+        same(Decision::ALLOW, queryDecide($s, '/rs-check/widget.js?v=0123456789')[0], 'the check\'s script, as Widget::html() names it');
+        same(404, queryDecide($s, '/rs-check-other?v=1')[1], 'a path that only starts like it: the site\'s rules');
+        same(404, queryDecide($s, '/page?v=1')[1], 'v elsewhere: unknown, as before');
+        same(Decision::ALLOW, queryDecide(querySettings("query strict\nset widget-path /rs-check\n"), '/rs-check/widget.js?v=1')[0], 'also with no parameter declared at all');
+    },
     'RSF02-05 the rules page, trace and show name the known parameters' => function (): void {
         $s = querySettings(QUERY_RULES . "query strict\n");
         $html = RulesPage::render($s);

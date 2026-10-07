@@ -156,7 +156,7 @@ final class Shield
         // Known parameters before the attack patterns: cheaper, and they say
         // which values the patterns need to look at.
         if ($s->queryParams !== [] || $s->queryStrict) {
-            $this->rules[] = new QueryRule($s->queryIndex, $s->queryStrict);
+            $this->rules[] = new QueryRule($s->queryIndex, $s->queryStrict, $s->challenge->widgetPath !== null ? $s->challenge->widgetPath . '/' : null);
         }
         if ($s->contentIndex !== []) {
             $this->rules[] = new ContentRule($s->contentIndex, $s->contentRules, $s->blockExceptions, $s->contentHints);

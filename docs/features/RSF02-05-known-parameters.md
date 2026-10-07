@@ -19,6 +19,9 @@ With that list the shield
 - **refuses what the site does not take**, with `query strict`: an unknown
   parameter, or a value not of its type, is answered "not found" (404) at once,
   before a single attack pattern runs;
+- **The shield's own addresses** under `widget-path` (`widget.js?v=<version>`,
+  the check's task) are not the site's to declare: `query strict` leaves
+  them alone -- the shield answers them itself.
 - **scans only what could hold an attack**: the [attack
   patterns](RSF05-01-rule-files.md#attack-patterns) see the free-text values (`text`),
   the unknown parameters and the values not of their type — name and value, as
