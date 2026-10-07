@@ -76,6 +76,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **The HTTP cache keeps one page per role** (0031 step G.4, part 2;
+  proposal 0039): the application names the visitor's role with
+  `Shield::active()?->cacheContext($role, shared: true)` (a new plugin
+  capability, `ContextHandler`); the cache remembers `MAC(secret, session
+  cookie) -> role` in APCu (`http-cache-session-cookie`,
+  `http-cache-context-ttl`), and the next request with that cookie gets the
+  role's page before the application starts -- only pages called shared or
+  sent with `Vary: X-User-Hash` / `X-User-Context-Hash`, leaving as
+  `private, no-cache`; `forgetContext()` on logout, a purge of `rs-context`
+  when roles change. A forged cookie finds nothing.
 - **The HTTP cache speaks the CMSes' dialects: tags and purges** (0031 step
   G.4, part 1; proposal 0039): an answer's tags (`xkey`, `X-Cache-Tags`,
   `X-LiteSpeed-Tag`, `Surrogate-Key`, `Cache-Tag`, `Edge-Cache-Tag`,

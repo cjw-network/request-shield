@@ -85,6 +85,46 @@ application.
   anything was purged at all, so a page made after the last purge costs one
   read more, not one per tag.
 
+### One page per role: signed-in visitors too
+
+Without more, a session cookie means the site answers. With a page per
+role, editors get the editors' page from the cache, members the members'
+-- the application says who the visitor is, in the same PHP process
+(proposal 0039), and the shield never trusts the browser with it:
+
+```php
+// in the CMS's adapter, while the application runs (a WordPress plugin, an Exponential extension):
+\CjwNetwork\RequestShield\Shield::active()?->cacheContext('editor', shared: true);
+// in its logout hook:
+\CjwNetwork\RequestShield\Shield::active()?->forgetContext();
+```
+
+- **What is kept:** `MAC(secret, the session cookie) -> role` in APCu, for
+  `http-cache-context-ttl` (`10m`) after the application last named it. The
+  next request with that cookie finds the role before the application
+  starts. The key is the session cookie itself: whoever has it *is* that
+  user; an unknown or forged cookie finds nothing, and the application
+  runs. A role cookie the browser could set was rejected for that reason.
+- **Which pages:** only those the application calls the same for everyone
+  with the role -- `cacheContext(..., shared: true)` (it also stands for the
+  page's `Cache-Control`; kept for `http-cache-ttl` when the page says
+  `no-cache`), or `Vary: X-User-Hash` / `X-User-Context-Hash`, as
+  FOSHttpCache applications send it. Any other answer to a signed-in
+  visitor is not kept. A page that holds one user's data -- a nonce, a
+  name, a cart -- must not be called shared.
+- **How it leaves:** `Cache-Control: private, no-cache`, without the Vary
+  on the hash -- no cache behind the shield and no browser keeps one role's
+  page for another.
+- **Which cookies:** `http-cache-session-cookie` names the session cookies
+  (`wordpress_logged_in_* eZSESSID* PHPSESSID`). A request with any other
+  cookie besides those and the harmless ones (a cart) is the visitor's own,
+  as before.
+- **Roles changed:** a purge of the tag `rs-context` forgets every
+  remembered role and every role's page; `forgetContext()` in the logout
+  hook forgets one session.
+- **Needs APCu:** without it a session cookie means the site answers, as
+  before.
+
 ## Use cases
 
 - **A CMS without a page cache of its own** on simple hosting: the news, the
@@ -108,6 +148,8 @@ set http-cache-dir /var/cache/request-shield   # default: <store-dir>/http-cache
 set http-cache-purgers 127.0.0.1 ::1        # who may send PURGE / PURGEKEYS (default: nobody; not behind a local proxy)
 set http-cache-purge-token …                # or anyone with this X-Invalidate-Token (16 characters or more)
 set http-cache-tag-headers X-My-Tags        # a tag header besides the known ones
+set http-cache-session-cookie wordpress_logged_in_*   # a page per role for these sessions (needs APCu)
+set http-cache-context-ttl 10m              # how long a session's role is remembered
 cache-query page sort                       # the parameters a page may have (RSF04-01)
 ```
 
@@ -137,6 +179,7 @@ literally: `--path=/news` takes `/newsletter` too.
 | on, a hit | the shield's decision, one file read, and the time of the last purge (one APCu read, or one small file) -- instead of the application; the tags' times only when something was purged since the page was made |
 | on, a miss | one output buffer, a callback before the headers go out (tags and purges taken out), and, when kept, one file written after the answer |
 | a purge | one small file per tag and one for "anything", with APCu their copies |
+| a signed-in visitor, roles on | one MAC and one APCu read before the cache is asked; `cacheContext()` one APCu write |
 
 ## Limits
 
@@ -160,8 +203,11 @@ literally: `--path=/news` takes `/newsletter` too.
   followed (the tags are still kept with the answer; purges by request
   work).
 - **Not yet:** `BAN` with patterns, a soft purge that serves the stale page
-  while one request renews it, one page per role, answers in APCu -- the
+  while one request renews it, the role from FOSHttpCache's user hash
+  without an adapter, answers in APCu -- the
   further parts of [proposal 0039](../proposals/0039-cache-compatible.md).
 - **Pages that differ by language or device** (`Vary: Accept-Language`,
   `Vary: Cookie`) are not kept: one address, one answer.
-- **Not for logged-in users:** a session cookie means the site answers.
+- **Signed-in visitors only per role,** and only when the application names
+  the role (`cacheContext()`); without it a session cookie means the site
+  answers.

@@ -300,6 +300,72 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF04-03 end to end, a page per role (0039): the application names the role (cacheContext), the next request with that session cookie gets the role\'s page -- not another role\'s, not with a forged cookie, not after logout or a purge of rs-context; only pages called shared' => function (): void {
+        $fpm = fpmBinary();
+        if (!function_exists('proc_open') || $fpm === null) {
+            skip('no PHP-FPM here (TESTS_PHP_FPM)');
+        }
+        $dir = cacheDir();
+        mkdir("$dir/docroot");
+        // An adapter in a few lines: the role from the login cookie (here its first letters), told to the shield.
+        file_put_contents("$dir/docroot/index.php", '<?php
+            file_put_contents(__DIR__ . "/../runs", "x", FILE_APPEND);
+            $shield = \CjwNetwork\RequestShield\Shield::active();
+            $login = $_COOKIE["wordpress_logged_in_abc"] ?? null;
+            if (isset($_GET["logout"])) { $shield?->forgetContext(); echo "bye"; return; }
+            $role = $login === null ? "anonymous" : (strncmp($login, "ed", 2) === 0 ? "editor" : "author");
+            if ($login !== null) { $shield?->cacheContext($role, !isset($_GET["own"])); }
+            header("Cache-Control: public, s-maxage=600");
+            echo "page for $role " . hrtime(true);');
+        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset http-cache on\ncache-query own logout\nset http-cache-hosts www.example.org\n"
+            . "set http-cache-session-cookie wordpress_logged_in_*\nset http-cache-purgers 127.0.0.1 ::1\n");
+        $port = freePort();
+        $proc = startFpm($fpm, $dir, $port);
+        try {
+            $send = static function (string $method, string $uri, array $headers = []) use ($port, $dir): array {
+                $params = ['REQUEST_METHOD' => $method, 'REQUEST_URI' => $uri, 'QUERY_STRING' => (string) parse_url($uri, PHP_URL_QUERY),
+                    'SCRIPT_FILENAME' => "$dir/docroot/index.php", 'SCRIPT_NAME' => '/index.php', 'DOCUMENT_ROOT' => "$dir/docroot", 'SERVER_PROTOCOL' => 'HTTP/1.1',
+                    'SERVER_NAME' => 'www.example.org', 'SERVER_PORT' => '80', 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_HOST' => 'www.example.org',
+                    'REQUEST_SHIELD_CONFIG' => "$dir/site.rules", 'PHP_VALUE' => 'auto_prepend_file=' . rsEntry()];
+                foreach ($headers as $k => $v) {
+                    $params['HTTP_' . strtoupper(str_replace('-', '_', $k))] = $v;
+                }
+                return fcgi($port, $params);
+            };
+            $as = static fn (string $login, string $uri = '/index.php'): array => $send('GET', $uri, ['Cookie' => "wordpress_logged_in_abc=$login; _ga=1"]);
+            $hit = static fn (array $r): bool => strpos($r[1], 'X-RS-Cache: hit') !== false;
+            [, , $anon] = $send('GET', '/index.php');
+            $r = $send('GET', '/index.php');
+            truthy($hit($r) && $r[2] === $anon, 'anonymous: kept as before');
+            if (strpos($as('ed-1')[1], 'X-RS-Cache: miss') === false) {
+                throw new TestFailure('a session the shield does not know yet: the application runs');
+            }
+            $r = $as('ed-1');
+            truthy($hit($r) && strpos($r[2], 'page for editor') === 0, 'the same session again: the editors\' page from the cache -- ' . $r[1]);
+            truthy(stripos($r[1], 'Cache-Control: private, no-cache') !== false && stripos($r[1], 's-maxage') === false, 'a role\'s page leaves private: ' . $r[1]);
+            $as('au-1');
+            $r = $as('au-1');
+            truthy($hit($r) && strpos($r[2], 'page for author') === 0, 'another role: its own page');
+            $r = $send('GET', '/index.php');
+            truthy($hit($r) && $r[2] === $anon, 'anonymous visitors never get a role\'s page');
+            $r = $as('ed-forged');
+            truthy(!$hit($r), 'a cookie the application never named a role for: the application runs');
+            $as('ed-1', '/index.php?own=1');
+            truthy(!$hit($as('ed-1', '/index.php?own=1')), 'a page the application did not call shared: not kept for the role');
+            $runs = strlen((string) file_get_contents("$dir/runs"));
+            $r = $send('GET', '/index.php', ['Cookie' => 'wordpress_logged_in_abc=ed-1; cart=3']);
+            truthy(!$hit($r) && strlen((string) file_get_contents("$dir/runs")) === $runs + 1, 'a session and another cookie (a cart): the page may be the visitor\'s own');
+            $as('ed-1', '/index.php?logout=1');
+            truthy(!$hit($as('ed-1')), 'after logout (forgetContext) the session finds no role');
+            truthy($hit($as('ed-1')), '... until the application names it again');
+            same(200, $send('PURGE', '/', ['key' => 'rs-context'])[0], 'PURGE + key: rs-context (roles changed)');
+            truthy(!$hit($as('au-1')), 'the roles and the role\'s pages purged');
+        } finally {
+            proc_terminate($proc);
+            proc_close($proc);
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'RSF04-03 end to end, Exponential Platform\'s dialect (0039): xkey kept and taken out, PURGE + key from 127.0.0.1 makes its pages run again, X-Location-Id: * everything, an address; a stranger\'s PURGE gets 405; X-LiteSpeed-Purge in a POST\'s answer' => function (): void {
         $fpm = fpmBinary();
         if (!function_exists('proc_open') || $fpm === null) {

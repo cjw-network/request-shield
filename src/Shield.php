@@ -286,6 +286,49 @@ final class Shield
     }
 
     /**
+     * The application says who the visitor is (0031 G.4, proposal 0039):
+     * Shield::active()?->cacheContext($roleKey) from an adapter while the
+     * application runs. The plugins with the ContextHandler capability (the
+     * HTTP cache) remember it for the session the request carries and, with
+     * $shared, may keep this answer for everyone with the role. Nothing
+     * happens without such a plugin, or before protect() ran; one that throws
+     * is noted once a minute -- the application goes on.
+     */
+    public function cacheContext(string $context, bool $shared = false): void
+    {
+        $this->toContext(static function (ContextHandler $p, Request $r) use ($context, $shared): void {
+            $p->cacheContext($r, $context, $shared);
+        });
+    }
+
+    /** The visitor signed out: their session's role is forgotten (the logout hook of an adapter). */
+    public function forgetContext(): void
+    {
+        $this->toContext(static function (ContextHandler $p, Request $r): void {
+            $p->forgetContext($r);
+        });
+    }
+
+    /** @param \Closure(ContextHandler, Request): void $call */
+    private function toContext(\Closure $call): void
+    {
+        $request = $this->request;
+        if ($request === null || ($this->settings->hooks['contextHandler'] ?? []) === []) {
+            return;
+        }
+        foreach ($this->plugins() as $plugin) {
+            if (!$plugin instanceof ContextHandler) {
+                continue;
+            }
+            try {
+                $call($plugin, $request);
+            } catch (\Throwable $e) {
+                self::failed('handler', get_class($plugin) . ' failed to take the visitor\'s role, the application goes on: ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
      * The rule chain (0031 C.1): every step in the order the shield checks,
      * the stages' steps without a rule where their settings are not in use.
      * Derived from the rules when first asked (a trace, the rules page) --

@@ -12,6 +12,8 @@ namespace CjwNetwork\RequestShield\Cache;
 
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Capability;
+use CjwNetwork\RequestShield\Challenge\Secret;
+use CjwNetwork\RequestShield\ContextHandler;
 use CjwNetwork\RequestShield\Handler;
 use CjwNetwork\RequestShield\IpAddress;
 use CjwNetwork\RequestShield\MethodHandler;
@@ -35,9 +37,22 @@ use CjwNetwork\RequestShield\Settings;
  * visitor gets; a purge -- a PURGE or PURGEKEYS request from
  * http-cache-purgers or with the token, an X-LiteSpeed-Purge in any answer --
  * makes every answer with one of its tags out of date at once.
+ *
+ * Roles (0031 G.4, proposal 0039): the application names the visitor's role
+ * through Shield::active()?->cacheContext() (ContextHandler); the cache keeps
+ * MAC(secret, the session cookie) -> role in APCu, and a later request with
+ * that cookie gets the page kept for the role -- when the application said
+ * the page is the same for everyone with it (shared, or Vary: X-User-Hash /
+ * X-User-Context-Hash). Such a page leaves as private and without that Vary.
  */
-final class CachePlugin implements Plugin, Handler, MethodHandler
+final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandler
 {
+    /** The headers FOSHttpCache varies a page by role on (Ibexa, Exponential Platform): one page per role, not per visitor. */
+    private const HASH_VARY = ['x-user-hash', 'x-user-context-hash'];
+
+    /** The tag of every page kept for a role, and of every role remembered: purging it forgets them all (roles changed). */
+    public const CONTEXT = 'rs-context';
+
     /** Headers never kept: they belong to one answer, or the web server makes them, or they are for a cache (tags: TAG_HEADERS). */
     private const DROP = ['set-cookie', 'date', 'age', 'x-rs', 'x-rs-monitor', 'x-rs-cache', 'server-timing', 'content-length', 'transfer-encoding', 'connection', 'keep-alive',
         'x-litespeed-purge', 'surrogate-control', 'x-location-id'];
@@ -48,7 +63,7 @@ final class CachePlugin implements Plugin, Handler, MethodHandler
     /** The tag every answer has for its address (path and query, any host): PURGE <address> purges it. */
     private const ADDRESS = 'rs-url:';
 
-    /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>} */
+    /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int} */
     private array $o;
 
     private string $body = '';
@@ -64,8 +79,20 @@ final class CachePlugin implements Plugin, Handler, MethodHandler
 
     private ?Tags $tags = null;
 
+    private Settings $settings;
+
+    /** The MAC of the visitor's session cookies (a request with only those and harmless ones), else null. */
+    private ?string $session = null;
+
+    /** The visitor's role: remembered for the session, or named by the application during this request. */
+    private ?string $context = null;
+
+    /** The application said this answer is the same for everyone with the role. */
+    private bool $shared = false;
+
     public function __construct(Settings $settings)
     {
+        $this->settings = $settings;
         $this->o = CacheExtension::of($settings);
     }
 
@@ -82,7 +109,8 @@ final class CachePlugin implements Plugin, Handler, MethodHandler
         if (!$this->o['enabled']) {
             return null;
         }
-        if (!$decision->cacheable() || ($request->method !== 'GET' && $request->method !== 'HEAD') || !$this->anonymous($request)
+        $visitor = $this->visitor($request);
+        if (!$decision->cacheable() || ($request->method !== 'GET' && $request->method !== 'HEAD') || $visitor === 'own'
             || !$this->ownHost($request) || !self::plainAddress($request)) {
             $this->watchHeaders();      // not for the cache, but its tags go and its purges count
             return null;
@@ -90,7 +118,16 @@ final class CachePlugin implements Plugin, Handler, MethodHandler
         $key = $request->cacheKey();
         $cache = new FileCache($this->o['dir']);
         $now = microtime(true);
-        $hit = $cache->get($key, $now);
+        if ($visitor === 'session') {
+            // Signed in: the page of the visitor's role, when the session's role is known.
+            $this->session = $this->sessionOf($request);
+            if ($this->session === null) {
+                $this->watchHeaders();
+                return null;
+            }
+            $this->context = $this->remembered($this->session);
+        }
+        $hit = $visitor === 'anonymous' || $this->context !== null ? $cache->get($this->keyFor($key), $now) : null;
         if ($hit !== null && $this->tags()->purgedSince($hit['tags'], $hit['born'])) {
             $hit = null;            // purged since its request began: asked again (and kept anew)
         }
@@ -124,8 +161,10 @@ final class CachePlugin implements Plugin, Handler, MethodHandler
             }
             if ($this->spoiled) {
                 $this->body = '';
-            } elseif (($phase & PHP_OUTPUT_HANDLER_FINAL) !== 0 && $this->ending) {
-                $this->keep($cache, $key, (int) http_response_code(), $this->sent ?? headers_list(), $this->body, $request->path, $now);
+            } elseif (($phase & PHP_OUTPUT_HANDLER_FINAL) !== 0 && $this->ending && ($this->session === null || $this->context !== null)) {
+                // A signed-in visitor's answer only under the role named by now, and only when shared.
+                $this->keep($cache, $this->keyFor($key), (int) http_response_code(), $this->sent ?? headers_list(), $this->body, $request->path, $now,
+                    $this->session !== null);
             }
             return $buffer;
         });
@@ -143,16 +182,32 @@ final class CachePlugin implements Plugin, Handler, MethodHandler
      * fragments are not put together here), a LiteSpeed tag "private:", more
      * than MAX_TAGS tags.
      *
+     * A page for a role ($role: the visitor is signed in) is kept only when
+     * the application said it is the same for everyone with the role -- the
+     * adapter's cacheContext(..., shared: true), which also stands for its
+     * Cache-Control, or Vary on X-User-Hash / X-User-Context-Hash -- and
+     * leaves as "private, no-cache" (no cache behind, no browser keeps one
+     * role's page for another). The Vary on the role's hash is the shield's
+     * to follow: taken out of what is kept, for anonymous pages too.
+     *
      * @param list<string> $headers headers_list()
      * @param ?float $born when its request began: a purge after it makes it out of date
      */
-    public function keep(FileCache $cache, string $key, int $status, array $headers, string $body, string $path = '', ?float $born = null): bool
+    public function keep(FileCache $cache, string $key, int $status, array $headers, string $body, string $path = '', ?float $born = null, bool $role = false): bool
     {
-        if (strlen($body) > $this->o['maxObject'] || self::refusal($status, $headers, $this->o['ttl']) !== null) {
+        $byRole = $role && $this->shared;
+        if (strlen($body) > $this->o['maxObject'] || self::refusal($status, $headers, $this->o['ttl'], $byRole) !== null) {
             return false;
+        }
+        $vary = array_filter(array_map('trim', explode(',', strtolower((string) self::header($headers, 'vary')))));
+        if ($role && !$byRole && array_intersect($vary, self::HASH_VARY) === []) {
+            return false;           // a signed-in visitor's page the application did not call the same for the role
         }
         $cc = strtolower((string) self::header($headers, 'cache-control'));
         $ttl = preg_match('/\bs-maxage=(\d+)/', $cc, $m) === 1 || preg_match('/\bmax-age=(\d+)/', $cc, $m) === 1 ? (int) $m[1] : $this->o['ttl'];
+        if ($byRole && ($ttl <= 0 || preg_match('/\b(no-store|no-cache)\b/', $cc) === 1)) {
+            $ttl = $this->o['ttl'];     // the adapter's word: the page is the role's, kept for http-cache-ttl
+        }
         if (stripos((string) self::header($headers, 'surrogate-control'), 'ESI/') !== false) {
             return false;           // ESI: fragments for a cache to put together -- left to the application
         }
@@ -161,12 +216,23 @@ final class CachePlugin implements Plugin, Handler, MethodHandler
             return false;
         }
         $tags[] = self::ADDRESS . self::address($key);
+        if ($role) {
+            $tags[] = self::CONTEXT;
+        }
         $kept = [];
         foreach ($headers as $h) {
             $name = strtolower(trim((string) strstr($h, ':', true)));
-            if ($name !== '' && !in_array($name, self::DROP, true) && !in_array($name, $this->o['tagHeaders'], true)) {
+            if ($name === 'vary') {
+                $rest = self::varyWithoutHash($h);
+                $kept = $rest !== null ? [...$kept, $rest] : $kept;
+            } elseif ($role && ($name === 'cache-control' || $name === 'pragma' || $name === 'expires')) {
+                continue;
+            } elseif ($name !== '' && !in_array($name, self::DROP, true) && !in_array($name, $this->o['tagHeaders'], true)) {
                 $kept[] = $h;
             }
+        }
+        if ($role) {
+            $kept[] = 'Cache-Control: private, no-cache';
         }
         $now = microtime(true);
         return $cache->put($key, $status, $kept, $body, min($ttl, Tags::MAX_AGE), $now, $path, array_values(array_unique($tags)), $born ?? $now);
@@ -303,13 +369,165 @@ final class CachePlugin implements Plugin, Handler, MethodHandler
             if ($purge !== null) {
                 $this->purgeFromAnswer($purge);
             }
+            $vary = array_filter(array_map('trim', explode(',', strtolower((string) self::header($list, 'vary')))));
+            $byHash = array_intersect($vary, self::HASH_VARY) !== [];
             foreach ($list as $h) {
                 $name = strtolower(trim((string) strstr($h, ':', true)));
                 if ($name === 'x-litespeed-purge' || $name === 'x-location-id' || in_array($name, $this->o['tagHeaders'], true)) {
                     header_remove($name);
                 }
             }
+            if ($byHash) {
+                // The role's hash is the shield's to vary by; no cache behind it, no browser has it.
+                header_remove('Vary');
+                foreach (self::lines($list, 'vary') as $line) {
+                    $rest = self::varyWithoutHash($line);
+                    if ($rest !== null) {
+                        header($rest, false);
+                    }
+                }
+            }
+            if ($this->session !== null && $this->context !== null && ($this->shared || $byHash)) {
+                // A page for a role: never kept by a cache behind the shield, nor by a browser for another role.
+                header('Cache-Control: private, no-cache');
+                header_remove('Expires');
+                header_remove('Pragma');
+                header('X-RS-Cache: miss; role');     // the statistics: this Cache-Control is the shield's, not the site's
+
+            }
         });
+    }
+
+    /**
+     * The visitor names a role (ContextHandler, from the application's
+     * adapter): remembered in APCu for the session cookies the request
+     * carries, keyed by their MAC -- the cookie is the credential, and an
+     * unknown or forged one finds nothing. With $shared, this answer may be
+     * kept for the role. Nothing without APCu, without
+     * http-cache-session-cookie, or without a session cookie on the request.
+     */
+    public function cacheContext(Request $request, string $context, bool $shared): void
+    {
+        if (!$this->o['enabled'] || $context === '' || strlen($context) > 200 || !Capability::apcu()) {
+            return;
+        }
+        $session = $this->session ?? $this->sessionOf($request);
+        if ($session === null) {
+            return;
+        }
+        apcu_store($this->contextKey($session), [microtime(true), $context], $this->o['contextTtl']);
+        $this->session = $session;
+        $this->context = $context;
+        $this->shared = $this->shared || $shared;
+    }
+
+    /** The visitor signed out: the session's role is forgotten, and this answer is not kept for it. */
+    public function forgetContext(Request $request): void
+    {
+        $session = $this->session ?? $this->sessionOf($request);
+        if ($session !== null && Capability::apcu()) {
+            apcu_delete($this->contextKey($session));
+        }
+        $this->context = null;
+        $this->shared = false;
+    }
+
+    /**
+     * The role remembered for a session, unless it ran out or the roles
+     * were purged since (the tag CONTEXT).
+     */
+    private function remembered(string $session): ?string
+    {
+        $got = apcu_fetch($this->contextKey($session));
+        if (!is_array($got) || !is_float($got[0] ?? null) || !is_string($got[1] ?? null)
+            || $this->tags()->purgedSince([self::CONTEXT], $got[0])) {
+            return null;
+        }
+        return $got[1];
+    }
+
+    /**
+     * The MAC of the session cookies a request carries (the names
+     * http-cache-session-cookie matches, sorted, with their values), or
+     * null: none, or no APCu to remember a role in.
+     */
+    private function sessionOf(Request $request): ?string
+    {
+        if ($this->o['sessionCookies'] === [] || !Capability::apcu()) {
+            return null;
+        }
+        $pairs = [];
+        foreach (explode(';', (string) $request->header('cookie')) as $pair) {
+            $name = trim((string) strstr($pair . '=', '=', true));
+            if ($name !== '' && self::matches($name, $this->o['sessionCookies'])) {
+                $pairs[] = trim($pair);
+            }
+        }
+        if ($pairs === []) {
+            return null;
+        }
+        sort($pairs);
+        $s = $this->settings;
+        return hash_hmac('sha256', 'session|' . implode('; ', $pairs), Secret::resolve($s->challenge->secret, $s->storeDir));
+    }
+
+    private function contextKey(string $session): string
+    {
+        return 'rshield:hc:' . substr(md5($this->o['dir']), 0, 12) . ':ctx:' . $session;
+    }
+
+    /** The key of the answer: the address's, and the role's when there is one. */
+    private function keyFor(string $key): string
+    {
+        return $this->context === null ? $key : $key . "\nctx=" . hash('sha256', $this->context);
+    }
+
+    /**
+     * Who the visitor is to the cache: "anonymous" (no cookie but harmless
+     * ones, no Authorization), "session" (besides those only session cookies
+     * -- with http-cache-session-cookie and APCu), else "own": the page may
+     * be someone's own.
+     */
+    private function visitor(Request $request): string
+    {
+        if ($request->header('authorization') !== null) {
+            return 'own';
+        }
+        $who = 'anonymous';
+        foreach (explode(';', (string) $request->header('cookie')) as $pair) {
+            $name = trim((string) strstr($pair . '=', '=', true));
+            if ($name === '' || self::matches($name, $this->o['cookies'])) {
+                continue;
+            }
+            if ($this->o['sessionCookies'] === [] || !self::matches($name, $this->o['sessionCookies'])) {
+                return 'own';       // a cart, another login: the page may be someone's own
+            }
+            $who = 'session';
+        }
+        return $who === 'session' && !Capability::apcu() ? 'own' : $who;
+    }
+
+    /** @param list<string> $globs */
+    private static function matches(string $name, array $globs): bool
+    {
+        foreach ($globs as $glob) {
+            if (fnmatch($glob, $name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** A Vary line without the role's hash headers; null when nothing is left. */
+    private static function varyWithoutHash(string $line): ?string
+    {
+        $rest = [];
+        foreach (explode(',', substr($line, (int) strpos($line, ':') + 1)) as $v) {
+            if (trim($v) !== '' && !in_array(strtolower(trim($v)), self::HASH_VARY, true)) {
+                $rest[] = trim($v);
+            }
+        }
+        return $rest === [] ? null : 'Vary: ' . implode(', ', $rest);
     }
 
     /**
@@ -358,11 +576,15 @@ final class CachePlugin implements Plugin, Handler, MethodHandler
      * "private" (private, no-store, no-cache, Pragma: no-cache), "expired" (an
      * Expires gone by), "vary" (on more than the encoding), "ttl" (max-age=0,
      * or no ttl at all). The statistics ask it too, for a miss (0046): why the
-     * page did not go into the cache.
+     * page did not go into the cache. A Vary on the role's hash (X-User-Hash,
+     * X-User-Context-Hash) is the shield's to follow. $byRole: the application
+     * called the page the same for the visitor's role (cacheContext(...,
+     * shared: true)) -- its private, no-cache, Expires and max-age=0 are for
+     * caches behind, not this one.
      *
      * @param list<string> $headers headers_list()
      */
-    public static function refusal(int $status, array $headers, int $ttl): ?string
+    public static function refusal(int $status, array $headers, int $ttl, bool $byRole = false): ?string
     {
         if (!in_array($status, [200, 301, 308], true)) {
             return 'status';
@@ -374,41 +596,19 @@ final class CachePlugin implements Plugin, Handler, MethodHandler
             return 'encoded';
         }
         $cc = strtolower((string) self::header($headers, 'cache-control'));
-        if (preg_match('/\b(private|no-store|no-cache)\b/', $cc) === 1 || preg_match('/\bno-cache\b/i', (string) self::header($headers, 'pragma')) === 1) {
+        if (!$byRole && (preg_match('/\b(private|no-store|no-cache)\b/', $cc) === 1 || preg_match('/\bno-cache\b/i', (string) self::header($headers, 'pragma')) === 1)) {
             return 'private';
         }
         $expires = self::header($headers, 'expires');
-        if ($expires !== null && strpos($cc, 'max-age') === false && (int) strtotime($expires) <= time()) {
+        if (!$byRole && $expires !== null && strpos($cc, 'max-age') === false && (int) strtotime($expires) <= time()) {
             return 'expired';           // an Expires gone by (or one that is no date): not for a cache
         }
         $vary = array_filter(array_map('trim', explode(',', strtolower((string) self::header($headers, 'vary')))));
-        if (array_diff($vary, ['accept-encoding']) !== []) {
+        if (array_diff($vary, ['accept-encoding'], self::HASH_VARY) !== []) {
             return 'vary';              // an answer that differs by language or cookie: not one page
         }
         $own = preg_match('/\bs-maxage=(\d+)/', $cc, $m) === 1 || preg_match('/\bmax-age=(\d+)/', $cc, $m) === 1 ? (int) $m[1] : $ttl;
-        return $own <= 0 ? 'ttl' : null;
-    }
-
-    /** No Authorization, and no cookie but those named harmless (analytics, the pass). */
-    private function anonymous(Request $request): bool
-    {
-        if ($request->header('authorization') !== null) {
-            return false;
-        }
-        foreach (explode(';', (string) $request->header('cookie')) as $pair) {
-            $name = trim((string) strstr($pair . '=', '=', true));
-            if ($name === '') {
-                continue;
-            }
-            $harmless = false;
-            foreach ($this->o['cookies'] as $glob) {
-                $harmless = $harmless || fnmatch($glob, $name);
-            }
-            if (!$harmless) {
-                return false;       // a session, a cart, a login: the page may be someone's own
-            }
-        }
-        return true;
+        return $own <= 0 && !$byRole ? 'ttl' : null;
     }
 
     /**
@@ -433,6 +633,17 @@ final class CachePlugin implements Plugin, Handler, MethodHandler
     {
         $names = $request->queryNames();
         return count($names) === count(array_unique($names)) && preg_match('/%(2f|3f|23)/i', $request->path) !== 1;
+    }
+
+    /**
+     * Every line of a header, whole ("Vary: Accept-Encoding").
+     *
+     * @param list<string> $headers
+     * @return list<string>
+     */
+    private static function lines(array $headers, string $name): array
+    {
+        return array_values(array_filter($headers, static fn (string $h): bool => strncasecmp($h, $name . ':', strlen($name) + 1) === 0));
     }
 
     /**
