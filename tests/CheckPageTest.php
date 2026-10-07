@@ -47,6 +47,8 @@ return [
         truthy(strpos($page, '@media(prefers-color-scheme:dark){:root{') !== false, 'dark colours');
         truthy(strpos($page, '.run .o{animation:') !== false && strpos($page, "state('run')") !== false, 'the dot circles only once the script runs (not without JavaScript)');
         truthy(strpos($page, "state('ok')") !== false && strpos($page, 'setTimeout(function () {') !== false, 'done: the smile, then on at once');
+        truthy(strpos($page, '<p id="m" role="status">') !== false, 'the sentence a screen reader announces when it changes (failed, no cookies)');
+        truthy(strpos($page, '<svg id="r" viewBox="0 0 120 120" width="120" height="120" aria-hidden="true"') !== false, 'the ring is decoration: hidden from screen readers');
         same(false, strpos($page, 'id="p"'), 'the old bar is gone');
         truthy(strlen($page) < 10000, 'still small: ' . strlen($page) . ' bytes');
         truthy(strpos(ChallengePage::render(PAGE_TASK, 'rss', false, [], ['action' => '/x', 'fields' => []]), '<form id="resend"') !== false, 'a form to send again: as before');

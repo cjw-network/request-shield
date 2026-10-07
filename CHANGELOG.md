@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Fixed
+- **The check page tells screen readers when the check cannot finish**: its
+  sentence is a live status (`role="status"`: polite by itself), so the
+  reason (no cookies, a loop) is announced when it appears; the ring stays
+  decoration (`aria-hidden`).
 - **Error pages after their review** (0031 step G.1): `{lang}` pages are
   found in a folder whose name holds `[ ] * ?`, and a page for a new language
   is noticed (the folder is watched); a JSON refusal says `nosniff`. The text

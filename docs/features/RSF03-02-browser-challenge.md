@@ -64,7 +64,10 @@ next one arrives, so the smile is seen while that loads — nobody waits for an
 animation). If the check cannot finish (no cookies, a loop), a calm "!" in
 amber, with the reason below. Dark mode follows the visitor's system;
 `prefers-reduced-motion` stops the circling and the fading — the ring still
-fills. Without JavaScript nothing moves.
+fills. Without JavaScript nothing moves. For screen readers the ring is
+decoration (`aria-hidden`); the sentence below it is a live status
+(`role="status"`, which is `aria-live="polite"` by itself): it is read when the page opens,
+and again when it changes — the reason when the check cannot finish.
 
 ```text
 set challenge-logo logo.svg       # the site's own logo in the middle (default: a plain shield)

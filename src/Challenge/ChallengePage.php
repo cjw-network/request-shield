@@ -58,7 +58,7 @@ final class ChallengePage
             . '<g class="l">' . ($logo ?? ChallengeLogo::DEFAULT) . '</g>'
             . '<g class="s"><circle cx="60" cy="60" r="27"/><circle class="e" cx="50" cy="54" r="3.2"/><circle class="e" cx="70" cy="54" r="3.2"/><path d="M47 66q13 12 26 0"/></g>'
             . '<g class="x"><path d="M60 43v20"/><circle cx="60" cy="75" r="3.4"/></g></svg>'
-            . '<h1>' . $e($t['title']) . '</h1><p id="m">' . $e($t['text']) . '</p>'
+            . '<h1>' . $e($t['title']) . '</h1><p id="m" role="status">' . $e($t['text']) . '</p>'
             . '<noscript><p><strong>' . $e($t['noscript']) . '</strong></p></noscript>'
             . self::resendForm($resend, $t, $e)
             . ($home !== null ? '<p class="home"><a href="' . $e($home) . '">' . $e($t['home']) . '</a></p>' : '')
