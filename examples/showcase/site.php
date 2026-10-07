@@ -133,11 +133,12 @@ if ($path === '/__log') {
         $h = fopen($file, 'rb');
         if ($h !== false) {
             fseek($h, max(0, $size - 16384));
-            $lines = array_slice(array_values(array_filter(explode("\n", (string) stream_get_contents($h)), 'strlen')), -14);
+            $all = array_values(array_filter(explode("\n", (string) stream_get_contents($h)), 'strlen'));
             fclose($h);
-        }
-        if ($size > 16384 && $lines !== []) {
-            array_shift($lines);    // the first may be cut in the middle
+            if ($size > 16384) {
+                array_shift($all);      // read from the middle of the file: the first line may be cut
+            }
+            $lines = array_slice($all, -14);
         }
     }
     showcaseJson(200, ['lines' => $lines]);
