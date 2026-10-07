@@ -108,6 +108,7 @@ final class Log
             . ($monitor ? 'monitor-' : '') . $d->action . ' ' . $d->status . ' "' . self::clean($d->reason, 60) . '"'
             . ($rule !== null ? ' rule=' . self::clean($rule, 120) : '')
             . ($d->claimed !== null ? ' claimed=' . self::clean($d->claimed, 60) : '')
+            . ($d->retryAfter > 0 ? ' wait=' . $d->retryAfter : '')                     // seconds the client is told to wait (Retry-After)
             . ($reference !== null ? ' ref=' . self::clean($reference, 20) : '')        // the refusal page's reference (0030)
             . ' "' . self::clean($request->method, 10) . ' ' . self::clean($request->scheme . '://' . $request->host . $uri, 300) . '"'
             . ' "' . self::clean((string) $request->header('user-agent'), 150) . "\"\n";

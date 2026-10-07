@@ -54,11 +54,11 @@ final class LogStats
     /**
      * One line of the log, or null for anything else.
      *
-     * @return array{time: int, client: string, action: string, status: int, reason: string, rule: ?string, claimed: ?string, method: string, url: string, agent: string, ref: ?string}|null
+     * @return array{time: int, client: string, action: string, status: int, reason: string, rule: ?string, claimed: ?string, method: string, url: string, agent: string, ref: ?string, wait: ?int}|null
      */
     public static function parse(string $line): ?array
     {
-        if (!preg_match('/^(\S+) (\S+) (\S+) (\d+) "([^"]*)"(?: rule=(.*?))?(?: claimed=(\S+))?(?: ref=([0-9A-Z]{4}-[0-9A-Z]{4}))? "(\S+) ([^"]*)" "([^"]*)"$/', $line, $m)) {
+        if (!preg_match('/^(\S+) (\S+) (\S+) (\d+) "([^"]*)"(?: rule=(.*?))?(?: claimed=(\S+))?(?: wait=(\d+))?(?: ref=([0-9A-Z]{4}-[0-9A-Z]{4}))? "(\S+) ([^"]*)" "([^"]*)"$/', $line, $m)) {
             return null;
         }
         $time = strtotime($m[1]);
@@ -66,7 +66,8 @@ final class LogStats
             return null;
         }
         return ['time' => $time, 'client' => $m[2], 'action' => $m[3], 'status' => (int) $m[4], 'reason' => $m[5],
-            'rule' => $m[6] !== '' ? $m[6] : null, 'claimed' => $m[7] !== '' ? $m[7] : null, 'method' => $m[9], 'url' => $m[10], 'agent' => $m[11], 'ref' => $m[8] !== '' ? $m[8] : null];
+            'rule' => $m[6] !== '' ? $m[6] : null, 'claimed' => $m[7] !== '' ? $m[7] : null, 'method' => $m[10], 'url' => $m[11], 'agent' => $m[12],
+            'ref' => $m[9] !== '' ? $m[9] : null, 'wait' => $m[8] !== '' ? (int) $m[8] : null];
     }
 
     private static function tail(string $file, int $maxBytes): string

@@ -239,7 +239,7 @@ function demoGroup(array $g, string $prefix): void
                 $written = \CjwNetwork\RequestShield\Rules\Examples::one(\CjwNetwork\RequestShield\Settings::from($config), $x);
                 same([$written['got'], $written['gotRule']], [$got, $rule], "row {$r['n']}: {$r['by']} is only watched in the demo -- the real answer is the rules' as written");
                 $masked = \CjwNetwork\RequestShield\Log::mask($from);
-                truthy(preg_match('#' . preg_quote($masked, '#') . ' monitor-[a-z]+ \d+ &quot;[^&]*&quot; rule=' . preg_quote((string) $r['by'], '#') . ' &quot;' . preg_quote((string) $r['method'], '#') . ' [^ ]*'
+                truthy(preg_match('#' . preg_quote($masked, '#') . ' monitor-[a-z]+ \d+ &quot;[^&]*&quot; rule=' . preg_quote((string) $r['by'], '#') . '(?: wait=\d+)? &quot;' . preg_quote((string) $r['method'], '#') . ' [^ ]*'
                     . preg_quote(strtok((string) $r['url'], '?') ?: '/', '#') . '#', $get('GET', '/')['body']) === 1,
                     "row {$r['n']}: the log on the page says what {$r['by']} would have done, for this request ($masked, {$r['url']})");
             } else {

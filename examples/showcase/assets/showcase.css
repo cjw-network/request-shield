@@ -201,7 +201,7 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .log-dock-wide:hover, .log-dock-wide:focus-visible { color: #fff; background: rgba(255, 255, 255, .08); }
 .log-dock.wide { width: calc(100vw - 32px); }
 .log-dock.wide .log-rows { max-height: min(55vh, 520px); font-size: .8rem; }
-@media (min-width: 576px) { .log-dock.wide .log-row { grid-template-columns: 4.6rem 8.6rem 8rem 22rem 1fr; } }
+@media (min-width: 576px) { .log-dock.wide .log-row { grid-template-columns: 4.6rem 8.6rem 10rem 22rem 1fr; } }
 .log-act { white-space: nowrap; }
 .log-dock-head { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; padding: 10px 14px; background: #172036; color: #fff; border: 0; font-weight: 700; font-size: .9rem; text-align: left; }
 .log-dock-head .live-dot { margin-left: 0; background: var(--rs-coral); }
@@ -210,7 +210,7 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .log-dock.closed .log-toggle { transform: rotate(180deg); }
 .log-dock-lead { margin: 8px 14px 6px; font-size: .75rem; color: #b8c2d6; }
 .log-rows { list-style: none; margin: 0; padding: 0 8px 10px; max-height: 210px; overflow-y: auto; font-size: .76rem; }
-.log-row { display: grid; grid-template-columns: 4.3rem 7.6rem 7.6rem 11rem 1fr; gap: 8px; align-items: baseline; padding: 3px 6px; border-radius: 8px; border-left: 3px solid transparent; }
+.log-row { display: grid; grid-template-columns: 4.3rem 7.6rem 9.4rem 11rem 1fr; gap: 8px; align-items: baseline; padding: 3px 6px; border-radius: 8px; border-left: 3px solid transparent; }
 .log-row code { color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .log-time { color: #94a3b8; font-variant-numeric: tabular-nums; }
 .log-act { font-weight: 700; }

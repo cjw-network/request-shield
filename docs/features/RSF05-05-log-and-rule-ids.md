@@ -40,14 +40,20 @@ set log-max-size 10M         # then one rotation to shield.log.1
 ```
 
 One line per request: time, the client address (anonymised by default),
-decision, status, reason, rule, the request with its **full URL**, the
-User-Agent:
+decision, status, reason, rule, for a pause how many seconds the client is
+told to wait (`wait=`, its `Retry-After`), the request with its **full URL**,
+the User-Agent:
 
 ```text
 2026-09-29T08:41:03+02:00 198.51.100.0/24 reject 404 "blocked path" rule=SCAN-HIDDEN ref=7KQ2-M4XD "GET https://www.example.org/.env" "Mozilla/5.0 ..."
 2026-09-29T08:41:07+02:00 198.51.100.0/24 challenge 429 "requests" rule=SITE-PACE "GET https://www.example.org/news?page=4711" "python-requests/2.32"
 2026-09-29T08:41:09+02:00 2001:db8:1::/48 reject 403 "restricted" rule=SITE-10 "GET https://www.example.org//admin/" "curl/8.5"
+2026-09-29T08:41:12+02:00 203.0.113.0/24 throttle 429 "banned" rule=SITE-SCAN wait=20 "GET https://www.example.org/.env" "curl/8.5"
 ```
+
+`wait=` shows how bans grow (`ban-growth`: 5, 10, 20 … seconds) and whether a
+pause is long enough; the optional fields stand in this order: `rule=`,
+`claimed=`, `wait=`, `ref=`.
 
 The URL is the one the visitor used: scheme and host as a [trusted
 proxy](RSF01-01-trusted-proxies.md) reports them, the path and query as sent (not

@@ -43,6 +43,14 @@ return [
             Log::write($viaProxy, $p, Decision::challenge('always'), 'site.rules:9');
             truthy(strpos((string) file_get_contents("$dir/proxy.log"), ' 2001:db8:1::/48 challenge 429 "always" rule=site.rules:9 "GET https://www.example.org/login?next=%2Fadmin" ') !== false,
                 (string) file_get_contents("$dir/proxy.log"));
+            // A pause: how long the client is told to wait, as its Retry-After -- and read back.
+            Log::write($viaProxy, $p, Decision::throttle('banned', 20), 'site.rules:12');
+            $pause = (string) file("$dir/proxy.log", FILE_IGNORE_NEW_LINES)[1];
+            truthy(strpos($pause, ' throttle 429 "banned" rule=site.rules:12 wait=20 "GET ') !== false, $pause);
+            $row = \CjwNetwork\RequestShield\LogStats::parse($pause);
+            same([20, 'site.rules:12', 'GET'], [$row['wait'] ?? null, $row['rule'] ?? null, $row['method'] ?? null], 'read back: the wait, and the rest where it was');
+            $plain = \CjwNetwork\RequestShield\LogStats::parse((string) file("$dir/proxy.log", FILE_IGNORE_NEW_LINES)[0]);
+            truthy(is_array($plain) && array_key_exists('wait', $plain) && $plain['wait'] === null, 'no pause: no wait');
             same('0640', substr(sprintf('%o', fileperms("$dir/shield.log")), -4));
             $full = Settings::from(['log' => ['file' => "$dir/full.log", 'ip' => 'full']]);
             Log::write($full, $r, Decision::reject(404, 'x'), null);

@@ -316,7 +316,7 @@
     setWide(wideAtStart);
     wideBtn.addEventListener('click', function () { setWide(!dock.classList.contains('wide')); if (!open) { setOpen(true); } });
     // 2026-10-07T21:09:33+00:00 198.51.100.0/24 reject 404 "blocked path" rule=SCAN-HIDDEN ref=X "GET http://…" "UA"
-    var shape = /^(\S+) (\S+) (\S+) (\d+) "([^"]*)"(?: rule=(\S+))?(?: claimed=(\S+))?(?: ref=(\S+))? "(\S+) ([^"]*)" "([^"]*)"$/;
+    var shape = /^(\S+) (\S+) (\S+) (\d+) "([^"]*)"(?: rule=(\S+))?(?: claimed=(\S+))?(?: wait=(\d+))?(?: ref=(\S+))? "(\S+) ([^"]*)" "([^"]*)"$/;
     var kindOfAction = function (a) {
       a = a.replace(/^monitor-/, '');
       return a === 'reject' ? 'stop' : a === 'throttle' ? 'slow' : a === 'challenge' ? 'check' : 'pass';
@@ -328,12 +328,12 @@
       li.classList.add('log-' + kindOfAction(m[3]));
       li.appendChild(el('span', 'log-time', m[1].substr(11, 8)));
       li.appendChild(el('span', 'log-ip', m[2]));
-      li.appendChild(el('span', 'log-act', m[3] + ' ' + m[4]));
+      li.appendChild(el('span', 'log-act', m[3] + ' ' + m[4] + (m[8] ? ' · ' + m[8] + ' s' : '')));
       li.appendChild(el('span', 'log-rule', (m[6] || '-') + ' · ' + m[5]));
-      var path = m[10].replace(/^[a-z]+:\/\/[^\/]+/i, '');
+      var path = m[11].replace(/^[a-z]+:\/\/[^\/]+/i, '');
       var shown = path;
       try { shown = decodeURIComponent(path); } catch (e) {}     // a broken %-escape is shown as it came
-      li.appendChild(el('code', 'log-req', m[9] + ' ' + (shown.length > 70 ? shown.substr(0, 70) + '…' : shown)));
+      li.appendChild(el('code', 'log-req', m[10] + ' ' + (shown.length > 70 ? shown.substr(0, 70) + '…' : shown)));
       li.title = line;
       return li;
     };

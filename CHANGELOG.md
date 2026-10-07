@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **The log says how long a pause lasts**: a throttled request's line carries
+  `wait=<seconds>` (the `Retry-After` the client got), so growing bans (5,
+  10, 20 … s) and pause lengths can be read from the log; the live view and
+  the statistics read it back (`LogStats::parse()`: `wait`).
 - **`challenge POST **`: every form and every endpoint checked** -- `challenge`
   takes methods first (`challenge [<METHODS>] <paths>`, as `allow`; also in a
   `match` block): only those methods are checked there, so `challenge POST
