@@ -54,6 +54,9 @@ network or the web server itself — that remains the job of your hoster or a CD
 **See it in 30 seconds:** `php -S 127.0.0.1:8080 examples/demo/router.php`, then
 open http://127.0.0.1:8080/ — a mini site with one example per feature,
 including the invisible browser check ([examples/demo](examples/demo/README.md)).
+Or the short tour: `php -S 127.0.0.1:8090 examples/showcase/router.php` — one
+page, German and English, the rules beside what they mean, and every example a
+real request you send yourself ([examples/showcase](examples/showcase/README.md)).
 
 ## How it works
 

@@ -22,6 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **A showcase** (`examples/showcase`): one page in German and English that
+  shows what the shield does and lets you try it -- the rule file of a small
+  website (about fifteen lines, real values) beside what each rule means, and
+  every example of it a card whose button sends a real request; a burst of
+  125 page views shows the invisible check and the pause. Bootstrap is kept
+  beside it, nothing is loaded from elsewhere; `tests/ShowcaseTest.php` holds
+  the page to its rules.
 - **ALTCHA's widget v3 tested against the shield** (`tests/AltchaWidgetTest.php`):
   the widget's own code (3.3.0), run in Node, solves the shield's task and
   the shield accepts its answer -- bound to its client, budget and expiry.

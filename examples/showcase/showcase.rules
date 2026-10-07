@@ -1,0 +1,66 @@
+# The showcase's rules: what a small website would write -- real values, not
+# demo values. Every try card on the page is one "expect" line, right below
+# the rule it is about, and `php bin/request-shield test
+# examples/showcase/showcase.rules` decides them all: the page cannot promise
+# what the rules do not do.
+
+ids SHOW                                              # every rule's name starts with SHOW-: decisions and the log name it
+version 2026-10-07.1                                  # this rule set's own version
+
+# The page sends each try as a visitor of its own (X-Forwarded-For from this
+# machine), so a try never blocks you. A real site trusts its proxy here.
+trust       127.0.0.1 ::1                             # the proxy in front: from it, X-Forwarded-For names the visitor
+
+# Built in, without a line: scanners' paths, path traversal, broken requests.
+expect GET  /                       from 198.51.100.10 answered              # A visitor reads the front page
+expect GET  /.env                   from 198.51.100.11 404 by SCAN-HIDDEN    # A scanner looks for your passwords
+expect GET  /.git/config            from 198.51.100.12 404 by SCAN-HIDDEN    # ... for your source code
+expect GET  /phpmyadmin/            from 198.51.100.13 404 by SCAN-DBTOOL    # ... for a database tool
+expect GET  /backup.sql             from 198.51.100.14 404 by SCAN-BACKUP    # ... for a forgotten backup
+
+include @tracking                                     # utm_*, fbclid, gclid: newsletter and ad links keep working
+include @attacks                                      # SQL injection, XSS, shell commands -- in the free text only
+expect GET  /?q=1%27%20UNION%20SELECT%20password%20FROM%20users-- from 198.51.100.15 403 by ATK-SQL-UNION   # SQL injection in the search
+expect GET  /?utm_source=newsletter from 198.51.100.19 answered              # A newsletter link: welcome
+
+[SHOW-PARAMS]  query page int   q text   lang word    # the parameters the site knows, and their types
+expect GET  /?page=2                from 198.51.100.16 answered              # A page number that is a number
+[SHOW-STRICT]  query strict                           # any other parameter, or a wrong type: 404
+expect GET  /?page=2%27             from 198.51.100.17 404 by SHOW-STRICT    # A page "number" that is not one
+expect GET  /?debug=1               from 198.51.100.18 404 by SHOW-STRICT    # A parameter the site does not know
+
+[SHOW-PACE]    limit requests 120/min challenge-at 60  # per visitor: 60 a minute pass silently, then the invisible check, past 120 a pause
+expect GET  /                       from 198.51.100.25 times 61 check by SHOW-PACE   # 61 pages in a minute: the invisible check
+expect GET  /                       from 198.51.100.26 times 121 429 by SHOW-PACE    # 121 in a minute: a pause
+
+[SHOW-FORMS]   allow POST /contact                    # forms may only be sent to the contact page
+expect POST /search                 from 198.51.100.22 405 by SHOW-FORMS     # A POST where no form is
+[SHOW-ORIGIN]  post-origin same                       # ... and only from the site's own pages
+expect POST https://www.example.org/contact header Origin:https://www.example.org from 198.51.100.20 answered             # The contact form, from the site
+expect POST https://www.example.org/contact header Origin:https://spam.example    from 198.51.100.21 403 by SHOW-ORIGIN   # The contact form, sent from elsewhere
+
+match /admin/** {
+  [SHOW-ADMIN] restrict to 192.0.2.0/24               # the admin area: only the office network
+}
+expect GET  /admin/                 from 192.0.2.10    answered              # The admin area, from the office
+expect GET  /admin/                 from 203.0.113.9   403 by SHOW-ADMIN     # The admin area, from anywhere else
+
+[SHOW-LOGIN]   challenge /login                       # the login: every visitor is checked (invisibly) first
+expect GET  /login                  from 198.51.100.23 check by SHOW-LOGIN   # The login: checked first
+expect GET  /login                  from 198.51.100.24 with pass answered    # ... with a pass: straight in
+
+[SHOW-DENY]    deny 203.0.113.66                      # an address kept out for good
+expect GET  /                       from 203.0.113.66  403 by SHOW-DENY      # An address on the deny list
+
+crawlers ai-training block                            # verified AI training crawlers: no
+
+# The showcase's own settings (a real site keeps the defaults).
+set         debug-header on                           # X-RS: <decision> on every answer, so the page can show it
+set         crawler-verify ranges                     # no DNS lookups from a demo
+set         dashboard-path /rs
+[SHOW-TRY]     query n int at /__try                  # the page's own address for the one try a browser cannot send
+expect GET  /__try?n=1              from 198.51.100.28 answered              # (the page's own: not a card)
+[SHOW-RS]      restrict /rs/** to 127.0.0.1 ::1        # the shield's own pages: only this machine
+expect GET  /rs/dashboard           from 198.51.100.27 403 by SHOW-RS        # The shield's own pages, from outside
+set         store-dir ${REQUEST_SHIELD_SHOWCASE_VAR:-/tmp/request-shield-showcase}
+set         recheck 0
