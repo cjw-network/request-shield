@@ -80,7 +80,7 @@ h1, h2, h3, h4 { letter-spacing: -.01em; }
   border: 1px solid var(--rs-line); color: var(--rs-ink); font-weight: 700; font-size: .9rem; text-decoration: none; }
 .promise-badges a:hover { border-color: var(--rs-mint-dark); color: var(--rs-mint-dark); }
 .promise-badges .bi { color: var(--rs-mint-dark); font-size: 1.05rem; }
-.promise { padding: 64px 0; background: linear-gradient(135deg, #064e3b, #065f46 55%, #0f766e); color: #fff; }
+.promise { padding: 64px 0; background: linear-gradient(135deg, #064e3b, #065f46 55%, #115e59); color: #fff; }
 .promise-title { text-align: center; font-weight: 800; margin-bottom: 36px; }
 .promise-card { background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .22); border-radius: 24px; padding: 26px; }
 .promise-card h3 { font-weight: 800; }
