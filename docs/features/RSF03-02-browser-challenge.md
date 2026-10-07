@@ -126,6 +126,37 @@ in `/etc/resolv.conf`) also keep DNS from making anyone wait.
 - Burst traffic from one address that is not malicious: a person solves once
   and does not notice.
 
+## Every form and every endpoint: `challenge POST`
+
+`challenge <paths>` checks every visitor there, whatever the method. With
+methods first, only those are checked:
+
+```text
+challenge POST **                          # every form sent, every endpoint posted to -- not the pages
+challenge POST PUT PATCH DELETE /api/**    # the API's writing methods
+match /shop/** {
+  challenge POST                           # in a block: the methods, the paths are the block's
+}
+```
+
+- **A form without a pass** gets the check page, which sends the form again by
+  itself once the check is done -- with every field. Files and forms over
+  256 KB are not carried: the visitor is asked to go back and send it again,
+  with a pass by then ([details](RSF03-04-app-challenges.md)); for upload
+  forms, the check inside the form is better
+  ([RSF03-03](RSF03-03-browser-check-in-the-form.md)). Whoever passed a check
+  in the last hour (`pass-ttl`) notices nothing.
+- **An API** (`api-path`) gets the task as JSON in a header instead of the
+  page; a client that cannot solve it gets 429.
+- **The pages that show the forms** (a GET) stay as they are: cached, never
+  checked by this rule.
+- The same paths written again decide anew: `challenge /contact` after
+  `challenge POST /contact` checks every method there.
+- **Cost:** one comparison of the method where a path matches; a GET pays
+  nothing more than before.
+- `post-origin same` and `challenge POST **` go together: a form from another
+  website is refused (403), one from the site needs a pass.
+
 ## Configuration
 
 ```php
@@ -137,7 +168,8 @@ in `/etc/resolv.conf`) also keep DNS from making anyone wait.
     'bindUserAgent' => true,
     'searchEngines' => true,            // false: none; or pattern => host suffixes
     'exemptPaths' => ['#^/api/#', '#\.(xml|rss|json)$#'],
-    'alwaysPaths' => ['#^/(login|admin)(/|$)#'],   // checked for every visitor
+    'alwaysPaths' => ['#^/(login|admin)(/|$)#', '#^/#'],   // checked for every visitor
+    'alwaysMethods' => ['#^/#' => ['POST']],      // ... here only a POST (challenge POST **)
     'texts' => ['lang' => 'de', 'title' => 'Einen Moment bitte', 'text' => '…'],
 ],
 ```

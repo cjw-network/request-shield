@@ -335,7 +335,9 @@ final class RulesPage
         $rows = [];
         foreach ($s->challenge->alwaysPaths as $p) {
             $age = $s->challenge->alwaysMaxAge[$p] ?? null;
-            $rows[] = $row($w('always checked: %s', $pattern($p)) . ($age !== null ? $w(' — a pass from the last %s', Describe::span($age, $lang)) : ''),
+            $methods = $s->challenge->alwaysMethods[$p] ?? [];
+            $rows[] = $row($w('always checked: %s', $pattern($p)) . ($methods !== [] ? $w(' — only %s', implode(', ', $methods)) : '')
+                . ($age !== null ? $w(' — a pass from the last %s', Describe::span($age, $lang)) : ''),
                 $o('challenge.alwaysPaths', $p), $o('challenge.alwaysPaths', $p) ?? 'challenge.alwaysPaths');
         }
         foreach ($s->challenge->exemptPaths as $p) {
@@ -417,7 +419,7 @@ final class RulesPage
         '"%s": at most %s per %s, counted by the site itself (searches, failed sign-ins, cache misses)' => '„%s“: höchstens %s pro %s, gezählt von der Website selbst (Suchen, fehlgeschlagene Anmeldungen, Cache-Fehlgriffe)',
         '"%s": %s requests per %s' => '„%s“: %s Anfragen pro %s', ', the browser check from %s' => ', der Browser-Check ab %s', 'Pace per visitor' => 'Tempo pro Besucher',
         'Counted per address (IPv6: per /%s network)' => 'Gezählt pro Adresse (IPv6: pro /%s-Netz)', '; never counted: %s.' => '; nie gezählt: %s.',
-        'always checked: %s' => 'immer geprüft: %s', ' — a pass from the last %s' => ' — ein Pass aus den letzten %s', 'never checked: %s' => 'nie geprüft: %s', 'Browser check' => 'Browser-Check',
+        'always checked: %s' => 'immer geprüft: %s', ' — only %s' => ' — nur %s', ' — a pass from the last %s' => ' — ein Pass aus den letzten %s', 'never checked: %s' => 'nie geprüft: %s', 'Browser check' => 'Browser-Check',
         'An invisible check that a real browser passes in a moment; a passed check is valid for %s' => 'Ein unsichtbarer Check, den ein echter Browser in einem Moment besteht; ein bestandener Check gilt %s',
         '. Known crawlers (search engines, AI crawlers) are recognised by their address, see below.' => '. Bekannte Crawler (Suchmaschinen, KI-Crawler) werden an ihrer Adresse erkannt, siehe unten.',
         'search engine' => 'Suchmaschine', 'AI search' => 'KI-Suche', 'fetches what a person asks for' => 'holt, was eine Person fragt', 'collects for AI training' => 'sammelt für KI-Training',

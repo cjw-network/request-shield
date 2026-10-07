@@ -66,6 +66,11 @@ final class ChallengeSettings
         public array $alwaysMaxAge = [],
         /** @readonly the site's logo for the check page, checked (Challenge\ChallengeLogo), as markup; null: a plain shield */
         public ?string $logo = null,
+        /**
+         * @readonly alwaysPaths entry => the methods it checks (challenge POST **: every form); none: every method
+         * @var array<string, list<string>>
+         */
+        public array $alwaysMethods = [],
     ) {
     }
 
@@ -90,6 +95,20 @@ final class ChallengeSettings
                 throw Settings::wrong("challenge.alwaysMaxAge.$pattern", 'seconds (at least 1) for one of alwaysPaths');
             }
             $ages[(string) $pattern] = $age;
+        }
+        $methods = [];
+        foreach (Settings::map($c, 'alwaysMethods', 'challenge.alwaysMethods') as $pattern => $list) {
+            if (!is_array($list) || $list === [] || !in_array((string) $pattern, $always, true)) {
+                throw Settings::wrong("challenge.alwaysMethods.$pattern", 'the methods (POST, PUT …) for one of alwaysPaths');
+            }
+            $names = [];
+            foreach ($list as $m) {
+                if (!is_string($m) || preg_match('/^[A-Z]{1,20}$/', $m) !== 1) {
+                    throw Settings::wrong("challenge.alwaysMethods.$pattern", 'methods in capitals (POST, PUT, PATCH, DELETE)');
+                }
+                $names[] = $m;
+            }
+            $methods[(string) $pattern] = array_values(array_unique($names));
         }
 
         $secret = $c['secret'] ?? null;
@@ -141,7 +160,15 @@ final class ChallengeSettings
             max(0, Settings::int($c, 'dnsLookups', 'challenge.dnsLookups', 30)),
             $ages,
             self::logo($c),
+            $methods,
         );
+    }
+
+    /** Whether an alwaysPaths entry checks this method (challenge POST **: not a GET). */
+    public function alwaysFor(string $pattern, string $method): bool
+    {
+        $methods = $this->alwaysMethods[$pattern] ?? null;
+        return $methods === null || in_array($method, $methods, true);
     }
 
     /** @param array<mixed> $c */

@@ -26,6 +26,7 @@ cache-path  /  /news/**  /page/*
 limit       requests 600/min challenge-at 300
 limit       misses   60/min  on-demand
 challenge   /login  /admin/**                # always check the browser
+challenge   POST **                          # every form sent: the check first (not the pages)
 restrict    /admin/**  to 192.0.2.0/24       # the office only
 allow       POST  /contact  /edit/**         # a POST only where the forms are
 exempt      192.0.2.50                       # monitoring
@@ -66,7 +67,7 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `backend <paths>` | `backend` | the editors' area: its forms counted apart in the statistics, one entry per area ([forms in the statistics](RSF06-03-statistics.md#forms-sent-from-where-how-they-ended)); inside a `match` block without paths |
 | `api-path <paths>` | `challenge.apiPaths` | the site's API: a check there is JSON with a header, not a page |
 | `no-limit <name>` | `budgets` | switch a budget off, the default one too |
-| `challenge <paths> [max-age <duration>]` | `challenge.alwaysPaths`, `challenge.alwaysMaxAge` | always check the browser there; `max-age 5m`: a pass from the last five minutes there ([modes](RSF05-03-modes.md)) |
+| `challenge [<METHODS>] <paths> [max-age <duration>]` | `challenge.alwaysPaths`, `challenge.alwaysMaxAge`, `challenge.alwaysMethods` | always check the browser there; `max-age 5m`: a pass from the last five minutes there ([modes](RSF05-03-modes.md)); with methods first only those: `challenge POST **` checks every form sent and every endpoint posted to, not the pages ([every form](RSF03-02-browser-challenge.md#every-form-and-every-endpoint-challenge-post)) |
 | `monitor <rule>` | `monitorRules` | before `block`, `restrict`, `allow`, `limit`, `challenge`, `ban`, `feed`, `query strict`: logged as it would decide, not enforced ([modes](RSF05-03-modes.md)) |
 | `stats-group "<name>" <websites>` | `ext.stats.groups` | websites of one customer, read together and each on its own; counted apart without naming them in `stats-hosts`; above the site blocks ([groups](RSF06-03-statistics.md#groups-websites-per-customer)) |
 | `dashboard-access "<principal>"\|* sha256:<hash> [until <day>]` | `dashboardAccess` | who may open the dashboard: the admin (`*`) or a principal (a customer's group in the statistics); only the token's hash (`bin/request-shield access-token`); above the site blocks ([who sees what](RSF06-03-statistics.md#who-sees-what-tokens-a-login-signed-links)) |

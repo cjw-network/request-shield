@@ -665,6 +665,14 @@ return [
     'RSF05-01 match blocks: what does not go, with file and line' => function (): void {
         rulesFail(['site.rules' => "match /a/** {\n  restrict /b to 192.0.2.1\n}\n"], 'site.rules:2', 'inside match: restrict to <addresses>');
         rulesFail(['site.rules' => "match /a/** {\n  challenge /b\n}\n"], 'site.rules:2', 'challenge takes no paths');
+        rulesFail(['site.rules' => "challenge POST\n"], 'site.rules:1', 'which paths?');
+        $s = rulesFrom("challenge POST PUT **\nchallenge /login\nchallenge DELETE /x/** max-age 5m\nchallenge POST /y\nchallenge /y\nmatch /shop/** {\n  challenge POST\n}\n");
+        $c = $s->challenge;
+        same(['POST', 'PUT'], $c->alwaysMethods[$c->alwaysPaths[0]] ?? null, 'challenge POST PUT **: the methods, first');
+        same(false, isset($c->alwaysMethods[$c->alwaysPaths[1]]), 'challenge /login: every method, as before');
+        same([['DELETE'], 300], [$c->alwaysMethods[$c->alwaysPaths[2]] ?? null, $c->alwaysMaxAge[$c->alwaysPaths[2]] ?? null], 'with max-age');
+        same(false, isset($c->alwaysMethods[$c->alwaysPaths[3]]), 'the same paths again without methods: every method');
+        same(['POST'], $c->alwaysMethods[$c->alwaysPaths[4]] ?? null, 'inside a match block: challenge POST');
         rulesFail(['site.rules' => "match /a/** {\n  allow POST /b\n}\n"], 'site.rules:2', 'inside match: allow <METHODS>');
         rulesFail(['site.rules' => "match /a/** {\n  unblock [SCAN-HIDDEN] at /b\n}\n"], 'site.rules:2', 'the block is where');
         rulesFail(['site.rules' => "match /a/** {\n  host a.example\n}\n"], 'site.rules:2', 'host does not go inside a match block');

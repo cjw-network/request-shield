@@ -65,6 +65,9 @@ final class Config
                 // Paths every visitor has to pass the check for (once per pass
                 // cookie), whatever the budgets say: a login or admin page.
                 'alwaysPaths' => [],
+                // An alwaysPaths entry => the methods it checks there (challenge POST **:
+                // every form, not the pages); an entry not named here checks every method.
+                'alwaysMethods' => [],
                 // The language visitors read: auto (their browser's, among those
                 // there are texts for; else English) or a code. Built in: en, de.
                 'language' => 'auto',

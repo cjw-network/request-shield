@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **`challenge POST **`: every form and every endpoint checked** -- `challenge`
+  takes methods first (`challenge [<METHODS>] <paths>`, as `allow`; also in a
+  `match` block): only those methods are checked there, so `challenge POST
+  **` asks a pass of every form sent and every endpoint posted to while the
+  pages that show them stay untouched; a form without a pass gets the check
+  page, which sends it again (`challenge.alwaysMethods`).
 - **Proposal 0043 the shield's decision in the web server's access log**
   (Draft): a header meant for the server's log (`X-RS-Log: reject attack
   ATK-SQL-UNION <ref>`, `set server-log header`) or Apache's note

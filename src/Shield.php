@@ -810,7 +810,7 @@ final class Shield
                 return 'application';
             case 'always':
                 foreach ($s->challenge->alwaysPaths as $i => $p) {
-                    if (@preg_match($p, $request->path) === 1) {
+                    if (@preg_match($p, $request->path) === 1 && $s->challenge->alwaysFor($p, $request->method)) {
                         return $s->ruleName('challenge.alwaysPaths', $s->challenge->alwaysPaths[$i], "challenge.alwaysPaths[$i]");
                     }
                 }
@@ -866,13 +866,15 @@ final class Shield
         $this->base = $base;
         // Paths that are always checked (a login page): challenged whatever the
         // budgets say, every method -- a bot must not POST to a login without
-        // having loaded it. The gate lets a client with a pass cookie through,
-        // shows the page to a GET and answers any other method with 429.
+        // having loaded it -- or only the methods the rule names (challenge POST
+        // **: every form sent, not the pages that show them). The gate lets a
+        // client with a pass cookie through; a form without one gets the page,
+        // which sends it again once the check is done.
         $always = $this->settings->challenge->alwaysPaths;
         // An address let in (exempt, the allow list) never meets the check.
         if ($always !== [] && !($this->settings->exemptIps !== [] && IpAddress::inRanges($request->clientIp, $this->settings->exemptIps))) {
             foreach ($always as $pattern) {
-                if (@preg_match($pattern, $request->path) === 1) {
+                if (@preg_match($pattern, $request->path) === 1 && $this->settings->challenge->alwaysFor($pattern, $request->method)) {
                     $budget = $budget === null ? Decision::challenge('always') : $budget->stricter(Decision::challenge('always'));
                     $this->alwaysAge = $this->settings->challenge->alwaysMaxAge[$pattern] ?? null;
                     break;

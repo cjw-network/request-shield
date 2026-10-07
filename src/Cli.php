@@ -799,7 +799,8 @@ final class Cli
         }
         foreach ($settings->challenge->alwaysPaths as $p) {
             $age = $settings->challenge->alwaysMaxAge[$p] ?? null;
-            echo $line('challenge regex ' . $regex($p) . ($age !== null ? " max-age {$age}s" : ''), $o('challenge.alwaysPaths', $p));
+            $methods = $settings->challenge->alwaysMethods[$p] ?? [];
+            echo $line('challenge ' . ($methods !== [] ? implode(' ', $methods) . ' ' : '') . 'regex ' . $regex($p) . ($age !== null ? " max-age {$age}s" : ''), $o('challenge.alwaysPaths', $p));
         }
         foreach ($settings->challenge->exemptPaths as $p) {
             echo $line('challenge-exempt regex ' . $regex($p), $o('challenge.exemptPaths', $p));

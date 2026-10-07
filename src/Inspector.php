@@ -239,7 +239,7 @@ final class Inspector
         $always = null;
         $age = null;
         foreach ($s->challenge->alwaysPaths as $p) {
-            if (@preg_match($p, $request->path) === 1) {
+            if (@preg_match($p, $request->path) === 1 && $s->challenge->alwaysFor($p, $request->method)) {
                 $always = Decision::challenge('always');
                 $age = $s->challenge->alwaysMaxAge[$p] ?? null;
                 break;

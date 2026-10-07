@@ -201,6 +201,33 @@ return [
         same(Decision::ALLOW_UNCACHED, $shield->settle($shield->decide($postWithPass, 5.0), $postWithPass, 5.0)['decision']->action, 'a POST with the pass: through, uncached');
         exec('rm -rf ' . escapeshellarg($dir));
     },
+    'RSF03-02 alwaysMethods: challenge POST ** checks every form sent, not the pages that show them' => function (): void {
+        $dir = sys_get_temp_dir() . '/rshield-always-m-' . getmypid() . '-' . mt_rand();
+        $shield = new Shield(['storeDir' => $dir, 'budgets' => ['requests' => ['limit' => 1000, 'window' => 60]],
+            'challenge' => ['secret' => SECRET, 'searchEngines' => false, 'alwaysPaths' => ['#^/#'], 'alwaysMethods' => ['#^/#' => ['POST', 'DELETE']],
+                'difficulty' => ['min' => 1000, 'max' => 1000]]], new MemoryStore());
+        $run = static fn (Request $r, float $t): array => $shield->settle($shield->decide($r, $t), $r, $t);
+        same(Decision::ALLOW, $run(creq('/contact'), 1.0)['decision']->action, 'the form page: no check');
+        truthy($run(creq('/contact', [], 'PUT'), 1.0)['decision']->action !== Decision::CHALLENGE, 'a method the rule does not name: no check (here the site\'s methods refuse PUT anyway)');
+        $post = $run(creq('/contact', [], 'POST'), 2.0);
+        same([Decision::CHALLENGE, 'always'], [$post['decision']->action, $post['decision']->reason], 'the form sent: checked');
+        truthy(is_string($post['page']) && strpos($post['page'], 'then what you entered is sent') !== false, '... and sent again after the check');
+        same(Decision::CHALLENGE, $run(creq('/api/item/7', [], 'POST'), 2.0)['decision']->action, 'every path: an endpoint sent to as well');
+        same('#^/#', $shield->settings->challenge->alwaysPaths[0]);
+        truthy($shield->settings->challenge->alwaysFor('#^/#', 'POST') && !$shield->settings->challenge->alwaysFor('#^/#', 'GET'), 'alwaysFor: by method');
+        preg_match('/var RS=(\{.*?\});\(function/s', (string) $post['page'], $m);
+        $solved = creq('/contact', ['rss' => solveInPhp(json_decode($m[1], true)['c'])], 'POST');
+        $r = $run($solved, 3.0);
+        $withPass = creq('/contact', ['rsp' => (string) cookieValue($r['cookies'], 'rsp')], 'POST');
+        same(Decision::ALLOW_UNCACHED, $run($withPass, 4.0)['decision']->action, 'with the pass: the form arrives');
+        exec('rm -rf ' . escapeshellarg($dir));
+        try {
+            new Shield(['challenge' => ['alwaysPaths' => ['#^/a#'], 'alwaysMethods' => ['#^/b#' => ['POST']]]], new MemoryStore());
+            throw new TestFailure('methods for a path that is not checked: accepted');
+        } catch (\InvalidArgumentException $e) {
+            truthy(strpos($e->getMessage(), 'alwaysMethods') !== false, $e->getMessage());
+        }
+    },
     'RSF03-04 gate, asked for by the application: fresh passes, exempt paths do not count, a form comes back' => function (): void {
         $c = ChallengeSettings::from(['difficulty' => ['min' => 1000, 'max' => 3000], 'exemptPaths' => ['#^/api/#'], 'passTtl' => 3600]);
         $gate = new Gate($c, SECRET);

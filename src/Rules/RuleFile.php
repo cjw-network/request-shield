@@ -899,6 +899,15 @@ final class RuleFile
                 $this->origins['cacheable.query']['*'] = $this->rid;
                 return;
             case 'challenge':
+                // challenge [<METHODS>] <paths>: the methods first, as with allow -- challenge POST **
+                // checks every form and every endpoint sent to, not the pages that show them.
+                $methods = [];
+                while ($args !== [] && preg_match('/^[A-Z]+$/', $args[0]) === 1) {
+                    $methods[] = (string) array_shift($args);
+                }
+                if ($methods !== [] && $args === []) {
+                    throw new RuleFileException("$at: challenge <METHODS> <paths> -- which paths? (challenge POST ** for every form)");
+                }
                 foreach ($this->patterns('challenge.alwaysPaths', $args, $at, false) as $p) {
                     $ages = (array) $this->get('challenge.alwaysMaxAge');
                     if ($maxAge !== null) {
@@ -907,6 +916,14 @@ final class RuleFile
                         unset($ages[$p]);
                     }
                     $this->put('challenge.alwaysMaxAge', $ages);
+                    // The same paths written again decide anew, as max-age does: without methods, every method.
+                    $byMethod = (array) $this->get('challenge.alwaysMethods');
+                    if ($methods !== []) {
+                        $byMethod[$p] = array_values(array_unique($methods));
+                    } else {
+                        unset($byMethod[$p]);
+                    }
+                    $this->put('challenge.alwaysMethods', $byMethod);
                 }
                 return;
             case 'challenge-exempt':
@@ -1468,6 +1485,13 @@ final class RuleFile
                 }
                 return array_merge($args, $path);
             case 'challenge':
+                // challenge [<METHODS>] inside a block: the methods only, the paths are the block's.
+                foreach ($args as $a) {
+                    if (preg_match('/^[A-Z]+$/', $a) !== 1) {
+                        throw new RuleFileException("$at: inside match, challenge takes no paths -- they are the block's (methods may stand: challenge POST)");
+                    }
+                }
+                return array_merge($args, $path);
             case 'challenge-exempt':
             case 'backend':
             case 'cache-path':
