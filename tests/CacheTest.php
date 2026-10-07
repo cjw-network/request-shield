@@ -263,8 +263,10 @@ return [
             ] as [$args, $want, $why]) {
                 same($want, CachePlugin::purgeOf($local(...$args)), $why);
             }
+            same(null, (new CachePlugin($s))->handleMethod($local('/', ['key' => 'c1'])), 'by default nobody purges by address: not even this machine (a local proxy makes every visitor 127.0.0.1)');
+            $s = cacheSettings($dir, "set http-cache on\nset http-cache-hosts www.example.org\nset http-cache-purge-token s3cret-token-0123456789\nset http-cache-purgers 127.0.0.1 ::1\n");
             $p = new CachePlugin($s);
-            same(200, $p->handleMethod($local('/', ['key' => 'c1']))->status ?? 0, 'from this machine: purged');
+            same(200, $p->handleMethod($local('/', ['key' => 'c1']))->status ?? 0, 'from this machine, named: purged');
             same(null, $p->handleMethod(cacheReq('/', ['key' => 'c1'], 'PURGE')), 'from anywhere else: the rules decide (405)');
             same(null, $p->handleMethod($local('/', ['key' => 'c1', 'X-Forwarded-For' => '203.0.113.9'])), 'through a proxy the shield does not trust: not this machine');
             same(200, $p->handleMethod(cacheReq('/', ['key' => 'c1', 'X-Invalidate-Token' => 's3cret-token-0123456789'], 'PURGE'))->status ?? 0, 'with the token: purged');
@@ -305,8 +307,9 @@ return [
             $id = (int) ($_GET["id"] ?? 52);
             header("Cache-Control: public, s-maxage=600");
             header("xkey: content-$id location-" . ($id + 100) . " ez-all");
+            header("X-Location-Id: " . ($id + 100));
             echo "page $id " . hrtime(true);');
-        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset http-cache on\ncache-query id\nset http-cache-hosts www.example.org\n");
+        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset http-cache on\ncache-query id\nset http-cache-hosts www.example.org\nset http-cache-purgers 127.0.0.1 ::1\n");
         $port = freePort();
         $proc = startFpm($fpm, $dir, $port);
         try {
@@ -328,7 +331,7 @@ return [
             [, $h1] = $send('GET', '/index.php?id=52');
             [, $h2, $b2] = $send('GET', '/index.php?id=52');
             truthy(strpos($h1, 'X-RS-Cache: miss') !== false && strpos($h2, 'X-RS-Cache: hit') !== false && $runs() === 1, "kept: $h2");
-            truthy(stripos($h1 . $h2, 'xkey') === false, 'xkey never reaches the visitor: ' . $h1);
+            truthy(stripos($h1 . $h2, 'xkey') === false && stripos($h1 . $h2, 'x-location-id') === false, 'xkey and X-Location-Id never reach the visitor, on a miss nor on a hit: ' . $h1);
             $send('GET', '/index.php?id=60');
             [$st, , $pb] = $send('PURGE', '/', ['key' => 'content-52']);
             same([200, "Purged\n"], [$st, $pb], 'PURGE + key from 127.0.0.1');

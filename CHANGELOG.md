@@ -87,7 +87,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   Platform's and Ibexa's purge settings work unchanged; `X-LiteSpeed-Purge`
   in any answer purges too; `cache … purge --tag=` and the API's
   `tags`. A plugin may answer a method the site does not take before the
-  rules (`MethodHandler`); anyone else gets the 405 as before.
+  rules (`MethodHandler`); anyone else gets the 405 as before. Nobody may
+  purge by request until `http-cache-purgers` or the token is set.
 
 - **`set file-mode` and `set dir-mode`: the modes of what the shield
   writes**, for servers with rules for new folders and files: `0600` and

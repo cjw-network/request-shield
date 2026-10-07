@@ -305,7 +305,7 @@ final class CachePlugin implements Plugin, Handler, MethodHandler
             }
             foreach ($list as $h) {
                 $name = strtolower(trim((string) strstr($h, ':', true)));
-                if ($name === 'x-litespeed-purge' || in_array($name, $this->o['tagHeaders'], true)) {
+                if ($name === 'x-litespeed-purge' || $name === 'x-location-id' || in_array($name, $this->o['tagHeaders'], true)) {
                     header_remove($name);
                 }
             }

@@ -29,7 +29,7 @@ use CjwNetwork\RequestShield\Settings;
  *   set http-cache-cookies _ga* _pk_*  cookies that do not make a page someone's own (default: analytics, the pass)
  *   set http-cache-max-object 1M       the largest answer kept
  *   set http-cache-dir /var/cache/rs   where (default: <store-dir>/http-cache)
- *   set http-cache-purgers 127.0.0.1 ::1   who may purge with a request (PURGE, PURGEKEYS; default: this machine)
+ *   set http-cache-purgers 127.0.0.1 ::1   who may purge with a request (PURGE, PURGEKEYS; default: nobody)
  *   set http-cache-purge-token …       or anyone who sends it as X-Invalidate-Token (16 characters or more)
  *   set http-cache-tag-headers X-My-Tags   a header with tags besides the known ones (TAG_HEADERS)
  */
@@ -45,8 +45,13 @@ final class CacheExtension implements Extension, ApiProvider
      */
     public const TAG_HEADERS = ['xkey', 'x-cache-tags', 'x-litespeed-tag', 'surrogate-key', 'cache-tag', 'edge-cache-tag', 'x-magento-tags'];
 
-    /** Who may purge with a request when nothing is set: this machine (as Symfony's AppCache). */
-    public const PURGERS = ['127.0.0.1', '::1'];
+    /**
+     * Who may purge with a request when nothing is set: nobody. Not this
+     * machine, as Symfony's AppCache has it: behind a local proxy that adds
+     * no forwarding header (nginx's proxy_pass by default) every visitor
+     * comes from 127.0.0.1, and anyone could empty the cache.
+     */
+    public const PURGERS = [];
 
     public static function id(): string
     {
@@ -81,7 +86,7 @@ final class CacheExtension implements Extension, ApiProvider
         }, 'maxObject');
         $v->set('http-cache-hosts', 'words', 'the site\'s host names as visitors send them, a port written out (www.example.org example.org:8080) -- only these are kept', null, 'hosts');
         $v->set('http-cache-dir', 'path', 'where the answers are kept (default <store-dir>/http-cache)', null, 'dir');
-        $v->set('http-cache-purgers', 'words', 'the addresses that may purge with a request -- PURGE, PURGEKEYS (default 127.0.0.1 ::1)', null, 'purgers');
+        $v->set('http-cache-purgers', 'words', 'the addresses that may purge with a request -- PURGE, PURGEKEYS (default: nobody; 127.0.0.1 ::1 for a CMS on this machine, when no proxy runs on it)', null, 'purgers');
         $v->set('http-cache-purge-token', 'string', 'or anyone who sends this as X-Invalidate-Token (16 characters or more; never shown)', null, 'token');
         $v->set('http-cache-tag-headers', 'words', 'a header with an answer\'s tags besides the known ones (xkey, X-Cache-Tags, X-LiteSpeed-Tag, Surrogate-Key, Cache-Tag, Edge-Cache-Tag, X-Magento-Tags)', null, 'tagHeaders');
     }

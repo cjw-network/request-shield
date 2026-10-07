@@ -64,8 +64,12 @@ application.
   | `PURGE /` with `X-Location-Id: *`, `12` or `(1\|2\|3)` | everything, or `location-12` … | Exponential's older calls |
   | `PURGEKEYS /` with `xkey-purge: a b` or `xkey-softpurge: a b` | tags (a soft purge purges, for now) | Ibexa with Varnish |
 
-  Only from `http-cache-purgers` (default `127.0.0.1 ::1`, as Symfony's
-  `AppCache`) or with `X-Invalidate-Token` equal to `http-cache-purge-token`.
+  Only from `http-cache-purgers` or with `X-Invalidate-Token` equal to
+  `http-cache-purge-token`; **by default nobody**. A CMS on the same machine
+  needs `set http-cache-purgers 127.0.0.1 ::1` -- but only where no proxy
+  runs on the machine: behind a local nginx or Varnish that adds no
+  forwarding header (`proxy_pass` does not by default), every visitor comes
+  from `127.0.0.1`. There, use the token.
   A request from such an address that came through a proxy the shield does
   not trust (it carries `X-Forwarded-For`, `Forwarded`, `X-Real-IP` or
   `Via`) does not count. Anyone else meets the rules: `405`, as for any
@@ -101,7 +105,7 @@ set http-cache-ttl 5m                       # when the answer says nothing (its 
 set http-cache-cookies _ga* _pk_* rsp       # cookies that do not make a page someone's own (default: analytics, the pass)
 set http-cache-max-object 1M                # the largest answer kept
 set http-cache-dir /var/cache/request-shield   # default: <store-dir>/http-cache
-set http-cache-purgers 127.0.0.1 ::1        # who may send PURGE / PURGEKEYS (default: this machine)
+set http-cache-purgers 127.0.0.1 ::1        # who may send PURGE / PURGEKEYS (default: nobody; not behind a local proxy)
 set http-cache-purge-token …                # or anyone with this X-Invalidate-Token (16 characters or more)
 set http-cache-tag-headers X-My-Tags        # a tag header besides the known ones
 cache-query page sort                       # the parameters a page may have (RSF04-01)

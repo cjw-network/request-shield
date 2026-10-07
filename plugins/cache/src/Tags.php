@@ -123,6 +123,7 @@ final class Tags
             // In file-mode, its folder in dir-mode (Files); '.tmp' as the cache's own, for the sweep.
             if (!\CjwNetwork\RequestShield\Files::write($this->file($tag), sprintf('%.6F', $now), '.tmp')) {
                 $ok = false;
+                continue;           // not in memory either: a purge that is said to have failed must not count for a while
             }
             if ($this->apcu) {
                 apcu_store($this->prefix . md5($tag), $now, self::MEMORY);

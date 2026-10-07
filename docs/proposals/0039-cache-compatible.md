@@ -86,8 +86,9 @@ files left behind are cleaned up as expired (4.).
   - `PURGE` with `key: a b` -- tags (Exponential Platform; `key: ez-all`
     is everything); `PURGE` with `X-Location-Id: *`, `123` or `(1|2|3)` --
     everything, or the tags `location-<id>` (its older calls).
-  - Only from `set http-cache-purgers <addresses>` (default `127.0.0.1 ::1`,
-    as AppCache) or with `X-Invalidate-Token` equal to
+  - Only from `set http-cache-purgers <addresses>` (default: nobody -- not
+    `127.0.0.1 ::1` as AppCache: behind a local proxy without forwarding
+    headers every visitor comes from there; changed in G.4's review) or with `X-Invalidate-Token` equal to
     `set http-cache-purge-token` (compared with `hash_equals`). Anyone else:
     `405` as for any unknown method -- never a hint that a cache is there.
   - Not proposed: `BAN` with patterns (Magento, older Varnish setups) -- a
