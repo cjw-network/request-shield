@@ -55,6 +55,8 @@ return [
         'burstLead' => 'Bis 60: durch. Ab 61: der unsichtbare Browser-Check (ein Mensch merkt ihn nicht, ein Skript muss rechnen). Ab 121: Pause.',
         'burstGo' => '125 Anfragen senden',
         'burstLegend' => ['durch', 'Browser-Check', 'Pause'],
+        'burstLog' => 'Die Anfragen anzeigen',
+        'burstFrom' => 'alle vom selben Besucher',
         'outcome' => ['answered' => 'durchgelassen', 'check' => 'Browser-Check', '403' => 'abgewiesen', '404' => 'gibt es nicht', '405' => 'nicht erlaubt', '429' => 'Pause', '400' => 'kaputte Anfrage'],
         'checkTitle' => 'Der Browser-Check, den niemand sieht',
         'checkSteps' => [
@@ -159,6 +161,8 @@ return [
         'burstLead' => 'Up to 60: through. From 61: the invisible browser check (a person does not notice, a script has to compute). From 121: a pause.',
         'burstGo' => 'Send 125 requests',
         'burstLegend' => ['through', 'browser check', 'pause'],
+        'burstLog' => 'Show the requests',
+        'burstFrom' => 'all from one visitor',
         'outcome' => ['answered' => 'let through', 'check' => 'browser check', '403' => 'refused', '404' => 'not found', '405' => 'not allowed', '429' => 'pause', '400' => 'broken request'],
         'checkTitle' => 'The browser check nobody sees',
         'checkSteps' => [

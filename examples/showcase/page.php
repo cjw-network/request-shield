@@ -172,7 +172,9 @@ $client = [
             <span><i class="sq sq-pass"></i> <?= $e($t['burstLegend'][0]) ?> <b class="n-pass">0</b></span>
             <span><i class="sq sq-check"></i> <?= $e($t['burstLegend'][1]) ?> <b class="n-check">0</b></span>
             <span><i class="sq sq-stop"></i> <?= $e($t['burstLegend'][2]) ?> <b class="n-stop">0</b></span>
+            <span class="burst-ip text-secondary" data-label="<?= $e($t['burstFrom']) ?>"></span>
           </div>
+          <details class="burst-log mt-2"><summary><?= $e($t['burstLog']) ?></summary><ol class="burst-list"></ol></details>
         </div>
       <?php else: ?>
       <div class="row g-3">

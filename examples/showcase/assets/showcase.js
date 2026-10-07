@@ -116,6 +116,10 @@
       var n = { pass: 0, check: 0, stop: 0 };
       ['pass', 'check', 'stop'].forEach(function (k) { box.querySelector('.n-' + k).textContent = '0'; });
       var ip = '198.18.' + Math.floor(Math.random() * 250 + 1) + '.' + Math.floor(Math.random() * 250 + 1);
+      var list = box.querySelector('.burst-list');
+      var who = box.querySelector('.burst-ip');
+      list.textContent = '';
+      who.textContent = '· ' + who.getAttribute('data-label') + ': X-Forwarded-For ' + ip;
       var cells = [];
       for (var i = 0; i < total; i++) { cells.push(bar.appendChild(el('span', 'cell'))); }
       var next = 0;
@@ -123,9 +127,17 @@
         var i = next++;
         if (i >= total) { return Promise.resolve(); }
         return fetch('/', { headers: { 'X-Forwarded-For': ip }, credentials: 'omit', cache: 'no-store' }).then(function (r) {
-          var k = kind(classify(r.status, r.headers.get('X-RS')).outcome);
+          var xrs = r.headers.get('X-RS') || '';
+          var k = kind(classify(r.status, xrs).outcome);
           n[k]++;
           cells[i].className = 'cell cell-' + k;
+          // Each cell is one real request: what was sent, what came back.
+          cells[i].title = '#' + (i + 1) + ' GET / -> HTTP ' + r.status + '  X-RS: ' + xrs;
+          var li = el('li', 'burst-row burst-' + k);
+          li.appendChild(el('code', '', 'GET /'));
+          li.appendChild(el('span', 'pill pill-' + k, 'HTTP ' + r.status));
+          li.appendChild(el('code', 'result-xrs-inline', 'X-RS: ' + xrs));
+          list.appendChild(li);
           box.querySelector('.n-' + k).textContent = String(n[k]);
         }).then(one);
       }

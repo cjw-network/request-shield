@@ -115,3 +115,8 @@ pre.card-code { padding: 16px; font-size: .85rem; }
 .answer-page .lead { color: #cbd5e1; }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+.burst-log summary { cursor: pointer; color: #0369a1; font-size: .9rem; }
+.burst-list { max-height: 260px; overflow: auto; margin: 8px 0 0; padding-left: 3.2em; font-size: .8rem; }
+.burst-row { padding: 2px 0; }
+.burst-row > * { margin-right: 8px; }
+.result-xrs-inline { color: #64748b; word-break: break-all; }

@@ -47,7 +47,7 @@ function withShowcase(callable $body): void
                     $type = trim(substr($line, 13));
                 }
             }
-            return [$status, $xrs, $body, $type];
+            return [$status, $xrs, $body, $type, implode("\n", $http_response_header ?? [])];
         });
     } finally {
         proc_terminate($proc);
@@ -133,8 +133,9 @@ return [
             same(403, $st, 'the deny list, for real');
             [$st, $xrs] = $get('GET', '/login');
             truthy($st === 429 && strpos($xrs, 'challenge') === 0, 'you, on this machine: the login checks you too (exempt none) -- ' . $xrs);
-            [$st, , , ] = $get('GET', '/__login');
-            same(303, $st, '"see the check": the pass forgotten, on to the login');
+            [$st, , , , $raw] = $get('GET', '/__login');
+            truthy($st === 303 && preg_match('#^Set-Cookie: rsp=(deleted)?;.*(expires=Thu, 01[- ]Jan[- ]1970|Max-Age=0)#mi', $raw) === 1 && preg_match('#^Location: /login#mi', $raw) === 1,
+                '"see the check": the pass forgotten, on to the login -- ' . $raw);
         });
     },
 ];
