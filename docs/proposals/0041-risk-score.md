@@ -46,7 +46,7 @@ not keep:
 
 | Signal | Already known from | Weight (first guess) |
 |---|---|---|
-| the fullest budget's fill | the budget check: `Decision::$level`, set **only** on a check or a pause (`Decision::challenge()`, `spent()`); a request let through gets the shared `Decision::allow()` with no fill -- for watched rows, see *What it costs* | 0–40, rising with the fill |
+| the fullest budget's fill (its count against its limit) | **new:** the budget check (`BudgetRule::check()`) has the count, but hands on only `Decision::$level` -- set only when it asks for the check (`challenge()`, `spent()`), measured from `challengeAt` to the limit, and absent for a budget without `challengeAt`; a request let through gets the shared `Decision::allow()` with nothing. The ratio count/limit is computed where the counts are compared -- see *What it costs* | 0–40, rising with the fill |
 | checks asked for and not solved by this client | **new:** a counter per bucket, raised on the check page (a path that is slow anyway), cleared by a pass | 10 each, up to 30 |
 | claims to be a crawler, is not | the crawler check (`Decision::$claimed`) | 30 |
 | on a feed ([0025](0025-blocklist-feeds.md)) that does not refuse on its own | the IP table | 25 |
@@ -80,9 +80,10 @@ nobody else understands. (*Open question 2.*)
   headers, and **carrying the budgets' fill on a request let through** --
   today the budget check counts but does not hand the fill on, and a
   passing request gets the one shared `Decision::allow()`. With
-  `live-watch` on, the budget check keeps its highest fill (one float, set
-  where it compares the counts anyway) for the sink to read; with it off,
-  nothing changes. Without that, a watched row would miss its strongest
+  `live-watch` on, the budget check keeps its highest count/limit ratio
+  (one division and one float, where it compares the counts anyway) for
+  the sink to read; with it off, nothing changes. Rows the shield stopped
+  or checked need it too: a pause by `throttle` carries no level at all. Without that, a watched row would miss its strongest
   signal, the client at 90 % of its budget.
 
 ## Not in this proposal
