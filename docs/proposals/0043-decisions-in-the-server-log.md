@@ -90,7 +90,8 @@ set server-log-level stop        # stop (default) | flag | all -- as log-level
 
 ```apache
 # mod_headers: copy the shield's header into a note, then remove it from the answer
-Header always note X-RS-Log rs          # "always": a 200 and a refusal alike
+# "always": a 200 and a refusal alike (Apache takes no comment after a directive)
+Header always note X-RS-Log rs
 Header unset X-RS-Log
 Header always unset X-RS-Log
 LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" rs=\"%{rs}n\"" combined_rs
