@@ -25,6 +25,7 @@ version 2026.10.2
 [ATK-SQL-TAUT@1]    block query ['"]\s*(or|and|\|\||&&)\s+['"]?\d+['"]?\s*(=|like|<|>)\s*['"]?\d+|['"]\s*(or|and)\s+['"][a-z0-9_]+['"]\s*=\s*['"][a-z0-9_]+['"]?\s*(--|#|$)   # SQL injection: ' or '1'='1, " or 1=1 --
 [ATK-SQL-SCHEMA@1]  block query \binformation_schema\b|\bmysql\.user\b|\bsqlite_master\b|\bpg_(shadow|catalog)\b    # SQL injection reading the database's own tables
 [ATK-SQL-STACK@1]   block query ;\s*(drop|truncate|alter)\s+table\b|;\s*(shutdown|exec(\s+|ute\s+)xp_)                # SQL injection: a second statement -- ; drop table
+[ATK-SQL-FUNC@1]    block query \b(load_file|extractvalue|updatexml)\s*\(|\binto\s+(out|dump)file\s+['"]|@@(version|datadir|hostname|basedir|tmpdir)\b|\bxp_cmdshell\b   # SQL injection through the database's own functions: extractvalue(), load_file(), into outfile '…', @@version
 
 # --- cross-site scripting ----------------------------------------------------
 [ATK-XSS-TAG@1]     block query <\s*(script|iframe|object|embed|applet|base|meta)\b                            # cross-site scripting: <script>, <iframe> in the address

@@ -38,6 +38,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **A new attack rule, `ATK-SQL-FUNC`** (attack rules `2026.10.2`,
+  `include @attacks`): SQL injection through the database's own functions --
+  `extractvalue(`/`updatexml(` (the answer in the error message),
+  `load_file(`, `into outfile '…'`, `@@version` and other server variables,
+  `xp_cmdshell`. The words alone pass ("load file into outfile tutorial",
+  "extract value from json"). Taken from comparing with Mini-WAF's rules.
 - **The log says how long a pause lasts**: a line whose client is told to wait
   (a throttle, or a spent budget's check) carries `wait=<seconds>` (the
   `Retry-After` the client got), so growing bans (5, 10, 20 … s) and pause

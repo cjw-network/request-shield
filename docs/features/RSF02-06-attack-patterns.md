@@ -68,6 +68,7 @@ The shipped rules:
 | `ATK-SQL-TAUT` | SQL injection: ' or '1'='1, " or 1=1 -- |
 | `ATK-SQL-SCHEMA` | SQL injection reading the database's own tables |
 | `ATK-SQL-STACK` | SQL injection: a second statement -- ; drop table |
+| `ATK-SQL-FUNC` | SQL injection through the database's own functions: extractvalue(), load_file(), into outfile '…', @@version |
 | `ATK-XSS-TAG` | cross-site scripting: &lt;script&gt;, &lt;iframe&gt; in the address |
 | `ATK-XSS-EVENT` | cross-site scripting: an event handler in a tag, &lt;img onerror=...&gt; |
 | `ATK-XSS-URL` | cross-site scripting: a parameter that is a javascript: address |

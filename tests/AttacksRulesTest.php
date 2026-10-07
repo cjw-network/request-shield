@@ -76,6 +76,13 @@ return [
             ['/?tbl=sqlite_master', [], 'ATK-SQL-SCHEMA'],
             ['/?id=1;drop+table+users--', [], 'ATK-SQL-STACK'],
             ['/?id=1;+exec+xp_cmdshell+%27dir%27', [], 'ATK-SQL-STACK'],
+            ['/?id=1%20and%20extractvalue(1,concat(0x7e,@@version))', [], 'ATK-SQL-FUNC'],   // error-based: the answer in the error message
+            ['/?id=1+and+updatexml(1,concat(0x7e,(select+user())),1)', [], 'ATK-SQL-FUNC'],
+            ['/?f=load_file(0x2f6574632f686f737473)', [], 'ATK-SQL-FUNC'],
+            ['/?id=1+into+outfile+%27/var/www/html/s.php%27', [], 'ATK-SQL-FUNC'],
+            ['/?id=1+into+dumpfile+%22/tmp/x%22', [], 'ATK-SQL-FUNC'],
+            ['/?v=@@datadir', [], 'ATK-SQL-FUNC'],
+            ['/?c=master..xp_cmdshell', [], 'ATK-SQL-FUNC'],
             // cross-site scripting
             ['/?q=%3Cscript%3Ealert(1)%3C/script%3E', [], 'ATK-XSS-TAG'],
             ['/?q=%3Ciframe%20src%3Dx%3E', [], 'ATK-XSS-TAG'],
@@ -164,6 +171,10 @@ return [
             '/?q=1 or 2 bedroom flat',               // no quote before "or"
             '/?q=rock and roll all night',
             '/?q=information about cookies',         // not information_schema
+            '/?q=load file into outfile tutorial',   // the words, no quote, no bracket
+            '/?q=extract value from json',           // extractvalue( needed
+            '/?q=update xml files',
+            '/?q=version 2 @ home',                  // @@ and a variable's name needed
             '/?q=tables; chairs; lamps',             // ; without drop table
             '/?q=1<2 and 4>3',                       // < without a tag
             '/?q=<em>emphasis</em> and <b>bold</b>', // harmless tags
