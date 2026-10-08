@@ -74,7 +74,9 @@ feature by feature, for what exists today and for the proposals.
   *types* of query parameters and form fields, the content type, the shield's
   decision and the site's status; from the site's own HTML answers, its forms
   (action, method, field names and types), links and script addresses.
-  **No values, no address, no cookie.** The
+  **No values, no address, no cookie.** Paths -- the request's and those in
+  links and scripts -- are kept as they were, ids in them too
+  (`/orders/9981/invoice`): it is the developer's own run. The
   path itself is kept as it was (a path can name things -- it is the
   developer's own clicks).
 - **Kept:** in `<store-dir>/learned.jsonl` until the next `start` (or deleted by

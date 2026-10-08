@@ -610,7 +610,8 @@ final class Cli
                 echo "recorded: {$sum['requests']} requests" . ($methods !== [] ? ' (' . implode(', ', $methods) . ')' : '') . ", {$sum['paths']} paths, {$sum['parameters']} parameters, {$sum['forms']} form" . ($sum['forms'] === 1 ? '' : 's') . ' -- '
                     . \CjwNetwork\RequestShield\Learn::recordFile($dir) . "\n";
                 $o = $sum['offered'];
-                echo "found on its pages: {$o['forms']} form" . ($o['forms'] === 1 ? '' : 's') . ", {$o['links']} links, {$o['scripts']} addresses in scripts"
+                $n = static fn (int $c, string $one, string $more): string => "$c " . ($c === 1 ? $one : $more);
+                echo 'found on its pages: ' . $n($o['forms'], 'form', 'forms') . ', ' . $n($o['links'], 'link', 'links') . ', ' . $n($o['scripts'], 'address', 'addresses') . ' in scripts'
                     . ($o['hosts'] !== [] ? '; other hosts of the site: ' . implode(', ', $o['hosts']) : '') . "\n";
             } catch (\InvalidArgumentException | \RuntimeException $e) {
                 self::mistake('request-shield: ' . $e->getMessage());

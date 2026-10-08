@@ -52,6 +52,12 @@ return [
         same(['/news/?page&sort', '/shop/detail?id', '/about'], $f['links'], 'links on this site: path and parameter names');
         same(['/api/v1/messages', '/api/v1/products?format'], $f['scripts'], 'the addresses the scripts name');
         same(['api.example.org', 'shop.example.org'], $f['hosts'], 'the site\'s other hosts; another website\'s not');
+        truthy(Learn::sameDomain('shop.example.co.uk', 'www.example.co.uk') && !Learn::sameDomain('evil.co.uk', 'www.example.co.uk') && !Learn::sameDomain('example.net', 'www.example.org'), 'one domain, also under co.uk -- not every .co.uk');
+        $g = Learn::found('<a href="../up/x">u</a><a href="../../../../y">y</a><a href="./z/">z</a><script>fetch(`/api/items/${id}/edit`)</script>'
+            . '<form action="/big" method="post"><input name="a">' . str_repeat('<p>filler</p>', 120000) . '<input name="b"></form>', Request::fromServer(['REQUEST_URI' => '/shop/list/', 'HTTP_HOST' => 'www.example.org']));
+        same(['/shop/up/x', '/y', '/shop/list/z/'], $g['links'], '../ resolved as a browser does, never above the root');
+        same(['/api/items/*/edit'], $g['scripts'], 'a template literal: its placeholder as *');
+        same(['a' => 'text', 'b' => 'text'], $g['forms'][0]['fields'] ?? null, 'a form of more than a megabyte: still read whole');
         $json = (string) json_encode($f);
         truthy(strpos($json, 'someone') === false && strpos($json, 's3cret') === false && strpos($json, 'Hello') === false && strpos($json, 'xml') === false, 'no value: ' . $json);
     },
@@ -116,6 +122,8 @@ return [
         mkdir("$dir/docroot", 0700, true);
         file_put_contents("$dir/docroot/index.php", '<?php if (($_GET["page"] ?? "") === "9") { http_response_code(404); } echo "the site";');
         file_put_contents("$dir/docroot/page.php", '<?php ob_start(); echo "<h1>Contact</h1>"; ?><form action="/send.php" method="post"><input name="email" type="email" value="x@example.org"></form><a href="/index.php?page=1">On</a><script>fetch("/api/v1/messages")</script><?php ob_end_flush();');
+        file_put_contents("$dir/docroot/broken.php", '<?php echo "<form action=/never><input name=x></form>"; while (ob_get_level() > 0) { ob_end_clean(); } http_response_code(500); echo "<p>an error page</p>";');
+        file_put_contents("$dir/docroot/big.php", '<?php for ($i = 0; $i < 48; $i++) { echo str_repeat("x", 1048576); } echo "<a href=/end>end</a>";');
         file_put_contents("$dir/docroot/data.php", '<?php header("Content-Type: application/json"); echo "{\\"a\\":\\"<form action=/x>\\"}";');
         file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset recheck 0\n");
         $cli = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli());
@@ -125,7 +133,7 @@ return [
         truthy(preg_match('/Request-Shield-Learn: ([0-9a-f]{32})/', $said, $m) === 1 && strpos($said, "javascript:document.cookie='rs-learn=") !== false, 'a token and the bookmarks: ' . $said);
         $token = $m[1] ?? '';
         $port = freePort();
-        $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
+        $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d memory_limit=32M -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
             escapeshellarg("$dir/site.rules"), serverPhp(), escapeshellarg(rsEntry()), $port, escapeshellarg("$dir/docroot")), [], $pipes);
         for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
             usleep(100000);
@@ -148,12 +156,16 @@ return [
             same(404, $send('GET', '/index.php/.env', $cookie), 'the token lets nothing past a check');
             same(200, $send('GET', '/page.php', $cookie), 'a page with a form, a link, a script');
             same(200, $send('GET', '/data.php', $cookie), 'JSON: not read for forms');
+            same(500, $send('GET', '/broken.php', $cookie), 'a site that throws its buffers away and shows an error');
+            same(200, $send('GET', '/big.php', $cookie), '48 MB with a memory limit of 32 MB: the recording holds no more than 8 KB of it at a time');
             $lines = [];
-            for ($i = 0; $i < 40 && count(file(Learn::recordFile("$dir/store")) ?: []) < 7; $i++) {
+            for ($i = 0; $i < 60 && count(file(Learn::recordFile("$dir/store")) ?: []) < 9; $i++) {
                 usleep(50000);          // the line is written when the request has ended
             }
             $lines = array_values(array_filter(array_map(static fn (string $l) => json_decode($l, true), file(Learn::recordFile("$dir/store")) ?: [])));
-            same(7, count($lines), 'seven requests recorded, the unmarked one not: ' . json_encode($lines));
+            same(9, count($lines), 'nine requests recorded, the unmarked one not: ' . json_encode(array_column($lines, 'path')));
+            same([500, false], [$lines[7]['status'], array_key_exists('found', $lines[7])], 'thrown away: no "found" (nothing seen is not "nothing offered"), and the final status');
+            same(['forms' => [], 'links' => [], 'scripts' => [], 'hosts' => []], $lines[8]['found'] ?? null, 'a big answer: its first 2 MB looked at (the link at its end is past them), and sent whole');
             same(['forms' => [['action' => '/send.php', 'method' => 'POST', 'fields' => ['email' => 'email']]], 'links' => ['/index.php?page'], 'scripts' => ['/api/v1/messages'], 'hosts' => []],
                 $lines[5]['found'] ?? null, 'what the page offered, read from its answer -- through its own buffer');
             truthy(!isset($lines[6]['found']) && !isset($lines[4]['found']), 'not for JSON, not for a refusal');
@@ -168,14 +180,14 @@ return [
             same(['t', 'method', 'host', 'path', 'query', 'form', 'type', 'decided', 'status', 'found'], array_keys($lines[0]), 'these fields, no address among them');
             $out = [];
             exec("$cli learn " . escapeshellarg("$dir/site.rules") . ' stop 2>&1', $out, $code);
-            truthy($code === 0 && strpos(implode("\n", $out), 'recorded: 7 requests (6 GET, 1 POST), 4 paths, 3 parameters, 1 form') !== false && strpos(implode("\n", $out), 'found on its pages: 1 form, 1 links, 1 addresses in scripts') !== false, implode("\n", $out));
+            truthy($code === 0 && strpos(implode("\n", $out), 'recorded: 9 requests (8 GET, 1 POST), 6 paths, 3 parameters, 1 form') !== false && strpos(implode("\n", $out), 'found on its pages: 1 form, 1 link, 1 address in scripts') !== false, implode("\n", $out));
             $out = [];
             exec("$cli learn " . escapeshellarg("$dir/site.rules") . ' start --from=2026-10-01 2>&1', $out, $code);
             truthy($code !== 0 && strpos(implode("\n", $out), 'address') !== false, 'a date as --from: refused, not taken as "from anywhere": ' . implode("\n", $out));
             truthy(!is_file(Learn::stateFile("$dir/store")), 'and no run started');
             same(200, $send('GET', '/index.php?after=1', $cookie));
             usleep(300000);
-            same(7, count(file(Learn::recordFile("$dir/store")) ?: []), 'stopped: the cookie records nothing more');
+            same(9, count(file(Learn::recordFile("$dir/store")) ?: []), 'stopped: the cookie records nothing more');
         } finally {
             proc_terminate($proc);
             proc_close($proc);

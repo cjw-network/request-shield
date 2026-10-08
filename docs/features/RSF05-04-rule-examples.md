@@ -247,8 +247,12 @@ for tests, a header with every request:
   hosts** it links or sends to (`api.example.org` beside `www.example.org`).
   Still no value: no field's content, no parameter's. A form nobody sent and
   an API nobody called in the run are found this way. Read as the answer is
-  sent (at most 2 MB of it), never changed; not for JSON, not for the
-  shield's own pages.
+  sent, in chunks of 8 KB (a large download is not held), never changed; its
+  first 2 MB looked at; not for JSON, an answer the site compressed itself,
+  or the shield's own pages. A page the site throws away (an error handler
+  that empties the buffers) gets no `found` -- and the line the final status.
+  Other hosts "of the site" share its domain (`api.example.org` beside
+  `www.example.org`, also under `co.uk` and the like).
 - **Every server starts and stops within its recheck:** `start` and `stop`
   write the state file and touch the main rule file, as `deny` does; the
   settings read the state when they are compiled.

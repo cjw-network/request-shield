@@ -162,36 +162,69 @@ final class Learn
             });
             return;
         }
-        // The site's answer, read as it is sent (never changed): what it offers -- forms,
-        // links, addresses in its scripts -- goes into the line too. Written once, when
-        // the buffer ends: at the end of the request, or when the site ends it earlier.
-        $body = '';
-        $full = false;
-        $done = false;
-        ob_start(static function (string $buffer, int $phase) use (&$body, &$full, &$done, $line, $file, $request): string {
-            if (($phase & PHP_OUTPUT_HANDLER_CLEAN) !== 0) {
-                $body = '';                     // what the site threw away was never sent
-            } elseif (!$full) {
-                $body .= $buffer;
-                if (strlen($body) > self::MAX_PAGE) {
-                    $body = substr($body, 0, self::MAX_PAGE);
-                    $full = true;
+        // The site's answer, read as it is sent (never changed, in chunks of 8 KB so
+        // PHP holds no more than that): what it offers -- forms, links, addresses in
+        // its scripts -- goes into the line too. The line is written when the request
+        // has ended (the shutdown functions run before the buffer's last flush): by the
+        // buffer then, with the final status; by the shutdown function when the site
+        // ended the buffer earlier -- without "found" when it threw the page away.
+        $st = new LearnPage();
+        register_shutdown_function(static function () use ($st, $line, $file): void {
+            try {
+                $st->ending = true;
+                if ($st->ended && !$st->written) {
+                    $st->written = true;
+                    self::append($file, $line, http_response_code(), $st->found);
                 }
+            } catch (\Throwable $e) {
+                // the recording's trouble, never the visitor's
             }
-            if (($phase & PHP_OUTPUT_HANDLER_FINAL) !== 0 && !$done) {
-                $done = true;
-                // The site's Content-Type, else PHP's default (default_mimetype: it is not in headers_list()).
-                $type = '';
-                foreach (headers_list() as $h) {
-                    if (stripos($h, 'content-type:') === 0) {
-                        $type = $h;
+        });
+        ob_start(static function (string $buffer, int $phase) use ($st, $line, $file, $request): string {
+            try {
+                if (($phase & PHP_OUTPUT_HANDLER_CLEAN) !== 0) {
+                    $st->body = '';                 // what the site threw away was never sent
+                    $st->discarded = ($phase & PHP_OUTPUT_HANDLER_FINAL) !== 0;
+                } elseif (!$st->full) {
+                    $st->body .= $buffer;
+                    if (strlen($st->body) > self::MAX_PAGE) {
+                        $st->body = substr($st->body, 0, self::MAX_PAGE);
+                        $st->full = true;
                     }
                 }
-                $html = stripos($type !== '' ? $type : (string) ini_get('default_mimetype'), 'text/html') !== false;
-                self::append($file, $line, http_response_code(), $html ? self::found($body, $request) : null);
+                if (($phase & PHP_OUTPUT_HANDLER_FINAL) !== 0 && !$st->ended) {
+                    $st->ended = true;
+                    $st->found = $st->discarded ? null : self::offered($st->body, $request);
+                    $st->body = '';
+                    if ($st->ending && !$st->written) {
+                        $st->written = true;
+                        self::append($file, $line, http_response_code(), $st->found);
+                    }
+                }
+            } catch (\Throwable $e) {
+                // the recording's trouble, never the visitor's: the answer goes out as it is
             }
             return $buffer;
-        });
+        }, 8192);
+    }
+
+    /**
+     * What an answer offers, when it is HTML (the site's Content-Type, else PHP's
+     * default_mimetype -- that one is not in headers_list()) and not encoded.
+     *
+     * @return array{forms: list<array{action: string, method: string, fields: array<string, string>}>, links: list<string>, scripts: list<string>, hosts: list<string>}|null
+     */
+    private static function offered(string $body, Request $request): ?array
+    {
+        $type = '';
+        foreach (headers_list() as $h) {
+            if (stripos($h, 'content-type:') === 0) {
+                $type = $h;
+            } elseif (stripos($h, 'content-encoding:') === 0) {
+                return null;                        // gzip the site made: not readable here
+            }
+        }
+        return stripos($type !== '' ? $type : (string) ini_get('default_mimetype'), 'text/html') !== false ? self::found($body, $request) : null;
     }
 
     /**
@@ -250,8 +283,9 @@ final class Learn
             }
             return self::target($path, $q === false ? '' : (string) preg_replace('/#.*$/', '', substr($url, $q)));
         };
-        if (preg_match_all('#<form\b([^>]*)>(.*?)(?:</form>|$)#is', $html, $forms, PREG_SET_ORDER) > 0) {
-            foreach (array_slice($forms, 0, 50) as $f) {
+        $forms = self::blocks($html, 'form', 50);
+        if ($forms !== []) {
+            foreach ($forms as $f) {
                 $a = self::attributes($f[1]);
                 $action = $place($a['action'] ?? '');
                 if ($action === null) {
@@ -279,18 +313,40 @@ final class Learn
                 }
             }
         }
-        if (preg_match_all('#<script\b[^>]*>(.*?)</script>#is', $html, $scripts) > 0) {
-            foreach ($scripts[1] as $js) {
-                // A quoted address: a path ("/api/v1/messages") or a full one to a host of the site.
-                if (preg_match_all('#(["\'`])((?:https?:)?//[a-z0-9.-]+(?::\d+)?/[^"\'`\s]*|/[a-z0-9_.~-][a-z0-9_.~/-]*(?:\?[^"\'`\s]*)?)\1#i', $js, $m) > 0) {
+        $scripts = self::blocks($html, 'script', 200);
+        if ($scripts !== []) {
+            foreach (array_column($scripts, 2) as $js) {
+                // A quoted address: a path ("/api/v1/messages", `/api/${id}`) or a full one to a host of the site.
+                if (preg_match_all('#(["\'`])((?:https?:)?//[a-z0-9.-]+(?::\d+)?/[^"\'`\s]*|/[a-z0-9_.~${-][a-z0-9_.~/${}-]*(?:\?[^"\'`\s]*)?)\1#i', $js, $m) > 0) {
                     foreach ($m[2] as $url) {
-                        $t = $place($url);
+                        $t = $place((string) preg_replace('/\$\{[^}]*\}/', '*', $url));      // `/api/${id}` -> /api/*
                         if ($t !== null && !in_array($t, $out['scripts'], true) && count($out['scripts']) < 200) {
                             $out['scripts'][] = $t;
                         }
                     }
                 }
             }
+        }
+        return $out;
+    }
+
+    /**
+     * A tag's blocks: [all, attributes, inner] for each <tag …>…</tag> (an unclosed
+     * one runs to the end) -- found by position, not by one expression over the page
+     * (a block of a megabyte would exhaust PCRE's backtracking and lose them all).
+     *
+     * @return list<array{0: string, 1: string, 2: string}>
+     */
+    private static function blocks(string $html, string $tag, int $max): array
+    {
+        $out = [];
+        $at = 0;
+        while (count($out) < $max && preg_match('#<' . $tag . '\\b([^>]*)>#i', $html, $m, PREG_OFFSET_CAPTURE, $at) === 1) {
+            $start = (int) $m[0][1] + strlen($m[0][0]);
+            $end = stripos($html, '</' . $tag, $start);
+            $inner = $end === false ? substr($html, $start) : substr($html, $start, $end - $start);
+            $out[] = [$m[0][0], $m[1][0], $inner];
+            $at = $end === false ? strlen($html) : $end + 1;
         }
         return $out;
     }
@@ -307,14 +363,35 @@ final class Learn
                 $names[] = $n;
             }
         }
-        $path = (string) preg_replace('#/(?:\./)+|/{2,}#', '/', $path);
+        $parts = [];
+        $segments = explode('/', $path);
+        foreach ($segments as $seg) {
+            if ($seg === '..') {
+                array_pop($parts);          // ../ as a browser resolves it, never above the root
+            } elseif ($seg !== '.' && $seg !== '') {
+                $parts[] = $seg;
+            }
+        }
+        $last = end($segments);
+        $path = '/' . implode('/', $parts) . ($parts !== [] && ($last === '' || $last === '.' || $last === '..') ? '/' : '');
         return $path . ($names === [] ? '' : '?' . implode('&', $names));
     }
 
-    /** Whether two hosts share their last two labels (www.example.org, api.example.org). */
-    private static function sameDomain(string $a, string $b): bool
+    /** Endings under which a name has three labels (example.co.uk): the common two-label public suffixes. */
+    private const SUFFIXES = ['co.uk', 'org.uk', 'ac.uk', 'gov.uk', 'me.uk', 'com.au', 'net.au', 'org.au', 'co.nz', 'org.nz', 'co.jp', 'or.jp', 'ne.jp',
+        'co.za', 'com.br', 'com.tr', 'co.in', 'com.cn', 'com.mx', 'com.ar', 'co.kr', 'com.sg', 'com.hk', 'co.at', 'or.at'];
+
+    /**
+     * Whether two hosts are of one domain (www.example.org, api.example.org; also
+     * www.example.co.uk, shop.example.co.uk -- but not evil.co.uk). A heuristic:
+     * the common two-label endings, not the whole public suffix list.
+     */
+    public static function sameDomain(string $a, string $b): bool
     {
-        $base = static fn (string $h): string => implode('.', array_slice(explode('.', $h), -2));
+        $base = static function (string $h): string {
+            $l = explode('.', $h);
+            return implode('.', array_slice($l, in_array(implode('.', array_slice($l, -2)), self::SUFFIXES, true) ? -3 : -2));
+        };
         return strpos($a, '.') !== false && $base($a) === $base($b);
     }
 
@@ -467,4 +544,17 @@ final class Learn
             'stop' => "javascript:document.cookie='" . self::COOKIE . "=; path=/; max-age=0';alert('request-shield: recording off')",
         ];
     }
+}
+
+/** What a learning run keeps of one answer while it is sent (Learn::note()). */
+final class LearnPage
+{
+    public string $body = '';
+    public bool $full = false;
+    public bool $discarded = false;
+    public bool $ended = false;
+    public bool $ending = false;
+    public bool $written = false;
+    /** @var array{forms: list<array{action: string, method: string, fields: array<string, string>}>, links: list<string>, scripts: list<string>, hosts: list<string>}|null */
+    public ?array $found = null;
 }
