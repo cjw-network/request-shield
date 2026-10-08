@@ -84,6 +84,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   **` asks a pass of every form sent and every endpoint posted to while the
   pages that show them stay untouched; a form without a pass gets the check
   page, which sends it again (`challenge.alwaysMethods`).
+- **Proposal 0045 the shield's own files out of a browser's reach** (draft):
+  rules cannot protect them -- the web server sends a file that exists
+  without PHP; so a note when a directory of the shield lies in the
+  document root (at compile time, and `check --docroot`), and a
+  `Require all denied` `.htaccess` in every directory the shield creates.
 - **Proposal 0044 the check in the form without a cookie** (draft): like
   ALTCHA, the answer only in the form field -- `set pass-cookie off` sets no
   pass, every form sent solves its own task; the check on pages (which needs

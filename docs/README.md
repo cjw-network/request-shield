@@ -107,7 +107,8 @@
   [0041 a risk score per request, shown in the live view](proposals/0041-risk-score.md) (draft) ·
   [0042 a harder task for forms: ALTCHA's v2 work](proposals/0042-pow-v2-for-forms.md) (draft) ·
   [0043 the shield's decision in the web server's access log](proposals/0043-decisions-in-the-server-log.md) (draft) ·
-  [0044 the check in the form without a cookie](proposals/0044-form-check-without-cookie.md) (draft)
+  [0044 the check in the form without a cookie](proposals/0044-form-check-without-cookie.md) (draft) ·
+  [0045 the shield's own files out of a browser's reach](proposals/0045-own-files-out-of-reach.md) (draft)
   (0007 is unused)
 - **Roadmap for 0012–0016** (the reasons in [0012](proposals/0012-dashboard.md#roadmap-for-00120016)):
   counters and crawler statistics first (they answer "did GPTBot crawl the
