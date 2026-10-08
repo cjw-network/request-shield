@@ -107,7 +107,9 @@ final class Help
     public static function forError(string $message, string $docs = self::DOCS, array $dirs = []): ?string
     {
         $file = null;
+        $line = 0;
         if (preg_match('/^(?:request-shield: )?(\S+?):(\d+): /', $message, $m) === 1) {
+            $line = (int) $m[2];
             foreach (array_merge([$m[1]], array_map(static fn (string $d): string => rtrim($d, '/') . '/' . $m[1], $dirs)) as $try) {
                 if (is_file($try) && is_readable($try)) {
                     $file = $try;
@@ -115,10 +117,10 @@ final class Help
                 }
             }
         }
-        if ($file !== null && isset($m[2])) {
+        if ($file !== null) {
             $lines = @file($file, FILE_IGNORE_NEW_LINES);
             // A word no feature knows (a typing mistake, an order): how rule files are written.
-            $id = is_array($lines) ? self::featureOfLine((string) ($lines[(int) $m[2] - 1] ?? '')) : null;
+            $id = is_array($lines) ? self::featureOfLine((string) ($lines[$line - 1] ?? '')) : null;
             return self::see($id ?? 'RSF05-01', '', $docs);
         }
         if (preg_match("/'[A-Za-z.]+' must be /", $message) === 1) {
