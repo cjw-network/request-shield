@@ -38,7 +38,10 @@ hour, while requests pass:
   pages;
 - **bots** — other clients that say they are tools, not browsers, by family:
   `python`, `curl`, `wget`, `go`, `java`, `node`, `php`, `perl`, `headless`,
-  `scrapy`, `empty` (no User-Agent), `other`.
+  `scrapy`, `empty` (no User-Agent), `other`;
+- **times** (only when named: `set stats requests pages times`) — how long the
+  site took to answer, what the HTTP cache did, and the slow requests:
+  [how fast the site answered](#how-fast-the-site-answered).
 
 Nobody has to read the log for it. It answers questions such as *did GPTBot
 crawl the site this week, or was it refused?*, *which pages are missing, and who
@@ -192,7 +195,9 @@ $ php bin/request-shield stats site.rules --from=2026-01-01 --to=2026-12-31 --by
 
 ```text
 set stats on                          # off (default) | on | the parts:
-set stats requests crawlers           #   requests, crawlers, not-found, bots, pages, forms
+set stats requests crawlers           #   requests, crawlers, not-found, bots, pages, forms (what "on" counts)
+set stats requests pages times        #   and times: how long the site took -- only when named
+set stats-slow 2s                     # with times: the slow log from 2 s (the default; 0: none)
 set stats-hours 7                     # days the hours are kept (default 7)
 set stats-days 400                    # days the day totals are kept (default 400), then summed into months
 set stats-months 0                    # months kept (default 0: for good)
@@ -440,6 +445,80 @@ Editors (backend)
   more for a form request** (three counters, each kept within its limit), on
   top of the ~11 µs every counted request costs. A form request renders a page
   of the site anyway.
+
+## How fast the site answered
+
+With the part **`times`** (`set stats requests pages times`; `set stats on`
+does not time) the statistics measure how long the site took for each request
+the shield let through ([proposal 0046](../proposals/0046-response-times.md), step 1).
+
+**What the time is.** The statistics already hear the end of such a request
+(a shutdown function, which is how a page view gets its status). The time is
+from the web server's start of the request (`REQUEST_TIME_FLOAT`) to there: the
+shield's microseconds and the site's main script -- database, templates, API
+calls, Symfony's `kernel.terminate`. Not in it: what the site does in its own
+shutdown functions (WordPress's `shutdown` hook, destructors, the session's
+write: they run after the shield's, which was registered first), the network,
+the browser. So it is the right number for slow pages and for load; for how
+long a visitor waited, an upper bound when the site answers early.
+
+**What the HTTP cache did** ([RSF04-03](RSF04-03-http-cache.md)), from the
+header it sets:
+
+| kind | what it means |
+|---|---|
+| **hit** | answered from the cache (the site did not run) |
+| **miss** | the cache asked the site, and the answer may be kept |
+| **nostore** | the cache asked the site, but the answer may not be kept -- and why: `status` (not 200, 301, 308), `cookie`, `private` (also no-store, no-cache), `encoded`, `expired`, `vary`, `ttl` |
+| **past** | the cache was not asked: off, a POST, a visitor who is not anonymous, a page that is not cacheable |
+
+The share of hits is hits ÷ (hits + misses): of the pages the cache could
+answer, how many it did. What the hits saved: each counted as long as the
+misses' median (one slow page does not make every hit look like a big saving).
+
+**How it is counted.** Twelve fixed bands per hour, kind of visitor and cache
+kind -- 1, 5, 10, 25, 50, 100, 250, 500 ms, 1, 2.5, 10 s and more -- plus the
+sum in microseconds: `rt:<who>|<cache>|<band>`, `rs:<who>|<cache>`; the
+shield's own share `rq:shield`; why a miss was not kept `rn:<reason>`. The
+bands are fixed, not a setting: hours add up into days and months only while
+they stay the same. The median and the slow end (95 %) are read from the bands,
+exact to a band's width. Who came (people, crawlers, bots) is known when
+`crawlers`, `bots` or `pages` is on; with `stats requests times` alone every
+request counts as a person's.
+
+**The slow log** (`set stats-slow 2s`, the default; `0` for none): a request
+slower than that is one line in `<stats dir>/slow-<yyyymmdd>.log` --
+
+```text
+2026-10-08T10:43:02Z GET /shop/search 200 2204ms 38.5MB miss people
+```
+
+time, method, path **without its query**, status, milliseconds, the request's
+peak memory, cache kind, kind of visitor. **No address.** It is kept as long as
+the hours (`stats-hours`, 7 days) and rotated like the log (`log-max-size`).
+
+**Where it shows.** The statistics page (Overview, Protection): the site's
+median, slow end and average by kind of visitor and cache kind, the share of
+hits and what they saved, why misses were not kept, the shield's share a
+request, the last 48 hours' median and slow end, the slow log's last lines.
+`bin/request-shield stats`:
+
+```text
+  the site took: median 75 ms, slow end (p95) 2.3 s, average 763 ms -- 3 requests
+  HTTP cache: 33 % hits (hit 3.0 ms, miss 100 ms), saved 96 ms; not kept: cookie 1
+  the shield: 21 µs a request
+
+Slow requests (the last):
+  2026-10-08T10:43:02Z GET /index.php/slow 200 2204ms 2.8MB miss people
+```
+
+`--json` has it under `times` (in microseconds).
+
+**Cost.** Without `times`: nothing -- not one call more. With it, measured on
+this machine with APCu (StatsPlugin, a request that reaches the site): about
+**+2 µs** (two clock reads, the band, three counters more); without APCu the
+line the request writes anyway gets three fields more. The slow log costs a
+comparison, and a line only for a slow request.
 
 ## Paths that are not counted: `stats-skip`
 

@@ -56,6 +56,12 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
             'all' => 'all crawlers', 'kind.search' => 'search', 'kind.ai-search' => 'AI search', 'kind.ai-user' => 'AI, for a person', 'kind.ai-training' => 'AI training',
             'noStats' => 'No statistics: switch them on with "set stats on" in the rule file.', 'sitemaps' => 'Sitemaps', 'noMaps' => 'No sitemap was asked for: search engines ask for one once robots.txt names it (Sitemap: https://…/sitemap.xml).',
             'noReader' => 'not read by a verified crawler', 'times' => '×', 'top' => 'Most visited pages', 'noPages' => 'No page views counted yet: with set stats on, each page a person, a crawler or a bot reads is counted (an answer with 200 and HTML).', 'sections' => 'Most visited sections', 'topBlocked' => 'Pages the shield stopped most', 'sectionsBlocked' => 'Sections the shield stopped most', 'noBlocked' => 'The shield stopped no page in this period.', 'sortBy' => 'sorted by', 'blocked' => 'stopped', 'byViews' => 'views', 'byBlocked' => 'stopped (all)',
+            'speed' => 'How fast the site answered', 'spSite' => 'The site (not from the cache)', 'spCount' => 'requests', 'spMedian' => 'median', 'spP95' => 'slow end (95 %)', 'spAvg' => 'average',
+            'spHit' => 'from the HTTP cache', 'spMiss' => 'asked the site, kept', 'spNostore' => 'asked the site, not to be kept', 'spPast' => 'not for the cache',
+            'spHits' => '%s of the cacheable pages came from the cache (%s instead of %s) — %s of server time saved.', 'spWhy' => 'Not kept, because: %s.',
+            'spShield' => 'The shield took %s a request.', 'spHours' => 'Per hour (the last 48): median and slow end', 'spSlow' => 'Slow requests (the last)',
+            'spNone' => 'Not measured yet: "set stats … times" counts how long the site takes.',
+            'why.status' => 'not 200 (an error, a redirect)', 'why.cookie' => 'it sets a cookie', 'why.private' => 'private / no-store', 'why.encoded' => 'compressed by the site', 'why.expired' => 'expired', 'why.vary' => 'it varies', 'why.ttl' => 'no lifetime',
             'tabAll' => 'Overview', 'tabSite' => 'Visitors & pages', 'tabShield' => 'Protection', 'tabRules' => 'Rules & setup', 'ruleDetails' => 'all rules and settings', 'builtIn' => 'the fixed checks: kind of request, sizes, disguised addresses', 'filter' => 'Filter', 'pathStarts' => 'path starts with', 'subtree' => 'Subtree', 'views' => 'views', 'exact' => 'exact', 'approx' => 'the sum of its most visited pages', 'clear' => 'all pages', 'per' => 'per', 'hour' => 'hour', 'day' => 'day', 'week' => 'week', 'month' => 'month', 'year' => 'year',
         ],
         'de' => [
@@ -80,6 +86,12 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
             'all' => 'alle Crawler', 'kind.search' => 'Suche', 'kind.ai-search' => 'KI-Suche', 'kind.ai-user' => 'KI, für eine Person', 'kind.ai-training' => 'KI-Training',
             'noStats' => 'Keine Statistik: mit "set stats on" in der Regeldatei einschalten.', 'sitemaps' => 'Sitemaps', 'noMaps' => 'Keine Sitemap wurde abgefragt: Suchmaschinen fragen danach, sobald robots.txt sie nennt (Sitemap: https://…/sitemap.xml).',
             'noReader' => 'von keinem bestätigten Crawler gelesen', 'times' => '×', 'top' => 'Meistbesuchte Seiten', 'noPages' => 'Noch keine Seitenaufrufe gezählt: Mit set stats on zählt jede Seite, die ein Mensch, ein Crawler oder ein Bot liest (eine Antwort mit 200 und HTML).', 'sections' => 'Meistbesuchte Bereiche', 'topBlocked' => 'Am häufigsten blockierte Seiten', 'sectionsBlocked' => 'Am häufigsten blockierte Bereiche', 'noBlocked' => 'Der Schutz hat in diesem Zeitraum keine Seite blockiert.', 'sortBy' => 'sortiert nach', 'blocked' => 'blockiert', 'byViews' => 'Aufrufe', 'byBlocked' => 'blockiert (alle)',
+            'speed' => 'Wie schnell die Website antwortete', 'spSite' => 'Die Website (nicht aus dem Cache)', 'spCount' => 'Anfragen', 'spMedian' => 'Median', 'spP95' => 'langsames Ende (95 %)', 'spAvg' => 'Durchschnitt',
+            'spHit' => 'aus dem HTTP-Cache', 'spMiss' => 'Website gefragt, gespeichert', 'spNostore' => 'Website gefragt, nicht speicherbar', 'spPast' => 'nicht für den Cache',
+            'spHits' => '%s der cachebaren Seiten kamen aus dem Cache (%s statt %s) — %s Server-Zeit gespart.', 'spWhy' => 'Nicht gespeichert, weil: %s.',
+            'spShield' => 'Der Schutz brauchte %s pro Anfrage.', 'spHours' => 'Pro Stunde (die letzten 48): Median und langsames Ende', 'spSlow' => 'Langsame Anfragen (die letzten)',
+            'spNone' => 'Noch nicht gemessen: "set stats … times" zählt, wie lange die Website braucht.',
+            'why.status' => 'nicht 200 (ein Fehler, eine Weiterleitung)', 'why.cookie' => 'setzt ein Cookie', 'why.private' => 'private / no-store', 'why.encoded' => 'von der Website komprimiert', 'why.expired' => 'abgelaufen', 'why.vary' => 'variiert', 'why.ttl' => 'keine Lebensdauer',
             'tabAll' => 'Übersicht', 'tabSite' => 'Besucher & Seiten', 'tabShield' => 'Schutz', 'tabRules' => 'Regeln & Aufbau', 'ruleDetails' => 'alle Regeln und Einstellungen', 'builtIn' => 'die festen Prüfungen: Art der Anfrage, Größen, getarnte Adressen', 'filter' => 'Filtern', 'pathStarts' => 'Pfad beginnt mit', 'subtree' => 'Unterbaum', 'views' => 'Aufrufe', 'exact' => 'genau', 'approx' => 'Summe seiner meistbesuchten Seiten', 'clear' => 'alle Seiten', 'per' => 'pro', 'hour' => 'Stunde', 'day' => 'Tag', 'week' => 'Woche', 'month' => 'Monat', 'year' => 'Jahr',
         ],
     ];
@@ -426,13 +438,14 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
             : '<section class="card"><h2>' . $e($t['rules']) . $help('', 'RSF05-05') . '</h2>' . self::bars($rules, $lang, $t['nothing'])
             . ($setup !== null ? '<p class="note"><a href="' . $e($links !== [] ? $setup . '?' . http_build_query(['days' => $days, 'lang' => $lang]) : $query(['view' => 'rules', 'days' => $days, 'lang' => $lang])) . '">' . $e($t['ruleDetails']) . ' →</a></p>' : '')
             . '<h2>' . $e($t['botfam']) . $help('what-is-counted-how') . '</h2>' . self::bars($bots, $lang, $t['nothing']) . '</section>';
+        $speedBlock = self::speed($r['times'], in_array('times', StatsExtension::of($s)['parts'], true), $t, $lang, $help('how-fast-the-site-answered'));
         // Two views: the site's (for editors: visitors, pages, links, crawlers,
         // sitemaps) and the shield's (for admins: what it did, answers, rules, bots).
         $grid = static fn (string ...$cards): string => '<div class="grid2">' . implode('', $cards) . '</div>';
         $hint = '<p class="hint">' . $e($t['hours48']) . '</p>';
         if ($view === 'shield') {
             $h = $body . '<div class="tiles">' . $tiles['requests'] . $tiles['bots'] . $tiles['checked'] . $tiles['refused'] . '</div>' . $hint
-                . $grid($chartWhat, $answers) . $topBlock . $crawlersBlock . $grid($rulesBlock, $chartWho);
+                . $grid($chartWhat, $answers) . $speedBlock . $topBlock . $crawlersBlock . $grid($rulesBlock, $chartWho);
         } elseif ($view === 'site') {
             // Visitors & pages (0022): six numbers against the period before, one chart, the pages and crawlers & AI.
             if ($by === 'hour') {
@@ -459,7 +472,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
                     } : null])
                 . $short . $sitemapsBlock;                   // full width: sentences and addresses need room
         } else {
-            $h = $body . '<div class="tiles">' . implode('', $tiles) . '</div>' . $hint . $grid($chartWho, $chartWhat) . $short . $grid($answers, $rulesBlock) . $topBlock . $crawlersBlock
+            $h = $body . '<div class="tiles">' . implode('', $tiles) . '</div>' . $hint . $grid($chartWho, $chartWhat) . $short . $grid($answers, $rulesBlock) . $speedBlock . $topBlock . $crawlersBlock
                 . $sitemapsBlock . $missingBlock;
         }
         $h .= '<p class="foot">' . $e($t['updated'] . ' ' . date($lang === 'de' ? 'd.m.Y H:i:s' : 'Y-m-d H:i:s', $now) . ' · ' . $t['refresh']) . '</p>';
@@ -468,6 +481,65 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
             return $h;
         }
         return self::page($h, $o['title'] ?? $t['title'], $lang, $o + ['refresh' => $query(['view' => $view, 'days' => $days, 'by' => $by, 'lang' => $lang, 'fragment' => 1] + $extra)], $e);
+    }
+
+    /**
+     * How fast the site answered (0046): the site's median, slow end and
+     * average, by kind of visitor and by what the HTTP cache did; the cache's
+     * share and what it saved, why misses were not kept; the shield's share;
+     * the last two days per hour; the slow log's last lines. Nothing when
+     * times is off; a note while it has nothing yet.
+     *
+     * @param array{kinds: array<string, array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int}>, site: array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int},
+     *   who: array<string, array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int}>, shield: ?int, reasons: array<string, int>, hitShare: ?float, saved: int,
+     *   hourly: array<string, array{count: int, p50: ?int, p95: ?int}>, slow: list<string>}|null $tm
+     * @param array<string, string> $t
+     */
+    private static function speed(?array $tm, bool $on, array $t, string $lang, string $help): string
+    {
+        $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        if ($tm === null) {
+            return $on ? '<section class="card"><h2>' . $e($t['speed']) . $help . '</h2><p class="note">' . $e($t['nothing']) . '</p></section>'
+                : '';
+        }
+        $d = static fn (?int $us): string => $us === null ? '–' : StatsReport::duration($us, $lang);
+        $n = static fn (int $v): string => StatsReport::number($v, $lang);
+        $row = static function (string $label, array $x, bool $strong = false) use ($e, $d, $n): string {
+            $count = is_int($x['count'] ?? null) ? $x['count'] : 0;
+            $at = static fn (string $k): ?int => is_int($x[$k] ?? null) ? $x[$k] : null;
+            return $count === 0 ? '' : '<tr' . ($strong ? ' class="strong"' : '') . '><td>' . $e($label) . '</td><td class="num">' . $e($n($count))
+                . '</td><td class="num">' . $e($d($at('p50'))) . '</td><td class="num">' . $e($d($at('p95'))) . '</td><td class="num">' . $e($d($at('avg'))) . '</td></tr>';
+        };
+        $h = '<section class="card"><h2>' . $e($t['speed']) . $help . '</h2><div class="wrap"><table class="list speed"><thead><tr><th></th><th class="num">' . $e($t['spCount']) . '</th><th class="num">'
+            . $e($t['spMedian']) . '</th><th class="num">' . $e($t['spP95']) . '</th><th class="num">' . $e($t['spAvg']) . '</th></tr></thead><tbody>'
+            . $row($t['spSite'], $tm['site'], true);
+        foreach (['people', 'crawlers', 'bots'] as $w) {
+            if (isset($tm['who'][$w]) && count($tm['who']) > 1) {
+                $h .= $row('· ' . $t[$w], $tm['who'][$w]);
+            }
+        }
+        foreach (['hit' => 'spHit', 'miss' => 'spMiss', 'nostore' => 'spNostore', 'past' => 'spPast'] as $k => $label) {
+            $h .= $row($t[$label], $tm['kinds'][$k]);
+        }
+        $h .= '</tbody></table></div>';
+        if ($tm['hitShare'] !== null) {
+            $share = $lang === 'de' ? number_format(100 * $tm['hitShare'], 0, ',', '.') . ' %' : number_format(100 * $tm['hitShare']) . ' %';
+            $h .= '<p>' . $e(sprintf($t['spHits'], $share, $d($tm['kinds']['hit']['p50']), $d($tm['kinds']['miss']['p50'] ?? $tm['site']['p50']), $d($tm['saved']))) . '</p>';
+        }
+        if ($tm['reasons'] !== []) {
+            $h .= '<p class="note">' . $e(sprintf($t['spWhy'], implode(', ', array_map(static fn (string $w, int $v): string => ($t['why.' . $w] ?? $w) . ' ' . $n($v), array_map('strval', array_keys($tm['reasons'])), $tm['reasons'])))) . '</p>';
+        }
+        if ($tm['shield'] !== null) {
+            $h .= '<p class="note">' . $e(sprintf($t['spShield'], $d($tm['shield']))) . '</p>';
+        }
+        if (count($tm['hourly']) > 1) {
+            $h .= '<h3 class="sub2">' . $e($t['spHours']) . '</h3><div class="speedcurves"><span class="dot through"></span>' . self::spark(array_values(array_map(static fn (array $x): int => (int) $x['p50'], $tm['hourly'])))
+                . '<span class="dot refused"></span>' . self::spark(array_values(array_map(static fn (array $x): int => (int) $x['p95'], $tm['hourly']))) . '</div>';
+        }
+        if ($tm['slow'] !== []) {
+            $h .= '<h3 class="sub2">' . $e($t['spSlow']) . '</h3><ul class="short slow"><li><code>' . implode('</code></li><li><code>', array_map($e, array_reverse(array_slice($tm['slow'], -10)))) . '</code></li></ul>';
+        }
+        return $h . '</section>';
     }
 
     /**
@@ -969,6 +1041,7 @@ table.sites tr.sother td{color:var(--m)}table.sites .up{color:var(--crawlers)}ta
 .cnum{font-weight:700;white-space:nowrap}.cnum .note{font-weight:400;font-size:12px}
 @media (max-width:640px){.crow{grid-template-columns:1fr auto}.crow .hbar{grid-column:1/3;order:3}}
 .list{width:100%;border-collapse:collapse}.list td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}.list .num{text-align:right;white-space:nowrap;font-weight:600}
+.speed th{font-size:12px;color:var(--m);font-weight:600;text-align:left;padding:4px 6px}.speed th.num{text-align:right}.speed tr.strong td{font-weight:700}.speedcurves{display:grid;grid-template-columns:12px 1fr;gap:4px 8px;align-items:center;max-width:420px}.slow code{font-size:12px;word-break:break-all}
 .badge{display:inline-block;font-size:12px;padding:0 7px;border-radius:999px;border:1px solid var(--line);margin:2px 4px 0 0}.badge.s2{color:var(--s2)}.badge.s3{color:var(--s3)}.badge.s4{color:var(--s4)}.badge.s5{color:var(--s5)}
 .barcell{width:30%}.barcell i{display:block;height:8px;border-radius:4px;background:var(--a);margin-top:7px}code{font-size:13px;word-break:break-all}
 CSS;

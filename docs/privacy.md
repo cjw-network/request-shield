@@ -174,6 +174,13 @@ feature by feature, for what exists today and for the proposals.
   address (operators' servers); requests that only claim a crawler's name are
   masked like the log; `crawler-log-days`, `crawler-log-query off`.
 
+**Times** (part `times`, only when named): per hour how many requests took how
+long (in bands) and their sum, by kind of visitor and what the HTTP cache did;
+the slow log (`stats-slow`) has a line per slow request -- time, method, path
+without its query, status, duration, memory, cache kind, kind of visitor. **No
+address, no query, no cookie**; it is about pages, not people. Kept like the
+hours (`stats-hours`).
+
 **Forms** (part `forms`): per form address and hour, how many were sent,
 saved, gave an error or were stopped; where from as the path of the
 website's own page, or only the host of another website. Never a field, a

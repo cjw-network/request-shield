@@ -43,7 +43,10 @@ final class StatsReport
      *   pages: array<string, array{people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int}>, folders: array<string, array{people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int}>,
      *   subtree: array{path: string, people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int, exact: bool}|null, sort: string,
      *   stopped: array<string, array{people: int, crawlers: int, bots: int, total: int, refused: int, checked: int, throttled: int, blocked: int}>, sentences: list<string>,
-     *   forms: array<string, array{sent: int, saved: int, error: int, refused: int, checked: int, throttled: int, cross-site: int, from: array<string, int>, stopped: int}>, backend: array<string, array{sent: int, saved: int, error: int, refused: int, checked: int, throttled: int, cross-site: int, from: array<string, int>, stopped: int}>}
+     *   forms: array<string, array{sent: int, saved: int, error: int, refused: int, checked: int, throttled: int, cross-site: int, from: array<string, int>, stopped: int}>, backend: array<string, array{sent: int, saved: int, error: int, refused: int, checked: int, throttled: int, cross-site: int, from: array<string, int>, stopped: int}>,
+     *   times: array{kinds: array<string, array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int}>, site: array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int},
+     *     who: array<string, array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int}>, shield: ?int, reasons: array<string, int>, hitShare: ?float, saved: int,
+     *     hourly: array<string, array{count: int, p50: ?int, p95: ?int}>, slow: list<string>}|null}  times (0046, in microseconds): null when nothing was timed
      */
     public static function build(Settings $s, ?Stats $stats = null, int $days = 7, ?int $now = null, array $o = []): array
     {
@@ -92,6 +95,11 @@ final class StatsReport
         /** @var array<string, array{sent: int, saved: int, error: int, refused: int, checked: int, throttled: int, cross-site: int, from: array<string, int>}> $backend */
         $backend = [];
         $form0 = ['sent' => 0, 'saved' => 0, 'error' => 0, 'refused' => 0, 'checked' => 0, 'throttled' => 0, 'cross-site' => 0, 'from' => []];
+        /** @var array<string, array<string, array{count: int, sum: int, bands: list<int>}>> $timed who => cache => counts (0046) */
+        $timed = [];
+        $shieldUs = 0;
+        /** @var array<string, int> $reasons */
+        $reasons = [];
         foreach ($read['days'] as $day => $counts) {
             $daily[(string) $day] = self::buckets($counts);
         }
@@ -190,6 +198,26 @@ final class StatsReport
                         $colon = strrpos($rest, ':');
                         $id = substr($rest, 0, (int) $colon);
                         $crawlers[$id][substr($rest, (int) $colon + 1)] = ($crawlers[$id][substr($rest, (int) $colon + 1)] ?? 0) + $n;
+                        break;
+                    case 'rt':
+                    case 'rs':
+                        // How long the site took (0046): a band, or the sum of the microseconds.
+                        $parts = explode('|', $rest);
+                        if (count($parts) === ($type === 'rt' ? 3 : 2)) {
+                            $timed[$parts[0]][$parts[1]] ??= ['count' => 0, 'sum' => 0, 'bands' => array_fill(0, count(Stats::BANDS) + 1, 0)];
+                            if ($type === 'rs') {
+                                $timed[$parts[0]][$parts[1]]['sum'] += $n;
+                            } elseif (isset($timed[$parts[0]][$parts[1]]['bands'][(int) $parts[2]])) {
+                                $timed[$parts[0]][$parts[1]]['bands'][(int) $parts[2]] += $n;
+                                $timed[$parts[0]][$parts[1]]['count'] += $n;
+                            }
+                        }
+                        break;
+                    case 'rq':
+                        $shieldUs += $n;
+                        break;
+                    case 'rn':
+                        $reasons[$rest] = ($reasons[$rest] ?? 0) + $n;
                         break;
                     case 'p':
                         $colon = (int) strpos($rest, ':');
@@ -295,9 +323,151 @@ final class StatsReport
                 'checked' => $c['checked'] ?? 0, 'refused' => $c['refused'] ?? 0, 'throttled' => $c['throttled'] ?? 0, 'robots' => $c['robots'] ?? 0,
                 'pages' => array_slice($top, 0, 10, true), 'last' => $read['last'][$id] ?? null];
         }
-        return ['from' => $from, 'to' => $to, 'days' => $days, 'by' => $by, 'periods' => $periods, 'totals' => $totals, 'monitor' => $monitor, 'daily' => $daily, 'hourly' => $hourly,
+        $times = $timed === [] ? null : self::times($timed, $shieldUs, $reasons, $read['hours'], $now, self::slowLines($s, $stats, $from, $to, $o['site'] ?? null));
+        return ['times' => $times, 'from' => $from, 'to' => $to, 'days' => $days, 'by' => $by, 'periods' => $periods, 'totals' => $totals, 'monitor' => $monitor, 'daily' => $daily, 'hourly' => $hourly,
             'rules' => $rules, 'crawlers' => $out, 'bots' => $bots, 'statuses' => $statuses, 'notFound' => $notFound, 'sitemaps' => $maps, 'pages' => $views, 'folders' => $folders, 'subtree' => $subtree, 'sort' => $sort, 'stopped' => $stoppedTop, 'forms' => $forms, 'backend' => $backend,
             'sentences' => array_merge(self::sentences($out, $days, $o['lang'] ?? 'en'), self::maps($maps, $days, $o['lang'] ?? 'en'), self::missing($notFound, $days, $o['lang'] ?? 'en'))];
+    }
+
+    /**
+     * How long the site took (0046), from the counters: per cache kind and
+     * kind of visitor the bands, the sum, the average and the median and the
+     * slow end read from the bands; the site's own (what did not come from the
+     * cache) per hour of the last two days; the share of hits and what they
+     * saved; the shield's share; why misses were not kept; the slow log.
+     *
+     * @param array<string, array<string, array{count: int, sum: int, bands: list<int>}>> $timed
+     * @param array<string, int> $reasons
+     * @param array<string, array<string, int>> $hours
+     * @param list<string> $slow
+     * @return array{kinds: array<string, array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int}>, site: array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int},
+     *   who: array<string, array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int}>, shield: ?int, reasons: array<string, int>, hitShare: ?float, saved: int,
+     *   hourly: array<string, array{count: int, p50: ?int, p95: ?int}>, slow: list<string>}
+     */
+    private static function times(array $timed, int $shieldUs, array $reasons, array $hours, int $now, array $slow): array
+    {
+        $zero = ['count' => 0, 'sum' => 0, 'bands' => array_fill(0, count(Stats::BANDS) + 1, 0)];
+        $kinds = ['hit' => $zero, 'miss' => $zero, 'nostore' => $zero, 'past' => $zero];
+        $who = [];
+        $site = $zero;
+        foreach ($timed as $w => $byCache) {
+            foreach ($byCache as $cache => $t) {
+                if (!isset($kinds[$cache])) {
+                    continue;
+                }
+                $kinds[$cache] = self::addTimes($kinds[$cache], $t);
+                if ($cache !== 'hit') {
+                    $site = self::addTimes($site, $t);
+                    $who[(string) $w] = self::addTimes($who[(string) $w] ?? $zero, $t);
+                }
+            }
+        }
+        $all = $site['count'] + $kinds['hit']['count'];
+        $hits = $kinds['hit']['count'];
+        $asked = $hits + $kinds['miss']['count'];
+        // What the hits saved: each would have taken as long as a miss usually does -- the misses' median (or,
+        // without misses, the site's): one slow page does not make every hit look like a great saving.
+        $instead = self::percentile($kinds['miss']['bands'], 0.5) ?? self::percentile($site['bands'], 0.5) ?? 0;
+        $saved = $hits > 0 ? max(0, (int) round($hits * $instead - $kinds['hit']['sum'])) : 0;
+        $hourly = [];
+        foreach ($hours as $hour => $counts) {
+            if ((string) $hour < gmdate('YmdH', $now - 47 * 3600)) {
+                continue;
+            }
+            $h = $zero;
+            foreach ($counts as $k => $n) {
+                $k = (string) $k;
+                if (strncmp($k, 'rt:', 3) === 0) {
+                    $p = explode('|', substr($k, 3));
+                    if (count($p) === 3 && $p[1] !== 'hit' && isset($h['bands'][(int) $p[2]])) {
+                        $h['bands'][(int) $p[2]] += $n;
+                        $h['count'] += $n;
+                    }
+                }
+            }
+            if ($h['count'] > 0) {
+                $hourly[(string) $hour] = ['count' => $h['count'], 'p50' => self::percentile($h['bands'], 0.5), 'p95' => self::percentile($h['bands'], 0.95)];
+            }
+        }
+        arsort($reasons);
+        return ['kinds' => array_map([self::class, 'summed'], $kinds), 'site' => self::summed($site), 'who' => array_map([self::class, 'summed'], $who), 'shield' => $all > 0 ? (int) round($shieldUs / $all) : null,
+            'reasons' => $reasons, 'hitShare' => $asked > 0 ? $hits / $asked : null, 'saved' => $saved, 'hourly' => $hourly, 'slow' => $slow];
+    }
+
+    /**
+     * Two counts of times added up.
+     *
+     * @param array{count: int, sum: int, bands: list<int>} $a
+     * @param array{count: int, sum: int, bands: list<int>} $b
+     * @return array{count: int, sum: int, bands: list<int>}
+     */
+    private static function addTimes(array $a, array $b): array
+    {
+        $a['count'] += $b['count'];
+        $a['sum'] += $b['sum'];
+        foreach ($b['bands'] as $i => $n) {
+            if (isset($a['bands'][$i])) {
+                $a['bands'][$i] += $n;
+            }
+        }
+        return $a;
+    }
+
+    /**
+     * A count of times with its average, median and slow end.
+     *
+     * @param array{count: int, sum: int, bands: list<int>} $t
+     * @return array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int}
+     */
+    private static function summed(array $t): array
+    {
+        return $t + ['avg' => $t['count'] > 0 ? (int) round($t['sum'] / $t['count']) : null, 'p50' => self::percentile($t['bands'], 0.5), 'p95' => self::percentile($t['bands'], 0.95)];
+    }
+
+    /**
+     * A percentile read from the bands (0046), in microseconds: the band it
+     * falls in, and within it by its share -- exact to the band's width; over
+     * 10 s it says 10 s. Null without a count.
+     *
+     * @param list<int> $bands
+     */
+    public static function percentile(array $bands, float $q): ?int
+    {
+        $total = array_sum($bands);
+        if ($total <= 0) {
+            return null;
+        }
+        $target = $q * $total;
+        $below = 0;
+        foreach ($bands as $i => $n) {
+            if ($n > 0 && $below + $n >= $target) {
+                $low = $i === 0 ? 0 : Stats::BANDS[$i - 1];
+                if (!isset(Stats::BANDS[$i])) {
+                    return $low;            // over the last band's end: "over 10 s"
+                }
+                return (int) round($low + (Stats::BANDS[$i] - $low) * ($target - $below) / $n);
+            }
+            $below += $n;
+        }
+        return Stats::BANDS[count(Stats::BANDS) - 1];
+    }
+
+    /**
+     * The slow log's last lines of a period (0046): the statistics given, or
+     * with stats-hosts one website's or all websites' -- the newest last.
+     *
+     * @return list<string>
+     */
+    private static function slowLines(Settings $s, ?Stats $stats, string $from, string $to, ?string $site): array
+    {
+        $lines = [];
+        foreach ($stats !== null ? [$stats] : Stats::all($s, $site !== null && Stats::known($s, $site) ? $site : null) as $one) {
+            foreach ($one->slowLines($from, $to, 30) as $line) {
+                $lines[] = $line;
+            }
+        }
+        sort($lines);           // each starts with its time
+        return array_slice($lines, -30);
     }
 
     /**
@@ -519,6 +689,28 @@ final class StatsReport
         $out[] = $de ? self::number($count, $lang) . ($count === 1 ? ' Seite wurde ' : ' Seiten wurden ') . self::span($days, $lang) . " nicht gefunden; am häufigsten: $list."
             : $count . ' ' . ($count === 1 ? 'page was' : 'pages were') . ' not found ' . self::span($days, $lang) . "; most asked for: $list.";
         return $out;
+    }
+
+    /** A time in microseconds as a person reads it: 40 µs, 0.4 ms, 120 ms, 2.4 s, 3.5 min, 1.2 h (German with a comma). */
+    public static function duration(int $us, string $lang = 'en'): string
+    {
+        $f = static fn (float $v, int $d): string => $lang === 'de' ? number_format($v, $d, ',', '.') : number_format($v, $d);
+        if ($us < 100) {
+            return $us . ' µs';
+        }
+        if ($us < 10000) {
+            return $f($us / 1000, 1) . ' ms';
+        }
+        if ($us < 1000000) {
+            return $f($us / 1000, 0) . ' ms';
+        }
+        if ($us < 60000000) {
+            return $f($us / 1000000, 1) . ' s';
+        }
+        if ($us < 3600000000) {
+            return $f($us / 60000000, 1) . ' min';
+        }
+        return $f($us / 3600000000, 1) . ' h';
     }
 
     /** A number as the language writes it: 1,204 or 1.204. */

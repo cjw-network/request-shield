@@ -42,7 +42,7 @@ final class StatsPlugin implements Plugin, RuleCounts
     /** @var list<string> the keys of a request that goes on to the site, counted when it ends */
     private array $pending = [];
 
-    /** @var array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, path: string, hosts: list<string>, skip: list<string>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}} the statistics' settings (ext.stats) */
+    /** @var array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, slow: int, path: string, hosts: list<string>, skip: list<string>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}} the statistics' settings (ext.stats) */
     private array $o;
 
     public function __construct(private Settings $settings)
@@ -162,7 +162,8 @@ final class StatsPlugin implements Plugin, RuleCounts
         if ($requests && $who === 'people') {
             $stats->minute($now);           // "now" on the visitors page: one APCu counter a minute
         }
-        if (!$continues || (!$requests && !in_array('not-found', $parts, true) && !$crawling && !$paging && $this->formOut === null)) {
+        $timing = in_array('times', $parts, true);
+        if (!$continues || (!$requests && !in_array('not-found', $parts, true) && !$crawling && !$paging && $this->formOut === null && !$timing)) {
             if ($requests) {
                 $keys[] = 's:' . $decision->status;          // the shield answered itself
             }
@@ -179,7 +180,12 @@ final class StatsPlugin implements Plugin, RuleCounts
         $this->pending = $keys;
         $this->who = $who;
         $this->waiting = true;
+        // times (0046): the shield's own share ends here -- its decision is made.
+        $this->decidedAt = $timing ? microtime(true) : 0.0;
     }
+
+    /** @var float when the shield had decided a request that goes on to the site (part times); 0: not timed */
+    private float $decidedAt = 0.0;
 
     /** @var int the hour (since 1970) this process last tended the other websites' statistics */
     private static int $tended = -1;
@@ -305,9 +311,61 @@ final class StatsPlugin implements Plugin, RuleCounts
                 }
             }
         }
-        if ($keys !== []) {
-            $this->stats->count($keys, $now);
+        $amounts = [];
+        if ($this->decidedAt > 0.0) {
+            // How long the site took (0046): from the web server's start of the request to here -- the
+            // site's main script is done; its own shutdown work comes after (it registered later).
+            $end = microtime(true);
+            $start = is_numeric($_SERVER['REQUEST_TIME_FLOAT'] ?? null) ? (float) $_SERVER['REQUEST_TIME_FLOAT'] : $now;
+            $us = max(0, (int) round(($end - $start) * 1e6));
+            [$cache, $why] = self::cacheKind($status, $headers);
+            $keys[] = 'rt:' . $this->who . '|' . $cache . '|' . Stats::band($us);
+            $amounts['rs:' . $this->who . '|' . $cache] = $us;
+            $amounts['rq:shield'] = max(0, (int) round(($this->decidedAt - $now) * 1e6));
+            if ($why !== null) {
+                $keys[] = 'rn:' . $why;
+            }
+            $slow = $this->o['slow'];
+            if ($slow > 0 && $us >= $slow * 1000000) {
+                // The slow log: which page, how slow, how much memory -- no address, no query.
+                $this->stats->slow(gmdate('Y-m-d\TH:i:s\Z', (int) $end) . ' ' . self::word($request->method) . ' ' . self::word($request->path) . ' ' . $status
+                    . ' ' . intdiv($us, 1000) . 'ms ' . number_format(memory_get_peak_usage() / 1048576, 1, '.', '') . 'MB ' . $cache . ' ' . $this->who,
+                    $end, $this->settings->logMaxSize);
+            }
+            $this->decidedAt = 0.0;
         }
+        if ($keys !== [] || $amounts !== []) {
+            $this->stats->count($keys, $now, $amounts);
+        }
+    }
+
+    /**
+     * What the HTTP cache did with a request (0046), from the header it sets:
+     * "hit" (answered from it), "miss" (asked the site, the answer may be
+     * kept), "nostore" (asked the site, the answer may not be kept -- and why,
+     * CachePlugin::refusal()), "past" (no cache asked: off, not cacheable, not
+     * anonymous, a POST).
+     *
+     * @param list<string> $headers headers_list()
+     * @return array{0: string, 1: ?string} the kind, and why a miss is not kept
+     */
+    public static function cacheKind(int $status, array $headers): array
+    {
+        foreach ($headers as $h) {
+            if (strncasecmp($h, 'x-rs-cache:', 11) !== 0) {
+                continue;
+            }
+            $v = strtolower(trim(substr($h, 11)));
+            if ($v === 'hit') {
+                return ['hit', null];
+            }
+            if ($v === 'miss') {
+                // The header comes from the cache plugin: its rule says whether the answer may be kept.
+                $why = class_exists(\CjwNetwork\RequestShield\Cache\CachePlugin::class) ? \CjwNetwork\RequestShield\Cache\CachePlugin::refusal($status, $headers, 1) : null;
+                return $why === null ? ['miss', null] : ['nostore', $why];
+            }
+        }
+        return ['past', null];
     }
 
     /** @param list<string> $patterns */

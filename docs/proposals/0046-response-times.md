@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Draft** -- step 1 built (2026-10-08): [how fast the site answered](../features/RSF06-03-statistics.md#how-fast-the-site-answered) |
 | Proposed | 2026-10-08 |
 | Affects | the statistics plugin (`plugins/stats`: `StatsPlugin::ended()`, `Stats`, the statistics page, the live view), `stats` parts, `RSF06-03` |
 | Relates to | [RSF06-03 statistics](../features/RSF06-03-statistics.md) · [0022 visitors page](0022-visitors-page.md) · [0041 risk score](0041-risk-score.md) (a busy server could raise the bar) · [0039 cache compatible](0039-cache-compatible.md) |
@@ -51,11 +51,19 @@ request arrives     shield decides        site answers, its main script ends    
   are answered before the site starts; the callback comes for them too. The
   cache already says which it was in a header of the answer (`X-RS-Cache: hit`
   or `miss`, `plugins/cache/src/CachePlugin.php`), and the callback already
-  gets the answer's headers -- so the statistics tell three kinds apart
-  without a new interface: **hit** (from the cache), **miss** (to the site,
-  then kept), **past** the cache (no such header: not cacheable -- a
-  logged-in visitor, `private`, `Set-Cookie`, a POST -- or no cache at all).
-  A hit's 1-5 ms never pull the site's median down: each kind has its bands.
+  gets the answer's headers -- so the statistics tell the kinds apart
+  without a new interface. The cache sets `miss` *before* the site answers,
+  so a miss alone does not say whether the answer was kept; the statistics ask
+  the cache's own rule (`CachePlugin::refusal()`, which `keep()` uses too) with
+  the answer's status and headers: **hit** (from the cache), **miss** (asked
+  the site, the answer may be kept), **nostore** (asked the site, the answer
+  may not be kept -- `Set-Cookie`, `private`, a 404 … and that reason
+  counted), **past** the cache (no such header: the cache off, a POST, a
+  visitor who is not anonymous, a page that is not cacheable). A miss's body
+  that turns out too large or thrown away (`ob_clean`) is only known later,
+  after the measurement: counted as a miss. A hit's 1-5 ms never pull the
+  site's median down: each kind has its bands. (With G.4 part 2 a logged-in
+  visitor's role page can be a hit or a miss too.)
 - **A refused request** never reaches the site -- its time is the shield's
   alone and not counted as a page's.
 - **The shield's own share** ("of 180 ms, the shield took 0.02 ms") needs a
@@ -95,7 +103,8 @@ the worker was busy" a lower bound when it has much shutdown work.
    log: time, method, path (no query string), status, ms, the request's peak
    memory (`memory_get_peak_usage()`: "/export 4.2 s, 380 MB"), cache kind,
    kind of visitor. **No address**, no query: it is about pages, not people.
-   Kept `stats-days`, then gone. The p95 says *that* it is slow; the slow log
+   Kept as long as the hours (`stats-hours`, 7 days: its lines are details,
+   like them), then gone. The p95 says *that* it is slow; the slow log
    says *which* page at 14:03.
 
 ```
@@ -126,8 +135,8 @@ low end, where the cache's answers lie:
 | | |
 |---|---|
 | bands | ≤ 1 ms, ≤ 5, ≤ 10, ≤ 25, ≤ 50, ≤ 100, ≤ 250, ≤ 500 ms, ≤ 1 s, ≤ 2.5 s, ≤ 10 s, more (12) |
-| band key, per hour | `rt:<who>|<cache>|<band>` -- who: people, crawlers, bots; cache: hit, miss, past |
-| sum key, in ms | `rs:<who>|<cache>` |
+| band key, per hour | `rt:<who>|<cache>|<band>` -- who: people, crawlers, bots; cache: hit, miss, nostore, past |
+| sum key, in microseconds | `rs:<who>|<cache>` (milliseconds would make a hit's 1-5 ms too coarse) |
 | per page (step 2) | `pt:<who>|<path>|<band>`, `ps:<who>|<path>`, `pc:<who>|<path>` (its hits) |
 
 More bands cost nothing per request: each request raises exactly one band
@@ -143,7 +152,7 @@ hour, cut to the most visited at the roll-up -- the time table must keep the
 same pages as the views, or "views" and "median" would not match.
 
 Counting a sum is new too: `count()` adds 1 per key today. A variant adds an
-amount (APCu: `apcu_inc($key, $ms)`; files: `rs:people|hit*180`, the form a
+amount (APCu: `apcu_inc($key, $us)`; files: `rs:people|hit*1800`, the form a
 flush already writes and the roll-up reads).
 
 ## Cost
@@ -153,11 +162,12 @@ flush already writes and the roll-up reads).
   nothing a feature needs on the path when the feature is not used).
 - **With it:** at the end of the request one `microtime()`, one look for the
   cache's header in the headers the callback has anyway (under 0.1 µs), and
-  two counters more (band and sum; APCu about 0.2 µs each). Estimated +1 µs
-  with APCu for step 1; per page (step 2) two or three APCu calls more.
-  Measured before it goes in (`bench/overhead.php`, a case with `times`).
+  three counters more (band, sum, the shield's share). Estimated +1 µs;
+  **measured for step 1: about +2 µs** with APCu (StatsPlugin, decided() and
+  ended(): +0.1 µs deciding, +0.9 µs the clock and the band, +0.9 µs the
+  counters). Per page (step 2) two or three APCu calls more.
 - **Files:** with `requests` on, the end of a request writes a line anyway --
-  it gets two fields more (five with the pages). With `times` alone it would be
+  it gets three fields more (band, sum, the shield's share; more with the pages). With `times` alone it would be
   a line of its own, 15-25 µs (as in RSF06-03's cost table): `times` is meant
   next to `requests`.
 - The callback at the end is there already whenever the statistics count a
@@ -177,7 +187,7 @@ needs one sentence more).
 ## Steps
 
 1. `times`: the twelve bands and the sum per hour, kind of visitor and cache
-   kind (hit, miss, past); p50/p95 and the cache's share and saving on the
+   kind (hit, miss, nostore with its reason, past); p50/p95 and the cache's share and saving on the
    statistics page next to the requests; the shield's own share; the slow log
    (`stats-slow`, 2 s, with peak memory). Tests: the bands, a site that sleeps
    300 ms gives the 500 ms band, a cache hit lands in "hit", a slow request

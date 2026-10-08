@@ -39,6 +39,13 @@ use CjwNetwork\RequestShield\Settings;
  * crawler read it). "l:<crawler>|<time>|<address>" is not counted: the
  * crawler's last visit ("l:sitemap:<path>@<crawler>|…": its last read of a
  * sitemap).
+ *
+ * How long the site took (part times, proposal 0046): "rt:<who>|<cache>|<band>"
+ * (one of the BANDS), "rs:<who>|<cache>" (the sum, in microseconds),
+ * "rq:shield" (the shield's own share, in microseconds), "rn:<reason>" (why a
+ * miss was not kept: CachePlugin::refusal()) -- cache is hit, miss (asked the
+ * site, kept), nostore (asked the site, not to be kept) or past (no cache
+ * asked). The slow requests go to slow-<yyyymmdd>.log, a line each.
  */
 final class Stats
 {
@@ -52,6 +59,25 @@ final class Stats
 
     /** The most visited pages kept per kind of visitor and hour (and in a day's totals). */
     public const TOP = 100;
+
+    /**
+     * How long the site took, in bands (0046): the upper ends, in
+     * microseconds -- 1, 5, 10, 25, 50, 100, 250, 500 ms, 1, 2.5, 10 s; a
+     * twelfth band holds what took longer. Fixed: hours add up into days and
+     * months only while the bands stay the same.
+     */
+    public const BANDS = [1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000, 2500000, 10000000];
+
+    /** The band a time falls in: 0 (up to 1 ms) to 11 (over 10 s). */
+    public static function band(int $us): int
+    {
+        foreach (self::BANDS as $i => $top) {
+            if ($us <= $top) {
+                return $i;
+            }
+        }
+        return count(self::BANDS);
+    }
 
     /** Sitemaps kept a day (and five times as many sitemap-crawler pairs); the rest count as "(other)". */
     public const SITEMAPS = 20;
@@ -260,11 +286,13 @@ final class Stats
     }
 
     /**
-     * One request: add one to each counter (and note a crawler's last visit).
+     * One request: add one to each counter (and note a crawler's last visit),
+     * and an amount to each of $amounts (a sum: microseconds).
      *
      * @param list<string> $keys
+     * @param array<string, int> $amounts key => amount, keys without a limit only
      */
-    public function count(array $keys, float $now): void
+    public function count(array $keys, float $now, array $amounts = []): void
     {
         // The hour's name, made once an hour (gmdate() costs half a microsecond).
         $n = intdiv((int) $now, 3600);
@@ -287,6 +315,21 @@ final class Stats
                 }
                 apcu_inc($this->prefix . $hour . ':' . $k, 1, $ok, 86400 * 8);
             }
+            foreach ($amounts as $k => $n) {
+                if ($n > 0) {
+                    apcu_inc($this->prefix . $hour . ':' . $k, $n, $ok, 86400 * 8);
+                }
+            }
+            $this->tend($now);
+            return;
+        }
+        // An amount as the flush writes one: "name*180".
+        foreach ($amounts as $k => $n) {
+            if ($n > 0) {
+                $keys[] = $k . '*' . $n;
+            }
+        }
+        if ($keys === []) {
             $this->tend($now);
             return;
         }
@@ -367,6 +410,40 @@ final class Stats
 
     /** @var array<string, float> directory => when this process last looked whether to flush */
     private static array $flushed = [];
+
+    /**
+     * A slow request (stats-slow): one line in the day's slow log -- time,
+     * method, path (no query), status, milliseconds, peak memory in MB, cache,
+     * who. No address. Rotated as the log is (log-max-size).
+     */
+    public function slow(string $line, float $now, int $maxSize): void
+    {
+        \CjwNetwork\RequestShield\Log::append($this->dir . '/slow-' . gmdate('Ymd', (int) $now) . '.log', $line . "\n", $maxSize);
+    }
+
+    /**
+     * The slow log's last $max lines from $fromDay to $toDay (yyyymmdd), the
+     * newest last.
+     *
+     * @return list<string>
+     */
+    public function slowLines(string $fromDay, string $toDay, int $max = 50): array
+    {
+        $lines = [];
+        $files = glob($this->dir . '/slow-*.log') ?: [];
+        sort($files);
+        foreach ($files as $file) {
+            $day = substr(basename($file, '.log'), 5);
+            if ($day < $fromDay || $day > $toDay) {
+                continue;
+            }
+            foreach (@file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+                $lines[] = $line;
+            }
+            $lines = array_slice($lines, -$max);
+        }
+        return $lines;
+    }
 
     /** @var array<string, string> directory => the finished hour this process has checked the roll-up for (a PHP-FPM worker serves many requests) */
     private static array $checked = [];
@@ -683,6 +760,12 @@ final class Stats
                 if (substr(basename($file, '.json'), 2) < $keepMonths) {
                     @unlink($file);
                 }
+            }
+        }
+        // The slow log: as long as the hours (stats-hours days) -- its lines are details, like them.
+        foreach (glob($this->dir . '/slow-*.log*') ?: [] as $file) {
+            if (substr(basename($file), 5, 8) < $keepHours) {
+                @unlink($file);
             }
         }
         if ($this->crawlerLog !== null) {

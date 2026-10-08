@@ -61,6 +61,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **How fast the site answered** (statistics, part `times`, proposal 0046
+  step 1): `set stats requests pages times` measures each request the shield
+  lets through, from the web server's start to the end of the site's main
+  script -- twelve fixed bands per hour (1 ms to over 10 s), by kind of
+  visitor and by what the HTTP cache did (hit, miss, nostore with its reason,
+  past), the sum in µs; the statistics page and `stats` show the median, the
+  slow end, the cache's share of hits and what it saved, why misses were not
+  kept, the shield's share; `set stats-slow 2s` writes slow requests to a slow
+  log (path without query, peak memory, no address). Off by default; with it
+  about +2 µs a request with APCu. `CachePlugin::refusal()` says why an answer
+  is not kept (keep() uses it too). Settings FORMAT 57.
 - **Proposal 0046 response times in the statistics** (draft): with a new
   part `times`, the end of a request the statistics already hear gives how
   long the site took -- twelve fixed bands per hour (fine below 10 ms for the

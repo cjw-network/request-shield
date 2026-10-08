@@ -73,6 +73,24 @@ final class StatsCommand implements Command
         if ($r['statuses'] !== []) {
             echo '  answers: ' . implode(', ', array_map(static fn (string $c, int $v): string => "$c: $v", array_map('strval', array_keys($r['statuses'])), $r['statuses'])) . "\n";
         }
+        $tm = $r['times'];
+        if ($tm !== null) {
+            // How long the site took (0046): what did not come from the cache; the cache; the shield.
+            $d = static fn (?int $us): string => $us === null ? '-' : StatsReport::duration($us);
+            $site = $tm['site'];
+            echo '  the site took: median ' . $d($site['p50']) . ', slow end (p95) ' . $d($site['p95']) . ', average ' . $d($site['avg']) . ' -- ' . $n($site['count']) . " requests\n";
+            $hit = $tm['kinds']['hit'];
+            if ($tm['hitShare'] !== null) {
+                echo '  HTTP cache: ' . (int) round(100 * $tm['hitShare']) . ' % hits (hit ' . $d($hit['p50']) . ', miss ' . $d($tm['kinds']['miss']['p50']) . '), saved ' . $d($tm['saved'])
+                    . ($tm['reasons'] !== [] ? '; not kept: ' . implode(', ', array_map(static fn (string $w, int $v): string => "$w $v", array_map('strval', array_keys($tm['reasons'])), $tm['reasons'])) : '') . "\n";
+            }
+            if ($tm['shield'] !== null) {
+                echo '  the shield: ' . $d($tm['shield']) . " a request\n";
+            }
+            if ($tm['slow'] !== []) {
+                echo "\nSlow requests (the last):\n  " . implode("\n  ", $tm['slow']) . "\n";
+            }
+        }
         if (isset($period['by']) || isset($period['crawler'])) {
             $cols = isset($period['crawler']) ? ['verified' => 'visits', 'allowed' => 'let through', 'checked' => 'checked', 'refused' => 'refused', 'claimed' => 'claimed']
                 : ['passed' => 'cacheable', 'uncached' => 'uncached', 'checked' => 'checked', 'throttled' => 'waited', 'refused' => 'refused'];

@@ -31,7 +31,7 @@ return [
         same(StatsExtension::class, Vocabulary::extension('stats'), 'the bootstrap names it, the registry offers it on the first lookup');
         $s = statsExtSettings("set stats requests pages\nset stats-flush 30s\nset stats-hosts a.example\nstats-skip /x/**\nmatch /app/** {\n  stats-skip\n}\n");
         $skip = ['#^/x(?:/.*)?$#', '#^/app(?:/.*)?$#'];
-        same(['enabled' => true, 'parts' => ['requests', 'pages'], 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 30, 'depth' => 2, 'path' => '/rs/stats', 'hosts' => ['a.example'], 'skip' => $skip, 'groups' => [],
+        same(['enabled' => true, 'parts' => ['requests', 'pages'], 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 30, 'depth' => 2, 'slow' => 2, 'path' => '/rs/stats', 'hosts' => ['a.example'], 'skip' => $skip, 'groups' => [],
             'crawlerLog' => ['dir' => null, 'kinds' => [], 'days' => 30, 'query' => true]], $s->ext['stats'] ?? null, 'the exact shape, every key present');
         same($s->ext['stats'] ?? null, StatsExtension::of($s), 'of(): the slot');
         same([StatsPlugin::class], $s->plugins, 'the plugin, added at compile time');
@@ -65,7 +65,7 @@ return [
         same([true, 3], [StatsExtension::of($s)['enabled'], StatsExtension::of($s)['depth']], 'the base\'s values and its own');
     },
     'RSF06-03 mistakes keep their messages: a part, a host name, a kind, a depth' => function (): void {
-        rulesFail(['site.rules' => "set stats everything\n"], 'site.rules:1', 'stats is on, off or what to count: requests, crawlers, not-found, bots, pages, forms -- not "everything"');
+        rulesFail(['site.rules' => "set stats everything\n"], 'site.rules:1', 'stats is on, off or what to count: requests, crawlers, not-found, bots, pages, forms, times -- not "everything"');
         rulesFail(['site.rules' => "set stats-hosts a_b.de\n"], 'site.rules:1', 'stats-hosts takes website names (www.example.org, *.example.org), host or sites -- not "a_b.de"');
         rulesFail(['site.rules' => "set crawler-log-kinds robots\n"], 'site.rules:1', 'crawler-log-kinds takes kinds of crawler (search, ai-search, ai-user, ai-training), not "robots"');
         rulesFail(['site.rules' => "set stats-depth many\n"], 'site.rules:1', 'stats-depth is a number');

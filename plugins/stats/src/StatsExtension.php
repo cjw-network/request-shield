@@ -32,8 +32,11 @@ use CjwNetwork\RequestShield\Settings;
  */
 final class StatsExtension implements Extension, ApiProvider
 {
-    /** What the statistics can count (set stats <parts>). */
+    /** What the statistics can count (set stats <parts>); `set stats on` counts these. */
     public const PARTS = ['requests', 'crawlers', 'not-found', 'bots', 'pages', 'forms'];
+
+    /** Parts only counted when named (0046): `times`, how long the site took. */
+    public const NAMED = ['times'];
 
     public static function id(): string
     {
@@ -44,11 +47,11 @@ final class StatsExtension implements Extension, ApiProvider
      * The compiled slot: every key there, the statistics off. What a reader
      * sees when the extension did not compile (no slot at all).
      *
-     * @return array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, path: string, hosts: list<string>, skip: list<string>, groups: array<string, array{name: string, sites: list<string>, rule: string}>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}}
+     * @return array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, slow: int, path: string, hosts: list<string>, skip: list<string>, groups: array<string, array{name: string, sites: list<string>, rule: string}>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}}
      */
     public static function defaults(): array
     {
-        return ['enabled' => false, 'parts' => self::PARTS, 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 60, 'depth' => 2, 'path' => '/rs/stats', 'hosts' => [], 'skip' => [], 'groups' => [],
+        return ['enabled' => false, 'parts' => self::PARTS, 'hours' => 7, 'days' => 400, 'months' => 0, 'flush' => 60, 'depth' => 2, 'slow' => 2, 'path' => '/rs/stats', 'hosts' => [], 'skip' => [], 'groups' => [],
             'crawlerLog' => ['dir' => null, 'kinds' => [], 'days' => 30, 'query' => true]];
     }
 
@@ -56,25 +59,26 @@ final class StatsExtension implements Extension, ApiProvider
      * The statistics' settings of $s: its compiled slot, or the defaults when
      * there is none -- a reader never sees a missing key.
      *
-     * @return array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, path: string, hosts: list<string>, skip: list<string>, groups: array<string, array{name: string, sites: list<string>, rule: string}>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}}
+     * @return array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, slow: int, path: string, hosts: list<string>, skip: list<string>, groups: array<string, array{name: string, sites: list<string>, rule: string}>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}}
      */
     public static function of(Settings $s): array
     {
-        /** @var array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, path: string, hosts: list<string>, skip: list<string>, groups: array<string, array{name: string, sites: list<string>, rule: string}>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}} */
+        /** @var array{enabled: bool, parts: list<string>, hours: int, days: int, months: int, flush: int, depth: int, slow: int, path: string, hosts: list<string>, skip: list<string>, groups: array<string, array{name: string, sites: list<string>, rule: string}>, crawlerLog: array{dir: ?string, kinds: list<string>, days: int, query: bool}} */
         return $s->ext['stats'] ?? self::defaults();
     }
 
     public static function vocabulary(Vocabulary $v): void
     {
         // set stats on|off|<parts>: on, off, or what to count -- enabled and parts at once.
-        $v->set('stats', 'words', 'on, off or what to count: ' . implode(', ', self::PARTS), static function ($words, string $at): array {
+        $all = [...self::PARTS, ...self::NAMED];
+        $v->set('stats', 'words', 'on, off or what to count: ' . implode(', ', $all), static function ($words, string $at) use ($all): array {
             $words = array_map(static fn ($w): string => is_scalar($w) ? strtolower((string) $w) : '', is_array($words) ? $words : []);
             if ($words === ['on'] || $words === ['off']) {
                 return ['enabled' => $words === ['on']];
             }
             foreach ($words as $w) {
-                if (!in_array($w, self::PARTS, true)) {
-                    throw new RuleFileException("$at: stats is on, off or what to count: " . implode(', ', self::PARTS) . " -- not \"$w\"");
+                if (!in_array($w, $all, true)) {
+                    throw new RuleFileException("$at: stats is on, off or what to count: " . implode(', ', $all) . " -- not \"$w\"");
                 }
             }
             return ['enabled' => true, 'parts' => $words];
@@ -82,6 +86,7 @@ final class StatsExtension implements Extension, ApiProvider
         $v->set('stats-flush', 'seconds', 'with APCu, seconds between writes of the counts to disk (0: only hourly)', null, 'flush');
         $v->set('stats-months', 'int', 'months the month totals are kept (0: for good)', null, 'months');
         $v->set('stats-depth', 'int', 'folder levels a section\'s views are counted for exactly: 1 to 4', null, 'depth');
+        $v->set('stats-slow', 'seconds', 'with stats times: a request slower than this is written to the slow log (0: none)', null, 'slow');
         $v->set('stats-hours', 'int', 'days the hourly counters are kept', null, 'hours');
         $v->set('stats-days', 'int', 'days the daily counters are kept', null, 'days');
         $v->set('stats-path', 'string', 'where the statistics pages live (default <dashboard-path>/stats): /sites, /overview, /visitors, /protection below it', null, 'path');
@@ -184,8 +189,8 @@ final class StatsExtension implements Extension, ApiProvider
         }
         $parts = array_key_exists('parts', $raw) ? Settings::strings($raw, 'parts', 'ext.stats.parts') : self::PARTS;
         foreach ($parts as $p) {
-            if (!in_array($p, self::PARTS, true)) {
-                throw Settings::wrong('ext.stats.parts', implode(', ', self::PARTS));
+            if (!in_array($p, [...self::PARTS, ...self::NAMED], true)) {
+                throw Settings::wrong('ext.stats.parts', implode(', ', [...self::PARTS, ...self::NAMED]));
             }
         }
         $skip = [];
@@ -203,6 +208,7 @@ final class StatsExtension implements Extension, ApiProvider
             'months' => max(0, Settings::int($raw, 'months', 'ext.stats.months', 0)),
             'flush' => max(0, Settings::int($raw, 'flush', 'ext.stats.flush', 60)),
             'depth' => $depth,
+            'slow' => max(0, Settings::int($raw, 'slow', 'ext.stats.slow', 2)),
             'path' => self::path($raw, $base),
             'hosts' => self::hosts($raw, $base),
             'skip' => $skip,

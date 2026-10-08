@@ -115,26 +115,11 @@ final class CachePlugin implements Plugin, Handler
      */
     public function keep(FileCache $cache, string $key, int $status, array $headers, string $body, string $path = ''): bool
     {
-        if (!in_array($status, [200, 301, 308], true) || strlen($body) > $this->o['maxObject'] || self::header($headers, 'set-cookie') !== null
-            || self::header($headers, 'content-encoding') !== null) {
+        if (strlen($body) > $this->o['maxObject'] || self::refusal($status, $headers, $this->o['ttl']) !== null) {
             return false;
         }
         $cc = strtolower((string) self::header($headers, 'cache-control'));
-        if (preg_match('/\b(private|no-store|no-cache)\b/', $cc) === 1 || preg_match('/\bno-cache\b/i', (string) self::header($headers, 'pragma')) === 1) {
-            return false;
-        }
-        $expires = self::header($headers, 'expires');
-        if ($expires !== null && strpos($cc, 'max-age') === false && (int) strtotime($expires) <= time()) {
-            return false;           // an Expires gone by (or one that is no date): not for a cache
-        }
-        $vary = array_filter(array_map('trim', explode(',', strtolower((string) self::header($headers, 'vary')))));
-        if (array_diff($vary, ['accept-encoding']) !== []) {
-            return false;           // an answer that differs by language or cookie: not one page
-        }
         $ttl = preg_match('/\bs-maxage=(\d+)/', $cc, $m) === 1 || preg_match('/\bmax-age=(\d+)/', $cc, $m) === 1 ? (int) $m[1] : $this->o['ttl'];
-        if ($ttl <= 0) {
-            return false;
-        }
         $kept = [];
         foreach ($headers as $h) {
             $name = strtolower(trim((string) strstr($h, ':', true)));
@@ -143,6 +128,44 @@ final class CachePlugin implements Plugin, Handler
             }
         }
         return $cache->put($key, $status, $kept, $body, $ttl, microtime(true), $path);
+    }
+
+    /**
+     * Why an answer may not be kept, from its status and headers -- null when
+     * it may (keep() then checks its size): "status" (not 200, 301, 308),
+     * "cookie" (it sets one), "encoded" (the application compressed it),
+     * "private" (private, no-store, no-cache, Pragma: no-cache), "expired" (an
+     * Expires gone by), "vary" (on more than the encoding), "ttl" (max-age=0,
+     * or no ttl at all). The statistics ask it too, for a miss (0046): why the
+     * page did not go into the cache.
+     *
+     * @param list<string> $headers headers_list()
+     */
+    public static function refusal(int $status, array $headers, int $ttl): ?string
+    {
+        if (!in_array($status, [200, 301, 308], true)) {
+            return 'status';
+        }
+        if (self::header($headers, 'set-cookie') !== null) {
+            return 'cookie';
+        }
+        if (self::header($headers, 'content-encoding') !== null) {
+            return 'encoded';
+        }
+        $cc = strtolower((string) self::header($headers, 'cache-control'));
+        if (preg_match('/\b(private|no-store|no-cache)\b/', $cc) === 1 || preg_match('/\bno-cache\b/i', (string) self::header($headers, 'pragma')) === 1) {
+            return 'private';
+        }
+        $expires = self::header($headers, 'expires');
+        if ($expires !== null && strpos($cc, 'max-age') === false && (int) strtotime($expires) <= time()) {
+            return 'expired';           // an Expires gone by (or one that is no date): not for a cache
+        }
+        $vary = array_filter(array_map('trim', explode(',', strtolower((string) self::header($headers, 'vary')))));
+        if (array_diff($vary, ['accept-encoding']) !== []) {
+            return 'vary';              // an answer that differs by language or cookie: not one page
+        }
+        $own = preg_match('/\bs-maxage=(\d+)/', $cc, $m) === 1 || preg_match('/\bmax-age=(\d+)/', $cc, $m) === 1 ? (int) $m[1] : $ttl;
+        return $own <= 0 ? 'ttl' : null;
     }
 
     /** No Authorization, and no cookie but those named harmless (analytics, the pass). */
