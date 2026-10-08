@@ -369,9 +369,11 @@ final class StatsReport
         // without misses, the site's): one slow page does not make every hit look like a great saving.
         $instead = self::percentile($kinds['miss']['bands'], 0.5) ?? self::percentile($site['bands'], 0.5) ?? 0;
         $saved = $hits > 0 ? max(0, (int) round($hits * $instead - $kinds['hit']['sum'])) : 0;
+        // The period's last 48 hours (the hours kept and read for it): up to its end, not to now.
         $hourly = [];
+        $lastHour = $hours === [] ? 0 : (int) strtotime(substr((string) max(array_map('strval', array_keys($hours))), 0, 8) . ' UTC') + 3600 * (int) substr((string) max(array_map('strval', array_keys($hours))), 8, 2);
         foreach ($hours as $hour => $counts) {
-            if ((string) $hour < gmdate('YmdH', $now - 47 * 3600)) {
+            if ((string) $hour < gmdate('YmdH', $lastHour - 47 * 3600)) {
                 continue;
             }
             $h = $zero;

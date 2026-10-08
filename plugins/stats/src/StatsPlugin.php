@@ -318,7 +318,7 @@ final class StatsPlugin implements Plugin, RuleCounts
             $end = microtime(true);
             $start = is_numeric($_SERVER['REQUEST_TIME_FLOAT'] ?? null) ? (float) $_SERVER['REQUEST_TIME_FLOAT'] : $now;
             $us = max(0, (int) round(($end - $start) * 1e6));
-            [$cache, $why] = self::cacheKind($status, $headers);
+            [$cache, $why] = self::cacheKind($status, $headers, $this->settings);
             $keys[] = 'rt:' . $this->who . '|' . $cache . '|' . Stats::band($us);
             $amounts['rs:' . $this->who . '|' . $cache] = $us;
             $amounts['rq:shield'] = max(0, (int) round(($this->decidedAt - $now) * 1e6));
@@ -347,9 +347,10 @@ final class StatsPlugin implements Plugin, RuleCounts
      * anonymous, a POST).
      *
      * @param list<string> $headers headers_list()
+     * @param ?Settings $s the settings, for the cache's own ttl (http-cache-ttl 0: nothing is kept without a max-age)
      * @return array{0: string, 1: ?string} the kind, and why a miss is not kept
      */
-    public static function cacheKind(int $status, array $headers): array
+    public static function cacheKind(int $status, array $headers, ?Settings $s = null): array
     {
         foreach ($headers as $h) {
             if (strncasecmp($h, 'x-rs-cache:', 11) !== 0) {
@@ -361,7 +362,11 @@ final class StatsPlugin implements Plugin, RuleCounts
             }
             if ($v === 'miss') {
                 // The header comes from the cache plugin: its rule says whether the answer may be kept.
-                $why = class_exists(\CjwNetwork\RequestShield\Cache\CachePlugin::class) ? \CjwNetwork\RequestShield\Cache\CachePlugin::refusal($status, $headers, 1) : null;
+                if (!class_exists(\CjwNetwork\RequestShield\Cache\CachePlugin::class)) {
+                    return ['miss', null];
+                }
+                $ttl = $s !== null ? \CjwNetwork\RequestShield\Cache\CacheExtension::of($s)['ttl'] : 1;
+                $why = \CjwNetwork\RequestShield\Cache\CachePlugin::refusal($status, $headers, $ttl);
                 return $why === null ? ['miss', null] : ['nostore', $why];
             }
         }

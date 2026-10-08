@@ -82,6 +82,15 @@ return [
         same(['nostore', 'status'], StatsPlugin::cacheKind(404, [$html, 'X-RS-Cache: miss']), 'a page not found');
         same(['nostore', 'vary'], StatsPlugin::cacheKind(200, [$html, 'X-RS-Cache: miss', 'Vary: Accept-Language']), 'varies by language');
         same(['past', null], StatsPlugin::cacheKind(200, [$html]), 'no cache asked');
+        $dir = timesDir();
+        try {
+            file_put_contents("$dir/site.rules", "set store-dir $dir/store\nset http-cache on\nset http-cache-ttl 0\n");
+            $zero = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
+            same(['nostore', 'ttl'], StatsPlugin::cacheKind(200, [$html, 'X-RS-Cache: miss'], $zero), 'http-cache-ttl 0: without a max-age of its own the page is not kept -- the cache\'s own ttl decides');
+            same(['miss', null], StatsPlugin::cacheKind(200, [$html, 'X-RS-Cache: miss', 'Cache-Control: max-age=60'], $zero), 'with a max-age of its own it is');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
     },
     'RSF06-03 times: the rule file -- "stats … times" and stats-slow; "stats on" does not time (off by default); a word it does not know' => function (): void {
         $dir = timesDir();

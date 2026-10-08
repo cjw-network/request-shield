@@ -500,7 +500,7 @@ the hours (`stats-hours`, 7 days) and rotated like the log (`log-max-size`).
 **Where it shows.** The statistics page (Overview, Protection): the site's
 median, slow end and average by kind of visitor and cache kind, the share of
 hits and what they saved, why misses were not kept, the shield's share a
-request, the last 48 hours' median and slow end, the slow log's last lines.
+request, the period's last 48 hours' median and slow end, the slow log's last lines.
 `bin/request-shield stats`:
 
 ```text
@@ -514,7 +514,8 @@ Slow requests (the last):
 
 `--json` has it under `times` (in microseconds).
 
-**Cost.** Without `times`: nothing -- not one call more. With it, measured on
+**Cost.** Without `times`: one look in the list of parts a request (nothing
+with the statistics off). With it, measured on
 this machine with APCu (StatsPlugin, a request that reaches the site): about
 **+2 µs** (two clock reads, the band, three counters more); without APCu the
 line the request writes anyway gets three fields more. The slow log costs a
