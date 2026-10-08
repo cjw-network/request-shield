@@ -178,6 +178,14 @@ return [
             ['/', ['HTTP_USER_AGENT' => 'Mozilla/5.0 (compatible; Nmap Scripting Engine)'], 'ATK-UA-TOOLS'],
             ['/', ['HTTP_USER_AGENT' => 'zgrab/0.x'], 'ATK-UA-TOOLS'],
             ['/', ['HTTP_USER_AGENT' => 'nuclei - Open-source project'], 'ATK-UA-TOOLS'],
+            ['/', ['HTTP_USER_AGENT' => 'Fuzz Faster U Fool v2.1.0-dev'], 'ATK-UA-TOOLS'],          // ffuf's own User-Agent: "ffuf" is not in it
+            ['/', ['HTTP_USER_AGENT' => 'feroxbuster/2.10.4'], 'ATK-UA-TOOLS'],
+            ['/', ['HTTP_USER_AGENT' => 'dirsearch/0.4.3'], 'ATK-UA-TOOLS'],
+            ['/', ['HTTP_USER_AGENT' => 'WhatWeb/0.5.5'], 'ATK-UA-TOOLS'],
+            ['/', ['HTTP_USER_AGENT' => 'Arachni/v1.6.1.3'], 'ATK-UA-TOOLS'],
+            ['/', ['HTTP_USER_AGENT' => 'w3af.org'], 'ATK-UA-TOOLS'],
+            ['/', ['HTTP_USER_AGENT' => 'wafw00f/2.2.0'], 'ATK-UA-TOOLS'],
+            ['/', ['HTTP_USER_AGENT' => 'sqlninja/0.2.999'], 'ATK-UA-TOOLS'],
             // Shellshock (CVE-2014-6271): a function definition in a header, for a CGI script's bash
             ['/status', ['HTTP_USER_AGENT' => '() { :; }; /bin/bash -c "id"'], 'ATK-SHELLSHOCK'],
             ['/', ['HTTP_REFERER' => '() { _; } >_[$($())] { echo vulnerable; }'], 'ATK-SHELLSHOCK'],
@@ -222,6 +230,10 @@ return [
     },
     'RSF02-06 attacks: a real visitor\'s request passes (the benign side)' => function (): void {
         $s = attacksRules();
+        // User-Agents that hold a part of a tool's name, but not the name.
+        foreach (['Mozilla/5.0 (X11; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0 ffuffy/1', 'Fuzz Faster Fools Club/1.0', 'MyWhatWebsite/2.0', 'nmapper/1'] as $ua) {
+            same('allow', attacksDecide($s, '/', ['HTTP_USER_AGENT' => $ua]), "passes: $ua");
+        }
         // Headers that look a little like Shellshock but are none: brackets in a User-Agent, a Referer with a query.
         foreach ([['HTTP_USER_AGENT' => 'Mozilla/5.0 (X11; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0'],
             ['HTTP_USER_AGENT' => 'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)'],
@@ -350,7 +362,7 @@ return [
         truthy(strncmp(attacksDecide($s, '/.aws/credentials'), 'allow', 5) === 0, 'the exploit paths too');
         same('reject blocked path', attacksDecide($s, '/.env'), 'the scanner set stays');
         // replace keeps the ID: the site swaps the tool list for its own.
-        $s = attacksRules("replace [ATK-UA-TOOLS@1] block header User-Agent \\b(ourtool|sqlmap)\\b   # our scanner too\n");
+        $s = attacksRules("replace [ATK-UA-TOOLS@2] block header User-Agent \\b(ourtool|sqlmap)\\b   # our scanner too\n");
         same('ATK-UA-TOOLS', attacksRuleId($s, '/', ['HTTP_USER_AGENT' => 'ourtool/2']), 'the replacement, under the same ID');
         same('reject attack', attacksDecide($s, '/', ['HTTP_USER_AGENT' => 'sqlmap/1.7']), 'kept');
         truthy(strncmp(attacksDecide($s, '/', ['HTTP_USER_AGENT' => 'nuclei']), 'allow', 5) === 0, 'the rest of the list is gone with the rule');
@@ -401,7 +413,7 @@ return [
             exec("$bin show " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out);
             $shown = implode("\n", $out);
             truthy(preg_match('~^\[ATK-SQL-UNION@1\] block query regex union~m', $shown) === 1, $shown);
-            truthy(preg_match('~^\[ATK-UA-TOOLS@1\] block header User-Agent regex~m', $shown) === 1, $shown);
+            truthy(preg_match('~^\[ATK-UA-TOOLS@2\] block header User-Agent regex~m', $shown) === 1, $shown);
             truthy(strpos($shown, '# SQL injection: UNION SELECT  (built-in attacks.rules:') !== false, $shown);
             $out = [];
             exec("$bin trace " . escapeshellarg("$dir/site.rules") . ' ' . escapeshellarg('GET https://x.example/?id=1%20union%20select%202') . ' 2>&1', $out, $code);

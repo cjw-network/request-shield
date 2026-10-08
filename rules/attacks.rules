@@ -50,7 +50,7 @@ version 2026.10.2
 [ATK-SSTI@1]        block query \{\{[^}]{0,80}(\*|__|\(|_self\b)[^}]{0,80}\}\}                                           # template injection: {{7*7}}, {{_self.env…}} (Twig), {{''.__class__}} (Jinja) -- a placeholder {{ name }} passes
 
 # --- attack tools -----------------------------------------------------------------------
-[ATK-UA-TOOLS@1]    block header User-Agent \b(sqlmap|nikto|nmap|masscan|zgrab|zmeu|jorgee|wpscan|nuclei|acunetix|nessus|openvas|netsparker|dirbuster|gobuster|ffuf|wfuzz|havij|commix|fimap)\b   # attack tools by their name: sqlmap, nikto, nuclei, wpscan …
+[ATK-UA-TOOLS@2]    block header User-Agent \b(sqlmap|nikto|nmap|masscan|zgrab|zmeu|jorgee|wpscan|nuclei|acunetix|nessus|openvas|netsparker|dirbuster|gobuster|ffuf|wfuzz|havij|commix|fimap|feroxbuster|dirsearch|arachni|sqlninja|wafw00f|whatweb|w3af)\b|\bfuzz\sfaster\su\sfool\b   # attack tools by their name: sqlmap, nikto, nuclei, wpscan, feroxbuster … and ffuf by its own User-Agent
 
 # --- known exploit paths (OWASP A06: outdated components) ------------------------------------
 [ATK-EXPLOIT@1]     block **/eval-stdin.php /hnap1 /boaform/** /gponform/** /_ignition/execute-solution /.aws/** /.ssh/** **/wp-file-manager/lib/php/connector.minimal.php /cgi-mod/** /mifs/**   # paths of well-known exploits: PHPUnit eval-stdin, routers, Laravel Ignition, stored keys (lower case: matched so)
