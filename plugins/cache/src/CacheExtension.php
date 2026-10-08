@@ -32,6 +32,9 @@ use CjwNetwork\RequestShield\Settings;
  *   set http-cache-purgers 127.0.0.1 ::1   who may purge with a request (PURGE, PURGEKEYS; default: nobody)
  *   set http-cache-purge-token …       or anyone who sends it as X-Invalidate-Token (16 characters or more)
  *   set http-cache-tag-headers X-My-Tags   a header with tags besides the known ones (TAG_HEADERS)
+ *   set http-cache-session-cookie eZSESSID*   the session cookies a page per role is kept for
+ *   set http-cache-user-context on     the role from FOSHttpCache's user hash (/_fos_user_context_hash), or a URL to ask
+ *   set http-cache-user-hash-header X-User-Hash   its header (default X-User-Context-Hash; Exponential Platform: X-User-Hash)
  */
 final class CacheExtension implements Extension, ApiProvider
 {
@@ -58,13 +61,13 @@ final class CacheExtension implements Extension, ApiProvider
         return 'cache';
     }
 
-    /** @return array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int} */
+    /** @return array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string} */
     public static function of(Settings $s): array
     {
         $o = $s->ext['cache'] ?? null;
-        /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int} $o */
+        /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string} $o */
         $o = is_array($o) && isset($o['dir']) ? $o : ['enabled' => false, 'ttl' => 300, 'cookies' => self::COOKIES, 'maxObject' => 1048576, 'dir' => '', 'hosts' => [],
-            'purgers' => self::PURGERS, 'token' => '', 'tagHeaders' => self::TAG_HEADERS, 'sessionCookies' => [], 'contextTtl' => 600];
+            'purgers' => self::PURGERS, 'token' => '', 'tagHeaders' => self::TAG_HEADERS, 'sessionCookies' => [], 'contextTtl' => 600, 'userContext' => '', 'hashHeader' => 'x-user-context-hash'];
         // The folder: the one set, else below the store directory -- resolved here, so the compiled
         // settings do not depend on where they were compiled.
         $o['dir'] = $o['dir'] !== '' ? $o['dir'] : $s->storeDir . '/http-cache';
@@ -90,12 +93,26 @@ final class CacheExtension implements Extension, ApiProvider
         $v->set('http-cache-purge-token', 'string', 'or anyone who sends this as X-Invalidate-Token (16 characters or more; never shown)', null, 'token');
         $v->set('http-cache-session-cookie', 'words', 'the session cookies a page per role is kept for (wordpress_logged_in_* eZSESSID* PHPSESSID); the application names the role with Shield::active()?->cacheContext() (default: none, no pages per role)', null, 'sessionCookies');
         $v->set('http-cache-context-ttl', 'seconds', 'how long a session\'s role is remembered after the application last named it (default 10m)', null, 'contextTtl');
+        $v->set('http-cache-user-context', 'string', 'the role of a visitor with a session from FOSHttpCache\'s user hash: on (asks the site itself, /_fos_user_context_hash) or the address to ask (http://127.0.0.1:8080); off by default', static function ($value, string $at): string {
+            $s = is_scalar($value) ? strtolower(trim((string) $value)) : '';
+            if ($s === 'off' || $s === 'on' || preg_match('~^https?://[a-z0-9.:\[\]-]+(/[^\s?#]*)?$~', $s) === 1) {
+                return $s === 'off' ? '' : rtrim($s, '/');
+            }
+            throw new RuleFileException("$at: http-cache-user-context is on, off or the address to ask (http://127.0.0.1:8080), not \"$s\"");
+        }, 'userContext');
+        $v->set('http-cache-user-hash-header', 'string', 'the header of the user hash: X-User-Context-Hash (default, Ibexa) or X-User-Hash (Exponential Platform)', static function ($value, string $at): string {
+            $s = is_scalar($value) ? strtolower(trim((string) $value)) : '';
+            if ($s !== 'x-user-context-hash' && $s !== 'x-user-hash') {
+                throw new RuleFileException("$at: http-cache-user-hash-header is X-User-Context-Hash or X-User-Hash, not \"$s\"");
+            }
+            return $s;
+        }, 'hashHeader');
         $v->set('http-cache-tag-headers', 'words', 'a header with an answer\'s tags besides the known ones (xkey, X-Cache-Tags, X-LiteSpeed-Tag, Surrogate-Key, Cache-Tag, Edge-Cache-Tag, X-Magento-Tags)', null, 'tagHeaders');
     }
 
     /**
      * @param array<string, mixed> $raw
-     * @return array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int}
+     * @return array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string}
      */
     public static function compile(array $raw, Settings $base): array
     {
@@ -110,6 +127,12 @@ final class CacheExtension implements Extension, ApiProvider
         $tagHeaders = $raw['tagHeaders'] ?? [];
         $sessionCookies = $raw['sessionCookies'] ?? [];
         $contextTtl = $raw['contextTtl'] ?? 600;
+        $userContext = $raw['userContext'] ?? '';
+        $hashHeader = $raw['hashHeader'] ?? 'x-user-context-hash';
+        if (!is_string($userContext) || ($userContext !== '' && $userContext !== 'on' && preg_match('~^https?://[a-z0-9.:\[\]-]+(/[^\s?#]*)?$~', $userContext) !== 1)
+            || !in_array($hashHeader, ['x-user-context-hash', 'x-user-hash'], true)) {
+            throw Settings::wrong('ext.cache.userContext', 'userContext "", "on" or an http(s) address; hashHeader x-user-context-hash or x-user-hash');
+        }
         if (!is_bool($enabled) || !is_int($ttl) || $ttl < 0 || !is_int($max) || $max < 1 || !is_string($dir) || !is_array($cookies) || !is_array($hosts)
             || !is_array($purgers) || !is_string($token) || !is_array($tagHeaders) || !is_array($sessionCookies) || !is_int($contextTtl) || $contextTtl < 1) {
             throw Settings::wrong('ext.cache', 'enabled on/off, ttl seconds, maxObject bytes, dir a folder, cookies names, hosts names, purgers addresses, token a word, tagHeaders names, sessionCookies names, contextTtl seconds');
@@ -153,7 +176,8 @@ final class CacheExtension implements Extension, ApiProvider
             $names[] = $c;
         }
         return ['enabled' => $enabled, 'ttl' => $ttl, 'cookies' => $names, 'maxObject' => $max, 'dir' => $dir, 'hosts' => $names2,
-            'purgers' => $ranges, 'token' => $token, 'tagHeaders' => array_values(array_unique($headers)), 'sessionCookies' => $sessions, 'contextTtl' => $contextTtl];
+            'purgers' => $ranges, 'token' => $token, 'tagHeaders' => array_values(array_unique($headers)), 'sessionCookies' => $sessions, 'contextTtl' => $contextTtl,
+            'userContext' => $userContext, 'hashHeader' => $hashHeader];
     }
 
     /** An address, or a range of them (10.0.0.0/8). */
@@ -188,6 +212,12 @@ final class CacheExtension implements Extension, ApiProvider
         $out = [];
         if (self::of($s)['hosts'] === []) {
             $out[] = 'http-cache on, but no http-cache-hosts: nothing is kept -- name the site\'s host names as visitors send them (http-cache-hosts www.example.org example.org)';
+        }
+        if (self::of($s)['userContext'] !== '' && self::of($s)['sessionCookies'] === []) {
+            $out[] = 'http-cache-user-context on, but no http-cache-session-cookie: no visitor has a session to ask the role for -- name the session cookie (http-cache-session-cookie eZSESSID*)';
+        }
+        if (self::of($s)['userContext'] !== '' && \CjwNetwork\RequestShield\Http::offline() !== null) {
+            $out[] = 'http-cache-user-context on, but this PHP cannot ask anything (allow_url_fopen off, no curl): no role is found';
         }
         if ($s->cacheableQuery === null) {
             $out[] = 'http-cache on, and every query parameter is cacheable (no cache-query): made-up parameters fill the cache -- name the ones the site uses (cache-query page sort)';

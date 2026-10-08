@@ -401,6 +401,86 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF04-03 end to end, the role from FOSHttpCache\'s user hash (0039, http-cache-user-context): asked once per session as a Varnish asks it, the application sees the hash, sessions of a role share its page; a purge of the hash\'s tag asks again; a client asking for or sending a hash gets 400' => function (): void {
+        $fpm = fpmBinary();
+        if (!function_exists('proc_open') || $fpm === null) {
+            skip('no PHP-FPM here (TESTS_PHP_FPM)');
+        }
+        if (!extension_loaded('apcu')) {
+            skip('no APCu: roles stay off without it');
+        }
+        $dir = cacheDir();
+        mkdir("$dir/docroot");
+        // Exponential Platform without its AppCache, in a few lines: the hash lookup and a page that varies by it.
+        file_put_contents("$dir/docroot/index.php", '<?php
+            $login = $_COOKIE["eZSESSID98"] ?? "";
+            if (strtok($_SERVER["REQUEST_URI"], "?") === "/_fos_user_context_hash") {
+                if (($_SERVER["HTTP_ACCEPT"] ?? "") !== "application/vnd.fos.user-context-hash") { http_response_code(406); return; }
+                file_put_contents(__DIR__ . "/../lookups", "x", FILE_APPEND);
+                header("X-User-Hash: " . (strncmp($login, "ed", 2) === 0 ? "hash-editors" : "hash-authors"));
+                header("Content-Type: application/vnd.fos.user-context-hash");
+                header("Cache-Control: max-age=600");
+                header("Vary: Cookie");
+                header("xkey: ez-user-context-hash");
+                return;
+            }
+            file_put_contents(__DIR__ . "/../runs", "x", FILE_APPEND);
+            header("Vary: X-User-Hash");
+            header("Cache-Control: public, s-maxage=600");
+            header("xkey: ez-all");
+            echo "page for " . ($_SERVER["HTTP_X_USER_HASH"] ?? "nobody") . " " . hrtime(true);');
+        $lookupPort = freePort();
+        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset http-cache on\ncache-query x\nset http-cache-hosts www.example.org\n"
+            . "set http-cache-session-cookie eZSESSID*\nset http-cache-user-context http://127.0.0.1:$lookupPort\nset http-cache-user-hash-header X-User-Hash\n"
+            . "set http-cache-purgers 127.0.0.1 ::1\n");
+        $port = freePort();
+        $proc = startFpm($fpm, $dir, $port);
+        // The lookup's server: the same site and rules (here php -S; in production the same pool).
+        $web = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d apc.enable_cli=1 -d auto_prepend_file=%s -S 127.0.0.1:%d %s > %s 2>&1',
+            escapeshellarg("$dir/site.rules"), serverPhp(), escapeshellarg(rsEntry()), $lookupPort, escapeshellarg("$dir/docroot/index.php"), escapeshellarg("$dir/web.log")), [], $pipes);
+        for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $lookupPort); $i++) {
+            usleep(100000);
+        }
+        try {
+            $send = static function (string $method, string $uri, array $headers = []) use ($port, $dir): array {
+                $params = ['REQUEST_METHOD' => $method, 'REQUEST_URI' => $uri, 'QUERY_STRING' => (string) parse_url($uri, PHP_URL_QUERY),
+                    'SCRIPT_FILENAME' => "$dir/docroot/index.php", 'SCRIPT_NAME' => '/index.php', 'DOCUMENT_ROOT' => "$dir/docroot", 'SERVER_PROTOCOL' => 'HTTP/1.1',
+                    'SERVER_NAME' => 'www.example.org', 'SERVER_PORT' => '80', 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_HOST' => 'www.example.org',
+                    'REQUEST_SHIELD_CONFIG' => "$dir/site.rules", 'PHP_VALUE' => 'auto_prepend_file=' . rsEntry()];
+                foreach ($headers as $k => $v) {
+                    $params['HTTP_' . strtoupper(str_replace('-', '_', $k))] = $v;
+                }
+                return fcgi($port, $params);
+            };
+            $as = static fn (string $login, array $more = []): array => $send('GET', '/index.php', ['Cookie' => "eZSESSID98=$login; _ga=1"] + $more);
+            $hit = static fn (array $r): bool => strpos($r[1], 'X-RS-Cache: hit') !== false;
+            $count = static fn (string $f): int => strlen((string) @file_get_contents("$dir/$f"));
+            $r = $as('ed-1');
+            truthy(!$hit($r) && strpos($r[2], 'page for hash-editors') === 0 && $count('lookups') === 1,
+                'a new session: the hash asked once, the application sees it as behind a Varnish -- ' . $r[1] . $r[2] . @file_get_contents("$dir/web.log"));
+            truthy(stripos($r[1], 'Cache-Control: private, no-cache') !== false, 'a role\'s page leaves private: ' . $r[1]);
+            $r = $as('ed-2');
+            truthy($hit($r) && strpos($r[2], 'page for hash-editors') === 0 && $count('lookups') === 2 && $count('runs') === 1,
+                'another editor\'s session: its hash asked, the editors\' page from the cache -- the application does not run');
+            $r = $as('ed-1');
+            truthy($hit($r) && $count('lookups') === 2, 'the same session again: its hash remembered (max-age), not asked again');
+            $r = $as('au-1');
+            truthy(!$hit($r) && strpos($r[2], 'page for hash-authors') === 0, 'another role: its own page');
+            same(400, $as('ed-1', ['Accept' => 'application/vnd.fos.user-context-hash'])[0], 'a client asking for a hash: 400, as the Varnish configurations answer');
+            same(400, $as('ed-1', ['X-User-Hash' => 'hash-editors'])[0], 'a client sending a hash: 400');
+            same(400, $send('GET', '/_fos_user_context_hash', ['Cookie' => 'eZSESSID98=ed-1', 'Accept' => 'application/vnd.fos.user-context-hash', 'X-RS-Lookup' => str_repeat('0', 64)])[0],
+                'a forged X-RS-Lookup: 400');
+            same(200, $send('PURGE', '/', ['key' => 'ez-user-context-hash'])[0], 'PURGE + key: ez-user-context-hash (roles changed in the CMS)');
+            $before = $count('lookups');
+            truthy($hit($as('ed-1')) && $count('lookups') === $before + 1, 'the hashes purged: asked again (the page itself still the editors\')');
+        } finally {
+            proc_terminate($web);
+            proc_close($web);
+            proc_terminate($proc);
+            proc_close($proc);
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'RSF04-03 end to end, Exponential Platform\'s dialect (0039): xkey kept and taken out, PURGE + key from 127.0.0.1 makes its pages run again, X-Location-Id: * everything, an address; a stranger\'s PURGE gets 405; X-LiteSpeed-Purge in a POST\'s answer' => function (): void {
         $fpm = fpmBinary();
         if (!function_exists('proc_open') || $fpm === null) {

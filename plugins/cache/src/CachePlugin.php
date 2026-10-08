@@ -15,6 +15,7 @@ use CjwNetwork\RequestShield\Capability;
 use CjwNetwork\RequestShield\Challenge\Secret;
 use CjwNetwork\RequestShield\ContextHandler;
 use CjwNetwork\RequestShield\Handler;
+use CjwNetwork\RequestShield\Http;
 use CjwNetwork\RequestShield\IpAddress;
 use CjwNetwork\RequestShield\MethodHandler;
 use CjwNetwork\RequestShield\Plugin;
@@ -44,6 +45,12 @@ use CjwNetwork\RequestShield\Settings;
  * that cookie gets the page kept for the role -- when the application said
  * the page is the same for everyone with it (shared, or Vary: X-User-Hash /
  * X-User-Context-Hash). Such a page leaves as private.
+ *
+ * Without an adapter (http-cache-user-context): the role is FOSHttpCache's
+ * user hash, asked as a Varnish asks it -- GET /_fos_user_context_hash with
+ * only the session cookies, once per session for the hash's max-age, the
+ * hash kept with its tags (a purge of ez-user-context-hash asks again) and
+ * given to the application as the header a Varnish would send.
  */
 final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandler
 {
@@ -60,10 +67,18 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
     /** At most this many tags on one answer: one with more is not kept (its purges could not all be followed). */
     private const MAX_TAGS = 500;
 
+    /** Where FOSHttpCache answers the user hash, and the Accept it answers to. */
+    private const LOOKUP_PATH = '/_fos_user_context_hash';
+
+    private const LOOKUP_ACCEPT = 'application/vnd.fos.user-context-hash';
+
+    /** After a lookup that failed: no lookup for this long (the application is not asked on every request). */
+    private const LOOKUP_PAUSE = 60;
+
     /** The tag every answer has for its address (path and query, any host): PURGE <address> purges it. */
     private const ADDRESS = 'rs-url:';
 
-    /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int} */
+    /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string} */
     private array $o;
 
     private string $body = '';
@@ -112,6 +127,17 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
         if (!$this->o['enabled']) {
             return null;
         }
+        if ($this->o['userContext'] !== '') {
+            // The shield's own lookup (a MAC of the session): the application answers it. Anyone else
+            // asking for a hash, or sending one, is refused -- as the Varnish configurations do.
+            $asks = stripos((string) $request->header('accept'), self::LOOKUP_ACCEPT) !== false;
+            if ($request->header('x-rs-lookup') !== null && $this->isLookup($request)) {
+                return null;
+            }
+            if ($asks || $request->header('x-user-hash') !== null || $request->header('x-user-context-hash') !== null) {
+                return new Response(400, ['Content-Type: text/plain; charset=utf-8', 'Cache-Control: no-store'], "Bad request\n");
+            }
+        }
         $visitor = $this->visitor($request);
         if (!$decision->cacheable() || ($request->method !== 'GET' && $request->method !== 'HEAD') || $visitor === 'own'
             || !$this->ownHost($request) || !self::plainAddress($request)) {
@@ -128,7 +154,21 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
                 $this->watchHeaders();
                 return null;
             }
-            $this->context = $this->remembered($this->session);
+            $known = $this->remembered($this->session);
+            if ($known === null && $this->o['userContext'] !== '') {
+                $known = $this->lookup($request, $this->session);
+            }
+            if ($known === null && $this->o['userContext'] !== '') {
+                $this->watchHeaders();
+                return null;            // no hash: the cache is skipped for this request (fail safe)
+            }
+            $this->context = $known[0] ?? null;
+            if ($known !== null && $known[1]) {
+                // The application's own hash for this session, at most its max-age old: as good as a
+                // Varnish's -- the answer is kept for it, and the application sees it as behind one.
+                $this->named = true;
+                $_SERVER['HTTP_' . strtoupper(str_replace('-', '_', $this->o['hashHeader']))] = $known[0];
+            }
         }
         $hit = $visitor === 'anonymous' || $this->context !== null ? $cache->get($this->keyFor($key), $now) : null;
         if ($hit !== null && $this->tags()->purgedSince($hit['tags'], $hit['born'])) {
@@ -425,17 +465,73 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
     }
 
     /**
-     * The role remembered for a session, unless it ran out or the roles
-     * were purged since (the tag CONTEXT).
+     * The role remembered for a session -- and whether it is a user hash the
+     * application gave (lookup) -- unless it ran out or the roles were purged
+     * since (the tag CONTEXT, and the hash answer's own tags).
+     *
+     * @return array{0: string, 1: bool}|null
      */
-    private function remembered(string $session): ?string
+    private function remembered(string $session): ?array
     {
         $got = apcu_fetch($this->contextKey($session));
-        if (!is_array($got) || !is_float($got[0] ?? null) || !is_string($got[1] ?? null)
-            || $this->tags()->purgedSince([self::CONTEXT], $got[0])) {
+        if (!is_array($got) || !is_float($got[0] ?? null) || !is_string($got[1] ?? null)) {
             return null;
         }
-        return $got[1];
+        $tags = [self::CONTEXT];
+        foreach (is_array($got[3] ?? null) ? $got[3] : [] as $t) {
+            if (is_string($t)) {
+                $tags[] = $t;
+            }
+        }
+        return $this->tags()->purgedSince($tags, $got[0]) ? null : [$got[1], ($got[2] ?? false) === true];
+    }
+
+    /**
+     * FOSHttpCache's user hash for a session, asked of the application as a
+     * Varnish asks it: GET /_fos_user_context_hash, Accept
+     * application/vnd.fos.user-context-hash, only the session cookies, and
+     * X-RS-Lookup (a MAC of the session: the shield knows its own request).
+     * Kept in APCu for the hash's max-age (at most an hour) with the tags of
+     * its answer. No hash (an error, a timeout, a page without the header):
+     * null, and no lookup for LOOKUP_PAUSE seconds.
+     *
+     * @return array{0: string, 1: bool}|null
+     */
+    private function lookup(Request $request, string $session): ?array
+    {
+        $pause = 'rshield:hc:' . substr(md5($this->o['dir']), 0, 12) . ':lookup-pause';
+        if (apcu_fetch($pause) !== false) {
+            return null;
+        }
+        $base = $this->o['userContext'] === 'on' ? strtolower($request->scheme . '://' . $request->host) : $this->o['userContext'];
+        $got = Http::get($base . self::LOOKUP_PATH, ['Accept' => self::LOOKUP_ACCEPT, 'Host' => $request->host, 'Cookie' => implode('; ', $this->sessionPairs($request)),
+            'X-RS-Lookup' => $this->lookupMac($session)], 2, 4096);
+        $hash = $got !== null && $got['status'] === 200 ? trim($got['headers'][$this->o['hashHeader']] ?? '') : '';
+        if ($hash === '' || strlen($hash) > 200) {
+            apcu_store($pause, 1, self::LOOKUP_PAUSE);
+            return null;
+        }
+        $cc = strtolower($got['headers']['cache-control'] ?? '');
+        $ttl = preg_match('/\bmax-age=(\d+)/', $cc, $m) === 1 ? min((int) $m[1], 3600) : $this->o['contextTtl'];
+        if ($ttl > 0) {
+            $tags = $this->tagsOf(array_map(static fn (string $k, string $v): string => "$k: $v", array_keys($got['headers']), $got['headers'])) ?? [];
+            apcu_store($this->contextKey($session), [microtime(true), $hash, true, $tags], $ttl);
+        }
+        return [$hash, true];
+    }
+
+    /** Whether a request is the shield's own lookup: the X-RS-Lookup of its session cookies. */
+    private function isLookup(Request $request): bool
+    {
+        // Without APCu too: the server that answers the lookup may be another than the one asking.
+        $pairs = $this->sessionPairs($request);
+        return $pairs !== [] && hash_equals($this->lookupMac($this->macOf($pairs)), (string) $request->header('x-rs-lookup'));
+    }
+
+    private function lookupMac(string $session): string
+    {
+        $s = $this->settings;
+        return hash_hmac('sha256', 'lookup|' . $session, Secret::resolve($s->challenge->secret, $s->storeDir));
     }
 
     /**
@@ -448,6 +544,24 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
         if ($this->o['sessionCookies'] === [] || !Capability::apcu()) {
             return null;
         }
+        $pairs = $this->sessionPairs($request);
+        return $pairs === [] ? null : $this->macOf($pairs);
+    }
+
+    /** @param list<string> $pairs the session cookies, sorted */
+    private function macOf(array $pairs): string
+    {
+        $s = $this->settings;
+        return hash_hmac('sha256', 'session|' . implode('; ', $pairs), Secret::resolve($s->challenge->secret, $s->storeDir));
+    }
+
+    /**
+     * The session cookies of a request, sorted ("name=value").
+     *
+     * @return list<string>
+     */
+    private function sessionPairs(Request $request): array
+    {
         $pairs = [];
         foreach (explode(';', (string) $request->header('cookie')) as $pair) {
             $name = trim((string) strstr($pair . '=', '=', true));
@@ -455,12 +569,8 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
                 $pairs[] = trim($pair);     // as visitor() reads them: a harmless cookie is never a session
             }
         }
-        if ($pairs === []) {
-            return null;
-        }
         sort($pairs);
-        $s = $this->settings;
-        return hash_hmac('sha256', 'session|' . implode('; ', $pairs), Secret::resolve($s->challenge->secret, $s->storeDir));
+        return $pairs;
     }
 
     private function contextKey(string $session): string

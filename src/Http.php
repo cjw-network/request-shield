@@ -14,7 +14,9 @@ namespace CjwNetwork\RequestShield;
  * One HTTPS GET for the updates (feeds, crawler lists): with
  * file_get_contents where allow_url_fopen is on, else with curl, else
  * nothing -- and offline() says why, so the CLI can tell the operator what
- * to do instead. Never on a request path.
+ * to do instead. On a request path only for the HTTP cache's user hash
+ * (http-cache-user-context: once per session for the hash's max-age, 2 s at
+ * most).
  */
 final class Http
 {

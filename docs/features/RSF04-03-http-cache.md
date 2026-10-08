@@ -135,6 +135,50 @@ role, editors get the editors' page from the cache, members the members'
 - **Needs APCu:** without it a session cookie means the site answers, as
   before.
 
+### The role from FOSHttpCache's user hash: Ibexa, Exponential Platform
+
+An application built on FOSHttpCache computes the role itself -- the
+*user context hash* a Varnish asks for. With `set http-cache-user-context
+on` the shield asks it the same way, and no adapter is needed:
+
+```mermaid
+sequenceDiagram
+    participant V as Visitor (eZSESSID…)
+    participant S as Shield
+    participant A as Application
+    V->>S: GET /news
+    S->>A: GET /_fos_user_context_hash (Accept: application/vnd.fos.user-context-hash, only the session cookie, X-RS-Lookup)
+    A-->>S: X-User-Hash: 3f9a…, Cache-Control: max-age=600, xkey: ez-user-context-hash
+    Note over S: remembered for the session, 600 s
+    S->>A: GET /news with X-User-Hash: 3f9a… (as behind a Varnish)
+    A-->>S: the page, Vary: X-User-Hash
+    S-->>V: the page, private, no-cache (kept for the hash)
+```
+
+- **Asked once per session** for the hash answer's `max-age` (at most an
+  hour; without one `http-cache-context-ttl`), with only the session
+  cookies; kept in APCu with the hash answer's tags -- the CMS's purge of
+  `ez-user-context-hash` (roles changed) asks again. Every session of a
+  role shares the role's pages.
+- **Where it asks:** `on` -- the site itself, at the address the visitor
+  used (scheme and host); or the address given (`set http-cache-user-context
+  http://127.0.0.1:8080`, the host sent as `Host`). 2 seconds at most.
+- **The header:** `X-User-Context-Hash` (Ibexa, the default) or
+  `set http-cache-user-hash-header X-User-Hash` (Exponential Platform). The
+  application gets it in the request, as from a Varnish, and its pages
+  vary by it.
+- **The shield's own question** carries `X-RS-Lookup`, a MAC of the session
+  cookie: the shield lets it through to the application. A visitor that
+  asks for a hash (that `Accept`) or sends one gets `400`, as the Varnish
+  configurations answer.
+- **Fail safe:** no hash (an error, a timeout, an answer without the
+  header) -- the cache is skipped for this request and nobody is asked for
+  60 seconds. The question is a request to the site: rules that refuse or
+  check a request from the server's own address to
+  `/_fos_user_context_hash` switch the roles off.
+- **Needs APCu and an HTTP client** (`allow_url_fopen` or curl); `check`
+  says when one is missing, and when no `http-cache-session-cookie` is set.
+
 ## Use cases
 
 - **A CMS without a page cache of its own** on simple hosting: the news, the
@@ -160,6 +204,8 @@ set http-cache-purge-token …                # or anyone with this X-Invalidate
 set http-cache-tag-headers X-My-Tags        # a tag header besides the known ones
 set http-cache-session-cookie wordpress_logged_in_*   # a page per role for these sessions (needs APCu)
 set http-cache-context-ttl 10m              # how long a session's role is remembered
+set http-cache-user-context on              # the role from FOSHttpCache's user hash (or the address to ask)
+set http-cache-user-hash-header X-User-Hash # its header: X-User-Context-Hash (default) or X-User-Hash
 cache-query page sort                       # the parameters a page may have (RSF04-01)
 ```
 
@@ -190,6 +236,7 @@ literally: `--path=/news` takes `/newsletter` too.
 | on, a miss | one output buffer, a callback before the headers go out (tags and purges taken out), and, when kept, one file written after the answer |
 | a purge | one small file per tag and one for "anything", with APCu their copies |
 | a signed-in visitor, roles on | one MAC and one APCu read before the cache is asked; `cacheContext()` one APCu write |
+| the user hash (`http-cache-user-context`) | one request to the application per session and `max-age` (a lookup is a small answer; 2 s at most) |
 
 ## Limits
 
@@ -219,5 +266,6 @@ literally: `--path=/news` takes `/newsletter` too.
 - **Pages that differ by language or device** (`Vary: Accept-Language`,
   `Vary: Cookie`) are not kept: one address, one answer.
 - **Signed-in visitors only per role,** and only when the application names
-  the role (`cacheContext()`); without it a session cookie means the site
-  answers.
+  the role (`cacheContext()`) or gives its user hash
+  (`http-cache-user-context`); without either a session cookie means the
+  site answers.

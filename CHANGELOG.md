@@ -76,6 +76,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **The HTTP cache finds the role from FOSHttpCache's user hash** (0031 step
+  G.4, part 2b; proposal 0039): `set http-cache-user-context on` (or the
+  address to ask) and `set http-cache-user-hash-header X-User-Hash` for
+  Exponential Platform -- for a visitor with a session the shield asks
+  `/_fos_user_context_hash` as a Varnish does (only the session cookie,
+  `X-RS-Lookup`: a MAC the shield knows its own request by), once per
+  session for the hash's `max-age`, kept in APCu with its tags (a purge of
+  `ez-user-context-hash` asks again); the application gets the hash as from
+  a Varnish, and every session of a role shares its pages. No adapter
+  needed. A visitor that asks for a hash or sends one gets 400. No hash --
+  the cache is skipped for the request, no question for 60 s. Settings
+  `FORMAT` 61. ([the HTTP cache](docs/features/RSF04-03-http-cache.md#the-role-from-foshttpcaches-user-hash-ibexa-exponential-platform))
 - **The HTTP cache keeps one page per role** (0031 step G.4, part 2;
   proposal 0039): the application names the visitor's role with
   `Shield::active()?->cacheContext($role, shared: true)` (a new plugin
