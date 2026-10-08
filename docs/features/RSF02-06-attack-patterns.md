@@ -78,6 +78,7 @@ The shipped rules:
 | `ATK-LFI` | reading the server's files: ../../, /etc/passwd |
 | `ATK-WRAPPER` | PHP stream wrappers in the address: php://filter, phar://, data:// |
 | `ATK-PHP-OBJ` | a serialised PHP object in the query: O:8:"stdClass":0:{}, also O:+8:… and C:… (the way into unserialize() gadget chains) -- a serialised array passes |
+| `ATK-SSRF-META` | a cloud's metadata address in the query -- 169.254.169.254 (AWS, Azure, OpenStack), metadata.google.internal, 100.100.100.200 (Alibaba), 169.254.170.2 (ECS), fd00:ec2::254, also as one number, in hex or octal after `//` or `@`: a site that fetches an address from the request would hand out its own credentials (SSRF) |
 | `ATK-JNDI` | Log4Shell: ${jndi:ldap://…}, also nested (${${lower:j}ndi:…}), anywhere in the request -- a `${` before the first one closes is refused (`${a}${b}` passes, `${a ${b}` does not); where such text belongs, `unblock [ATK-JNDI] at <paths>` |
 | `ATK-SSTI` | template injection in the query: {{7*7}}, {{_self.env…}} (Twig), {{''.__class__}} (Jinja) -- a placeholder such as {{ name }} passes, but any call or `*` inside `{{ }}` is refused ({{ fn(x) }}, {{ price * 2 }}); a page that documents templates opens it with `unblock [ATK-SSTI] at <paths>` |
 | `ATK-UA-TOOLS` | attack tools by their name: sqlmap, nikto, nuclei, wpscan … |
