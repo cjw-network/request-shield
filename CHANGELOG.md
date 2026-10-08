@@ -62,14 +62,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 - **A new attack rule, `ATK-SHELLSHOCK`** (attack rules `2026.10.2`,
-  `include @attacks`): a header whose value starts with `() {` -- Shellshock
-  (CVE-2014-6271), scanned for everywhere, dangerous for CGI scripts behind
-  the site; `f() {` and brackets inside a value pass, cookies are not looked
-  at. A passing request with all attack rules: unchanged within noise (each
+  `include @attacks`): `() { … }` and a command after it in a header --
+  Shellshock (CVE-2014-6271), scanned for everywhere, dangerous for CGI
+  scripts behind the site; `f() {`, `() {build 7}` or a search for
+  `function () { return x }` pass, cookies are not looked at. A passing request with all attack rules: unchanged within noise (each
   request now gathers its headers once for the attack rules' `headers` and
   `anywhere` targets, which also makes `anywhere` cheaper). Attack patterns
-  may now use look-arounds (`(?<!…)`, `(?=…)`); back references and named
-  groups stay refused.
+  may now use look-arounds (`(?<!…)`, `(?=…)`); back references, named
+  groups and calls or conditions by number (`(?1)`, `(?R)`, `(?(1)…)`) are
+  refused -- in the combined expression they would reach another pattern.
 - **`Server-Timing` with debug-header** (proposal 0046 step 3): with `set
   debug-header on` a request let through -- and an answer from the HTTP cache
   -- carries `Server-Timing: shield;dur=<ms>;desc=request-shield`, the

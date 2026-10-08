@@ -1272,8 +1272,10 @@ final class Settings
                 }
                 // All of a target's patterns become one expression: a back
                 // reference would point at another pattern's group, and a name
-                // could be taken twice. A look around ((?<!…), (?=…)) is fine.
-                if (preg_match('/\\\\[1-9]|\\\\g\{?-?\d|\\\\k[<{\']|\(\?(P?<(?![=!])|\'|P[=>])/', $m[1])) {
+                // could be taken twice; a call or a condition by number ((?1), (?R),
+                // \g<1>, (?(1)…)) would reach another pattern's group too. A look
+                // around ((?<!…), (?=…)) or a relative call ((?-1)) is fine.
+                if (preg_match('/\\\\[1-9]|\\\\g\{?-?\d|\\\\g[<\']\+?\d|\\\\k[<{\']|\(\?(P?<(?![=!])|\'|P[=>]|[R0-9]|\+\d|\((\d|R))/', $m[1])) {
                     throw self::wrong("contentRules.$i.patterns", 'expressions without back references or named groups');
                 }
                 $bodies[$target][] = '(?:' . $m[1] . ')';

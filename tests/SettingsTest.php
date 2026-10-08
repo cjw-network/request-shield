@@ -62,6 +62,10 @@ return [
         expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => ["#(?'n'a)#"]]]], 'contentRules.0.patterns');
         expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => ['#(?P<n>a)(?P=n)#']]]], 'contentRules.0.patterns');
         expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => ['#(?<n>a)\k<n>#']]]], 'contentRules.0.patterns');
+        foreach (['#(a)b(?1)#', '#(a)(?R)?#', '#(a)\\g<1>#', "#(a)\\g'1'#", '#(a)(?(1)b|c)#', '#(a)(?(R1)b)#', '#(a)(?+1)(b)#'] as $p) {
+            expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => [$p]]]], 'contentRules.0.patterns');   // calls and conditions by number reach another pattern's group
+        }
+        same(1, count(Settings::from(['contentRules' => [['target' => 'query', 'patterns' => ['#(a)b(?-1)#']]]])->contentRules[0]['patterns']), 'a relative call stays in its pattern');
         // A look around refers to no group: allowed (ATK-SHELLSHOCK: "()" not after a letter).
         same(4, count(Settings::from(['contentRules' => [['target' => 'headers', 'patterns' => ['#\(\)(?<!\S\(\))\s*\{#', '#a(?=b)#', '#(?<=x)y#', '#c(?!d)#']]]])->contentRules[0]['patterns']), 'look arounds pass');
         expectInvalid(['contentRules' => ['not a map']], 'contentRules.0');
