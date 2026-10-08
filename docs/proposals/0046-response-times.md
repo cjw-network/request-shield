@@ -12,50 +12,71 @@
 *"Could the response time of a request be kept too -- to see load on the
 server, or slow pages, later in the statistics?"* (owner, 2026-10-08)
 
-Yes, and cheaply: the statistics already listen at the end of every request
-that reaches the site. That is the one moment the time can be measured.
+Yes, and cheaply: the statistics already listen at the end of nearly every
+request the shield lets through. That is the one moment the time can be
+measured.
 
 ## What can be measured
 
 The shield runs first, the site after it. With statistics on, the shield
-already asks PHP to call it back once the site is done (`register_shutdown_function`,
-`StatsPlugin::ended()` -- that is how a page view gets its status 200 or 404).
-From that callback:
+already asks PHP to call it back at the end (`register_shutdown_function` in
+`Shield::record()`, then `StatsPlugin::ended()` -- that is how a page view gets
+its status 200 or 404). The call comes for every request the shield lets
+through, except the paths not counted (`stats-skip`) and the dashboard's own
+pages -- as long as one counting part is on; `times` would be one more such
+part. From that callback:
 
 ```
-request arrives            shield decides         site answers            PHP is done
-      │ REQUEST_TIME_FLOAT       │ (µs)                 │                        │ ended()
-      ├──────────────────────────┼──────────────────────┼────────────────────────┤
-      │◄── shield ──►│◄─────────────── the site (WordPress, Symfony, …) ────────►│
-      │◄──────────────────────────── response time (what this proposal keeps) ──►│
+request arrives     shield decides        site answers, its main script ends    ended()   the site's shutdown work
+      │ REQUEST_TIME_FLOAT │ (µs)                           │                      │       (WordPress "shutdown",
+      ├────────────────────┼────────────────────────────────┼──────────────────────┤        destructors, session
+      │◄─ shield ─►│◄──────────── the site (WordPress, Symfony, …) ───────────────►│        write) -- not in it
+      │◄─────────────────── response time (what this proposal keeps) ────────────►│
 ```
 
-- **Response time** = end of PHP − `$_SERVER['REQUEST_TIME_FLOAT']` (the web
-  server's own start time of the request). It holds the shield's
-  microseconds and the site's whole work: database, templates, API calls.
-- **The shield's own share** is known too (its start and end), so the page can
-  say "of 180 ms, the shield took 0.02 ms" -- a number worth showing.
-- **Not in it:** the network and the browser's rendering (that is the
-  visitor's side; it would take a script in the page). And a request the
-  shield refuses never reaches the site -- its time is the shield's alone and
-  is not counted as a page's.
+- **Response time** = the time at `ended()` (one `microtime()` more: the time
+  the callback gets today is the request's start) − `$_SERVER['REQUEST_TIME_FLOAT']`
+  (the web server's own start time of the request). It holds the shield's
+  microseconds and the site's work in its main script: database, templates, API
+  calls, and what the front controller does after the answer went out (Symfony's
+  `kernel.terminate`, work after `fastcgi_finish_request()`).
+- **Not in it:** PHP calls the shutdown functions in the order they were
+  registered, and the shield's comes first (it registers before the site
+  runs). So the site's own shutdown work -- WordPress's `shutdown` hook, where
+  many plugins do their work after the answer, destructors, the session's
+  write -- runs after the measurement. Neither the network nor the browser's
+  rendering is in it either (that is the visitor's side; it would take a script in the
+  page).
+- **Answers from the HTTP cache** (the cache plugin, a hit) pass the shield and
+  are answered before the site starts; the callback comes for them too. Their
+  sub-millisecond times would pull the median down -- they are counted apart
+  (a band set of their own, "from the cache"), never mixed with the site's.
+- **A refused request** never reaches the site -- its time is the shield's
+  alone and not counted as a page's.
+- **The shield's own share** ("of 180 ms, the shield took 0.02 ms") needs a
+  second `microtime()` when the shield is done -- only with `times` on. It
+  would start where the shield's clock starts today (after reading the
+  settings and the request), so it says a little less than the shield costs;
+  `bench/overhead.php` remains the number for that.
 
-**A limit to say plainly:** a site that hands the answer to the visitor early
-(`fastcgi_finish_request()`, Symfony's `kernel.terminate`) works on after
-that; the time measured is then **how long the PHP worker was busy** -- the
-right number for load, an upper bound for "how long the visitor waited".
+**What the number is, then:** how long the site needed until its main script
+was done -- the right number for slow pages and for load; for "how long the
+visitor waited" an upper bound when the site answers early, and for "how long
+the worker was busy" a lower bound when it has much shutdown work.
 
 ## What the statistics would show
 
 1. **Per hour: how fast** -- the median and the slow end (p50, p95), by
    people, crawlers and bots, next to the requests per hour that are already
-   there. Load shows as both lines rising together; a slow database as p95
+   there. (Who is who is known only when `crawlers`, `bots` or `pages` is on --
+   the User-Agent is looked at then; with `stats requests times` alone every
+   request counts as a person's. `times` does not look at it by itself.) Load shows as both lines rising together; a slow database as p95
    rising while the requests stay flat.
 2. **The slowest pages** -- per page (the `pg:` keys the page views already
    have) the average and the slow end, only pages with enough views (say 20 an
    hour), so one odd request is no "slow page".
-3. **Right now (live view)** -- requests in the last minute (there already)
-   and their median time; a mark when the slow end of the last 5 minutes is
+3. **Right now (live view)** -- requests in the last minute (there already,
+   with APCu, people only) and their median time, with the same limits; a mark when the slow end of the last 5 minutes is
    well above the hour before ("the server is under load").
 4. **Errors and time together** -- 5xx answers are counted already; next to
    the time it shows whether the site slows down before it breaks.
@@ -91,19 +112,30 @@ a counter per time band, plus the sum of the milliseconds for the average.
 
 p50 and p95 are read from the bands (to the band's width: "under 250 ms",
 or interpolated within it) -- exact enough for "is it slow" and free of a list
-of single times. Pages follow the page views' existing limit (`Stats::TOP`, the 100 most
-visited per kind of visitor and hour; the rest is `(other)`), so a site with a
-million URLs keeps a fixed size.
+of single times. Pages get the same limit as the page views (`Stats::TOP`: 100 per kind of
+visitor and hour, the rest `(other)`), so a site with a million URLs keeps a
+fixed size. That needs code of its own: today's limit (`Stats::group()`) knows
+only the page views' keys, and with APCu it keeps the first pages seen in an
+hour, cut to the most visited at the roll-up -- the time table must keep the
+same pages as the views, or "views" and "median" would not match.
+
+Counting a sum is new too: `count()` adds 1 per key today. A variant adds an
+amount (APCu: `apcu_inc($key, $ms)`; files: `rs:people*180`, the form a flush
+already writes and the roll-up reads).
 
 ## Cost
 
 - **Off by default**, a part of its own: `set stats requests pages times`.
   Without `times` nothing changes -- not one call on any request (AGENTS.md:
   nothing a feature needs on the path when the feature is not used).
-- **With it:** at the end of the request one `microtime()` and two or three
-  counters more (APCu: about 0.2 µs each; files: the line that is written
-  anyway gets one field more). Estimated +1 µs with APCu; measured before it
+- **With it:** at the end of the request one `microtime()` and two counters
+  more (band and sum; APCu about 0.2 µs each). Estimated +1 µs with APCu for
+  step 1; per page (step 2) two or three APCu calls more. Measured before it
   goes in (`bench/overhead.php`, a case with `times`).
+- **Files:** with `requests` on, the end of a request writes a line anyway --
+  it gets two fields more (four with the pages). With `times` alone it would be
+  a line of its own, 15-25 µs (as in RSF06-03's cost table): `times` is meant
+  next to `requests`.
 - The callback at the end is there already whenever the statistics count a
   request that reaches the site; `times` adds no second one.
 - The slow log: one appended line per slow request only.
