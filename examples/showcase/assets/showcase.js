@@ -344,29 +344,63 @@
     var banLeft = banBox.getAttribute('data-left'), banKinds = {};
     try { banKinds = JSON.parse(banBox.getAttribute('data-kinds')) || {}; } catch (e) {}
     var bans = [], offset = 0;
+    // The tab with every ban: the automatic ones (the same, with their countdown) and the ones
+    // set by hand (deny) -- for good, or until a time.
+    var all = dock.querySelector('.log-all-bans'), autoList = all.querySelector('.log-all-auto'), handList = all.querySelector('.log-all-hand');
+    var tabN = dock.querySelector('.log-tab-n'), logPane = dock.querySelector('.log-pane'), sources = {};
+    try { sources = JSON.parse(all.getAttribute('data-sources')) || {}; } catch (e) {}
+    var lang = document.documentElement.lang === 'de' ? 'de-DE' : 'en-GB';
+    var none = function (list) { if (!list.children.length) { list.appendChild(el('li', 'log-empty', all.getAttribute('data-none'))); } };
+    var handN = 0;
+    dock.querySelectorAll('.log-tab').forEach(function (t) {
+      t.addEventListener('click', function () {
+        var bansTab = t.getAttribute('data-tab') === 'bans';
+        dock.querySelectorAll('.log-tab').forEach(function (o) {
+          var on = o === t;
+          o.classList.toggle('active', on); o.setAttribute('aria-selected', on ? 'true' : 'false'); o.tabIndex = on ? 0 : -1;
+        });
+        logPane.hidden = bansTab; all.hidden = !bansTab;
+        if (!open) { setOpen(true); }
+      });
+    });
     var tick = function () {
       var now = Date.now() / 1000 + offset;
-      banList.querySelectorAll('[data-until]').forEach(function (s) {
+      dock.querySelectorAll('.log-ban-left[data-until]').forEach(function (s) {
         var left = Math.ceil(parseInt(s.getAttribute('data-until'), 10) - now);
         if (left <= 0) { var li = s.closest('li'); li.parentNode.removeChild(li); } else { s.textContent = banLeft.replace('{s}', left); }
       });
       banBox.hidden = !banList.children.length;
+      none(autoList);
+      var n = banList.children.length + handN;
+      tabN.textContent = n ? String(n) : '';
     };
-    var showBans = function (list, now) {
+    var banRow = function (b) {
+      var li = el('li', 'log-ban log-ban-' + b.kind);
+      li.appendChild(el('span', 'log-ip', b.client));
+      li.appendChild(el('span', 'log-ban-kind', banKinds[b.kind] || b.kind));
+      li.appendChild(el('span', 'log-rule', b.rule || ''));
+      var left = el('span', 'log-ban-left'); left.setAttribute('data-until', String(b.until)); li.appendChild(left);
+      li.title = b.agent || '';
+      return li;
+    };
+    var showBans = function (list, denied, now) {
       if (typeof now === 'number') { offset = now - Date.now() / 1000; }
-      var key = JSON.stringify(list);
+      var key = JSON.stringify([list, denied]);
       if (key === bans) { tick(); return; }
       bans = key;
-      banList.textContent = '';
-      list.forEach(function (b) {
-        var li = el('li', 'log-ban log-ban-' + b.kind);
-        li.appendChild(el('span', 'log-ip', b.client));
-        li.appendChild(el('span', 'log-ban-kind', banKinds[b.kind] || b.kind));
-        li.appendChild(el('span', 'log-rule', b.rule || ''));
-        var left = el('span', 'log-ban-left'); left.setAttribute('data-until', String(b.until)); li.appendChild(left);
-        li.title = b.agent || '';
-        banList.appendChild(li);
+      banList.textContent = ''; autoList.textContent = ''; handList.textContent = '';
+      list.forEach(function (b) { banList.appendChild(banRow(b)); autoList.appendChild(banRow(b)); });
+      denied.forEach(function (d) {
+        var li = el('li', 'log-ban');
+        li.appendChild(el('span', 'log-ip', d.clients.join(', ')));
+        li.appendChild(el('span', 'log-ban-kind', sources[d.source] || d.source));
+        li.appendChild(el('span', 'log-rule', d.rule));
+        li.appendChild(el('span', 'log-ban-left', d.until === null ? all.getAttribute('data-for-good')
+          : all.getAttribute('data-until').replace('{t}', new Date(d.until * 1000).toLocaleString(lang, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }))));
+        handList.appendChild(li);
       });
+      handN = denied.length;
+      none(handList);
       tick();
     };
     setInterval(tick, 1000);
@@ -388,7 +422,7 @@
           rows.appendChild(li);
           while (rows.children.length > 40) { rows.removeChild(rows.firstChild); }
         });
-        showBans(j.bans || [], j.now);
+        showBans(j.bans || [], j.denied || [], j.now);
         if (fresh && !open) { unseen += fresh; badge.textContent = '+' + unseen; badge.hidden = false; }
         first = false;
         rows.scrollTop = rows.scrollHeight;

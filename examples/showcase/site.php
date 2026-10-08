@@ -156,8 +156,8 @@ function showcaseLang(): string
 
 /**
  * Who is banned right now: the store's bans (APCu or files; with ban-keep file also the files
- * that outlast a restart) -- the same list the dashboard's lists page shows. The address masked
- * as the log masks it (log-ip); the rule and what kind of visitor it looks like from the log's
+ * that outlast a restart) -- the same list the dashboard's lists page shows. The address only
+ * as its network (showcaseMask), whatever log-ip says; the rule and what kind of visitor it looks like from the log's
  * end, when it still has a line of that address -- the kind is a guess from the User-Agent.
  *
  * @param list<string> $lines
@@ -175,31 +175,72 @@ function showcaseBans(?Shield $shield, array $lines, int $now): array
             $marks[$key] = max($until, $marks[$key] ?? 0);
         }
     }
-    $seen = [];         // masked address => the latest line about it (a ban's first names the rule)
+    // masked address => its latest ban line (the first of a ban names the rule); a network's other
+    // lines only when it has none -- another visitor of the same network is not the one banned
+    $seen = [];
     foreach ($lines as $line) {
         $r = \CjwNetwork\RequestShield\LogStats::parse($line);
-        if ($r !== null) {
-            // log-ip full: the line has the address, the ban its bucket (an IPv6 address's network)
-            $who = $s->logIp === 'full' ? \CjwNetwork\RequestShield\IpAddress::bucket($r['client'], $s->ipv6Prefix) : $r['client'];
-            $was = $seen[$who] ?? null;
-            $seen[$who] = ['rule' => $r['reason'] === 'banned' && $r['rule'] !== null ? $r['rule'] : ($was['rule'] ?? null),
-                'claimed' => $r['claimed'], 'agent' => $r['agent']];
+        if ($r === null) {
+            continue;
+        }
+        $who = showcaseMask($r['client']);      // log-ip full: the line has the address, the ban its bucket
+        $was = $seen[$who] ?? null;
+        $banned = $r['reason'] === 'banned';
+        if ($banned || $was === null || !$was['banned']) {
+            $seen[$who] = ['rule' => $banned && $r['rule'] !== null ? $r['rule'] : ($was['rule'] ?? null), 'claimed' => $r['claimed'], 'agent' => $r['agent'],
+                'banned' => $banned || ($was['banned'] ?? false)];
         }
     }
     $bans = [];
     foreach ($marks as $key => $until) {
         $bucket = substr($key, 4);
-        $client = $s->logIp === 'full' ? $bucket : \CjwNetwork\RequestShield\Log::mask(explode('/', $bucket)[0]);
+        $client = showcaseMask($bucket);
         if ($until <= $now || (isset($bans[$client]) && $bans[$client]['until'] >= $until)) {
             continue;
         }
-        $l = $seen[$client] ?? ['rule' => null, 'claimed' => null, 'agent' => null];
+        $l = $seen[$client] ?? ['rule' => null, 'claimed' => null, 'agent' => null, 'banned' => false];
         $bans[$client] = ['client' => $client, 'until' => $until, 'rule' => $l['rule'],
             'kind' => $l['agent'] === null ? 'unknown' : showcaseVisitorKind($l['claimed'], $l['agent']), 'agent' => substr((string) $l['agent'], 0, 80)];
     }
     $out = array_values($bans);
     usort($out, static fn (array $a, array $b): int => $b['until'] <=> $a['until']);
     return $out;
+}
+
+/**
+ * The addresses kept out by hand (deny): from the rule file, or from the list file the command
+ * line and the dashboard write (LIST-…) -- for good, or until a time. The first ones only
+ * (the settings keep DENY_SHOWN), each address as its network.
+ *
+ * @return list<array{clients: list<string>, until: ?int, rule: string, source: string}>
+ */
+function showcaseDenied(?Shield $shield): array
+{
+    $out = [];
+    foreach ($shield !== null ? $shield->settings->deny : [] as $d) {
+        $out[] = ['clients' => array_values(array_unique(array_map('showcaseMask', $d['ips']))), 'until' => $d['until'], 'rule' => $d['rule'],
+            'source' => strncmp($d['rule'], 'LIST-', 5) === 0 ? 'list' : 'rules'];
+    }
+    return $out;
+}
+
+/**
+ * An address as the demo may show it: its network, as log-ip masked writes it (198.51.100.7 ->
+ * 198.51.100.0/24, IPv6 -> /48). A range that wide or wider stays as it is; a narrower one
+ * (an IPv6 bucket, /64) is cut to its network too.
+ */
+function showcaseMask(string $a): string
+{
+    $slash = strpos($a, '/');
+    if ($slash !== false) {
+        $base = substr($a, 0, $slash);
+        $v6 = strpos($base, ':') !== false;
+        if ((int) substr($a, $slash + 1) <= ($v6 ? 48 : 24) && @inet_pton($base) !== false) {
+            return $a;
+        }
+        $a = $base;
+    }
+    return \CjwNetwork\RequestShield\Log::mask($a);
 }
 
 /** What a User-Agent looks like: crawler (says so), tool (a script, a library), browser (likely a person), unknown. */
@@ -451,7 +492,9 @@ if ($path === '/__log') {
             $lines = array_slice($all, -14);
         }
     }
-    showcaseJson(200, ['lines' => $lines, 'bans' => showcaseBans(Shield::active(), $all, time()), 'now' => time()]);
+    // A demo never shows an address whole, whatever log-ip says: only its network.
+    $lines = array_map(static fn (string $l): string => (string) preg_replace_callback('/^(\S+) (\S+) /', static fn (array $m): string => $m[1] . ' ' . showcaseMask($m[2]) . ' ', $l), $lines);
+    showcaseJson(200, ['lines' => $lines, 'bans' => showcaseBans(Shield::active(), $all, time()), 'denied' => showcaseDenied(Shield::active()), 'now' => time()]);
     return;
 }
 if ($path === '/__forget') {

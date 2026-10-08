@@ -64,7 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **The showcase's live log names who is banned right now**: from the
   store (as the dashboard), with the masked address, the seconds left, the
   rule and the visitor's kind guessed from the User-Agent (browser, crawler,
-  script).
+  script); a tab *all bans* adds the ones set by hand (`deny`: rule file or
+  list), for good or until when. Addresses only as their network, always.
 - **`request-shield replay` takes a learning run's recording**
   (`learned.jsonl`) -- a test for every deployment: the requests clicked in
   the run (those it let through) and what the pages offered (forms, links,

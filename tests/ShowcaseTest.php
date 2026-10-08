@@ -347,4 +347,24 @@ return [
             same(['rule' => null, 'kind' => 'unknown'], array_intersect_key($after['198.51.100.0/24'] ?? [], ['rule' => 1, 'kind' => 1]), 'still banned with the log gone: ' . json_encode($after));
         });
     },
+    'RSF05-05 the showcase\'s log window has a tab with every ban -- the automatic ones, for a while, and the ones set by hand (deny), lasting or until when -- and shows no address whole, only its network' => function (): void {
+        withShowcase(static function (callable $get, int $port): void {
+            for ($i = 0; $i < 5; $i++) {
+                $get('POST', '/account/login', ['X-Forwarded-For' => '198.51.100.77', 'Origin' => "http://127.0.0.1:$port", 'User-Agent' => 'Mozilla/5.0 (X11; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0'], 'user=demo&password=wrong');
+            }
+            $get('GET', '/', ['X-Forwarded-For' => '203.0.113.66']);
+            $body = $get('GET', '/__log')[2];
+            $j = (array) json_decode($body, true);
+            truthy(strpos($body, '198.51.100.77') === false && strpos($body, '203.0.113.66') === false, 'no address whole, anywhere: ' . $body);
+            $hand = [];
+            foreach ((array) ($j['denied'] ?? []) as $d) {
+                $hand[$d['rule']] = $d;
+            }
+            same(['clients' => ['203.0.113.0/24'], 'until' => null, 'source' => 'rules'], array_intersect_key($hand['SHOW-DENY'] ?? [], ['clients' => 1, 'until' => 1, 'source' => 1]),
+                'the address kept out by hand, for good, from the rule file: ' . json_encode($j['denied'] ?? null));
+            same(1, count(array_filter((array) ($j['bans'] ?? []), static fn (array $b): bool => $b['client'] === '198.51.100.0/24')), 'and the automatic one');
+            $page = $get('GET', '/?lang=de')[2];
+            truthy(strpos($page, 'class="log-all-bans"') !== false && strpos($page, 'Alle Sperren') !== false && strpos($page, 'Von Hand') !== false, 'the tab is there');
+        });
+    },
 ];

@@ -93,7 +93,11 @@ The parts below describe them; a card behaves the same wherever it stands.
   `ban-keep file` they outlast a restart; the same list as the dashboard's),
   each with its masked address, the seconds left, the rule, and what kind
   of visitor it looks like -- a browser, a crawler, a script: a guess from
-  the User-Agent of its last line in the log.
+  the User-Agent of its ban's line in the log. The tab *all bans* lists
+  them too, and beside them the addresses kept out by hand (`deny`, from
+  the rule file or the list the command line and the dashboard write),
+  for good or until when. The demo never shows an address whole, only its
+  network (/24, /48), whatever `log-ip` says.
 - **Install** shows the steps with real paths: the folder, `.htaccess`,
   `.user.ini`, `require` in `index.php` or `wp-config.php`, and a first rule
   file in `monitor` mode with `set log` -- without a log file, monitor mode

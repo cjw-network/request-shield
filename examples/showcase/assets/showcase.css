@@ -245,6 +245,19 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .log-ban-browser .log-ban-kind::before { content: "\1F464  "; }
 .log-ban-crawler .log-ban-kind::before { content: "\1F577  "; }
 .log-ban-tool .log-ban-kind::before { content: "\2699  "; }
+.log-tabs { display: flex; gap: 4px; margin: 8px 14px 0; border-bottom: 1px solid rgba(255, 255, 255, .12); }
+.log-tab { border: 0; background: transparent; color: #b8c2d6; padding: 4px 10px; font-size: .8rem; font-weight: 600; border-bottom: 2px solid transparent; }
+.log-tab.active { color: #fff; border-bottom-color: var(--rs-coral); }
+.log-tab:hover, .log-tab:focus-visible { color: #fff; }
+.log-tab-n:not(:empty) { background: rgba(248, 113, 113, .3); color: #fecaca; border-radius: 999px; padding: 0 7px; font-size: .72rem; }
+.log-all-bans { padding: 0 14px 12px; max-height: 300px; overflow-y: auto; font-size: .76rem; }
+.log-dock.wide .log-all-bans { max-height: min(60vh, 600px); }
+.log-all-head { font-size: .8rem; font-weight: 700; color: #fff; margin: 10px 0 2px; }
+.log-all-note { color: #94a3b8; margin: 0 0 4px; }
+.log-all-list { list-style: none; margin: 0; padding: 0; }
+.log-all-list li { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 3px 6px; border-left: 3px solid #fb923c; border-radius: 6px; }
+.log-all-hand li { border-left-color: var(--rs-coral); }
+.log-all-list li.log-empty { border-left-color: transparent; }
 .log-ban-left { margin-left: auto; color: #fca5a5; font-variant-numeric: tabular-nums; }
 .log-ip { color: #c4b5fd; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .log-raw { display: block; padding: 4px 6px; border-bottom: 1px solid rgba(148, 163, 184, .15); }

@@ -453,6 +453,11 @@ Shield::protectFile(__DIR__ . '/settings/request-shield/exponential-admin-uri.ru
     <button type="button" class="log-dock-wide" aria-pressed="false" title="<?= $e($t['liveLogWide']) ?>" aria-label="<?= $e($t['liveLogWide']) ?>"><i class="bi bi-arrows-angle-expand"></i></button>
   </div>
   <div class="log-dock-body" id="log-dock-body">
+    <div class="log-tabs" role="tablist">
+      <button type="button" role="tab" class="log-tab active" id="log-tab-log" data-tab="log" aria-selected="true" aria-controls="log-pane-log"><?= $e($t['liveTabLog']) ?></button>
+      <button type="button" role="tab" class="log-tab" id="log-tab-bans" data-tab="bans" aria-selected="false" aria-controls="log-pane-bans" tabindex="-1"><?= $e($t['liveTabBans']) ?> <span class="log-tab-n"></span></button>
+    </div>
+    <div class="log-pane" id="log-pane-log" role="tabpanel" aria-labelledby="log-tab-log">
     <div class="log-dock-bar">
       <p class="log-dock-lead"><?= $e($t['liveLogLead']) ?> <?= $e($t['liveLogMasked']) ?>.</p>
       <div class="btn-group btn-group-sm log-mode" role="group">
@@ -465,6 +470,17 @@ Shield::protectFile(__DIR__ . '/settings/request-shield/exponential-admin-uri.ru
       <ul class="log-ban-list" aria-live="polite"></ul>
     </div>
     <ol class="log-rows" aria-live="off"><li class="log-empty"><?= $e($t['liveLogEmpty']) ?></li></ol>
+    </div>
+    <div class="log-all-bans" id="log-pane-bans" role="tabpanel" aria-labelledby="log-tab-bans" hidden
+      data-for-good="<?= $e($t['liveForGood']) ?>" data-until="<?= $e($t['liveUntil']) ?>" data-sources="<?= $e((string) json_encode($t['liveSources'])) ?>" data-none="<?= $e($t['liveNone']) ?>">
+      <p class="log-dock-lead"><?= $e($t['liveAllLead']) ?></p>
+      <h3 class="log-all-head"><i class="bi bi-hourglass-split" aria-hidden="true"></i> <?= $e($t['liveAutoTitle']) ?></h3>
+      <p class="log-all-note"><?= $e($t['liveAutoLead']) ?></p>
+      <ul class="log-all-list log-all-auto"></ul>
+      <h3 class="log-all-head"><i class="bi bi-person-fill-lock" aria-hidden="true"></i> <?= $e($t['liveHandTitle']) ?></h3>
+      <p class="log-all-note"><?= $e($t['liveHandLead']) ?></p>
+      <ul class="log-all-list log-all-hand"></ul>
+    </div>
   </div>
 </aside>
 
