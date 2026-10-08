@@ -61,6 +61,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **The slowest pages** (statistics, parts `pages` and `times`, proposal 0046
+  step 2): each page view's band, sum and cache hit, kept for the same pages
+  as the views (past the limit as "(other)" too); the statistics page and
+  `stats` list the 20 slowest pages viewed at least 10 times, with median,
+  slow end and share from the cache. About +1.5 µs a page view with APCu.
 - **How fast the site answered** (statistics, part `times`, proposal 0046
   step 1): `set stats requests pages times` measures each request the shield
   lets through, from the web server's start to the end of the site's main

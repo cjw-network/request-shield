@@ -87,6 +87,12 @@ final class StatsCommand implements Command
             if ($tm['shield'] !== null) {
                 echo '  the shield: ' . $d($tm['shield']) . " a request\n";
             }
+            if ($tm['pages'] !== []) {
+                echo "\nSlowest pages (at least " . StatsReport::PAGE_VIEWS . " views)     views   median      p95  from the cache\n";
+                foreach ($tm['pages'] as $path => $p) {
+                    printf("  %-36s %7s %8s %8s %8d %%\n", (string) $path, $n($p['count']), $d($p['p50']), $d($p['p95']), (int) round(100 * $p['hits'] / max(1, $p['count'])));
+                }
+            }
             if ($tm['slow'] !== []) {
                 echo "\nSlow requests (the last):\n  " . implode("\n  ", $tm['slow']) . "\n";
             }

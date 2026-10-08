@@ -208,4 +208,72 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF06-03 times per page (0046 step 2): the slowest pages viewed often enough, each with its median, slow end and share from the cache -- files and APCu' => function (): void {
+        foreach (ApcuStore::usable() ? ['file', 'apcu'] : ['file'] as $store) {
+            $dir = timesDir();
+            try {
+                $s = Settings::from(['storeDir' => $dir, 'store' => $store, 'ext' => ['stats' => ['enabled' => true, 'parts' => ['requests', 'pages', 'times'], 'flush' => 0]]]);
+                $html = 'Content-Type: text/html';
+                for ($i = 0; $i < 12; $i++) {
+                    timesRequest($s, timesReq('/shop/search?q=' . $i), 0.4, 200, [$html, 'X-RS-Cache: miss', 'Cache-Control: private']);
+                    timesRequest($s, timesReq('/news/'), $i % 2 === 0 ? 0.002 : 0.05, 200, [$html, 'X-RS-Cache: ' . ($i % 2 === 0 ? 'hit' : 'miss')]);
+                }
+                for ($i = 0; $i < 3; $i++) {
+                    timesRequest($s, timesReq('/rare'), 3.0, 200, [$html]);
+                }
+                timesRequest($s, timesReq('/api/data'), 0.9, 200, ['Content-Type: application/json']);
+                $day = timesDay($s);
+                same([12, 6, 0], [$day['pt:people|/shop/search|7'] ?? 0, $day['pc:people|/news/'] ?? 0, $day['pc:people|/shop/search'] ?? 0], "$store: each page view's band, and its hits");
+                same([], array_values(array_filter(array_keys($day), static fn (string $k): bool => strpos($k, '/api/data') !== false && strncmp($k, 'p', 1) === 0)), "$store: JSON is no page view: no page time");
+                $pages = StatsReport::build($s, null, 1)['times']['pages'] ?? [];
+                same(['/shop/search', '/news/'], array_map('strval', array_keys($pages)), "$store: the slowest first, without its query; /rare has too few views");
+                same([12, 6], [$pages['/news/']['count'] ?? 0, $pages['/news/']['hits'] ?? 0], "$store: half of /news/ came from the cache");
+                truthy(($pages['/shop/search']['p50'] ?? 0) > 250000 && ($pages['/shop/search']['p50'] ?? 0) <= 500000, "$store: its median in its band: " . json_encode($pages['/shop/search'] ?? null));
+                $page = \CjwNetwork\RequestShield\Stats\Report\StatsPage::render($s, ['view' => 'all', 'lang' => 'en', 'days' => 1]);
+                truthy(strpos($page, 'Slowest pages (at least 10 views)') !== false && strpos($page, '<code>/shop/search</code>') !== false, "$store: on the page");
+            } finally {
+                exec('rm -rf ' . escapeshellarg($dir));
+            }
+        }
+    },
+    'RSF06-03 times per page are kept for the same pages as the views: past the views\' limit a page\'s times are "(other)" too -- with APCu at once, in files at the roll-up' => function (): void {
+        // Files: the roll-up keeps the most viewed pages (cap()); the times of a page whose views
+        // did not stay go to "(other)".
+        $cap = new \ReflectionMethod(Stats::class, 'cap');
+        $cap->setAccessible(true);
+        $counts = ['pg:people|/a' => 5, 'pt:people|/a|3' => 5, 'ps:people|/a' => 90000, 'pt:people|/b|7' => 2, 'ps:people|/b' => 700000, 'pc:people|/b' => 1];
+        same(['pg:people|/a' => 5, 'pt:people|/a|3' => 5, 'ps:people|/a' => 90000, 'pt:people|(other)|7' => 2, 'ps:people|(other)' => 700000, 'pc:people|(other)' => 1],
+            $cap->invoke(null, $counts), 'a page whose views are gone: its times as "(other)"');
+        if (!ApcuStore::usable()) {
+            skip('no APCu here: the limit at counting time is APCu\'s');
+        }
+        $dir = timesDir();
+        try {
+            $s = Settings::from(['storeDir' => $dir, 'store' => 'apcu', 'ext' => ['stats' => ['enabled' => true, 'parts' => ['pages', 'times'], 'flush' => 0]]]);
+            for ($i = 1; $i <= Stats::TOP + 1; $i++) {
+                timesRequest($s, timesReq("/p$i"), 0.03, 200, ['Content-Type: text/html']);
+            }
+            $day = timesDay($s);
+            $last = '/p' . (Stats::TOP + 1);
+            same([1, 0, 1, 1], [$day['pg:people|(other)'] ?? 0, $day["pt:people|$last|4"] ?? 0, $day['pt:people|(other)|4'] ?? 0, $day['pt:people|/p1|4'] ?? 0],
+                'the page past the limit: its view and its time both "(other)"; the first ones kept');
+            same(true, isset($day['ps:people|(other)']), 'its sum too');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+            apcu_clear_cache();
+        }
+    },
+    'RSF06-03 times: the speed card\'s hours are the period\'s last 48 -- a period in the past has its curve too' => function (): void {
+        $dir = timesDir();
+        try {
+            $s = Settings::from(['storeDir' => $dir, 'store' => 'file', 'ext' => ['stats' => ['enabled' => true, 'parts' => ['requests', 'times']]]]);
+            $day = (int) strtotime('2026-09-01 00:00 UTC');
+            Stats::of($s)->count(['rt:people|past|4'], $day + 3600 * 20);
+            Stats::of($s)->count(['rt:people|past|7'], $day + 3600 * 22);
+            $hourly = StatsReport::build($s, null, 1, time(), ['from' => '20260901', 'to' => '20260901'])['times']['hourly'] ?? [];
+            same(['2026090120', '2026090122'], array_map('strval', array_keys($hourly)), 'the hours of 1 September, a month ago');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
 ];

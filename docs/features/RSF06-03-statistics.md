@@ -486,6 +486,23 @@ exact to a band's width. Who came (people, crawlers, bots) is known when
 `crawlers`, `bots` or `pages` is on; with `stats requests times` alone every
 request counts as a person's.
 
+**The slowest pages** (with the part `pages` too: `set stats requests pages
+times`): for every page view (GET, 200, HTML) its band, its sum and whether it
+came from the cache -- `pt:<who>|<path>|<band>`, `ps:<who>|<path>`,
+`pc:<who>|<path>`, kept for the same pages as the views (the 100 most viewed
+an hour for each kind of visitor; a page past that limit has its times under
+"(other)" too: with APCu at once, in files at the roll-up). The page and
+`stats` list the 20 slowest pages viewed at least 10 times in the period, by
+their median, with their slow end and their share from the cache: a page that
+is slow and never comes from the cache is the first to look at (a cookie it
+sets, `private`, a missing `shared`).
+
+```text
+Slowest pages (at least 10 views)     views   median      p95  from the cache
+  /shop/search                             310   410 ms    2.1 s        0 %
+  /news/                                    95   3.2 ms   124 ms       58 %
+```
+
 **The slow log** (`set stats-slow 2s`, the default; `0` for none): a request
 slower than that is one line in `<stats dir>/slow-<yyyymmdd>.log` --
 
@@ -517,7 +534,8 @@ Slow requests (the last):
 **Cost.** Without `times`: one look in the list of parts a request (nothing
 with the statistics off). With it, measured on
 this machine with APCu (StatsPlugin, a request that reaches the site): about
-**+2 µs** (two clock reads, the band, three counters more); without APCu the
+**+2 µs** (two clock reads, the band, three counters more), and for a page
+view with `pages` about **+1.5 µs** more (its band, its sum, a hit); without APCu the
 line the request writes anyway gets three fields more. The slow log costs a
 comparison, and a line only for a slow request.
 

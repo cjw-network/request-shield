@@ -45,7 +45,10 @@ use CjwNetwork\RequestShield\Settings;
  * "rq:shield" (the shield's own share, in microseconds), "rn:<reason>" (why a
  * miss was not kept: CachePlugin::refusal()) -- cache is hit, miss (asked the
  * site, kept), nostore (asked the site, not to be kept) or past (no cache
- * asked). The slow requests go to slow-<yyyymmdd>.log, a line each.
+ * asked). The slow requests go to slow-<yyyymmdd>.log, a line each. Per page
+ * viewed (step 2): "pt:<who>|<path>|<band>", "ps:<who>|<path>" (the sum),
+ * "pc:<who>|<path>" (its hits) -- kept for the same pages as its views
+ * ("pg:"): a page past the views' limit is "(other)" here too.
  */
 final class Stats
 {
@@ -301,6 +304,7 @@ final class Stats
         }
         $hour = self::$hour;
         if ($this->apcu) {
+            $past = [];                 // "<who>|<path>" of a page view past the limit: its times follow it
             foreach ($keys as $k) {
                 if (strncmp($k, 'l:', 2) === 0) {
                     [$id, $rest] = explode('|', substr($k, 2), 2) + ['', ''];
@@ -308,16 +312,22 @@ final class Stats
                     continue;
                 }
                 if (self::group($k) !== null) {
+                    $was = $k;
                     $k = $this->page($hour, $k);
                     if ($k === '') {
                         continue;
                     }
+                    if ($k !== $was && strncmp($was, 'pg:', 3) === 0) {
+                        $past[substr($was, 3)] = true;
+                    }
+                } elseif ($past !== []) {
+                    $k = self::pageTime($k, $past);
                 }
                 apcu_inc($this->prefix . $hour . ':' . $k, 1, $ok, 86400 * 8);
             }
             foreach ($amounts as $k => $n) {
                 if ($n > 0) {
-                    apcu_inc($this->prefix . $hour . ':' . $k, $n, $ok, 86400 * 8);
+                    apcu_inc($this->prefix . $hour . ':' . ($past !== [] ? self::pageTime($k, $past) : $k), $n, $ok, 86400 * 8);
                 }
             }
             $this->tend($now);
@@ -443,6 +453,27 @@ final class Stats
             $lines = array_slice($lines, -$max);
         }
         return $lines;
+    }
+
+    /**
+     * A page's time key (pt:, ps:, pc:) as its view was kept: "(other)" when
+     * the view went past the limit ($past: "<who>|<path>" => true).
+     *
+     * @param array<string, true> $past
+     */
+    private static function pageTime(string $k, array $past): string
+    {
+        $t = substr($k, 0, 3);
+        if ($t !== 'pt:' && $t !== 'ps:' && $t !== 'pc:') {
+            return $k;
+        }
+        $rest = substr($k, 3);
+        $band = '';
+        if ($t === 'pt:') {
+            $bar = (int) strrpos($rest, '|');
+            [$rest, $band] = [substr($rest, 0, $bar), substr($rest, $bar)];
+        }
+        return isset($past[$rest]) ? $t . substr($rest, 0, (int) strpos($rest, '|')) . '|(other)' . $band : $k;
     }
 
     /** @var array<string, string> directory => the finished hour this process has checked the roll-up for (a PHP-FPM worker serves many requests) */
@@ -887,11 +918,28 @@ final class Stats
                 $counts[$g['other']] = ($counts[$g['other']] ?? 0) + $n;
             }
         }
-        // Referrers only for the pages not found that stayed on the list.
+        // Referrers only for the pages not found that stayed on the list; a page's
+        // times (0046) only for the pages whose views did -- the others' as "(other)".
+        $past = [];
         foreach ($counts as $k => $n) {
             $k = (string) $k;
             if (strncmp($k, 'nr:', 3) === 0 && !isset($counts['n:' . substr($k, 3, (int) strpos($k, '|') - 3)])) {
                 unset($counts[$k]);
+            } elseif (strncmp($k, 'p', 1) === 0 && ($k[1] === 't' || $k[1] === 's' || $k[1] === 'c') && ($k[2] ?? '') === ':') {
+                $rest = substr($k, 3);
+                $page = $k[1] === 't' ? substr($rest, 0, (int) strrpos($rest, '|')) : $rest;
+                if (!isset($counts['pg:' . $page]) && substr($page, -8) !== '|(other)') {
+                    $past[$page] = true;
+                }
+            }
+        }
+        if ($past !== []) {
+            foreach ($counts as $k => $n) {
+                $to = self::pageTime((string) $k, $past);
+                if ($to !== (string) $k) {
+                    unset($counts[$k]);
+                    $counts[$to] = ($counts[$to] ?? 0) + $n;
+                }
             }
         }
         return $counts;

@@ -289,6 +289,7 @@ final class StatsPlugin implements Plugin, RuleCounts
         $this->waiting = false;
         $parts = $this->o['parts'];
         $keys = $this->pending;
+        $viewed = null;                 // "<who>|<path>" of a page view: its time is counted too (0046 step 2)
         if ($status > 0) {
             $requests = in_array('requests', $parts, true);
             $missing = in_array('not-found', $parts, true);
@@ -304,7 +305,8 @@ final class StatsPlugin implements Plugin, RuleCounts
             }
             // A page view: GET, 200, HTML -- counted by who came.
             if (in_array('pages', $parts, true) && $status === 200 && $request->method === 'GET' && self::isHtml($headers)) {
-                $keys[] = 'pg:' . $this->who . '|' . self::word($request->path);
+                $viewed = $this->who . '|' . self::word($request->path);
+                $keys[] = 'pg:' . $viewed;
                 // Its first folders too (stats-depth, 2: /news/, /news/2026/): how many views a subtree got, exactly.
                 foreach (self::folders($request->path, $this->o['depth']) as $folder) {
                     $keys[] = 'pd:' . $this->who . '|' . self::word($folder);
@@ -324,6 +326,15 @@ final class StatsPlugin implements Plugin, RuleCounts
             $amounts['rq:shield'] = max(0, (int) round(($this->decidedAt - $now) * 1e6));
             if ($why !== null) {
                 $keys[] = 'rn:' . $why;
+            }
+            // A page view's time (step 2): its band, its sum, whether it came from the cache --
+            // after its "pg:" key, so the same pages are kept (Stats::count()).
+            if ($viewed !== null) {
+                $keys[] = 'pt:' . $viewed . '|' . Stats::band($us);
+                $amounts['ps:' . $viewed] = $us;
+                if ($cache === 'hit') {
+                    $keys[] = 'pc:' . $viewed;
+                }
             }
             $slow = $this->o['slow'];
             if ($slow > 0 && $us >= $slow * 1000000) {
