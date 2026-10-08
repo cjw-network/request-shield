@@ -51,9 +51,15 @@ The shield compares it, as text, with each of its directories and files:
 `store-dir`, the compiled settings' directory, `log`, `lists-dir`,
 `http-cache-dir`, `crawler-log`, the rule files themselves.
 
-- One inside: one line in PHP's error log, once per compile (in S0, with no
-  writable directory, the settings are compiled on every request: there the
-  line is written at most once a minute, as `Failure::note()` does) --
+- One inside: one line in PHP's error log, once per compile. In S0 (no
+  writable directory, no APCu) the settings are compiled on every request,
+  and nothing outlasts a request to remember that the line was written.
+  (`Failure::note()` keeps its one-minute limit in APCu or a marker file; where
+  neither works it writes its line on every request.) So the new check
+  **skips** the line when there is no place to remember it -- no APCu and
+  no writable `store-dir` (the directory `Failure::note()` uses once the
+  settings are known) -- and only
+  `check --docroot` says it --
   *"request-shield: store-dir /var/www/html/.request-shield/store is inside
   the document root /var/www/html -- a browser could read the secret, the
   lists and the log; move it beside it (set store-dir …)"*.
@@ -112,7 +118,7 @@ one place, and in the tests.
 
 - A store directory under a document root: the compile writes the line to the
   error log once; a second request (compiled settings) writes nothing; in S0
-  at most one line a minute.
+  no line at run time (`check --docroot` names it).
 - `check --docroot` names each directory inside it and exits with the warning
   code; outside: no line.
 - A directory the shield creates gets `.htaccess`; a directory that already
