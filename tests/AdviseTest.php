@@ -107,6 +107,8 @@ return [
             'forms' => [['action' => '/**', 'method' => 'POST', 'fields' => []], ['action' => '/save', 'method' => 'POST', 'fields' => []],
                 ['action' => '/search', 'method' => 'GET', 'fields' => ['tags[]' => 'text', 'q' => 'text']]]]])), Settings::from([])));
         same('api-path /ajax/**', $got['ADV-API'] ?? null, 'only the folder that is an API by its name -- "/*/**" would take every page\'s browser check away');
+        $json = adviseRules(Advise::suggest(Advise::read($run(['method' => 'POST', 'path' => '/de/cart/add', 'type' => 'application/json', 'found' => []])), Settings::from([])));
+        same('api-path /de/cart/add', $json['ADV-API'] ?? null, 'where the run sent JSON: that address -- never every page under /de/');
         same('monitor allow POST /save', $got['ADV-POST'] ?? null, 'a form\'s "/**" is no address: left out');
         same('query q text  tags text', $got['ADV-PARAMS'] ?? null, '"tags[]" as "tags", as PHP reads it');
     },
@@ -119,6 +121,11 @@ return [
             $run = static fn (string $path): array => ['method' => 'GET', 'path' => $path, 'host' => 'www.example.org', 'query' => ['q' => 'text'], 'form' => [], 'type' => null, 'decided' => 'allow', 'status' => 200];
             same(['ADV-TRACKING' => 'include @tracking'], adviseRules(Advise::suggest([$run('/search')], $s)), 'q at /search is declared; strict is watched already -- only the marketing tags');
             same('query q text at /other', adviseRules(Advise::suggest([$run('/search'), $run('/other')], $s))['ADV-PARAMS-AT'] ?? null, 'q at /other: a line for it alone, never one for every path');
+            $only = adviseRules(Advise::suggest([$run('/other')], $s));
+            same(['query q text at /other', false], [$only['ADV-PARAMS-AT'] ?? null, isset($only['ADV-PARAMS'])], 'seen only elsewhere: still a line with at -- the rules declare q for some paths only');
+            $offered = ['method' => 'GET', 'path' => '/search', 'host' => 'www.example.org', 'query' => [], 'form' => [], 'type' => null, 'decided' => 'allow', 'status' => 200,
+                'found' => ['links' => ['?q=1', '/b?q'], 'forms' => [['action' => '', 'method' => 'GET', 'fields' => ['q' => 'text']]]]];
+            same(['ADV-PARAMS-AT' => 'query q text at /b', 'ADV-TRACKING' => 'include @tracking'], adviseRules(Advise::suggest([$offered], $s)), 'a relative link and a form without action are the page\'s own (/search, declared); /b gets its line');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }

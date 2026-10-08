@@ -91,13 +91,13 @@ final class Advise
             }
             foreach (array_merge(self::offered($r, 'links'), self::offered($r, 'scripts')) as $link) {
                 foreach (self::linkNames($link) as $name) {
-                    $see($name, '', is_string($link) ? (string) strtok($link, '?') : '/');
+                    $see($name, '', self::resolve(is_string($link) ? $link : '', $path));
                 }
             }
             foreach (self::offered($r, 'forms') as $form) {
                 if (is_array($form) && strtoupper(is_string($form['method'] ?? null) ? $form['method'] : 'GET') === 'GET' && is_array($form['fields'] ?? null)) {
                     foreach (array_keys($form['fields']) as $name) {
-                        $see((string) $name, '', is_string($form['action'] ?? null) ? (string) strtok($form['action'], '?') : $path);
+                        $see((string) $name, '', self::resolve(is_string($form['action'] ?? null) ? $form['action'] : '', $path));
                     }
                 }
             }
@@ -117,7 +117,7 @@ final class Advise
             if ($open === []) {
                 continue;
             }
-            if (count($open) === count($paths) && QueryRule::typeOf($s->queryParams, $name, '/') === null) {
+            if (count($open) === count($paths) && !self::declaredLocally($s->queryParams, $name)) {
                 $params[$name] = $type;
                 continue;
             }
@@ -203,11 +203,11 @@ final class Advise
                     $api[$folder] = true;
                 }
             }
-            if (is_string($r['type'] ?? null) && strpos($r['type'], 'json') !== false && is_string($r['path'] ?? null)) {
-                $folder = self::folder($r['path']);
-                if ($folder !== null) {
-                    $api[$folder] = true;
-                }
+            if (is_string($r['type'] ?? null) && strpos($r['type'], 'json') !== false && is_string($r['path'] ?? null)
+                && preg_match(self::SAFE_PATH, $r['path']) === 1) {
+                // Where the run sent JSON: that address, not its folder -- /de/cart/add is no reason to take
+                // every page under /de/ for an API.
+                $api[self::general($r['path'])] = true;
             }
         }
         $api = array_map('strval', array_keys($api));
@@ -248,6 +248,46 @@ final class Advise
             }
         }
         return implode('/', $parts);
+    }
+
+    /**
+     * Whether a name is declared for some paths only (query … at …, a match block): then a
+     * suggestion for it is never one for every path.
+     *
+     * @param list<array{paths: list<string>|null, exact: array<string, string>, globs: array<string, string>}> $rules
+     */
+    private static function declaredLocally(array $rules, string $name): bool
+    {
+        foreach ($rules as $r) {
+            if ($r['paths'] === null) {
+                continue;
+            }
+            if (isset($r['exact'][$name])) {
+                return true;
+            }
+            foreach (array_keys($r['globs']) as $glob) {
+                if (fnmatch((string) $glob, $name)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * An offered address as a path: "?q=1" and "" are the page's own, "page?x" the page's
+     * folder's; "/x?y" itself.
+     */
+    private static function resolve(string $target, string $page): string
+    {
+        $path = (string) explode('?', $target, 2)[0];
+        if ($path === '') {
+            return $page;
+        }
+        if ($path[0] === '/') {
+            return $path;
+        }
+        return rtrim(substr($page, 0, (int) strrpos($page, '/') + 1), '/') . '/' . $path;
     }
 
     /**

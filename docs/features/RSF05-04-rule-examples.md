@@ -317,15 +317,17 @@ only what the rules do not say yet, each a sentence and a line:
   form's fields) as `text`; `tags[]` as `tags`, as PHP reads it. Typed values
   are no longer scanned for attacks; nothing is refused for this line. A name
   the rules declare for some paths only (`query q text at /search`) gets a
-  line with `at` for the other paths it was seen on -- never one for all.
+  line with `at` for the other paths it was seen on -- never one for all; a
+  relative link (`?q=1`, a form without `action`) is the page's own.
 - **`include @tracking`** and **`monitor query strict`**: anything else in the
   query answered 404 -- watched first.
 - **`monitor allow POST …`** (and PUT, PATCH, DELETE): where the run sent forms
   and where its pages offered them; numbers and keys in a path as `*`
   (`/node/*/edit`) -- anywhere else 405, watched first.
 - **`post-origin same`**: forms only from the site's own pages.
-- **`api-path …`**: the folders the run sent JSON to, and those the pages'
-  scripts call that are an API by their name (`/api/`, `/ajax/`, `/json/`,
+- **`api-path …`**: the addresses the run sent JSON to (each itself, not its
+  folder: `/de/cart/add` is no reason to take all of `/de/` for an API), and
+  the folders the pages' scripts call that are an API by their name (`/api/`, `/ajax/`, `/json/`,
   `/rest/`, `/graphql/`, `/wp-json/` …) -- a script names navigation too, and an
   API path answers a check as JSON, which a browser cannot pass.
 - **Never a pattern from the recording:** a path or a form's address with
