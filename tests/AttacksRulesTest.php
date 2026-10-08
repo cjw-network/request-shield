@@ -214,6 +214,7 @@ return [
             '/?id=2852039166',                       // a number on its own, not an address
             '/?ip=169.254.10.20',                    // another link-local address
             '/?v=1169.254.169.2541',                 // digits around it: not the address
+            '/?q=see/instance-data-sheet',           // a longer word, not AWS's name
             '/?q=information about cookies',         // not information_schema
             '/?q=load file into outfile tutorial',   // the words, no quote, no bracket
             '/?q=extract value from json',           // extractvalue( needed
