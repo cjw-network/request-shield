@@ -48,9 +48,14 @@ request arrives     shield decides        site answers, its main script ends    
   rendering is in it either (that is the visitor's side; it would take a script in the
   page).
 - **Answers from the HTTP cache** (the cache plugin, a hit) pass the shield and
-  are answered before the site starts; the callback comes for them too. Their
-  sub-millisecond times would pull the median down -- they are counted apart
-  (a band set of their own, "from the cache"), never mixed with the site's.
+  are answered before the site starts; the callback comes for them too. The
+  cache already says which it was in a header of the answer (`X-RS-Cache: hit`
+  or `miss`, `plugins/cache/src/CachePlugin.php`), and the callback already
+  gets the answer's headers -- so the statistics tell three kinds apart
+  without a new interface: **hit** (from the cache), **miss** (to the site,
+  then kept), **past** the cache (no such header: not cacheable -- a
+  logged-in visitor, `private`, `Set-Cookie`, a POST -- or no cache at all).
+  A hit's 1-5 ms never pull the site's median down: each kind has its bands.
 - **A refused request** never reaches the site -- its time is the shield's
   alone and not counted as a page's.
 - **The shield's own share** ("of 180 ms, the shield took 0.02 ms") needs a
@@ -68,34 +73,43 @@ the worker was busy" a lower bound when it has much shutdown work.
 
 1. **Per hour: how fast** -- the median and the slow end (p50, p95), by
    people, crawlers and bots, next to the requests per hour that are already
-   there. (Who is who is known only when `crawlers`, `bots` or `pages` is on --
-   the User-Agent is looked at then; with `stats requests times` alone every
-   request counts as a person's. `times` does not look at it by itself.) Load shows as both lines rising together; a slow database as p95
-   rising while the requests stay flat.
-2. **The slowest pages** -- per page (the `pg:` keys the page views already
-   have) the average and the slow end, only pages with enough views (say 20 an
-   hour), so one odd request is no "slow page".
-3. **Right now (live view)** -- requests in the last minute (there already,
-   with APCu, people only) and their median time, with the same limits; a mark when the slow end of the last 5 minutes is
-   well above the hour before ("the server is under load").
+   there. Load shows as both lines rising together; a slow database as p95
+   rising while the requests stay flat. (Who is who is known only when
+   `crawlers`, `bots` or `pages` is on -- the User-Agent is looked at then;
+   with `stats requests times` alone every request counts as a person's.
+   `times` does not look at it by itself.)
+2. **Whether the HTTP cache works** -- with the cache plugin on: the share of
+   hits per hour ("68 % from the cache"); the hits' median against the
+   misses' ("2 ms instead of 180 ms"), and from both what the cache saved
+   ("about 40 minutes of server time today"). A hit at 25 ms instead of 1-5 ms
+   says the cache's store is slow (files where APCu was meant).
+3. **The slowest pages** (step 2) -- per page (the `pg:` keys the page views
+   already have) the average, the slow end and its share of cache hits; only
+   pages with enough views (20 an hour), so one odd request is no "slow page".
+   A slow page that never comes from the cache is the first to look at (a
+   cookie, a missing `shared`).
 4. **Errors and time together** -- 5xx answers are counted already; next to
    the time it shows whether the site slows down before it breaks.
-5. **Optional: a slow log** (`set stats-slow 2s`) -- one line per request
-   slower than that, like MySQL's slow query log: time, method, path (no
-   query string), status, ms, kind of visitor. **No address**, no query: it
-   is about pages, not people. Kept `stats-days`, then gone.
+5. **The slow log** (`set stats-slow 2s`, on with `times`; `0` switches it
+   off) -- one line per request slower than that, like MySQL's slow query
+   log: time, method, path (no query string), status, ms, the request's peak
+   memory (`memory_get_peak_usage()`: "/export 4.2 s, 380 MB"), cache kind,
+   kind of visitor. **No address**, no query: it is about pages, not people.
+   Kept `stats-days`, then gone. The p95 says *that* it is slow; the slow log
+   says *which* page at 14:03.
 
 ```
-Statistics · Speed                     today       p50 ▁▂▂▃▅▇▅▃▂   p95
+Statistics · Speed                     today
 ───────────────────────────────────────────────────────────────────────
 Requests/h      ▁▂▃▅▇█▇▅▃▂            1,840
 Median (p50)    ▂▂▂▂▃▃▃▂▂▂            120 ms
 Slow end (p95)  ▂▂▃▅█▇▅▃▂▂            640 ms   ← at 14:00, with the most requests: load
+HTTP cache      68 % hits · hit 2 ms · miss 180 ms · saved ≈ 40 min
 Shield          0.02 ms (0.02 %)
 
-Slowest pages (≥ 20 views)      views   median    p95
-/shop/search                      310   410 ms  2.1 s
-/news/archive                      95   280 ms  0.9 s
+Slowest pages (≥ 20 views)      views   median    p95   from cache
+/shop/search                      310   410 ms  2.1 s          0 %
+/news/archive                      95   280 ms  0.9 s         71 %
 ```
 
 ## How it is counted
@@ -104,11 +118,20 @@ The statistics are counters, added up per hour, day, month (they survive a
 restart, and they add across PHP workers). A time fits that as a **histogram**:
 a counter per time band, plus the sum of the milliseconds for the average.
 
-| band | key (per hour, per kind of visitor) |
+The bands are **fixed** -- not a setting: hours are added up into days and
+months, which works only while the bands stay the same (a site that changed
+its bands could not compare this month with the last). They are fine at the
+low end, where the cache's answers lie:
+
+| | |
 |---|---|
-| ≤ 50 ms, ≤ 100, ≤ 250, ≤ 500, ≤ 1 s, ≤ 2.5 s, ≤ 10 s, more | `rt:people|3` … |
-| the sum, in ms | `rs:people` |
-| per page: band and sum | `pt:people|/shop/search|4`, `ps:people|/shop/search` |
+| bands | ≤ 1 ms, ≤ 5, ≤ 10, ≤ 25, ≤ 50, ≤ 100, ≤ 250, ≤ 500 ms, ≤ 1 s, ≤ 2.5 s, ≤ 10 s, more (12) |
+| band key, per hour | `rt:<who>|<cache>|<band>` -- who: people, crawlers, bots; cache: hit, miss, past |
+| sum key, in ms | `rs:<who>|<cache>` |
+| per page (step 2) | `pt:<who>|<path>|<band>`, `ps:<who>|<path>`, `pc:<who>|<path>` (its hits) |
+
+More bands cost nothing per request: each request raises exactly one band
+counter, however many there are; only an hour's file holds a few keys more.
 
 p50 and p95 are read from the bands (to the band's width: "under 250 ms",
 or interpolated within it) -- exact enough for "is it slow" and free of a list
@@ -120,25 +143,30 @@ hour, cut to the most visited at the roll-up -- the time table must keep the
 same pages as the views, or "views" and "median" would not match.
 
 Counting a sum is new too: `count()` adds 1 per key today. A variant adds an
-amount (APCu: `apcu_inc($key, $ms)`; files: `rs:people*180`, the form a flush
-already writes and the roll-up reads).
+amount (APCu: `apcu_inc($key, $ms)`; files: `rs:people|hit*180`, the form a
+flush already writes and the roll-up reads).
 
 ## Cost
 
 - **Off by default**, a part of its own: `set stats requests pages times`.
   Without `times` nothing changes -- not one call on any request (AGENTS.md:
   nothing a feature needs on the path when the feature is not used).
-- **With it:** at the end of the request one `microtime()` and two counters
-  more (band and sum; APCu about 0.2 µs each). Estimated +1 µs with APCu for
-  step 1; per page (step 2) two or three APCu calls more. Measured before it
-  goes in (`bench/overhead.php`, a case with `times`).
+- **With it:** at the end of the request one `microtime()`, one look for the
+  cache's header in the headers the callback has anyway (under 0.1 µs), and
+  two counters more (band and sum; APCu about 0.2 µs each). Estimated +1 µs
+  with APCu for step 1; per page (step 2) two or three APCu calls more.
+  Measured before it goes in (`bench/overhead.php`, a case with `times`).
 - **Files:** with `requests` on, the end of a request writes a line anyway --
-  it gets two fields more (four with the pages). With `times` alone it would be
+  it gets two fields more (five with the pages). With `times` alone it would be
   a line of its own, 15-25 µs (as in RSF06-03's cost table): `times` is meant
   next to `requests`.
 - The callback at the end is there already whenever the statistics count a
   request that reaches the site; `times` adds no second one.
-- The slow log: one appended line per slow request only.
+- The slow log: a comparison per request; one appended line per slow request
+  only (which has cost seconds already). Its memory figure costs nothing on
+  a fast request: it is read only for the line.
+- The shield's own share: one `microtime()` more when the shield is done,
+  only with `times`.
 
 ## Privacy
 
@@ -148,26 +176,33 @@ needs one sentence more).
 
 ## Steps
 
-1. `times`: the bands and the sum per hour and kind; p50/p95 on the
-   statistics page next to the requests; the shield's own share. Tests:
-   the bands, a site that sleeps 300 ms gives the 500 ms band; benchmark
-   with and without.
-2. Per page: the slowest pages table.
-3. Live view: the last minutes' median and the "under load" mark.
-4. Optional: `stats-slow` and its log, its tab in the dashboard.
-5. Later, with [0041](0041-risk-score.md): when the server is under load,
-   the shield could be stricter with what is not a person (crawlers that
-   are not needed, a lower budget) -- the shield as a pressure valve. Only an
-   idea here; it needs its own proposal.
+1. `times`: the twelve bands and the sum per hour, kind of visitor and cache
+   kind (hit, miss, past); p50/p95 and the cache's share and saving on the
+   statistics page next to the requests; the shield's own share; the slow log
+   (`stats-slow`, 2 s, with peak memory). Tests: the bands, a site that sleeps
+   300 ms gives the 500 ms band, a cache hit lands in "hit", a slow request
+   in the slow log without address or query; benchmark with and without.
+2. Per page: the slowest pages table, with each page's share of cache hits.
+3. `Server-Timing: shield;dur=0.02` -- only with `debug-header on` (which sets
+   `X-RS` today): for developers in the browser's network tab, nothing in
+   normal operation. It can carry only the shield's own time (the site's is
+   not over when the headers go out); for every visitor it would tell that a
+   shield is in front and cost bytes on every answer.
+4. Later: the live view's "under load" mark -- the hourly lines answer "did we
+   have load?"; a live alarm needs per-minute counters (APCu only),
+   thresholds and tests against false alarms. Worth it together with the
+   pressure valve: with [0041](0041-risk-score.md), when the server is under
+   load, the shield could be stricter with what is not a person (crawlers that
+   are not needed, a lower budget). That needs its own proposal.
 
-## Open questions (owner)
+## Decided (owner, 2026-10-08)
 
-1. **Bands:** the ones above, or the site's own (`set stats-times 100ms 500ms 2s`)?
-2. **Slow log** in step 1 or later? And its threshold's default (2 s)?
-3. **"Under load" mark:** worth it in the live view, or only the lines in the
-   statistics?
-4. **Memory** too? `memory_get_peak_usage()` at the end costs nothing more
-   and shows pages that need a lot (an export, a search) -- same bands idea.
-5. **`Server-Timing` header** for developers (`Server-Timing: shield;dur=0.02`)?
-   It can only carry the shield's own time (the site's is not over when the
-   headers go out) -- small, but nice in the browser's network tab.
+1. **Bands:** fixed, not a setting (the months must add up); fine at the low
+   end for the HTTP cache (≤ 1, ≤ 5, ≤ 10 ms …).
+2. **The HTTP cache:** hits, misses and past it counted apart from step 1 --
+   its share of hits and what it saves are the first thing to see once it is
+   on.
+3. **Slow log:** in step 1, 2 s by default.
+4. **Memory:** only in the slow log's line, no bands of its own.
+5. **`Server-Timing`:** only with `debug-header on`.
+6. **"Under load" mark:** later, with the pressure valve.

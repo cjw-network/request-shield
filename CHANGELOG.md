@@ -63,10 +63,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 - **Proposal 0046 response times in the statistics** (draft): with a new
   part `times`, the end of a request the statistics already hear gives how
-  long the site took -- per hour p50/p95 by kind of visitor next to the
-  requests (load), the slowest pages, the last minutes in the live view, an
-  optional slow log without addresses; off by default (estimated at about
-  1 µs with APCu, to be measured).
+  long the site took -- twelve fixed bands per hour (fine below 10 ms for the
+  HTTP cache), p50/p95 by kind of visitor next to the requests (load), the
+  HTTP cache's share of hits and what it saves (hit, miss, past it), a slow
+  log with peak memory and without addresses; then the slowest pages;
+  `Server-Timing` only with `debug-header`; off by default (estimated at
+  about 1 µs with APCu, to be measured).
 - **The showcase's live log names who is banned right now**: from the
   store (as the dashboard), with the masked address, the seconds left, the
   rule and the visitor's kind guessed from the User-Agent (browser, crawler,
