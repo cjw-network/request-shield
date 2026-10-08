@@ -25,8 +25,8 @@ use CjwNetwork\RequestShield\Settings;
  * cookie, never a body. Static files (style sheets, scripts, pictures, fonts)
  * are left out unless all are asked for: a web server answers them without PHP.
  *
- * @phpstan-type Recorded array{method: string, url: string, headers: array<string, string>, from: ?string}
- * @phpstan-type Replayed array{method: string, url: string, count: int, got: string, rule: ?string, http: int, kind: string}
+ * @phpstan-type Recorded array{method: string, url: string, headers: array<string, string>, from: ?string, found?: bool}
+ * @phpstan-type Replayed array{method: string, url: string, count: int, got: string, rule: ?string, http: int, kind: string, found: bool}
  */
 final class Replay
 {
@@ -48,8 +48,14 @@ final class Replay
     {
         $trim = ltrim($text);
         if ($trim !== '' && $trim[0] === '{') {
-            $first = json_decode(strtok($trim, "\n") ?: '', true);
-            return is_array($first) && isset($first['method'], $first['path'], $first['t']) ? self::learned($text) : self::har($text);
+            // A learning run: any of its first lines one of its objects (a rotated file may begin cut off).
+            foreach (array_slice(preg_split('/\R/', $trim) ?: [], 0, 20) as $line) {
+                $one = json_decode($line, true);
+                if (is_array($one) && isset($one['method'], $one['path'], $one['t'])) {
+                    return self::learned($text);
+                }
+            }
+            return self::har($text);
         }
         $out = [];
         $skipped = 0;
@@ -114,7 +120,7 @@ final class Replay
                 if (is_string($r['type'] ?? null)) {
                     $headers['content-type'] = $r['type'];
                 }
-                $out[] = ['method' => $r['method'], 'url' => $origin . self::sampled($r['path'], $query), 'headers' => $headers, 'from' => null];
+                $out[] = ['method' => $r['method'], 'url' => $origin . self::sampled($r['path'], $query), 'headers' => $headers, 'from' => null, 'found' => false];
             }
             $f = is_array($r['found'] ?? null) ? $r['found'] : [];
             foreach (is_array($f['forms'] ?? null) ? $f['forms'] : [] as $form) {
@@ -126,13 +132,13 @@ final class Replay
                     $post = $form['method'] === 'POST';
                     $found[$form['method'] . ' ' . $origin . $form['action'] . ' ' . json_encode($post ? [] : $fields)] = ['method' => $form['method'],
                         'url' => $origin . self::sampled($form['action'], $post ? [] : $fields),
-                        'headers' => $post ? ['origin' => $origin, 'content-type' => 'application/x-www-form-urlencoded'] : [], 'from' => null];
+                        'headers' => $post ? ['origin' => $origin, 'content-type' => 'application/x-www-form-urlencoded'] : [], 'from' => null, 'found' => true];
                 }
             }
             foreach (['links', 'scripts'] as $k) {
                 foreach (is_array($f[$k] ?? null) ? $f[$k] : [] as $target) {
                     if (is_string($target)) {
-                        $found['GET ' . $origin . $target] = ['method' => 'GET', 'url' => $origin . self::sampled($target, []), 'headers' => [], 'from' => null];
+                        $found['GET ' . $origin . $target] = ['method' => 'GET', 'url' => $origin . self::sampled($target, []), 'headers' => [], 'from' => null, 'found' => true];
                     }
                 }
             }
@@ -231,9 +237,10 @@ final class Replay
             $key = $r['method'] . ' ' . $r['url'] . ' ' . $from . ' ' . json_encode($r['headers']);
             if (isset($seen[$key])) {
                 $seen[$key]['count']++;
+                $seen[$key]['found'] = $seen[$key]['found'] && ($r['found'] ?? false);     // clicked once: clicked
                 continue;
             }
-            $seen[$key] = ['r' => $r, 'from' => $from, 'count' => 1, 'host' => $host];
+            $seen[$key] = ['r' => $r, 'from' => $from, 'count' => 1, 'host' => $host, 'found' => $r['found'] ?? false];
         }
         $results = [];
         foreach ($seen as $x) {
@@ -243,7 +250,7 @@ final class Replay
                 'headers' => array_diff_key($r['headers'], ['user-agent' => 1]), 'text' => null, 'at' => 'replay', 'site' => null, 'ua' => $r['headers']['user-agent'] ?? null, 'demo' => null];
             $d = Examples::one($s, $ex);
             $kind = in_array($d['got'], ['passes', 'uncached'], true) ? 'pass' : ($d['got'] === 'check' ? 'check' : 'refused');
-            $results[] = ['method' => $r['method'], 'url' => $r['url'], 'count' => $x['count'], 'got' => $d['got'], 'rule' => $d['gotRule'], 'http' => $d['http'], 'kind' => $kind];
+            $results[] = ['method' => $r['method'], 'url' => $r['url'], 'count' => $x['count'], 'got' => $d['got'], 'rule' => $d['gotRule'], 'http' => $d['http'], 'kind' => $kind, 'found' => $x['found']];
         }
         return ['results' => $results, 'total' => count($requests), 'static' => $static, 'foreign' => $foreign];
     }

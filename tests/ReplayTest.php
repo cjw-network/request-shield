@@ -105,13 +105,21 @@ return [
             $s = Settings::from(RuleFile::switchedOn(["$dir/site.rules"]));
             $kinds = [];
             foreach (Replay::run($r['requests'], static fn (string $h): Settings => $s, null)['results'] as $x) {
-                $kinds[$x['method'] . ' ' . (string) parse_url($x['url'], PHP_URL_PATH)] = $x['kind'] . ($x['kind'] !== 'pass' && $x['rule'] !== null ? ' ' . $x['rule'] : '');
+                $kinds[$x['method'] . ' ' . (string) preg_replace('#^https://[^/]+#', '', $x['url'])] = $x['kind'] . ($x['kind'] !== 'pass' && $x['rule'] !== null ? ' ' . $x['rule'] : '') . ($x['found'] ? ' (found)' : '');
             }
-            same(['GET /products/' => 'pass', 'POST /contact' => 'pass', 'GET /search' => 'refused APP-STRICT', 'GET /old/page' => 'refused APP-WATCH', 'GET /api/items/1/edit' => 'pass'], $kinds,
-                'the rules against the run: a found form and a link they would refuse are named');
-            file_put_contents("$dir/learned.jsonl", $rec);
+            same(['GET /products/?page=1&sort=word&q=two%20words' => 'refused APP-STRICT', 'POST /contact' => 'pass', 'GET /search?q=1' => 'refused APP-STRICT (found)',
+                'GET /products/?page=1&sort=1' => 'pass (found)', 'GET /old/page' => 'refused APP-WATCH (found)', 'GET /api/items/1/edit' => 'pass (found)'], $kinds,
+                'the rules against the run: clicked and only found, each with its rule; POST /contact clicked once -- clicked');
+            file_put_contents("$dir/learned.jsonl", "{\"cut off\n" . $rec);
             [$out, $code] = replayCli(escapeshellarg("$dir/site.rules") . ' ' . escapeshellarg("$dir/learned.jsonl") . ' --junit=' . escapeshellarg("$dir/r.xml"));
-            truthy($code === 1 && strpos($out, '(learning run)') !== false && strpos($out, 'left out: 2 refused or failed in the run') !== false && strpos($out, 'APP-STRICT') !== false, 'the command line: a step for CI -- ' . $out);
+            truthy($code === 1 && strpos($out, '(learning run)') !== false && strpos($out, 'left out: 2 refused or failed in the run') !== false
+                && preg_match('/✕ GET \/products\/\?page=1&sort=word&q=two%20words\s+404 by APP-STRICT/u', $out) === 1 && preg_match('/\? GET \/search\?q=1\s+404 by APP-STRICT/u', $out) === 1
+                && strpos($out, '2 only offered on a page would be refused') !== false, 'a clicked one fails, the only found ones are notes -- and a first line cut off is no matter: ' . $out);
+            $xml = (string) file_get_contents("$dir/r.xml");
+            truthy(strpos($xml, 'failures="1"') !== false && substr_count($xml, '<skipped message="only offered on a page') === 2, 'JUnit: one failure, two skipped -- ' . $xml);
+            file_put_contents("$dir/ok.jsonl", str_replace(',"q":"text"', '', $rec));         // the clicked page without its unknown parameter; what it offered stays
+            same(0, replayCli(escapeshellarg("$dir/site.rules") . ' ' . escapeshellarg("$dir/ok.jsonl"))[1], 'no clicked one refused: exit 0, the found ones are notes');
+            same(1, replayCli(escapeshellarg("$dir/site.rules") . ' ' . escapeshellarg("$dir/learned.jsonl") . ' --found=fail')[1], '--found=fail: they count');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }

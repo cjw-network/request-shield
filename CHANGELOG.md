@@ -50,7 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (`learned.jsonl`) -- a test for every deployment: the requests clicked in
   the run (those it let through) and what the pages offered (forms, links,
   script addresses) are sent through the rules, each parameter with a value
-  of its type; exit 1 when one would be refused, `--junit` for CI. The
+  of its type; exit 1 when a clicked one would be refused (one only offered
+  on a page is a note, `--found=fail` counts it), `--junit` for CI. The
   recording holds no values, so it can live in the project's repository.
 - **A learning run records a developer's clicks by their shape**
   (`request-shield learn <main.rules> start|stop|status`, proposal 0016):

@@ -127,6 +127,7 @@ final class Cli
         $show = ['markdown' => false, 'html' => false, 'coverage' => false, 'feature' => null];
         $testOpts = ['only' => null, 'asWritten' => false, 'junit' => null];
         $replayAll = false;
+        $replayFound = 'note';
         $ipGiven = false;
         $learn = ['from' => [], 'keep' => false];
         foreach ($args as $a) {
@@ -175,6 +176,8 @@ final class Cli
                 $testOpts['only'] = trim(substr($a, 7), '[]');
             } elseif ($a === '--all') {
                 $replayAll = true;
+            } elseif (preg_match('/^--found=(note|fail)$/', $a, $m) === 1) {
+                $replayFound = $m[1];
             } elseif ($a === '--as-written') {
                 $testOpts['asWritten'] = true;
             } elseif (strncmp($a, '--junit=', 8) === 0) {
@@ -298,7 +301,7 @@ final class Cli
             fwrite(STDERR, "usage: request-shield check|show|reload <main.rules> [--source=<glob>]...\n"
                 . "       request-shield trace <main.rules> \"GET https://www.example.org/path\" [--ip=<address>] [--ua=<User-Agent>] [--source=<glob>]...\n"
                 . "       request-shield test <main.rules> [--source=<glob>]... [--only=<ID>] [--as-written] [--junit=<file>]\n"
-                . "       request-shield replay <main.rules> <session.har|access.log|urls.txt|learned.jsonl> [--ip=<address>|log] [--all] [--as-written] [--junit=<file>]\n"
+                . "       request-shield replay <main.rules> <session.har|access.log|urls.txt|learned.jsonl> [--ip=<address>|log] [--all] [--found=note|fail] [--as-written] [--junit=<file>]\n"
                 . "       request-shield crawlers <main.rules> [update] [--force]\n"
                 . "       request-shield access-token <main.rules> \"<principal>\"|'*'\n"
                 . "       request-shield feeds <main.rules> [list|update|export] [--force] [--format=plain|nginx|nftables|ipset] [--write=<file>]\n"
@@ -347,9 +350,14 @@ final class Cli
                 self::mistake($e->getMessage());
                 exit(2);
             }
-            $kinds = ['pass' => 0, 'check' => 0, 'refused' => 0];
+            $kinds = ['pass' => 0, 'check' => 0, 'refused' => 0, 'offered' => 0];
             $left = [];
-            foreach ($run['results'] as $r) {
+            foreach ($run['results'] as $i => $r) {
+                if ($r['kind'] === 'refused' && $r['found'] && $replayFound === 'note') {
+                    // Only found on a page, never clicked in the run: a page offers addresses a rule
+                    // refuses on purpose (/logout, /admin) -- a note, unless --found=fail.
+                    $r['kind'] = $run['results'][$i]['kind'] = 'offered';
+                }
                 $kinds[$r['kind']]++;
                 if ($r['kind'] !== 'pass') {
                     $left[] = $r;
@@ -367,15 +375,16 @@ final class Cli
             }
             echo "replay: " . basename($source) . " ({$recording['format']}): {$run['total']} requests, " . count($run['results']) . ' different'
                 . ($out !== [] ? '; left out: ' . implode(', ', $out) : '') . "\n\n";
-            usort($left, static fn (array $a, array $b): int => [$b['kind'] === 'refused', $b['count']] <=> [$a['kind'] === 'refused', $a['count']]);
+            usort($left, static fn (array $a, array $b): int => [$b['kind'] === 'refused', $b['kind'] === 'offered', $b['count']] <=> [$a['kind'] === 'refused', $a['kind'] === 'offered', $a['count']]);
             foreach ($left as $r) {
                 $url = (string) preg_replace('#^https?://[^/]+#i', '', $r['url']);
-                echo '  ' . ($r['kind'] === 'refused' ? '✕' : '!') . ' ' . str_pad($r['method'] . ' ' . (strlen($url) > 60 ? substr($url, 0, 59) . '…' : $url), 68)
+                echo '  ' . ['refused' => '✕', 'offered' => '?', 'check' => '!'][$r['kind']] . ' ' . str_pad($r['method'] . ' ' . (strlen($url) > 60 ? substr($url, 0, 59) . '…' : $url), 68)
                     . ' ' . $r['got'] . ($r['rule'] !== null ? ' by ' . $r['rule'] : '') . ($r['count'] > 1 ? "  ({$r['count']}×)" : '') . "\n";
             }
             echo ($left !== [] ? "\n" : '') . count($run['results']) . ' different requests: ' . $kinds['pass'] . ' pass'
                 . ($kinds['check'] > 0 ? ', ' . $kinds['check'] . ' get the browser check (a browser passes it; an end-to-end test needs a pass)' : '')
-                . ($kinds['refused'] > 0 ? ', ' . $kinds['refused'] . ' refused' : '') . ".\n";
+                . ($kinds['refused'] > 0 ? ', ' . $kinds['refused'] . ' refused' : '')
+                . ($kinds['offered'] > 0 ? ', ' . $kinds['offered'] . ' only offered on a page would be refused (never clicked in the run -- a note; --found=fail counts them)' : '') . ".\n";
             if ($kinds['refused'] > 0) {
                 echo '  ' . Help::see('RSF05-04', 'the-replay-your-own-clicks-as-a-test') . "\n";
             }
@@ -392,6 +401,8 @@ final class Cli
                     $case->setAttribute('name', $r['method'] . ' ' . $r['url'] . ' -- ' . $r['got']);
                     if ($r['kind'] === 'refused') {
                         $case->appendChild($xml->createElement('failure'))->setAttribute('message', $r['got'] . ($r['rule'] !== null ? ' by ' . $r['rule'] : ''));
+                    } elseif ($r['kind'] === 'offered') {
+                        $case->appendChild($xml->createElement('skipped'))->setAttribute('message', 'only offered on a page: ' . $r['got'] . ($r['rule'] !== null ? ' by ' . $r['rule'] : ''));
                     }
                 }
                 if (@file_put_contents($testOpts['junit'], (string) $xml->saveXML()) === false) {

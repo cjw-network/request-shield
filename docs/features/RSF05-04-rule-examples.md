@@ -285,16 +285,23 @@ deployment: *are my rules still fine for everything the site does?*
   -- `int` 1, `number` 1.5, `id` a1, `word` word, `list` a,b, `text` "two
   words"; a name of no known type (a link's, a form field's) "1", which every
   type takes; a script's placeholder (`/api/items/${id}`) the segment 1.
-- **Exit 1** when one of them would be refused, with its rule -- the
-  deployment stops before the rules lock out a part of the site.
+- **Exit 1** when one of the **clicked** requests would be refused, with its
+  rule -- the deployment stops before the rules lock out a part of the site.
+  What was **only offered** on a page and refused (`?`) is a note: pages offer
+  addresses a rule refuses on purpose (`/logout`, `/admin`, a download).
+  `--found=fail` counts them too; in JUnit they are `skipped`.
+- **Assumed:** the site's scheme is https (the recording keeps the host, not
+  the scheme), and a found POST form is sent as an ordinary form
+  (`application/x-www-form-urlencoded`; the recording does not keep its
+  `enctype`).
 
 ```text
 replay: learned.jsonl (learning run): 1312 requests, 260 different; left out: 3 refused or failed in the run
 
-  ✕ GET /search?q=1                               404 by APP-STRICT
-  ✕ POST /newsletter/subscribe                    405 by APP-FORMS
+  ✕ GET /products/?page=1&sort=word&q=two%20words  404 by APP-STRICT
+  ? GET /admin/                                   403 by APP-ADMIN
 
-260 different requests: 258 pass, 2 refused.
+260 different requests: 258 pass, 1 refused, 1 only offered on a page would be refused (never clicked in the run -- a note; --found=fail counts them).
 ```
 
 ## The built-in rules have examples too
