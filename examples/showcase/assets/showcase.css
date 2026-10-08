@@ -301,3 +301,6 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .learn-r-pass .learn-mark { color: #047857; }
 .learn-r-refused .learn-mark { color: #b91c1c; }
 .learn-r-offered .learn-mark, .learn-r-check .learn-mark { color: #b45309; }
+
+/* A page of its own (/try, /exponential): room below the fixed menu */
+.page-top { padding-top: 110px; }

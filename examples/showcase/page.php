@@ -65,15 +65,47 @@ foreach (file(__DIR__ . '/showcase.rules', FILE_IGNORE_NEW_LINES) ?: [] as $line
 }
 
 $outcomeLabel = static fn (string $o): string => $t['outcome'][$o] ?? $o;
+$x = $t['exp'];
+$expGroups = $view === 'exponential' ? exponentialGroups(dirname(__DIR__) . '/exponential') : [];
+// A taste on the front page: a scanner, an attack, a parameter -- one card each; everything on /try.
+$tasteTries = [];
+foreach (['SCAN-HIDDEN', 'ATK-SQL-UNION', 'SHOW-STRICT'] as $by) {
+    foreach ($tries as $try) {
+        if ($try['by'] === $by && !$try['pass'] && $try['headers'] === [] && $try['times'] === 1) {
+            $tasteTries[] = $try;
+            continue 2;
+        }
+    }
+}
 $badge = static fn (string $o): string => in_array($o, ['answered', 'passes', 'uncached'], true) ? 'pass' : ($o === 'check' ? 'check' : 'stop');
 $client = [
     'tries' => $tries,
     'words' => ['api' => $t['api'], 'self' => $t['self'], 'outcome' => $t['outcome'], 'say' => $t['say'], 'details' => $t['details'], 'send' => $t['send'], 'sent' => $t['sent'], 'from' => $t['from'], 'tries' => array_map($tr, array_column($tries, 'text', 'n'))],
 ];
-$here = 'main';
-$title = $t['title'];
+$view = $view ?? 'main';         // site.php: main (/), try (/try), exponential (/exponential)
+$here = $view;
+$title = $view === 'main' ? $t['title'] : $t['pages'][$view][0] . ' — request-shield';
+// One card to try: the front page shows a few of them, /try all (showcase.js finds them either way).
+$card = static function (array $try) use ($e, $tr, $t, $badge, $outcomeLabel): void {
+    $mode = $try['pass'] ? 'pass' : ($try['headers'] !== [] ? 'server' : ($try['times'] > 1 ? 'repeat' : 'live'));
+    ?><div class="col-md-6 col-xl-4"><div class="card-try h-100" data-n="<?= $try['n'] ?>" data-mode="<?= $mode ?>" data-times="<?= (int) $try['times'] ?>">
+      <div class="try-text"><?= $e($tr($try['text'])) ?></div>
+      <code class="try-request"><span class="m"><?= $e($try['method']) ?></span> <?= $e(rawurldecode($try['url'])) ?><?= $try['times'] > 1 ? ' × ' . (int) $try['times'] : '' ?></code>
+      <div class="try-meta small"><?= $e($t['expected']) ?>:
+        <span class="pill pill-<?= $badge($try['outcome']) ?>"><?= $e($outcomeLabel($try['outcome'])) ?></span><?= $try['by'] !== null ? ' <span class="rule-id">' . $e($try['by']) . '</span>' : '' ?></div>
+      <?php if ($mode === 'pass'): ?>
+        <p class="small text-secondary mt-2 mb-2"><?= $e($t['passCard']) ?></p>
+        <a class="btn btn-sm btn-outline-accent mt-auto" href="/__login" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> <?= $e($t['openLogin']) ?></a>
+      <?php else: ?>
+        <?php if ($mode === 'server'): ?><p class="small text-secondary mt-2 mb-2"><i class="bi bi-info-circle"></i> <?= $e($t['simulated']) ?></p><?php endif ?>
+        <div class="try-result" aria-live="polite" data-from="<?= $e($try['from']) ?>"></div>
+        <button class="btn btn-sm btn-outline-accent mt-auto try-go"><i class="bi bi-send"></i> <span><?= $e($t['send']) ?></span></button>
+      <?php endif ?>
+    </div></div><?php
+};
 require __DIR__ . '/nav.php';
 ?>
+<?php if ($view === 'main'): ?>
 <header id="top" class="hero">
   <div class="container">
     <div class="row align-items-center g-4 g-lg-5">
@@ -162,7 +194,19 @@ require __DIR__ . '/nav.php';
   </div>
 </section>
 
-<section id="try" class="section">
+<section id="taste" class="section">
+  <div class="container">
+    <div class="section-head"><h2><?= $e($t['tasteTitle']) ?></h2><p class="lead"><?= $e($t['tasteLead']) ?></p></div>
+    <div class="row g-3">
+      <?php foreach ($tasteTries as $try) { $card($try); } ?>
+    </div>
+    <div class="text-center mt-4"><a class="btn btn-accent btn-lg" href="/try?lang=<?= $lang ?>"><i class="bi bi-play-fill"></i> <?= $e($t['tasteAll']) ?></a></div>
+  </div>
+</section>
+<?php endif ?>
+
+<?php if ($view === 'try'): ?>
+<section id="try" class="section page-top">
   <div class="container">
     <div class="section-head"><h2><?= $e($t['tryTitle']) ?></h2><p class="lead"><?= $e($t['tryLead']) ?></p>
       <button id="try-all" class="btn btn-accent"><i class="bi bi-lightning-charge-fill"></i> <?= $e($t['tryAll']) ?></button></div>
@@ -242,23 +286,7 @@ require __DIR__ . '/nav.php';
         </div>
       <?php endif ?>
       <div class="row g-3">
-        <?php foreach ($list as $try): ?>
-        <?php $mode = $try['pass'] ? 'pass' : ($try['headers'] !== [] ? 'server' : ($try['times'] > 1 ? 'repeat' : 'live')); ?>
-        <div class="col-md-6 col-xl-4"><div class="card-try h-100" data-n="<?= $try['n'] ?>" data-mode="<?= $mode ?>" data-times="<?= (int) $try['times'] ?>">
-          <div class="try-text"><?= $e($tr($try['text'])) ?></div>
-          <code class="try-request"><span class="m"><?= $e($try['method']) ?></span> <?= $e(rawurldecode($try['url'])) ?><?= $try['times'] > 1 ? ' × ' . (int) $try['times'] : '' ?></code>
-          <div class="try-meta small"><?= $e($t['expected']) ?>:
-            <span class="pill pill-<?= $badge($try['outcome']) ?>"><?= $e($outcomeLabel($try['outcome'])) ?></span><?= $try['by'] !== null ? ' <span class="rule-id">' . $e($try['by']) . '</span>' : '' ?></div>
-          <?php if ($mode === 'pass'): ?>
-            <p class="small text-secondary mt-2 mb-2"><?= $e($t['passCard']) ?></p>
-            <a class="btn btn-sm btn-outline-accent mt-auto" href="/__login" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> <?= $e($t['openLogin']) ?></a>
-          <?php else: ?>
-            <?php if ($mode === 'server'): ?><p class="small text-secondary mt-2 mb-2"><i class="bi bi-info-circle"></i> <?= $e($t['simulated']) ?></p><?php endif ?>
-            <div class="try-result" aria-live="polite" data-from="<?= $e($try['from']) ?>"></div>
-            <button class="btn btn-sm btn-outline-accent mt-auto try-go"><i class="bi bi-send"></i> <span><?= $e($t['send']) ?></span></button>
-          <?php endif ?>
-        </div></div>
-        <?php endforeach ?>
+        <?php foreach ($list as $try) { $card($try); } ?>
       </div>
       <?php endif ?>
     </div>
@@ -267,7 +295,9 @@ require __DIR__ . '/nav.php';
 </section>
 
 
-<?php $x = $t['exp']; $expGroups = exponentialGroups(dirname(__DIR__) . '/exponential'); ?>
+<?php endif ?>
+
+<?php if ($view === 'main'): ?>
 <section id="compliance" class="section">
   <div class="container">
     <?php $c = $t['comp'] ?>
@@ -291,6 +321,15 @@ require __DIR__ . '/nav.php';
 </section>
 
 <section id="exponential" class="section section-alt">
+  <div class="container">
+    <div class="section-head"><h2><?= $e($t['exp']['title']) ?></h2><p class="lead"><?= $e($t['exp']['lead']) ?></p>
+      <a class="btn btn-accent" href="/exponential?lang=<?= $lang ?>"><i class="bi bi-boxes"></i> <?= $e($t['expTeaser']) ?></a></div>
+  </div>
+</section>
+<?php endif ?>
+
+<?php if ($view === 'exponential'): ?>
+<section id="exponential-rules" class="section page-top">
   <div class="container">
     <div class="section-head"><h2><?= $e($x['title']) ?></h2><p class="lead"><?= $e($x['lead']) ?></p></div>
     <div class="row g-4 mb-4 align-items-start">
@@ -324,6 +363,9 @@ Shield::protectFile(__DIR__ . '/settings/request-shield/exponential-admin-uri.ru
   </div>
 </section>
 
+<?php endif ?>
+
+<?php if ($view === 'main'): ?>
 <section class="section">
   <div class="container">
     <div class="section-head"><h2><?= $e($t['checkTitle']) ?></h2></div>
@@ -375,6 +417,8 @@ Shield::protectFile(__DIR__ . '/settings/request-shield/exponential-admin-uri.ru
     <p class="text-center mt-4"><i class="bi bi-eye"></i> <?= $t['installMonitor'] ?></p>
   </div>
 </section>
+
+<?php endif ?>
 
 <aside class="log-dock" id="log-dock" aria-label="<?= $e($t['liveLogTitle']) ?>" data-empty="<?= $e($t['liveLogEmpty']) ?>">
   <div class="log-dock-top">

@@ -159,6 +159,11 @@ $learnShield = Shield::active();
 $learnClient = $learnShield !== null ? \CjwNetwork\RequestShield\Request::fromServer($_SERVER, $learnShield->settings->trustedProxies)->clientIp : '';
 $learnHere = in_array($learnClient, ['127.0.0.1', '::1'], true) || getenv('REQUEST_SHIELD_SHOWCASE_LEARN') === 'on';
 $learnStore = $learnShield !== null ? $learnShield->settings->storeDir : null;
+if ($path === '/try' || $path === '/exponential') {
+    $view = substr($path, 1);         // a page of its own: everything to try, the Exponential example
+    require __DIR__ . '/page.php';
+    return;
+}
 if ($path === '/learn') {
     require __DIR__ . '/learn.php';
     return;

@@ -10,7 +10,16 @@ PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8090 examples/showcase/router.php
 (Several workers, so the page's own requests -- the stream, a bot -- do not
 wait for each other; `php -S` alone answers one request at a time.)
 
-Open http://127.0.0.1:8090/ (`?lang=de` or `?lang=en`).
+Open http://127.0.0.1:8090/ (`?lang=de` or `?lang=en`). Four pages, one menu:
+
+| Page | What it holds |
+|---|---|
+| `/` | what the shield is: the live stream, the promises, what it does, the rules, a taste of three requests to send, WCAG & GDPR, a teaser for Exponential, the browser check, install |
+| `/try` | every card to try, by group -- the burst, the search and sign-in that count for themselves, the API with its JSON form |
+| `/exponential` | the Exponential example: its rules section by section, every example checked on the server |
+| `/learn` | building rules: a learning run, live |
+
+The parts below describe them; a card behaves the same wherever it stands.
 
 - **The rules** are [`showcase.rules`](showcase.rules): about fifteen lines with
   values a real website uses — 60 pages a minute pass silently, then the

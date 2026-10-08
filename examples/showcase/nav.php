@@ -16,7 +16,7 @@
 declare(strict_types=1);
 
 $home = $here === 'main' ? '' : '/?lang=' . $lang;
-$self = $here === 'main' ? '/' : '/learn';
+$self = $here === 'main' ? '/' : '/' . $here;
 ?><!doctype html>
 <html lang="<?= $lang ?>">
 <head>
@@ -36,7 +36,8 @@ $self = $here === 'main' ? '/' : '/learn';
     <div class="collapse navbar-collapse" id="menu">
       <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
         <?php foreach (['what', 'rules', 'try', 'compliance', 'exponential', 'install'] as $k): ?>
-        <li class="nav-item"><a class="nav-link" href="<?= $e($home) ?>#<?= $k ?>"><?= $e($t['nav'][$k]) ?></a></li>
+        <?php $page = in_array($k, ['try', 'exponential'], true); /* a page of its own; the others are parts of the front page */ ?>
+        <li class="nav-item"><a class="nav-link<?= $here === $k ? ' active' : '' ?>" href="<?= $page ? '/' . $k . '?lang=' . $lang : $e($home) . '#' . $k ?>"<?= $here === $k ? ' aria-current="page"' : '' ?>><?= $e($t['nav'][$k]) ?></a></li>
         <?php endforeach ?>
         <li class="nav-item"><a class="nav-link<?= $here === 'learn' ? ' active' : '' ?>" href="/learn?lang=<?= $lang ?>"<?= $here === 'learn' ? ' aria-current="page"' : '' ?>><i class="bi bi-magic"></i> <?= $e($t['nav']['learn']) ?></a></li>
         <li class="nav-item ms-lg-3"><div class="btn-group btn-group-sm" role="group" aria-label="Language">

@@ -249,21 +249,39 @@ return [
             $cookie = ['Cookie' => 'rs-learn=' . ($m[1] ?? '')];
             usleep(1100000);                // the settings see the run (the rule file touched, recheck 0)
             same(200, $get('GET', '/search?q=red+shoes', $cookie)[0]);
-            same(200, $get('GET', '/?lang=en', $cookie)[0]);
+            same(200, $get('GET', '/try?lang=en', $cookie)[0]);
             same(200, $get('GET', '/?page=3')[0], 'without the cookie: not recorded');
             $j = [];
             for ($i = 0; $i < 30 && count($j['rows'] ?? []) < 2; $i++) {
                 usleep(100000);
                 $j = (array) json_decode($get('GET', '/__learned')[2], true);
             }
-            same([['/', ['lang' => 'id']], ['/search', ['q' => 'text']]], array_map(static fn (array $r): array => [$r['path'], $r['query']], $j['rows'] ?? []), 'the two clicks, newest first, by shape');
-            truthy(is_int($j['until'] ?? null) && count($j['rows'][0]['found']['forms'] ?? []) > 0, 'running; what the front page offers was found');
+            same([['/try', ['lang' => 'id']], ['/search', ['q' => 'text']]], array_map(static fn (array $r): array => [$r['path'], $r['query']], $j['rows'] ?? []), 'the two clicks, newest first, by shape');
+            truthy(is_int($j['until'] ?? null) && count($j['rows'][0]['found']['forms'] ?? []) > 0, 'running; what /try offers (its forms) was found');
             $replay = (array) json_decode($get('GET', '/__replay')[2], true);
             $kinds = array_count_values(array_column($replay['results'] ?? [], 'kind'));
             truthy(($kinds['pass'] ?? 0) >= 2 && !isset($kinds['refused']), 'the rules against the run: the clicks pass -- ' . json_encode($replay));
             same(200, $get('POST', '/__learn/stop', ['Origin' => 'http://127.0.0.1'] + $cookie)[0]);
             $after = (array) json_decode($get('GET', '/__learned')[2], true);
             truthy(array_key_exists('until', $after) && $after['until'] === null, 'stopped: ' . json_encode($after['until'] ?? 'missing'));
+        });
+    },
+    'RSF05-04 the showcase in pages: the front page a taste with a way to everything, /try every card, /exponential every example, the menu marking where you are' => function (): void {
+        $cards = static fn (string $html): int => preg_match_all('/class="card-try h-100" data-n="\d+"/', $html);
+        $groups = exponentialGroups(dirname(__DIR__) . '/examples/exponential');
+        $examples = array_sum(array_map(static fn (array $g): int => count($g['tries']), $groups));
+        withShowcase(static function (callable $get) use ($cards, $examples): void {
+            foreach (['de', 'en'] as $lang) {
+                $main = $get('GET', "/?lang=$lang")[2];
+                same(3, $cards($main), "$lang: three cards to taste on the front page");
+                truthy(strpos($main, 'href="/try?lang=' . $lang . '"') !== false && strpos($main, 'href="/exponential?lang=' . $lang . '"') !== false, "$lang: the way to /try and /exponential");
+                truthy(strpos($main, 'json-form') === false && strpos($main, 'burst-go') === false && strpos($main, 'exp-row') === false, "$lang: the rest is on its own pages");
+                [$st, , $try] = $get('GET', "/try?lang=$lang");
+                truthy($st === 200 && $cards($try) >= 20 && strpos($try, 'burst-go') !== false && strpos($try, 'json-form') !== false && strpos($try, 'counter-form') !== false, "$lang: /try, every card, the burst, the API, search and sign-in");
+                truthy(strpos($try, 'class="nav-link active" href="/try?lang=' . $lang . '" aria-current="page"') !== false && strpos($try, 'id="taste"') === false, "$lang: the menu marks it");
+                [$st, , $exp] = $get('GET', "/exponential?lang=$lang");
+                truthy($st === 200 && preg_match_all('/class="exp-row"/', $exp) === $examples && strpos($exp, 'exp-all') !== false, "$lang: /exponential, all $examples examples");
+            }
         });
     },
 ];
