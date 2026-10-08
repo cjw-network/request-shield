@@ -52,6 +52,15 @@ jobs:
         with:
           node-version: '22'
 
+      - name: ALTCHA's widget for its test (tests/AltchaWidgetTest.php)
+        # The npm package as published, pinned and unpacked (npm pack runs no scripts): the test runs
+        # the widget's own code against the shield's task. Not a dependency of the library.
+        run: |
+          cd "$RUNNER_TEMP"
+          npm pack altcha@3.3.0 --silent
+          tar xzf altcha-3.3.0.tgz
+          echo "ALTCHA_WIDGET=$RUNNER_TEMP/package" >> "$GITHUB_ENV"
+
       - name: Syntax check (PHP ${{ matrix.php }})
         run: find src plugins tests bench build config examples bootstrap.php -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
 
@@ -107,6 +116,15 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
+
+      - name: ALTCHA's widget for its test (tests/AltchaWidgetTest.php)
+        # The npm package as published, pinned and unpacked (npm pack runs no scripts): the test runs
+        # the widget's own code against the shield's task. Not a dependency of the library.
+        run: |
+          cd "$RUNNER_TEMP"
+          npm pack altcha@3.3.0 --silent
+          tar xzf altcha-3.3.0.tgz
+          echo "ALTCHA_WIDGET=$RUNNER_TEMP/package" >> "$GITHUB_ENV"
 
       - name: Tests, the servers restricted
         env:

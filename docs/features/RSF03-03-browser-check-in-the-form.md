@@ -71,7 +71,8 @@ against it instead (its `challengeurl` pointing at the endpoint, `name="rss"`):
 widget v3 (tested with 3.3.0) turns the shield's v1 task into its own form,
 solves it and answers in v1, and the shield accepts that answer
 (`tests/AltchaWidgetTest.php`, which runs the widget's own code in Node when
-`ALTCHA_WIDGET` names an unpacked `altcha` npm package; skipped otherwise).
+`ALTCHA_WIDGET` names an unpacked `altcha` npm package -- the CI fetches 3.3.0
+with `npm pack` for it; skipped otherwise).
 ALTCHA's newer tasks (PBKDF2, Argon2id) are [proposal 0042](../proposals/0042-pow-v2-for-forms.md).
 
 ## Cost
