@@ -65,6 +65,7 @@ foreach (file(__DIR__ . '/showcase.rules', FILE_IGNORE_NEW_LINES) ?: [] as $line
 }
 
 $outcomeLabel = static fn (string $o): string => $t['outcome'][$o] ?? $o;
+$view = $view ?? 'main';         // site.php: main (/), try (/try), exponential (/exponential)
 $x = $t['exp'];
 $expGroups = $view === 'exponential' ? exponentialGroups(dirname(__DIR__) . '/exponential') : [];
 // A taste on the front page: a scanner, an attack, a parameter -- one card each; everything on /try.
@@ -82,7 +83,6 @@ $client = [
     'tries' => $tries,
     'words' => ['api' => $t['api'], 'self' => $t['self'], 'outcome' => $t['outcome'], 'say' => $t['say'], 'details' => $t['details'], 'send' => $t['send'], 'sent' => $t['sent'], 'from' => $t['from'], 'tries' => array_map($tr, array_column($tries, 'text', 'n'))],
 ];
-$view = $view ?? 'main';         // site.php: main (/), try (/try), exponential (/exponential)
 $here = $view;
 $title = $view === 'main' ? $t['title'] : $t['pages'][$view][0] . ' — request-shield';
 // One card to try: the front page shows a few of them, /try all (showcase.js finds them either way).
@@ -115,7 +115,7 @@ require __DIR__ . '/nav.php';
         <p class="lead mt-4 mb-2"><?= $e($t['heroLead']) ?></p>
         <p class="hero-exp mb-4"><i class="bi bi-boxes"></i> <?= $e($t['heroExp'][0]) ?> <a href="#exponential"><?= $e($t['heroExp'][1]) ?> <i class="bi bi-arrow-down-short"></i></a></p>
         <div class="d-flex flex-wrap gap-3">
-          <a class="btn btn-accent btn-lg" href="#try"><i class="bi bi-play-fill"></i> <?= $e($t['heroTry']) ?></a>
+          <a class="btn btn-accent btn-lg" href="#taste"><i class="bi bi-play-fill"></i> <?= $e($t['heroTry']) ?></a>
           <a class="btn btn-soft btn-lg" href="#rules"><?= $e($t['heroRules']) ?></a>
         </div>
         <ul class="promise-badges list-unstyled d-flex flex-wrap gap-2 mt-4 mb-0">
@@ -303,16 +303,16 @@ require __DIR__ . '/nav.php';
     <?php $c = $t['comp'] ?>
     <div class="section-head"><h2><?= $e($c['title']) ?></h2><p class="lead"><?= $e($c['lead']) ?></p></div>
     <div class="row g-4">
-      <?php foreach ($c['cards'] as $card): ?>
+      <?php foreach ($c['cards'] as $one): ?>
       <div class="col-lg-6"><article class="comp-card h-100">
-        <h3 class="h4 d-flex align-items-center gap-2"><span class="feature-icon mb-0"><i class="bi <?= $e($card['icon']) ?>"></i></span> <?= $e($card['title']) ?></h3>
+        <h3 class="h4 d-flex align-items-center gap-2"><span class="feature-icon mb-0"><i class="bi <?= $e($one['icon']) ?>"></i></span> <?= $e($one['title']) ?></h3>
         <h4 class="comp-sub"><?= $e($c['altcha']) ?></h4>
-        <blockquote class="comp-quote"><?= $e($card['altcha']) ?>
-          <a class="d-block mt-2 small" href="<?= $e($card['url']) ?>" rel="noopener" target="_blank"><i class="bi bi-box-arrow-up-right"></i> <?= $e($c['read']) ?></a></blockquote>
+        <blockquote class="comp-quote"><?= $e($one['altcha']) ?>
+          <a class="d-block mt-2 small" href="<?= $e($one['url']) ?>" rel="noopener" target="_blank"><i class="bi bi-box-arrow-up-right"></i> <?= $e($c['read']) ?></a></blockquote>
         <h4 class="comp-sub"><?= $e($c['shield']) ?></h4>
-        <ul class="comp-list comp-yes"><?php foreach ($card['shield'] as $li): ?><li><?= $e($li) ?></li><?php endforeach ?></ul>
+        <ul class="comp-list comp-yes"><?php foreach ($one['shield'] as $li): ?><li><?= $e($li) ?></li><?php endforeach ?></ul>
         <h4 class="comp-sub"><?= $e($c['differs']) ?></h4>
-        <ul class="comp-list comp-diff"><?php foreach ($card['differs'] as $li): ?><li><?= $e($li) ?></li><?php endforeach ?></ul>
+        <ul class="comp-list comp-diff"><?php foreach ($one['differs'] as $li): ?><li><?= $e($li) ?></li><?php endforeach ?></ul>
       </article></div>
       <?php endforeach ?>
     </div>

@@ -273,6 +273,8 @@ return [
         withShowcase(static function (callable $get) use ($cards, $examples): void {
             foreach (['de', 'en'] as $lang) {
                 $main = $get('GET', "/?lang=$lang")[2];
+                truthy(preg_match('#(Warning|Notice|Deprecated)(</b>)?:  ?.{0,300} on line#', $main) !== 1, "$lang: no PHP warning on the front page");
+                truthy(strpos($main, 'href="#try"') === false && strpos($main, 'href="#taste"') !== false, "$lang: the hero's button leads to the taste on this page");
                 same(3, $cards($main), "$lang: three cards to taste on the front page");
                 truthy(strpos($main, 'href="/try?lang=' . $lang . '"') !== false && strpos($main, 'href="/exponential?lang=' . $lang . '"') !== false, "$lang: the way to /try and /exponential");
                 truthy(strpos($main, 'json-form') === false && strpos($main, 'burst-go') === false && strpos($main, 'exp-row') === false, "$lang: the rest is on its own pages");

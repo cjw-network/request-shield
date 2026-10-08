@@ -398,4 +398,5 @@ if ($path !== '/') {
     showcaseAnswer(404, 'Not found', 'The site itself has no page here -- the shield let the request through, the application answered.');
     return;
 }
+$view = 'main';
 require __DIR__ . '/page.php';
