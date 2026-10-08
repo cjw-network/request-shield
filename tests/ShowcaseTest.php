@@ -9,8 +9,11 @@ declare(strict_types=1);
  */
 
 /** Starts the showcase (router.php), runs $body with a request function, stops it. */
-/** @param callable(callable, int, string): void $body gets the request function, the port, and the showcase's directory (its log, its store) */
-function withShowcase(callable $body): void
+/**
+ * @param callable(callable, int, string): void $body gets the request function, the port, and the showcase's directory (its log, its store)
+ * @param array<string, string> $env more for the showcase's environment (REQUEST_SHIELD_SHOWCASE_LOG_IP)
+ */
+function withShowcase(callable $body, array $env = []): void
 {
     if (rsSingle() !== null) {
         skip('the showcase shows the source tree\'s integration (bootstrap.php); the single file has its case in SingleFileTest');
@@ -21,7 +24,11 @@ function withShowcase(callable $body): void
     $var = sys_get_temp_dir() . '/rshield-showcase-' . getmypid() . '-' . mt_rand();
     mkdir($var, 0700, true);
     $port = freePort();
-    $cmd = sprintf('REQUEST_SHIELD_SHOWCASE_VAR=%s exec %s -S 127.0.0.1:%d %s > /dev/null 2>&1',
+    $more = '';
+    foreach ($env as $k => $v) {
+        $more .= $k . '=' . escapeshellarg($v) . ' ';
+    }
+    $cmd = sprintf($more . 'REQUEST_SHIELD_SHOWCASE_VAR=%s exec %s -S 127.0.0.1:%d %s > /dev/null 2>&1',
         escapeshellarg($var), serverPhp(), $port, escapeshellarg(dirname(__DIR__) . '/examples/showcase/router.php'));
     $proc = proc_open($cmd, [], $pipes);
     for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
@@ -366,5 +373,34 @@ return [
             $page = $get('GET', '/?lang=de')[2];
             truthy(strpos($page, 'class="log-all-bans"') !== false && strpos($page, 'Alle Sperren') !== false && strpos($page, 'Von Hand') !== false, 'the tab is there');
         });
+    },
+    'RSF05-06 the showcase shows no address whole even when its log has them (log-ip full): log lines, bans, a range kept out by hand with its host bits set -- and finds a banned IPv6 network\'s rule and kind all the same' => function (): void {
+        withShowcase(static function (callable $get, int $port, string $var): void {
+            $ban = static function (string $from, string $ua) use ($get, $port): void {
+                for ($i = 0; $i < 5; $i++) {
+                    $get('POST', '/account/login', ['X-Forwarded-For' => $from, 'Origin' => "http://127.0.0.1:$port", 'User-Agent' => $ua], 'user=demo&password=wrong');
+                }
+            };
+            $ban('198.51.100.77', 'Mozilla/5.0 (X11; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0');
+            $ban('2001:db8:5:6::9', 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)');
+            exec(sprintf('REQUEST_SHIELD_SHOWCASE_VAR=%s %s %s deny %s 203.0.113.66/24 --for=1h 2>&1', escapeshellarg($var), escapeshellarg(PHP_BINARY),
+                escapeshellarg(dirname(__DIR__) . '/bin/request-shield'), escapeshellarg(dirname(__DIR__) . '/examples/showcase/showcase.rules')), $out, $code);
+            same(0, $code, 'kept out by hand: ' . implode("\n", $out));
+            truthy(strpos((string) file_get_contents($var . '/shield.log'), '198.51.100.77') !== false, 'the log itself has the address whole (log-ip full)');
+            $body = $get('GET', '/__log')[2];
+            foreach (['198.51.100.77', '2001:db8:5:6::9', '203.0.113.66'] as $whole) {
+                truthy(strpos($body, $whole) === false, "$whole nowhere in what the page gets: " . $body);
+            }
+            $j = (array) json_decode($body, true);
+            $hand = array_values(array_filter((array) ($j['denied'] ?? []), static fn (array $d): bool => $d['source'] === 'list'));
+            same(['203.0.113.0/24'], $hand[0]['clients'] ?? null, 'the range by its network: ' . json_encode($j['denied'] ?? null));
+            same(2, $j['deniedCount'] ?? null, 'how many are kept out by hand in all');
+            $by = [];
+            foreach ((array) ($j['bans'] ?? []) as $b) {
+                $by[$b['client']] = $b;
+            }
+            same(['rule' => 'SHOW-LOGIN-BAN', 'kind' => 'crawler'], array_intersect_key($by['2001:db8:5::/48'] ?? [], ['rule' => 1, 'kind' => 1]), 'the IPv6 ban, its rule and kind found: ' . json_encode($j['bans'] ?? null));
+            same('browser', $by['198.51.100.0/24']['kind'] ?? null, 'and the IPv4 one');
+        }, ['REQUEST_SHIELD_SHOWCASE_LOG_IP' => 'full']);
     },
 ];

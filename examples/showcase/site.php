@@ -183,7 +183,9 @@ function showcaseBans(?Shield $shield, array $lines, int $now): array
         if ($r === null) {
             continue;
         }
-        $who = showcaseMask($r['client']);      // log-ip full: the line has the address, the ban its bucket
+        // the network the store bans (its bucket: an IPv6 address's /64, or what ipv6-prefix says),
+        // shown as showcaseMask shows a ban -- whether the line has the address (log-ip full) or its /24, /48
+        $who = showcaseMask(\CjwNetwork\RequestShield\IpAddress::bucket(explode('/', $r['client'])[0], $s->ipv6Prefix));
         $was = $seen[$who] ?? null;
         $banned = $r['reason'] === 'banned';
         if ($banned || $was === null || !$was['banned']) {
@@ -226,21 +228,28 @@ function showcaseDenied(?Shield $shield): array
 
 /**
  * An address as the demo may show it: its network, as log-ip masked writes it (198.51.100.7 ->
- * 198.51.100.0/24, IPv6 -> /48). A range that wide or wider stays as it is; a narrower one
- * (an IPv6 bucket, /64) is cut to its network too.
+ * 198.51.100.0/24, IPv6 -> /48). A range that wide or wider keeps its width, its host bits
+ * cleared (198.51.100.7/16 -> 198.51.100.0/16); a narrower one, or anything odd after the
+ * slash, is cut to the network like an address. What is no address at all: "-".
  */
 function showcaseMask(string $a): string
 {
     $slash = strpos($a, '/');
-    if ($slash !== false) {
-        $base = substr($a, 0, $slash);
-        $v6 = strpos($base, ':') !== false;
-        if ((int) substr($a, $slash + 1) <= ($v6 ? 48 : 24) && @inet_pton($base) !== false) {
-            return $a;
-        }
-        $a = $base;
+    $base = $slash === false ? $a : substr($a, 0, $slash);
+    $bin = @inet_pton($base);
+    if ($bin === false) {
+        return '-';
     }
-    return \CjwNetwork\RequestShield\Log::mask($a);
+    $bits = $slash === false ? '' : substr($a, $slash + 1);
+    if (preg_match('/^\d{1,3}$/', $bits) === 1 && (int) $bits <= (strlen($bin) === 4 ? 24 : 48)) {
+        $n = (int) $bits;
+        $net = substr($bin, 0, intdiv($n, 8));
+        if ($n % 8 !== 0) {
+            $net .= chr(ord($bin[intdiv($n, 8)]) & (0xff << (8 - $n % 8)) & 0xff);
+        }
+        return inet_ntop(str_pad($net, strlen($bin), "\0")) . '/' . $n;
+    }
+    return \CjwNetwork\RequestShield\Log::mask($base);
 }
 
 /** What a User-Agent looks like: crawler (says so), tool (a script, a library), browser (likely a person), unknown. */
@@ -494,7 +503,8 @@ if ($path === '/__log') {
     }
     // A demo never shows an address whole, whatever log-ip says: only its network.
     $lines = array_map(static fn (string $l): string => (string) preg_replace_callback('/^(\S+) (\S+) /', static fn (array $m): string => $m[1] . ' ' . showcaseMask($m[2]) . ' ', $l), $lines);
-    showcaseJson(200, ['lines' => $lines, 'bans' => showcaseBans(Shield::active(), $all, time()), 'denied' => showcaseDenied(Shield::active()), 'now' => time()]);
+    showcaseJson(200, ['lines' => $lines, 'bans' => showcaseBans(Shield::active(), $all, time()), 'denied' => showcaseDenied(Shield::active()),
+        'deniedCount' => Shield::active()?->settings->denyCount ?? 0, 'now' => time()]);
     return;
 }
 if ($path === '/__forget') {

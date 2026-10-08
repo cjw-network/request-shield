@@ -352,15 +352,25 @@
     var lang = document.documentElement.lang === 'de' ? 'de-DE' : 'en-GB';
     var none = function (list) { if (!list.children.length) { list.appendChild(el('li', 'log-empty', all.getAttribute('data-none'))); } };
     var handN = 0;
-    dock.querySelectorAll('.log-tab').forEach(function (t) {
-      t.addEventListener('click', function () {
-        var bansTab = t.getAttribute('data-tab') === 'bans';
-        dock.querySelectorAll('.log-tab').forEach(function (o) {
-          var on = o === t;
-          o.classList.toggle('active', on); o.setAttribute('aria-selected', on ? 'true' : 'false'); o.tabIndex = on ? 0 : -1;
-        });
-        logPane.hidden = bansTab; all.hidden = !bansTab;
-        if (!open) { setOpen(true); }
+    var tabs = Array.prototype.slice.call(dock.querySelectorAll('.log-tab'));
+    var pick = function (t) {
+      var bansTab = t.getAttribute('data-tab') === 'bans';
+      tabs.forEach(function (o) {
+        var on = o === t;
+        o.classList.toggle('active', on); o.setAttribute('aria-selected', on ? 'true' : 'false'); o.tabIndex = on ? 0 : -1;
+      });
+      logPane.hidden = bansTab; all.hidden = !bansTab;
+      if (!open) { setOpen(true); }
+    };
+    tabs.forEach(function (t, i) {
+      t.addEventListener('click', function () { pick(t); });
+      // A tab list: the arrow keys (and Home, End) move between the tabs.
+      t.addEventListener('keydown', function (ev) {
+        var to = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[ev.key];
+        if (to === undefined) { return; }
+        ev.preventDefault();
+        var next = tabs[(to + tabs.length) % tabs.length];
+        pick(next); next.focus();
       });
     });
     var tick = function () {
@@ -383,7 +393,7 @@
       li.title = b.agent || '';
       return li;
     };
-    var showBans = function (list, denied, now) {
+    var showBans = function (list, denied, deniedCount, now) {
       if (typeof now === 'number') { offset = now - Date.now() / 1000; }
       var key = JSON.stringify([list, denied]);
       if (key === bans) { tick(); return; }
@@ -399,7 +409,7 @@
           : all.getAttribute('data-until').replace('{t}', new Date(d.until * 1000).toLocaleString(lang, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }))));
         handList.appendChild(li);
       });
-      handN = denied.length;
+      handN = typeof deniedCount === 'number' ? deniedCount : denied.length;     // all of them: the page gets the first hundred
       none(handList);
       tick();
     };
@@ -422,7 +432,7 @@
           rows.appendChild(li);
           while (rows.children.length > 40) { rows.removeChild(rows.firstChild); }
         });
-        showBans(j.bans || [], j.denied || [], j.now);
+        showBans(j.bans || [], j.denied || [], j.deniedCount, j.now);
         if (fresh && !open) { unseen += fresh; badge.textContent = '+' + unseen; badge.hidden = false; }
         first = false;
         rows.scrollTop = rows.scrollHeight;
