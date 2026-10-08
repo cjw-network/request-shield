@@ -48,8 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 - **A new attack rule, `ATK-SQL-BOOL`** (attack rules `2026.10.2`,
   `include @attacks`): SQL injection without quotes -- `or 1=1` and
-  sqlmap's boolean test `and 6522=6522`. Small numbers ("rock and roll
-  2=2") and a false comparison ("or 1=2") pass. Taken from comparing with
+  sqlmap's boolean tests `and 6522=6522` / `and 6522=6523`. Small numbers
+  pass ("rock and roll 2=2", "or 1=2"); 3 to 5 digits on both sides of `=`
+  after `and`/`or` are refused, equal or not. Taken from comparing with
   Mini-WAF's rules.
 - **A new attack rule, `ATK-SQL-FUNC`** (attack rules `2026.10.2`,
   `include @attacks`): SQL injection through the database's own functions --
