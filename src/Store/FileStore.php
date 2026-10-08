@@ -38,7 +38,7 @@ final class FileStore implements Store
         // parent appeared in between) -- so try again a few times, or that hit
         // would not be counted.
         for ($try = 0; $fh === false && $try < 3; $try++) {
-            @mkdir(dirname($file), 0700, true);
+            \CjwNetwork\RequestShield\Files::dir(dirname($file));
             $fh = @fopen($file, 'ab');
         }
         if ($fh === false) {
@@ -83,12 +83,9 @@ final class FileStore implements Store
             @unlink($file);
             return;
         }
-        @mkdir(dirname($file), 0700, true);
-        $tmp = $file . '.' . bin2hex(random_bytes(4));
-        // The key after the time, for marks(): the file name is only its hash.
-        if (@file_put_contents($tmp, $until . "\n" . $key) !== false && !@rename($tmp, $file)) {
-            @unlink($tmp);
-        }
+        // The key after the time, for marks(): the file name is only its hash. The key holds an
+        // address: file-mode, as the log.
+        \CjwNetwork\RequestShield\Files::write($file, $until . "\n" . $key);
     }
 
     public function marked(string $key, float $now): int

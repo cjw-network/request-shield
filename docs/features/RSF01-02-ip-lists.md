@@ -70,7 +70,8 @@ set lists-dir /var/lib/request-shield/lists      # default: <store-dir>/lists
 
 `lists-dir` is about the server. It belongs above the site blocks and applies
 to every website. Files are written whole (a temporary file, then a rename),
-mode 0640 in a 0750 directory, outside the document root by default.
+in `file-mode` in a `dir-mode` directory (0600, 0700 by default:
+[modes](RSF05-02-settings.md#file-and-folder-modes)), outside the document root by default.
 
 ### The command line
 

@@ -63,7 +63,7 @@ final class FileCache
         }
         $file = $this->path($key);
         $dir = dirname($file);
-        if (!is_dir($dir) && !@mkdir($dir, 0750, true) && !is_dir($dir)) {
+        if (!\CjwNetwork\RequestShield\Files::dir($dir)) {
             return false;
         }
         $meta = json_encode(['key' => $key, 'path' => $path, 'status' => $status, 'headers' => $headers, 'stored' => (int) $now, 'expires' => (int) $now + $ttl], JSON_UNESCAPED_SLASHES);
@@ -74,6 +74,7 @@ final class FileCache
         if (@file_put_contents($tmp, $meta . "\n" . $body) === false) {
             return false;
         }
+        \CjwNetwork\RequestShield\Files::own($tmp);
         if (!@rename($tmp, $file)) {
             @unlink($tmp);
             return false;

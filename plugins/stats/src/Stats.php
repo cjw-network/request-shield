@@ -343,12 +343,8 @@ final class Stats
             $this->tend($now);
             return;
         }
-        $file = $this->dir . '/h-' . $hour . '.log';
-        if (@file_put_contents($file, implode(' ', $keys) . "\n", FILE_APPEND) === false) {
-            // The directory is missing: made once, the line written again.
-            @mkdir($this->dir, 0750, true);
-            @file_put_contents($file, implode(' ', $keys) . "\n", FILE_APPEND);
-        }
+        // A new hour's file in file-mode (Files: once per process and file), the folder made if missing.
+        \CjwNetwork\RequestShield\Files::append($this->dir . '/h-' . $hour . '.log', implode(' ', $keys) . "\n");
         $this->tend($now);
     }
 
@@ -599,11 +595,8 @@ final class Stats
                 $lines[$m[1]][] = $m[2] . '*' . $n;
             }
         }
-        if ($lines !== [] && !is_dir($this->dir)) {
-            @mkdir($this->dir, 0750, true);
-        }
         foreach ($lines as $hour => $tokens) {
-            @file_put_contents($this->dir . '/h-' . $hour . '.log', implode(' ', $tokens) . "\n", FILE_APPEND);
+            \CjwNetwork\RequestShield\Files::append($this->dir . '/h-' . $hour . '.log', implode(' ', $tokens) . "\n");
         }
     }
 
@@ -615,7 +608,7 @@ final class Stats
     public function roll(float $now): void
     {
         $closed = self::closed($now);
-        if (!is_dir($this->dir) && !@mkdir($this->dir, 0750, true) && !is_dir($this->dir)) {
+        if (!\CjwNetwork\RequestShield\Files::dir($this->dir)) {
             return;
         }
         $lock = @fopen($this->dir . '/.lock', 'c');
@@ -962,13 +955,7 @@ final class Stats
     /** @param array<string, mixed> $d */
     private static function save(string $file, array $d): void
     {
-        $tmp = $file . '.' . bin2hex(random_bytes(4));
-        if (@file_put_contents($tmp, json_encode($d, JSON_UNESCAPED_SLASHES)) !== false) {
-            @chmod($tmp, 0640);
-            @rename($tmp, $file);
-        } else {
-            @unlink($tmp);
-        }
+        \CjwNetwork\RequestShield\Files::write($file, (string) json_encode($d, JSON_UNESCAPED_SLASHES));
     }
 
     /**

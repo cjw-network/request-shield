@@ -89,7 +89,8 @@ got in.
 - **Nothing forged:** request line and User-Agent are shortened, non-printable
   characters become `?`, quotes `'` — a request cannot write a line of its own.
 - One line per `write()` with `O_APPEND`: lines of parallel requests do not
-  mix. The file is created 0640, its directory 0750.
+  mix. The file is created in `file-mode` (0600 by default), its directory in
+  `dir-mode` (0700) -- [file and folder modes](RSF05-02-settings.md#file-and-folder-modes).
 - **Rotation:** past `log-max-size` (default 10 MB) the file is renamed to
   `.1` (one generation); for more, logrotate with `copytruncate` or `create`.
 

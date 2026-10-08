@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- **Only the user PHP runs as reads what the shield writes, by default**:
+  the log, the lists, the feeds, the crawler lists and the statistics were
+  `0640` in `0750` folders, now `0600` in `0700`. A log reader in PHP's
+  group keeps reading with `set file-mode 0640` and `set dir-mode 0750`.
+  Existing files keep their mode.
 - **`ATK-SSRF-META` costs a seventh on a plain query**: its first part,
   "not after a digit or a dot", is a look-behind now (`(?<![\d.])` instead of
   `(^|[^\d.])`), so PCRE skips ahead to a `1`, `m`, `f`, `/` or `@` instead of
@@ -24,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   50 -> 36 µs; short values are matched as before (one call).
 
 ### Fixed
+- **A ban kept in store-dir was written in the umask's mode** -- under the
+  usual umask 022 readable for everyone on the machine, and its file holds
+  the address. It is written in `file-mode` now (so is the crawler check's
+  DNS cache in store-dir); `check` names such files already there.
 - **Compiled settings cut short just before their end are compiled anew**:
   a file that still parsed but lacked its last entries was taken -- the
   constructor fills them in with defaults. Every compiled file now ends with
@@ -67,6 +76,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **`set file-mode` and `set dir-mode`: the modes of what the shield
+  writes**, for servers with rules for new folders and files: `0600` and
+  `0700` by default; a group (`0640`, `0750`), an inherited group (`02770`).
+  Set exactly with `chmod()` after a file or folder is made -- the umask
+  takes nothing away and adds nothing, each missing parent folder too; a
+  file is never readable with another mode in between (written whole: a
+  temporary file in file-mode, renamed; appended: made empty, its mode set,
+  then the line). Never writable for everyone, never a mode that keeps PHP
+  from writing. Applies to store-dir and its folders, the log, the lists,
+  the feeds, the crawler lists, the statistics, the HTTP cache, a ban kept
+  in store-dir, a learning run, `advise --write`. The secret and the
+  compiled settings stay `0600` in `0700`. `check` warns about a mode
+  everyone may read, files in store-dir and the log everyone may read
+  already, and a store-dir owned by another user than the command's (what
+  `deny` writes there in 0600 the web server's PHP could not read). Cost on
+  the passing path: none -- a `chmod()` only for a new file (an hour's
+  statistics, a rotated log), once per PHP process. Settings `FORMAT` 58.
+  ([settings](docs/features/RSF05-02-settings.md#file-and-folder-modes))
+
 - **`request-shield advise`** (proposal 0016, step 2): suggestions from a
   learning run -- the query parameters with the type all their values fit,
   `include @tracking` and `monitor query strict`, `monitor allow POST …` where

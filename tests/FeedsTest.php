@@ -106,7 +106,7 @@ return [
             $d = "$dir/store/feeds";
             same(['test' => 'updated: 4 entries'], Feeds::update($f(), $d, $fetch, false, 100000));
             same("45.1.2.3\n45.1.2.4\n45.1.2.5\n45.1.2.6\n", file_get_contents("$d/test.txt"), 'the list, the own network taken out');
-            same('0640', substr(sprintf('%o', (int) fileperms("$d/test.txt")), -4));
+            same('0600', substr(sprintf('%o', (int) fileperms("$d/test.txt")), -4));
             truthy(strpos(Feeds::update($f(), $d, $fetch, false, 101000)['test'], 'not due') === 0 && count($calls) === 1, 'not again within its time');
             $answer = ['status' => 304, 'body' => '', 'headers' => []];
             same(['test' => 'unchanged: 4 entries'], Feeds::update($f(), $d, $fetch, false, 104000), 'due: asked with the validators, 304');

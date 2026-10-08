@@ -46,9 +46,7 @@ final class Failure
                 if ($last !== false && $now - $last < 60) {
                     return;
                 }
-                if (!is_dir($dir)) {
-                    @mkdir($dir, 0700, true);
-                }
+                Files::dir($dir);
                 @touch($marker);
             }
         }

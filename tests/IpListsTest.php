@@ -359,7 +359,7 @@ return [
             [$code, $out] = $run("deny $f 203.0.113.7 --for=7d --reason=scraper");
             truthy($code === 0 && strpos($out, 'kept out 203.0.113.7 until') !== false && strpos($out, '(LIST-D1)') !== false, $out);
             truthy(preg_match('/^\[LIST-D1\] deny 203\.0\.113\.7 until \d{4}-\d{2}-\d{2}T\d{2}:\d{2}   # scraper · cli /', (string) file_get_contents("$dir/store/lists/deny.rules")) === 1, 'the line, with its reason');
-            same('0640', substr(sprintf('%o', (int) fileperms("$dir/store/lists/deny.rules")), -4), 'not for everyone');
+            same('0600', substr(sprintf('%o', (int) fileperms("$dir/store/lists/deny.rules")), -4), 'not for everyone');
             same([1, 1, 1, 0], [$run("deny $f 10.0.0.0/24")[0], $run("deny $f 198.0.0.0/8")[0], $run("allow $f 192.0.2.50")[0], $run("deny $f 198.0.0.0/8 --force")[0]],
                 'a trusted proxy never; a wide range only with --force; allow only for a while');
             [$code, $out] = $run("lists $f");

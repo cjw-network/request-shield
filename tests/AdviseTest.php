@@ -71,6 +71,7 @@ return [
         try {
             file_put_contents("$dir/site.rules", "set store-dir $dir/store\nrestrict /rs/** to 127.0.0.1 ::1\n");
             file_put_contents("$dir/store/learned.jsonl", adviseRun());
+            chmod("$dir/store/learned.jsonl", 0600);                   // as Learn writes it: check warns about one everyone may read
             $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli());
             exec("$bin advise " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
             $shown = implode("\n", $out);

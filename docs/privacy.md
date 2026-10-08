@@ -127,7 +127,7 @@ feature by feature, for what exists today and for the proposals.
   by default). Give deny entries an end (`--for=7d`) and review those without
   one (`request-shield lists`).
 - **Where:** outside the document root by default (`<store-dir>/lists`),
-  files 0640 in a 0750 directory; bans in APCu (gone with a restart) or as
+  files 0600 in a 0700 directory (`set file-mode`, `set dir-mode`); bans in APCu (gone with a restart) or as
   small files in store-dir.
 - **Never banned:** addresses let in, trusted proxies, verified crawlers.
 - **`set ban-keep file`:** a banned address is also kept in a file in
@@ -139,7 +139,7 @@ feature by feature, for what exists today and for the proposals.
 - **Pull only:** the lists are fetched; nothing about the site's visitors is
   sent anywhere.
 - **What:** third parties' addresses from public lists, kept in
-  `<store-dir>/feeds` (0640) until the next fetch, used at most
+  `<store-dir>/feeds` (file-mode, 0600 by default) until the next fetch, used at most
   `feeds-max-age` (3 days) after it.
 - **Basis:** security (Art. 6(1)(f)); a privacy notice can name the lists
   used. A refusal names the list's rule in the log, so a visitor hit by

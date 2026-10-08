@@ -172,6 +172,10 @@ final class Config
             // A learning run (proposal 0016): what request-shield learn … start wrote to
             // <store-dir>/learn.json, read when the rules are compiled; null: none.
             'learn' => null,
+            // The modes of the files and folders the shield makes (set file-mode, set
+            // dir-mode): only PHP's user by default; a server's own rules exactly.
+            'fileMode' => 0600,
+            'dirMode' => 0700,
             // Plugins by class name: told what was decided and how a request ended
             // (proposal 0023). The statistics come with 'ext' => ['stats' => ['enabled' => true]].
             'plugins' => [],

@@ -87,6 +87,8 @@ final class RuleFile
         'feeds-max-age' => ['feedsMaxAge', 'seconds'],
         'log-ip' => ['log.ip', 'logip'],
         'log-max-size' => ['log.maxSize', 'bytes'],
+        'file-mode' => ['fileMode', 'octal'],
+        'dir-mode' => ['dirMode', 'octal'],
     ];
 
     /** @var array<string, mixed> */
@@ -2407,6 +2409,13 @@ final class RuleFile
                     throw new RuleFileException("$at: log-ip is masked or full, not \"$value\"");
                 }
                 $v = $value;
+                break;
+            case 'octal':
+                $v = \CjwNetwork\RequestShield\Files::parseMode($value);
+                if ($v === null || !($key === 'file-mode' ? \CjwNetwork\RequestShield\Files::fileModeOk($v) : \CjwNetwork\RequestShield\Files::dirModeOk($v))) {
+                    throw new RuleFileException("$at: $key is a mode such as " . ($key === 'file-mode' ? '0600, 0640 or 0660 -- the owner reads and writes, nobody else writes, no x bit' : '0700, 0750, 0770 or 02770 -- the owner rwx, nobody else writes')
+                        . ", not \"$value\"");
+                }
                 break;
             case 'bytes':
                 if (!preg_match('/^(\d+)([kmg])?b?$/i', $value, $m)) {

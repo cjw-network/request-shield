@@ -1453,8 +1453,7 @@ final class Shield
                     apcu_store('rshield:' . $key, $value, 86400);
                     return;
                 }
-                @mkdir($dir . '/se', 0700, true);
-                @file_put_contents($dir . '/se/' . md5($key), $value);
+                Files::write($dir . '/se/' . md5($key), $value);
             },
             // New DNS lookups per minute, for all requests together (the store).
             function () use ($c): bool {

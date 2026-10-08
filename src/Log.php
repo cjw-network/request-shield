@@ -124,17 +124,14 @@ final class Log
         if ($size !== false && $size > $maxSize) {
             @rename($file, $file . '.1');
         }
-        $new = $size === false;
-        if ($new) {
-            $dir = dirname($file);
-            if (!is_dir($dir)) {
-                @mkdir($dir, 0750, true);
-            }
+        if ($size === false || $size > $maxSize) {
+            // A new file (or one just moved away): made in file-mode before the line is in it.
+            Files::forget($file);
+            Files::append($file, $line);
+            return;
         }
         // O_APPEND: lines from parallel requests do not overwrite each other.
-        if (@file_put_contents($file, $line, FILE_APPEND) !== false && $new) {
-            @chmod($file, 0640);
-        }
+        @file_put_contents($file, $line, FILE_APPEND);
     }
 
     /** 198.51.100.7 -> 198.51.100.0/24, 2001:db8:1:2::5 -> 2001:db8:1::/48 */

@@ -15,6 +15,9 @@ changes.
 
 - Every request on a busy site: settings cost about 8 µs instead of 10–11 µs,
   most of it one `stat()` of the settings file to notice changes.
+- A hoster's rule "new folders 02770, files 0660": `set dir-mode 02770`,
+  `set file-mode 0660` -- every folder and file the shield makes has exactly
+  that mode ([file and folder modes](#file-and-folder-modes)).
 - Deploying a wrong setting: the error names it at once
   (`request-shield: 'budgets.requests.limit' must be an integer`).
 
@@ -67,6 +70,45 @@ cannot read — never takes the site down
   will happen.
 
 The fix is picked up as any change is: the next request compiles the file.
+
+## File and folder modes
+
+What the shield writes holds addresses: the log, the lists, the statistics'
+hour files, a ban kept in store-dir, a learning run. By default only the user
+PHP runs as may read it: files `0600`, folders `0700`. A server with its own
+rules for new folders and files sets them:
+
+```
+set file-mode 0640     # the group reads (a log reader, the deploy user)
+set dir-mode 02770     # the group writes too; setgid: new files keep the folder's group
+```
+
+- **Exactly what is set:** a new folder (each missing parent too) and a new
+  file get their mode with `chmod()` right after they are made -- the umask
+  takes nothing away (`02770` keeps its setgid bit) and adds nothing. A file
+  is never readable with another mode, not even for a moment: a file written
+  whole is a temporary file in file-mode, then renamed; a line appended to a
+  new file goes in after its mode is set.
+- **Never allowed:** writable for everyone (`0666`, `0777`), a file with an
+  x bit or setuid, a mode that keeps PHP from writing (the owner needs `rw`,
+  for a folder `rwx`). `check` names the line; the settings array
+  (`fileMode`, `dirMode`, ints or octal strings) throws.
+- **What exists keeps its mode:** the shield changes no file it did not make.
+  `check` names files and folders in store-dir and the log that everyone may
+  read (made by an older version or by an umask) -- `chmod o-rwx` them once.
+- **The command line and the web server:** `deny`, `learn` and `advise` write
+  into store-dir as the user they run as. With `0600` the web server's PHP
+  cannot read what another user wrote; `check` warns when store-dir belongs
+  to another user. Run the command as that user (`sudo -u www-data
+  request-shield deny …`), or share a group: `set file-mode 0640`,
+  `set dir-mode 02750`.
+- **Not set by these:** the secret and the compiled settings are always
+  `0600` in a `0700` folder -- they hold the key. The counters in store-dir
+  are empty files (their size counts); they keep the umask's mode, as
+  touching each would cost a `chmod()` on the passing path.
+
+Cost: nothing on the passing path -- a `chmod()` only when a file or folder
+is new (an hour's statistics file, a rotated log: once per PHP process).
 
 ## Limits
 

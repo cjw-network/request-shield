@@ -331,14 +331,14 @@ final class Lists
     private static function write(string $file, array $lines): void
     {
         $dir = dirname($file);
-        if (!is_dir($dir) && !@mkdir($dir, 0750, true) && !is_dir($dir)) {
+        if (!\CjwNetwork\RequestShield\Files::dir($dir)) {
             throw new \RuntimeException("cannot create $dir");
         }
         $tmp = $file . '.' . bin2hex(random_bytes(4));
         if (@file_put_contents($tmp, $lines === [] ? '' : implode("\n", $lines) . "\n") === false) {
             throw new \RuntimeException("cannot write $file");
         }
-        @chmod($tmp, 0640);
+        \CjwNetwork\RequestShield\Files::own($tmp);
         if (!@rename($tmp, $file)) {
             @unlink($tmp);
             throw new \RuntimeException("cannot write $file");

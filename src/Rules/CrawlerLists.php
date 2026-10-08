@@ -115,7 +115,7 @@ final class CrawlerLists
             $r = \CjwNetwork\RequestShield\Http::get($url, [], 20, 0, 'request-shield crawler list update');
             return $r !== null && $r['status'] === 200 ? $r['body'] : false;
         };
-        if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+        if (!\CjwNetwork\RequestShield\Files::dir($dir)) {
             throw new \RuntimeException("cannot create $dir");
         }
         $report = [];
@@ -145,7 +145,7 @@ final class CrawlerLists
             }
             $out = ['source' => $source, 'creationTime' => $new['created'], 'fetched' => gmdate('Y-m-d'), 'prefixes' => $new['prefixes']];
             $tmp = $file . '.' . bin2hex(random_bytes(4));
-            if (@file_put_contents($tmp, json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n") === false || !@rename($tmp, $file)) {
+            if (@file_put_contents($tmp, json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n") === false || !\CjwNetwork\RequestShield\Files::own($tmp) || !@rename($tmp, $file)) {
                 @unlink($tmp);
                 $report[$name] = "failed: cannot write $file";
                 continue;

@@ -87,7 +87,8 @@ set feeds-max-age 3d          # a fetched list older than this is no longer used
 - **A list that shrank to less than half, or came back empty, is kept** (a
   broken download, not a change; `--force` takes it). A list that cannot be
   fetched is kept as it was. The exit code is 1 then, so cron mails it.
-- Written whole (a temporary file, then renamed), 0640. The main rule file is
+- Written whole (a temporary file, then renamed), in `file-mode` (0600 by
+  default). The main rule file is
   touched when a list changed, so every server reads it within its recheck.
 - A list older than `feeds-max-age` is not used: the settings are built again
   the moment it grows too old, and `check` warns. Stale threat data does more

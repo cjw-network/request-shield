@@ -198,7 +198,7 @@ final class Feeds
     {
         $fetch ??= [self::class, 'get'];
         $now ??= time();
-        if (!is_dir($dir) && !@mkdir($dir, 0750, true) && !is_dir($dir)) {
+        if (!\CjwNetwork\RequestShield\Files::dir($dir)) {
             throw new \RuntimeException("cannot create $dir");
         }
         $report = [];
@@ -340,7 +340,7 @@ final class Feeds
     private static function write(string $file, string $text): void
     {
         $tmp = $file . '.' . bin2hex(random_bytes(4));
-        if (@file_put_contents($tmp, $text) === false || !@chmod($tmp, 0640) || !@rename($tmp, $file)) {
+        if (@file_put_contents($tmp, $text) === false || !\CjwNetwork\RequestShield\Files::own($tmp) || !@rename($tmp, $file)) {
             @unlink($tmp);
             throw new \RuntimeException("cannot write $file");
         }

@@ -54,7 +54,7 @@ final class Vocabulary
         'language' => 'RSF03-02', 'home' => 'RSF03-02', 'widget-path' => 'RSF03-03', 'widget-difficulty' => 'RSF03-03', 'challenge-logo' => 'RSF03-02',
         'mode' => 'RSF05-03', 'crawler-verify' => 'RSF01-04', 'log' => 'RSF05-05', 'dashboard-path' => 'RSF06-01', 'docs-url' => 'RSF06-01', 'error-page' => 'RSF05-06', 'dashboard-session' => 'RSF06-01',
         'log-level' => 'RSF05-05', 'live' => 'RSF06-02', 'live-keep' => 'RSF06-02', 'ban-keep' => 'RSF01-02', 'feeds-max-age' => 'RSF01-03',
-        'log-ip' => 'RSF05-05', 'log-max-size' => 'RSF05-05',
+        'log-ip' => 'RSF05-05', 'log-max-size' => 'RSF05-05', 'file-mode' => 'RSF05-02', 'dir-mode' => 'RSF05-02',
     ];
 
     /**

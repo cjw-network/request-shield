@@ -69,7 +69,7 @@ final class Learn
         foreach ($from as $a) {
             Rules\Lists::check($a);          // an address or a range, or it says what is wrong
         }
-        if (!is_dir($storeDir) && !@mkdir($storeDir, 0700, true) && !is_dir($storeDir)) {
+        if (!Files::dir($storeDir)) {
             throw new \RuntimeException("cannot create $storeDir");
         }
         $token = bin2hex(random_bytes(16));
@@ -77,14 +77,14 @@ final class Learn
         if (@file_put_contents(self::stateFile($storeDir), json_encode($state) . "\n", LOCK_EX) === false) {
             throw new \RuntimeException('cannot write ' . self::stateFile($storeDir));
         }
-        @chmod(self::stateFile($storeDir), 0600);
+        Files::own(self::stateFile($storeDir));
         $record = self::recordFile($storeDir);
         if (!$keep || !is_file($record)) {
             // A new recording, created here so it is its owner's only (it holds paths):
             // the requests only append to it.
             @file_put_contents($record, '', LOCK_EX);
         }
-        @chmod($record, 0600);
+        Files::own($record);
         return $token;
     }
 

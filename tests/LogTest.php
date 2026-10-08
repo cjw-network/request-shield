@@ -51,7 +51,7 @@ return [
             same([20, 'site.rules:12', 'GET'], [$row['wait'] ?? null, $row['rule'] ?? null, $row['method'] ?? null], 'read back: the wait, and the rest where it was');
             $plain = \CjwNetwork\RequestShield\LogStats::parse((string) file("$dir/proxy.log", FILE_IGNORE_NEW_LINES)[0]);
             truthy(is_array($plain) && array_key_exists('wait', $plain) && $plain['wait'] === null, 'no pause: no wait');
-            same('0640', substr(sprintf('%o', fileperms("$dir/shield.log")), -4));
+            same('0600', substr(sprintf('%o', fileperms("$dir/shield.log")), -4), 'file-mode: only PHP\'s user');
             $full = Settings::from(['log' => ['file' => "$dir/full.log", 'ip' => 'full']]);
             Log::write($full, $r, Decision::reject(404, 'x'), null);
             truthy(strpos((string) file_get_contents("$dir/full.log"), ' 198.51.100.7 reject') !== false, 'log-ip full');

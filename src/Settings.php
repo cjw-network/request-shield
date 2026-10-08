@@ -195,7 +195,16 @@ final class Settings
         public array $errorPages = [],
         /** @var array{until: int, token: string, from: list<string>}|null @readonly a learning run (0016: request-shield learn … start), read from <store-dir>/learn.json when compiled; null: none */
         public ?array $learn = null,
+        /** @readonly the mode of a new file the shield writes (set file-mode; Files) */
+        public int $fileMode = 0600,
+        /** @readonly the mode of a new folder the shield makes (set dir-mode; Files) */
+        public int $dirMode = 0700,
     ) {
+        // The modes for everything written from here on: every request and every command makes its
+        // settings first. Files is loaded only for modes not its defaults, or when it is loaded already.
+        if ($fileMode !== 0600 || $dirMode !== 0700 || class_exists(Files::class, false)) {
+            Files::modes($fileMode, $dirMode);
+        }
     }
 
     /**
@@ -219,7 +228,7 @@ final class Settings
         }
         if ($mode === 'monitor' && $monitorRules !== null) {
             // Everything is only logged anyway: the monitored rules count like the others.
-            return self::from(['mode' => 'monitor', 'monitorRules' => null] + $monitorRules);
+            return self::from(['mode' => 'monitor', 'monitorRules' => null] + array_intersect_key($c, ['fileMode' => 1, 'dirMode' => 1]) + $monitorRules);
         }
         if ($monitorRules !== null && is_array($monitorRules['feeds'] ?? null)) {
             // The watched rules' settings: only the watched lists (feed … count, monitor feed …);
@@ -323,7 +332,31 @@ final class Settings
             ...self::dashboardAccess($c),
             ...[self::postOrigin($c), self::patternList($c['backend'] ?? [], 'backend')],
             ...[self::ext($c), self::hooks($c), self::routes($c), [], self::docsUrl($c), self::errorPages($c), self::learn($c)],
+            ...self::modesOf($c),
         ));
+    }
+
+    /**
+     * The modes of new files and folders (set file-mode, set dir-mode): a
+     * server's rules set exactly -- never writable for everyone, never one that
+     * keeps PHP from writing (Files).
+     *
+     * @param array<mixed> $c
+     * @return array{0: int, 1: int}
+     */
+    private static function modesOf(array $c): array
+    {
+        $out = [];
+        foreach (['fileMode' => [0600, 'file-mode: the owner reads and writes, nobody else writes, no x bit (0600, 0640, 0660, 0644)'],
+            'dirMode' => [0700, 'dir-mode: the owner rwx, nobody else writes (0700, 0750, 0770, 02770, 0755)']] as $key => [$default, $what]) {
+            $v = $c[$key] ?? $default;
+            $mode = is_int($v) ? $v : (is_string($v) ? Files::parseMode($v) : null);
+            if ($mode === null || !($key === 'fileMode' ? Files::fileModeOk($mode) : Files::dirModeOk($mode))) {
+                throw self::wrong($key, $what);
+            }
+            $out[] = $mode;
+        }
+        return [$out[0], $out[1]];
     }
 
     /**
@@ -1341,7 +1374,7 @@ final class Settings
     /** The capabilities a Plugin may have: hook name => its interface (recorded by compiledExt()). */
     private const HOOKS = ['ruleCounts' => RuleCounts::class, 'sink' => Sink::class, 'pages' => Pages::class, 'ruleProvider' => RuleProvider::class, 'handler' => Handler::class];
 
-    private const FORMAT = 57;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats; 43: routes compiled, stats path in ext.stats; 44: dashboardAccess, dashboardSession (stats-group in ext.stats); 45: hooks recorded; 46: the sink hook; 47: the pages hook; 48: the ruleProvider hook; 49: the handler hook; 50: pluginFiles; 51: routeBases; 52: docsUrl; 53: errorPages; 54: the WAF's pages are a plugin (routes with ext waf); 55: challenge.alwaysMethods; 56: learn; 57: ext.stats.slow (0046)
+    private const FORMAT = 58;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats; 43: routes compiled, stats path in ext.stats; 44: dashboardAccess, dashboardSession (stats-group in ext.stats); 45: hooks recorded; 46: the sink hook; 47: the pages hook; 48: the ruleProvider hook; 49: the handler hook; 50: pluginFiles; 51: routeBases; 52: docsUrl; 53: errorPages; 54: the WAF's pages are a plugin (routes with ext waf); 55: challenge.alwaysMethods; 56: learn; 57: ext.stats.slow (0046); 58: fileMode, dirMode
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

@@ -1030,7 +1030,7 @@ final class Cli
                 fwrite(STDERR, "request-shield: cannot write $written\n");
                 return 2;
             }
-            @chmod($written, 0640);
+            \CjwNetwork\RequestShield\Files::own($written);
         }
         if ($json) {
             echo json_encode(['source' => $source, 'requests' => count($records), 'suggestions' => $suggestions,
@@ -1074,6 +1074,50 @@ final class Cli
 
 
     /**
+     * The modes of what the shield writes (set file-mode, set dir-mode): a mode
+     * everyone may read; files and folders already there that everyone may read
+     * (made before, or by an umask); and store-dir owned by another user than
+     * the one running the command -- what it writes there in file-mode 0600 the
+     * web server's PHP could not read.
+     *
+     * @return list<string>
+     */
+    private static function modeWarnings(Settings $s): array
+    {
+        $out = [];
+        if (($s->fileMode & 0004) !== 0 || ($s->dirMode & 0005) !== 0) {
+            $out[] = sprintf('file-mode 0%03o / dir-mode 0%03o: everyone on this machine may read what the shield writes -- the log, the lists, the statistics hold addresses; 0640/0750 shares them with a group only', $s->fileMode, $s->dirMode);
+        }
+        $paths = [$s->storeDir];
+        foreach (array_slice(@scandir($s->storeDir) ?: [], 0, 200) as $name) {
+            if ($name !== '.' && $name !== '..') {
+                $paths[] = $s->storeDir . '/' . $name;
+            }
+        }
+        if ($s->logFile !== null) {
+            $paths[] = $s->logFile;
+        }
+        $open = [];
+        foreach ($paths as $path) {
+            $perms = @fileperms($path);
+            if ($perms !== false && ($perms & 0004) !== 0 && (is_dir($path) ? ($s->dirMode & 0004) === 0 : ($s->fileMode & 0004) === 0)) {
+                $open[] = sprintf('%s (0%03o)', $path, $perms & 07777);
+            }
+        }
+        if ($open !== []) {
+            $out[] = 'everyone on this machine may read ' . implode(', ', array_slice($open, 0, 3)) . (count($open) > 3 ? ' and ' . (count($open) - 3) . ' more' : '')
+                . ' -- made before file-mode/dir-mode, or by an umask: chmod o-rwx them (new ones get the modes set)';
+        }
+        $owner = @fileowner($s->storeDir);
+        if ($owner !== false && function_exists('posix_geteuid') && $owner !== posix_geteuid() && ($s->fileMode & 0040) === 0) {
+            $name = static fn (int $uid): string => function_exists('posix_getpwuid') && is_array($u = posix_getpwuid($uid)) ? $u['name'] : (string) $uid;
+            $out[] = "store-dir belongs to {$name($owner)}, this command runs as {$name(posix_geteuid())}: what it writes there (lists, a learning run, advice) gets mode "
+                . sprintf('0%03o', $s->fileMode) . " and this user -- the web server's PHP cannot read it. Run the command line as {$name($owner)} (sudo -u {$name($owner)} …), or set file-mode 0640 and dir-mode 0750 with a group both share";
+        }
+        return $out;
+    }
+
+    /**
      * What `check` warns about the compiled rules (the API's POST /check says the
      * same): rule files anyone could change, opened blocked paths, plugins not
      * there, the dashboard unguarded, the extensions' own warnings, feeds not in force.
@@ -1092,6 +1136,9 @@ final class Cli
             if ($perms !== false && ($perms & 0002) !== 0) {
                 $out[] = "$path can be changed by anyone on this machine";
             }
+        }
+        foreach (self::modeWarnings($settings) as $w) {
+            $out[] = $w;
         }
         foreach ($settings->blockExceptions as $n => $x) {
             if ($x['ips'] === []) {
