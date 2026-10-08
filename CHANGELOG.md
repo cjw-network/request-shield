@@ -65,7 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   ThinkPHP's way into its own code -- a `\think\…` class in the query
   (`?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=system`,
   CVE-2018-20062): `think\` and one of the classes its exploits name (`app`,
-  `container`, `request`, `template`, `view`, `module`); `App\Think\Foo`,
+  `container`, `request`, `template`, `view`, `module`, `config`);
+  `App\Think\Foo`,
   JSON text with `think\n` and the word "invokefunction" pass.
 - **`ATK-SHELL@2`** (attack rules `2026.10.2`, `include @attacks`): also a
   reverse shell's `/dev/tcp/<host>/<port>` (or `/dev/udp/…`) --
