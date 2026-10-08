@@ -85,7 +85,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   beside it, nothing is loaded from elsewhere; `tests/ShowcaseTest.php` holds
   the page to its rules. A section on Exponential shows the rules of
   `examples/exponential` by their sections, each example decided on the
-  server with those rules as `request-shield test` decides it.
+  server with those rules as `request-shield test` decides it. A section
+  "WCAG & GDPR" sets ALTCHA's pages on accessibility and the GDPR beside
+  what holds for the shield's check and where it differs (a pass cookie,
+  no external audit).
 - **ALTCHA's widget v3 tested against the shield** (`tests/AltchaWidgetTest.php`):
   the widget's own code (3.3.0), run in Node, solves the shield's task and
   the shield accepts its answer -- bound to its client, budget and expiry.

@@ -177,6 +177,12 @@ return [
             same(200, $st, 'the front page');
             truthy(strpos($page, 'Bots raus.') !== false && strpos($page, 'showcase.rules') !== false, 'in German, with the rules');
             truthy(strpos($get('GET', '/?lang=en')[2], 'Bots out.') !== false, 'in English');
+            foreach (['de' => 'nicht verbunden', 'en' => 'not affiliated'] as $lang => $note) {
+                $p = $lang === 'de' ? $page : $get('GET', '/?lang=en')[2];
+                truthy(strpos($p, 'id="compliance"') !== false && strpos($p, 'href="#compliance"') !== false, "$lang: the WCAG and GDPR section, in the menu");
+                truthy(strpos($p, 'href="https://altcha.org/legal/compliance/wcag/"') !== false && strpos($p, 'href="https://altcha.org/legal/compliance/gdpr/"') !== false, "$lang: ALTCHA's two pages linked");
+                truthy(strpos($p, $note) !== false && strpos($p, 'TDDDG') !== false, "$lang: says it is not ALTCHA, and that there is a cookie");
+            }
             [$st, , , $type] = $get('GET', '/assets/showcase.css');
             truthy($st === 200 && strpos($type, 'text/css') === 0, 'its own styles, as CSS');
             same(200, $get('GET', '/assets/vendor/bootstrap/bootstrap.min.css')[0], 'Bootstrap from the page\'s own folder, not from elsewhere');

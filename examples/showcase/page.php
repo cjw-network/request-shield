@@ -88,7 +88,7 @@ $client = [
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu" aria-controls="menu" aria-expanded="false" aria-label="Menu"><span class="navbar-toggler-icon"></span></button>
     <div class="collapse navbar-collapse" id="menu">
       <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
-        <?php foreach (['what', 'rules', 'try', 'exponential', 'install'] as $k): ?>
+        <?php foreach (['what', 'rules', 'try', 'compliance', 'exponential', 'install'] as $k): ?>
         <li class="nav-item"><a class="nav-link" href="#<?= $k ?>"><?= $e($t['nav'][$k]) ?></a></li>
         <?php endforeach ?>
         <li class="nav-item ms-lg-3"><div class="btn-group btn-group-sm" role="group" aria-label="Language">
@@ -293,6 +293,28 @@ $client = [
 
 
 <?php $x = $t['exp']; $expGroups = exponentialGroups(dirname(__DIR__) . '/exponential'); ?>
+<section id="compliance" class="section">
+  <div class="container">
+    <?php $c = $t['comp'] ?>
+    <div class="section-head"><h2><?= $e($c['title']) ?></h2><p class="lead"><?= $e($c['lead']) ?></p></div>
+    <div class="row g-4">
+      <?php foreach ($c['cards'] as $card): ?>
+      <div class="col-lg-6"><article class="comp-card h-100">
+        <h3 class="h4 d-flex align-items-center gap-2"><span class="feature-icon mb-0"><i class="bi <?= $e($card['icon']) ?>"></i></span> <?= $e($card['title']) ?></h3>
+        <h4 class="comp-sub"><?= $e($c['altcha']) ?></h4>
+        <blockquote class="comp-quote"><?= $e($card['altcha']) ?>
+          <a class="d-block mt-2 small" href="<?= $e($card['url']) ?>" rel="noopener" target="_blank"><i class="bi bi-box-arrow-up-right"></i> <?= $e($c['read']) ?></a></blockquote>
+        <h4 class="comp-sub"><?= $e($c['shield']) ?></h4>
+        <ul class="comp-list comp-yes"><?php foreach ($card['shield'] as $li): ?><li><?= $e($li) ?></li><?php endforeach ?></ul>
+        <h4 class="comp-sub"><?= $e($c['differs']) ?></h4>
+        <ul class="comp-list comp-diff"><?php foreach ($card['differs'] as $li): ?><li><?= $e($li) ?></li><?php endforeach ?></ul>
+      </article></div>
+      <?php endforeach ?>
+    </div>
+    <p class="small text-secondary mt-4 mb-0"><?= $e($c['note']) ?></p>
+  </div>
+</section>
+
 <section id="exponential" class="section section-alt">
   <div class="container">
     <div class="section-head"><h2><?= $e($x['title']) ?></h2><p class="lead"><?= $e($x['lead']) ?></p></div>

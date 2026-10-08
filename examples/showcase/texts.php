@@ -13,7 +13,7 @@ declare(strict_types=1);
 return [
     'de' => [
         'title' => 'request-shield — Bots raus, Menschen rein',
-        'nav' => ['what' => 'Was er tut', 'rules' => 'Die Regeln', 'try' => 'Ausprobieren', 'exponential' => 'Exponential', 'install' => 'Installation'],
+        'nav' => ['what' => 'Was er tut', 'rules' => 'Die Regeln', 'try' => 'Ausprobieren', 'compliance' => 'WCAG & DSGVO', 'exponential' => 'Exponential', 'install' => 'Installation'],
         'heroEyebrow' => 'Dein freundlicher Türsteher für PHP-Websites',
         'heroTitle' => 'Bots raus.<br><span>Menschen rein.</span>',
         'heroLead' => 'request-shield lässt deine Besucher herein und schickt Scanner, Spam und hektische Bots höflich weiter — bevor WordPress, Symfony oder dein CMS auch nur aufwachen. Ohne Captcha, ohne Cloud, in einer einzigen Datei.',
@@ -22,6 +22,44 @@ return [
         'heroRules' => 'So einfach sind die Regeln',
         'streamTitle' => 'Was ich gerade entscheide — live',
         'stats' => [['~10 µs', 'pro Anfrage'], ['0', 'Abhängigkeiten'], ['1', 'Datei'], ['PHP 8.0+', 'läuft überall']],
+        'comp' => [
+            'title' => 'Barrierefreiheit und DSGVO — im Vergleich mit ALTCHA',
+            'lead' => 'Der Browser-Check arbeitet nach demselben Prinzip wie ALTCHA: Der Browser löst eine kleine Rechenaufgabe, kein Mensch ein Rätsel. Das Widget von ALTCHA (v3) versteht die Aufgabe des Shields sogar — das ist getestet. ALTCHA beschreibt auf zwei Seiten, wie es zu WCAG und DSGVO steht. Hier steht daneben, was davon für request-shield gilt und wo es sich unterscheidet.',
+            'altcha' => 'Was ALTCHA sagt',
+            'shield' => 'Was für request-shield gilt',
+            'differs' => 'Unterschiede und Grenzen',
+            'read' => 'Seite bei ALTCHA lesen',
+            'cards' => [
+                ['icon' => 'bi-universal-access-circle', 'title' => 'Barrierefreiheit (WCAG)', 'url' => 'https://altcha.org/legal/compliance/wcag/',
+                    'altcha' => 'Das Widget sei nach WCAG 2.2, Stufe AA gebaut: Screenreader, Tastatur, klare Sprache, gültiges HTML mit ARIA. Die Verantwortung für die ganze Website bleibe beim Betreiber.',
+                    'shield' => [
+                        'Kein Rätsel: nichts sehen, hören, lesen, rechnen oder ziehen (WCAG 1.1.1 und 3.3.8 verlangen sonst einen zweiten Weg).',
+                        'Nichts zu bedienen: Die Prüfseite und die Box im Formular laufen von selbst — mit Tastatur, Schalter oder Sprachsteuerung genauso.',
+                        'Screenreader: Die Prüfseite hat eine Überschrift und einen Satz in der Sprache des Besuchers; der Satz ist eine Statusmeldung (role="status") und wird angesagt, wenn es nicht weitergeht. Die Box im Formular ist eine Live-Region (aria-live).',
+                        'Keine Animation gegen den Wunsch: Der Ring dreht sich nicht, wenn das System weniger Bewegung wünscht (prefers-reduced-motion).',
+                        'Kein Zeitlimit für den Menschen: Die Prüfung dauert 0,1–0,5 Sekunden; wie lange der Pass gilt, stellt die Website ein (z. B. pass-ttl 3h für lange Formulare).',
+                    ],
+                    'differs' => [
+                        'Kein Audio-Weg nötig, weil es nichts zu sehen gibt — dafür aber auch kein Weg ohne JavaScript: Die Seite sagt dann klar, dass JavaScript gebraucht wird.',
+                        'Nicht extern geprüft: Es gibt kein Audit nach WCAG 2.2 AA. Die Punkte oben stehen im Code und in den Tests, nicht in einem Zertifikat.',
+                        'Wie bei ALTCHA: Barrierefrei ist die Website erst, wenn alles andere es auch ist — die Verantwortung bleibt beim Betreiber.',
+                    ]],
+                ['icon' => 'bi-shield-lock', 'title' => 'Datenschutz (DSGVO)', 'url' => 'https://altcha.org/legal/compliance/gdpr/',
+                    'altcha' => 'Keine Cookies, kein Fingerprinting, keine Weitergabe; IP-Adressen würden gelöscht oder so verarbeitet, dass niemand erkennbar ist. Selbst gehostet ohne Dritte; die Verantwortung bleibe beim Betreiber.',
+                    'shield' => [
+                        'Läuft auf deinem Server: keine Dritten, kein Skript von woanders, kein Google, kein CDN.',
+                        'Kein Fingerprinting: Vom Gerät wird nichts gelesen — der Browser rechnet nur und schickt eine Zahl zurück.',
+                        'Kein Profil: Gezählt wird pro Adresse für Sekunden bis Minuten; das Log ist aus, und wenn an, sind die Adressen gekürzt (log-ip masked).',
+                        'Zweck Sicherheit: Erwägungsgrund 49 nennt sie als berechtigtes Interesse, Grundlage dann Art. 6 Abs. 1 lit. f DSGVO.',
+                    ],
+                    'differs' => [
+                        'Ein Cookie gibt es doch: einen signierten Pass (Standard eine Stunde) und kurz einen Lösungs-Cookie. Beide dienen nur der Sicherheit; nach gängiger Lesart sind sie technisch notwendig (§ 25 Abs. 2 Nr. 2 TDDDG) und brauchen keine Einwilligung — das sollte der Datenschutzbeauftragte bestätigen.',
+                        'Wer Logs, Sperrlisten oder Statistiken einschaltet, verarbeitet mehr: was genau, steht in docs/privacy.md.',
+                        'Wie bei ALTCHA: verantwortlich bleibt der Betreiber. Keine Rechtsberatung.',
+                    ]],
+            ],
+            'note' => 'ALTCHA ist ein eigenes Projekt (altcha.org). request-shield ist damit nicht verbunden; die Verweise zeigen, woran sich der Check messen lässt.',
+        ],
         'promiseTitle' => 'Schutz, der niemanden ausschließt',
         'promises' => [
             ['bi-universal-access-circle', 'Barrierefrei', 'Kein Bilderrätsel, kein Audio-Captcha, kein Klick auf Ampeln. Der Check läuft von selbst — niemand muss etwas lesen, hören oder bedienen, und ein Screenreader sagt an, wenn er nicht weiterkommt. Er braucht nur JavaScript und Cookies.'],
@@ -210,7 +248,7 @@ return [
     ],
     'en' => [
         'title' => 'request-shield — bots out, people in',
-        'nav' => ['what' => 'What it does', 'rules' => 'The rules', 'try' => 'Try it', 'exponential' => 'Exponential', 'install' => 'Install'],
+        'nav' => ['what' => 'What it does', 'rules' => 'The rules', 'try' => 'Try it', 'compliance' => 'WCAG & GDPR', 'exponential' => 'Exponential', 'install' => 'Install'],
         'heroEyebrow' => 'A friendly doorkeeper for PHP websites',
         'heroTitle' => 'Bots out.<br><span>People in.</span>',
         'heroLead' => 'request-shield lets your visitors in and politely sends scanners, spam and hasty bots on their way — before WordPress, Symfony or your CMS even wake up. No captcha, no cloud, one single file.',
@@ -219,6 +257,44 @@ return [
         'heroRules' => 'See how simple the rules are',
         'streamTitle' => 'What I decide right now — live',
         'stats' => [['~10 µs', 'per request'], ['0', 'dependencies'], ['1', 'file'], ['PHP 8.0+', 'runs anywhere']],
+        'comp' => [
+            'title' => 'Accessibility and the GDPR — compared with ALTCHA',
+            'lead' => 'The browser check works on the same principle as ALTCHA: the browser solves a small sum, no person solves a puzzle. ALTCHA\'s widget (v3) even understands the shield\'s task — that is tested. ALTCHA describes on two pages where it stands on the WCAG and the GDPR. Next to that, here is what of it holds for request-shield and where it differs.',
+            'altcha' => 'What ALTCHA says',
+            'shield' => 'What holds for request-shield',
+            'differs' => 'Differences and limits',
+            'read' => 'Read the page at ALTCHA',
+            'cards' => [
+                ['icon' => 'bi-universal-access-circle', 'title' => 'Accessibility (WCAG)', 'url' => 'https://altcha.org/legal/compliance/wcag/',
+                    'altcha' => 'The widget is built to WCAG 2.2, level AA: screen readers, keyboard, plain language, valid HTML with ARIA. Responsibility for the whole website stays with its operator.',
+                    'shield' => [
+                        'No puzzle: nothing to see, hear, read, calculate or drag (WCAG 1.1.1 and 3.3.8 would otherwise ask for a second way).',
+                        'Nothing to operate: the check page and the box in the form run by themselves — with a keyboard, a switch or voice control just the same.',
+                        'Screen readers: the check page has a heading and one sentence in the visitor\'s language; the sentence is a status message (role="status") and is read out when it cannot go on. The box in the form is a live region (aria-live).',
+                        'No motion against the wish: the ring does not spin when the system asks for less motion (prefers-reduced-motion).',
+                        'No time limit for the person: the check takes 0.1–0.5 seconds; how long the pass lasts is the website\'s setting (e.g. pass-ttl 3h for long forms).',
+                    ],
+                    'differs' => [
+                        'No audio way needed, because there is nothing to see — but no way without JavaScript either: the page then says clearly that JavaScript is needed.',
+                        'Not audited: there is no external WCAG 2.2 AA audit. The points above are in the code and the tests, not in a certificate.',
+                        'As with ALTCHA: a website is accessible only when everything else is too — the responsibility stays with the operator.',
+                    ]],
+                ['icon' => 'bi-shield-lock', 'title' => 'Privacy (GDPR)', 'url' => 'https://altcha.org/legal/compliance/gdpr/',
+                    'altcha' => 'No cookies, no fingerprinting, no sharing; IP addresses are deleted or processed so that nobody can be identified. Self-hosted without third parties; responsibility stays with the operator.',
+                    'shield' => [
+                        'Runs on your server: no third parties, no script from elsewhere, no Google, no CDN.',
+                        'No fingerprinting: nothing is read from the device — the browser only computes and sends back a number.',
+                        'No profile: counted per address for seconds to minutes; the log is off, and when on, addresses are shortened (log-ip masked).',
+                        'Purpose security: recital 49 names it a legitimate interest, the basis then Art. 6(1)(f) GDPR.',
+                    ],
+                    'differs' => [
+                        'There is a cookie: a signed pass (an hour by default) and, briefly, a solution cookie. Both serve security only; in the common reading they are strictly necessary (§ 25(2) no. 2 TDDDG) and need no consent — your data protection officer should confirm it.',
+                        'Who switches on logs, block lists or statistics processes more: what exactly is in docs/privacy.md.',
+                        'As with ALTCHA: the operator stays responsible. Not legal advice.',
+                    ]],
+            ],
+            'note' => 'ALTCHA is a project of its own (altcha.org). request-shield is not affiliated with it; the links show what the check can be measured against.',
+        ],
         'promiseTitle' => 'Protection that shuts nobody out',
         'promises' => [
             ['bi-universal-access-circle', 'Accessible', 'No picture puzzles, no audio captcha, no clicking traffic lights. The check runs by itself — nobody has to read, hear or operate anything, and a screen reader is told when it cannot go on. All it needs is JavaScript and cookies.'],

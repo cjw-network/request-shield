@@ -49,6 +49,12 @@ Open http://127.0.0.1:8090/ (`?lang=de` or `?lang=en`).
   "Why these rules?" explains each one -- and that `post-origin` does not
   apply to an API (programs send no Origin; CORS protects against other
   websites), and that the API checks its JSON itself.
+- **WCAG & GDPR**: ALTCHA's own pages on accessibility
+  (altcha.org/legal/compliance/wcag/) and the GDPR
+  (altcha.org/legal/compliance/gdpr/), each beside what holds for the
+  shield's check and where it differs -- the shield sets a pass cookie
+  (strictly necessary, to be confirmed), has no external WCAG audit, and
+  is not affiliated with ALTCHA.
 - **Exponential**: the rules of `examples/exponential` (the CMS with
   siteaccesses, URL aliases and its admin), section by section: each
   section's rule lines (without their comments) and its examples, read as
