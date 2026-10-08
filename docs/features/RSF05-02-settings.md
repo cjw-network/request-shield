@@ -87,7 +87,8 @@ set dir-mode 02770     # the group writes too; setgid: new files keep the folder
   file get their mode with `chmod()` right after they are made -- the umask
   takes nothing away (`02770` keeps its setgid bit) and adds nothing. No
   data is ever in a file of another mode: a file written whole is a
-  temporary file, made empty, given file-mode, then filled and renamed; a
+  temporary file, made in file-mode (the umask set to match), then filled
+  and renamed; a
   line appended to a file that is not there yet makes it in file-mode at
   once (the umask set to match for that one call; with a threaded PHP,
   where the umask is the whole process's: made, then file-mode while it is

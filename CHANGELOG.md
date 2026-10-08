@@ -82,7 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   Set exactly with `chmod()` after a file or folder is made -- the umask
   takes nothing away and adds nothing, each missing parent folder too; no
   data is ever in a file of another mode (written whole: a temporary file
-  made empty, its mode set, filled, renamed; appended: a new file made in
+  made in file-mode, filled, renamed; appended: a new file made in
   file-mode at once, the umask set to match for that call -- with threaded
   PHP made, its mode set, then the line). Never writable for everyone,
   never a mode that keeps PHP from writing; above the site blocks. Applies to store-dir and its folders, the log, the lists,

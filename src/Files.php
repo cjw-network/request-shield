@@ -97,8 +97,8 @@ final class Files
     }
 
     /**
-     * A file written whole: a temporary file made empty and exclusive, its mode
-     * set, then the data, then renamed -- a reader never sees half of it, and
+     * A file written whole: a temporary file made exclusive in file-mode
+     * (create()), then the data, then renamed -- a reader never sees half of it, and
      * the data is never in a file of another mode. $keep: the mode of the file
      * it replaces (a file named by the user, read by something else).
      */
@@ -108,13 +108,11 @@ final class Files
             return false;
         }
         $tmp = $file . '.' . bin2hex(random_bytes(4)) . $suffix;
-        $h = @fopen($tmp, 'xb');
+        $old = $keep ? @fileperms($file) : false;
+        $h = self::create($tmp, $old !== false ? $old & 0666 : self::$fileMode);
         if ($h === false) {
             return false;
         }
-        $old = $keep ? @fileperms($file) : false;
-        // A file system without modes (some mounts) refuses chmod: written all the same.
-        @chmod($tmp, $old !== false ? $old & 0777 : self::$fileMode);
         $ok = @fwrite($h, $data) === strlen($data);
         fclose($h);
         if (!$ok || !@rename($tmp, $file)) {
@@ -122,6 +120,32 @@ final class Files
             return false;
         }
         return true;
+    }
+
+    /**
+     * A new file, exclusive, open for writing, in $mode from the start: made
+     * with the umask $mode's complement (no x, no special bits: exact) -- a
+     * handle opened on it in between could read what is written later. With
+     * threads (ZTS, the umask is the process's) made, then chmod. A file
+     * system without modes refuses chmod: written all the same.
+     *
+     * @return resource|false
+     */
+    public static function create(string $file, int $mode)
+    {
+        if (!(self::$threads ?? ZEND_THREAD_SAFE)) {
+            $umask = umask(0777 & ~$mode);
+            try {
+                return @fopen($file, 'xb');
+            } finally {
+                umask($umask);
+            }
+        }
+        $h = @fopen($file, 'xb');
+        if ($h !== false) {
+            @chmod($file, $mode);
+        }
+        return $h;
     }
 
     /**

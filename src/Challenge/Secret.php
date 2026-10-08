@@ -31,12 +31,11 @@ final class Secret
         \CjwNetwork\RequestShield\Files::dir($dir);
         $secret = bin2hex(random_bytes(32));
         $tmp = $file . '.' . bin2hex(random_bytes(4));
-        // Made empty, 0600, then the key: store-dir may be a group's (dir-mode), the key never is.
-        $h = @fopen($tmp, 'xb');
+        // Made in 0600, then the key: store-dir may be a group's (dir-mode), the key never is.
+        $h = \CjwNetwork\RequestShield\Files::create($tmp, 0600);
         if ($h === false) {
             return $secret;
         }
-        @chmod($tmp, 0600);
         $written = @fwrite($h, $secret) === strlen($secret);
         fclose($h);
         // Two first requests at once: the second rename wins, and both

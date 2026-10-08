@@ -98,6 +98,11 @@ return [
                 same(['02770', '0600'], [modeOf("$dir/keyed"), modeOf("$dir/keyed/secret")], 'store-dir made for the secret in dir-mode; the secret 0600 whatever is set');
                 Files::modes(0600, 0700);
                 Files::dir("$dir/open/x");
+                $h = Files::create("$dir/open/x/new", 0640);
+                truthy($h !== false, 'made');
+                same('0640', modeOf("$dir/open/x/new"), 'in its mode the moment it exists (umask 0): no handle opened in between could read what follows');
+                fclose($h);
+                same(false, @Files::create("$dir/open/x/new", 0640), 'exclusive');
                 Files::append("$dir/open/x/log", "1\n");
                 Files::write("$dir/open/x/w", '1');
                 same(['0700', '0700', '0600', '0600'], [modeOf("$dir/open"), modeOf("$dir/open/x"), modeOf("$dir/open/x/log"), modeOf("$dir/open/x/w")], 'umask 0: nothing more for others');
