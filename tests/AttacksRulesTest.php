@@ -86,6 +86,11 @@ return [
             ['/?v=@@global.version', [], 'ATK-SQL-FUNC'],
             ['/?v=@@version_comment', [], 'ATK-SQL-FUNC'],
             ['/?c=master..xp_cmdshell', [], 'ATK-SQL-FUNC'],
+            ['/?id=7%20and%206522=6522', [], 'ATK-SQL-BOOL'],                             // sqlmap's boolean test, no quote
+            ['/?id=1+OR+1=1', [], 'ATK-SQL-BOOL'],
+            ['/?id=1+or+1+%3D+1--', [], 'ATK-SQL-BOOL'],
+            ['/?id=1/**/or/**/1=1', [], 'ATK-SQL-BOOL'],
+            ['/?id=1)+AND+8459=8459+AND+(1=1', [], 'ATK-SQL-BOOL'],
             // cross-site scripting
             ['/?q=%3Cscript%3Ealert(1)%3C/script%3E', [], 'ATK-XSS-TAG'],
             ['/?q=%3Ciframe%20src%3Dx%3E', [], 'ATK-XSS-TAG'],
@@ -173,6 +178,9 @@ return [
             '/?q=sleeping bags on sale',             // sleep( needs a digit
             '/?q=1 or 2 bedroom flat',               // no quote before "or"
             '/?q=rock and roll all night',
+            '/?q=rock and roll 2=2',                 // a small number: not sqlmap's test
+            '/?q=a or 1=2',                          // 1=2 is false: nothing to find out with it
+            '/?q=size 42 and 43',
             '/?q=information about cookies',         // not information_schema
             '/?q=load file into outfile tutorial',   // the words, no quote, no bracket
             '/?q=extract value from json',           // extractvalue( needed

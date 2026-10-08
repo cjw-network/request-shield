@@ -26,6 +26,7 @@ version 2026.10.2
 [ATK-SQL-SCHEMA@1]  block query \binformation_schema\b|\bmysql\.user\b|\bsqlite_master\b|\bpg_(shadow|catalog)\b    # SQL injection reading the database's own tables
 [ATK-SQL-STACK@1]   block query ;\s*(drop|truncate|alter)\s+table\b|;\s*(shutdown|exec(\s+|ute\s+)xp_)                # SQL injection: a second statement -- ; drop table
 [ATK-SQL-FUNC@1]    block query \b(load_file|extractvalue|updatexml)\s*\(|\binto\s+(out|dump)file\s*['"]|@@((global|session)\.)?(version|datadir|hostname|basedir|tmpdir)|\bxp_cmdshell\b   # SQL injection through the database's own functions: extractvalue(), load_file(), into outfile '…', @@version
+[ATK-SQL-BOOL@1]    block query \b(or|and)\s+(1\s*=\s*1|\d{3,5}\s*=\s*\d{3,5})\b                                        # SQL injection without quotes: or 1=1, and 6522=6522 (sqlmap's boolean test)
 
 # --- cross-site scripting ----------------------------------------------------
 [ATK-XSS-TAG@1]     block query <\s*(script|iframe|object|embed|applet|base|meta)\b                            # cross-site scripting: <script>, <iframe> in the address
