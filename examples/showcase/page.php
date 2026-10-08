@@ -103,6 +103,34 @@ $card = static function (array $try) use ($e, $tr, $t, $badge, $outcomeLabel): v
       <?php endif ?>
     </div></div><?php
 };
+// A page that counts for itself (the search, the sign-in): its card -- on /try both, on the front page the sign-in.
+$counterCard = static function (string $w) use ($e, $t): void {
+    $x = $t['self'];
+    ?><div class="card-try counter h-100" data-kind="<?= $w ?>">
+            <h4 class="h5 mb-1"><i class="bi <?= $w === 'search' ? 'bi-search' : 'bi-key' ?>"></i> <?= $e($x[$w . 'Title']) ?></h4>
+            <p class="text-secondary mb-2"><?= $e($x[$w . 'Lead']) ?></p>
+            <form class="counter-form d-flex flex-wrap gap-2" novalidate>
+              <?php if ($w === 'search'): ?>
+                <input class="form-control flex-grow-1" name="q" value="php" aria-label="<?= $e($x['searchPlaceholder']) ?>" placeholder="<?= $e($x['searchPlaceholder']) ?>" style="min-width: 10rem; flex-basis: 10rem">
+                <button class="btn btn-accent" type="submit"><i class="bi bi-search"></i> <?= $e($x['searchGo']) ?></button>
+              <?php else: ?>
+                <input class="form-control" name="user" value="demo" aria-label="<?= $e($x['user']) ?>" style="max-width: 8rem" readonly>
+                <input class="form-control flex-grow-1" name="password" type="password" value="falsch" aria-label="<?= $e($x['password']) ?>" style="min-width: 8rem; flex-basis: 8rem">
+                <button class="btn btn-accent" type="submit"><i class="bi bi-box-arrow-in-right"></i> <?= $e($x['loginGo']) ?></button>
+              <?php endif ?>
+            </form>
+            <?php if ($w === 'login'): ?><p class="small text-secondary mb-0 mt-1"><i class="bi bi-lightbulb"></i> <?= $e($x['pwHint']) ?></p><?php endif ?>
+            <div class="counter-answer mt-2" aria-live="polite"></div>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+              <button class="btn btn-sm btn-outline-accent bot-go"><i class="bi bi-robot"></i> <span><?= $e($x['botGo']) ?></span></button>
+              <button class="btn btn-sm btn-soft new-visitor"><i class="bi bi-person-plus"></i> <?= $e($x['newVisitor']) ?></button>
+            </div>
+            <div class="timeline mt-3" aria-hidden="true"></div>
+            <div class="timeline-legend small mt-1"><span><i class="sq sq-pass"></i> <?= $e($x['legendReached']) ?></span> <span><i class="sq sq-check"></i> <?= $e($x['legendLimit']) ?></span> <span><i class="sq sq-stop"></i> <?= $e($x['legendRefused']) ?></span>
+              <span class="visitor text-secondary"></span></div>
+            <p class="bot-summary small mt-1 mb-0" aria-live="polite"></p>
+          </div><?php
+};
 require __DIR__ . '/nav.php';
 ?>
 <?php if ($view === 'main'): ?>
@@ -164,6 +192,43 @@ require __DIR__ . '/nav.php';
   </div>
 </section>
 
+<section id="guard" class="section guard">
+  <div class="container">
+    <?php $gd = $t['guard']; ?>
+    <div class="section-head"><h2><?= $e($gd['title']) ?></h2><p class="lead"><?= $e($gd['lead']) ?></p></div>
+    <div class="row g-4">
+      <div class="col-lg-6"><div class="guard-card h-100">
+        <h3 class="h4"><i class="bi bi-shield-check"></i> <?= $e($gd['checkTitle']) ?></h3>
+        <p><?= $e($gd['checkLead']) ?></p>
+        <div class="check-demo" aria-hidden="true">
+          <svg viewBox="0 0 120 120" width="120" height="120" focusable="false">
+            <circle class="cd-track" cx="60" cy="60" r="52"/><circle class="cd-fill" cx="60" cy="60" r="52" transform="rotate(-90 60 60)"/>
+            <g class="cd-ok"><circle cx="60" cy="60" r="27"/><path d="M47 61l9 9 17-19"/></g>
+          </svg>
+          <div class="cd-text"><span class="cd-wait"><?= $e($gd['checkWait']) ?></span><span class="cd-done"><?= $e($gd['checkDone']) ?></span></div>
+        </div>
+        <ul class="guard-facts list-unstyled">
+          <?php foreach ($gd['checkFacts'] as [$icon, $fact]): ?><li><i class="bi <?= $e($icon) ?>"></i> <?= $e($fact) ?></li><?php endforeach ?>
+        </ul>
+        <a class="btn btn-accent btn-lg" href="/__login" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> <?= $e($t['checkTry']) ?></a>
+        <p class="small text-secondary mt-2 mb-0"><?= $e($gd['checkHint']) ?></p>
+      </div></div>
+      <div class="col-lg-6"><div class="guard-card h-100">
+        <h3 class="h4"><i class="bi bi-hourglass-split"></i> <?= $e($gd['slowTitle']) ?></h3>
+        <p><?= $e($gd['slowLead']) ?></p>
+        <figure class="stairs" aria-label="<?= $e($gd['stairsLabel']) ?>">
+          <?php foreach ($gd['stairs'] as $i => [$try, $wait]): ?>
+          <div class="stair" style="--h: <?= (int) [8, 8, 8, 14, 26, 50, 100][$i] ?>%"><span class="stair-bar<?= $i < 3 ? ' stair-free' : '' ?>"></span><b><?= $e($wait) ?></b><small><?= $e($try) ?></small></div>
+          <?php endforeach ?>
+          <figcaption class="small text-secondary"><?= $e($gd['stairsCaption']) ?></figcaption>
+        </figure>
+        <div class="row"><div class="col-12"><?php $counterCard('login') ?></div></div>
+        <p class="small mt-3 mb-0"><a href="/try?lang=<?= $lang ?>#try"><i class="bi bi-rocket-takeoff"></i> <?= $e($gd['burstLink']) ?></a></p>
+      </div></div>
+    </div>
+  </div>
+</section>
+
 <section id="what" class="section">
   <div class="container">
     <div class="section-head"><h2><?= $e($t['whatTitle']) ?></h2><p class="lead"><?= $e($t['whatLead']) ?></p></div>
@@ -215,31 +280,8 @@ require __DIR__ . '/nav.php';
       <h3 class="h4"><?= $e($t['groups'][$g][0]) ?></h3><p class="text-secondary"><?= $e($t['groups'][$g][1]) ?></p>
       <?php if ($g === 'self'): ?>
         <div class="row g-4">
-          <?php foreach (['search', 'login'] as $w): $x = $t['self']; ?>
-          <div class="col-lg-6"><div class="card-try counter h-100" data-kind="<?= $w ?>">
-            <h4 class="h5 mb-1"><i class="bi <?= $w === 'search' ? 'bi-search' : 'bi-key' ?>"></i> <?= $e($x[$w . 'Title']) ?></h4>
-            <p class="text-secondary mb-2"><?= $e($x[$w . 'Lead']) ?></p>
-            <form class="counter-form d-flex flex-wrap gap-2" novalidate>
-              <?php if ($w === 'search'): ?>
-                <input class="form-control flex-grow-1" name="q" value="php" aria-label="<?= $e($x['searchPlaceholder']) ?>" placeholder="<?= $e($x['searchPlaceholder']) ?>" style="min-width: 10rem; flex-basis: 10rem">
-                <button class="btn btn-accent" type="submit"><i class="bi bi-search"></i> <?= $e($x['searchGo']) ?></button>
-              <?php else: ?>
-                <input class="form-control" name="user" value="demo" aria-label="<?= $e($x['user']) ?>" style="max-width: 8rem" readonly>
-                <input class="form-control flex-grow-1" name="password" type="password" value="falsch" aria-label="<?= $e($x['password']) ?>" style="min-width: 8rem; flex-basis: 8rem">
-                <button class="btn btn-accent" type="submit"><i class="bi bi-box-arrow-in-right"></i> <?= $e($x['loginGo']) ?></button>
-              <?php endif ?>
-            </form>
-            <?php if ($w === 'login'): ?><p class="small text-secondary mb-0 mt-1"><i class="bi bi-lightbulb"></i> <?= $e($x['pwHint']) ?></p><?php endif ?>
-            <div class="counter-answer mt-2" aria-live="polite"></div>
-            <div class="d-flex flex-wrap gap-2 mt-2">
-              <button class="btn btn-sm btn-outline-accent bot-go"><i class="bi bi-robot"></i> <span><?= $e($x['botGo']) ?></span></button>
-              <button class="btn btn-sm btn-soft new-visitor"><i class="bi bi-person-plus"></i> <?= $e($x['newVisitor']) ?></button>
-            </div>
-            <div class="timeline mt-3" aria-hidden="true"></div>
-            <div class="timeline-legend small mt-1"><span><i class="sq sq-pass"></i> <?= $e($x['legendReached']) ?></span> <span><i class="sq sq-check"></i> <?= $e($x['legendLimit']) ?></span> <span><i class="sq sq-stop"></i> <?= $e($x['legendRefused']) ?></span>
-              <span class="visitor text-secondary"></span></div>
-            <p class="bot-summary small mt-1 mb-0" aria-live="polite"></p>
-          </div></div>
+          <?php foreach (['search', 'login'] as $w): ?>
+          <div class="col-lg-6"><?php $counterCard($w) ?></div>
           <?php endforeach ?>
         </div>
       <?php elseif ($g === 'pace'): ?>
@@ -366,21 +408,6 @@ Shield::protectFile(__DIR__ . '/settings/request-shield/exponential-admin-uri.ru
 <?php endif ?>
 
 <?php if ($view === 'main'): ?>
-<section class="section">
-  <div class="container">
-    <div class="section-head"><h2><?= $e($t['checkTitle']) ?></h2></div>
-    <div class="row g-4">
-      <?php foreach ($t['checkSteps'] as $i => [$icon, $title, $text]): ?>
-      <div class="col-md-4"><div class="step h-100"><div class="step-n"><?= $i + 1 ?></div><i class="bi <?= $e($icon) ?> step-icon"></i>
-        <h3 class="h5"><?= $e($title) ?></h3><p class="mb-0"><?= $e($text) ?></p></div></div>
-      <?php endforeach ?>
-    </div>
-    <div class="text-center mt-4">
-      <a class="btn btn-accent btn-lg" href="/__login" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right"></i> <?= $e($t['checkTry']) ?></a>
-      <p class="small text-secondary mt-3"><?= $e($t['checkNote']) ?></p>
-    </div>
-  </div>
-</section>
 
 <section id="install" class="section">
   <div class="container">

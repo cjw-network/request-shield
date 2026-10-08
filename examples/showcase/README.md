@@ -14,7 +14,7 @@ Open http://127.0.0.1:8090/ (`?lang=de` or `?lang=en`). Four pages, one menu:
 
 | Page | What it holds |
 |---|---|
-| `/` | what the shield is: the live stream, the promises, what it does, the rules, a taste of three requests to send, WCAG & GDPR, a teaser for Exponential, the browser check, install |
+| `/` | what the shield is: the live stream, the promises, **a check instead of a puzzle, a pause instead of a ban** (the browser check drawn and to open; the growing pause drawn as a staircase, with the sign-in to try), what it does, the rules, a taste of three requests to send, WCAG & GDPR, a teaser for Exponential, install |
 | `/try` | every card to try, by group -- the burst, the search and sign-in that count for themselves, the API with its JSON form |
 | `/exponential` | the Exponential example: its rules section by section, every example checked on the server |
 | `/learn` | building rules: a learning run, live |

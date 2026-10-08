@@ -276,6 +276,10 @@ return [
                 truthy(preg_match('#(Warning|Notice|Deprecated)(</b>)?:  ?.{0,300} on line#', $main) !== 1, "$lang: no PHP warning on the front page");
                 truthy(strpos($main, 'href="#try"') === false && strpos($main, 'href="#taste"') !== false, "$lang: the hero's button leads to the taste on this page");
                 same(3, $cards($main), "$lang: three cards to taste on the front page");
+                $guard = (string) strstr((string) strstr($main, '<section id="guard"'), '</section>', true);
+                truthy(strpos($guard, 'class="check-demo"') !== false && strpos($guard, 'href="/__login"') !== false, "$lang: the browser check, shown and to try, high on the front page");
+                truthy(strpos($guard, 'class="stairs"') !== false && strpos($guard, 'data-kind="login"') !== false && strpos($guard, 'counter-form') !== false, "$lang: the growing pause, drawn and the sign-in to try");
+                truthy(strpos($main, '<section id="guard"') < strpos($main, '<section id="what"'), "$lang: right after the promises");
                 truthy(strpos($main, 'href="/try?lang=' . $lang . '"') !== false && strpos($main, 'href="/exponential?lang=' . $lang . '"') !== false, "$lang: the way to /try and /exponential");
                 truthy(strpos($main, 'json-form') === false && strpos($main, 'burst-go') === false && strpos($main, 'exp-row') === false, "$lang: the rest is on its own pages");
                 [$st, , $try] = $get('GET', "/try?lang=$lang");
