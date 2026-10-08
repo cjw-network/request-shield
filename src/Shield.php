@@ -416,6 +416,9 @@ final class Shield
         }
         self::$current = $decision;
         self::$rule = $rule;
+        if ($s->learn !== null) {
+            Learn::note($s, $request, $decision, $now);        // a learning run (0016): only its own requests, their shape
+        }
         if ($shield->plugins() !== []) {
             // The plugins (the statistics, …): told now, and -- for a request that
             // goes on to the site -- again when it has ended, with the site's status.

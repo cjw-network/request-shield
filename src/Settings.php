@@ -193,6 +193,8 @@ final class Settings
         public string $docsUrl = Help::DOCS,
         /** @var array<int|string, array<string, string>> @readonly the site's own error pages (set error-page): status or 4xx => language ("" for all) => HTML, read when the rules were compiled (0030) */
         public array $errorPages = [],
+        /** @var array{until: int, token: string, from: list<string>}|null @readonly a learning run (0016: request-shield learn … start), read from <store-dir>/learn.json when compiled; null: none */
+        public ?array $learn = null,
     ) {
     }
 
@@ -320,7 +322,7 @@ final class Settings
             ...array_slice($feeds, 0, 5),
             ...self::dashboardAccess($c),
             ...[self::postOrigin($c), self::patternList($c['backend'] ?? [], 'backend')],
-            ...[self::ext($c), self::hooks($c), self::routes($c), [], self::docsUrl($c), self::errorPages($c)],
+            ...[self::ext($c), self::hooks($c), self::routes($c), [], self::docsUrl($c), self::errorPages($c), self::learn($c)],
         ));
     }
 
@@ -964,6 +966,27 @@ final class Settings
     }
 
     /**
+     * A learning run (0016), as Learn::read() found it when the rules were compiled.
+     *
+     * @param array<mixed> $c
+     * @return array{until: int, token: string, from: list<string>}|null
+     */
+    private static function learn(array $c): ?array
+    {
+        $l = $c['learn'] ?? null;
+        if ($l === null) {
+            return null;
+        }
+        if (!is_array($l) || !is_int($l['until'] ?? null) || !is_string($l['token'] ?? null) || preg_match('/^[0-9a-f]{64}$/', $l['token']) !== 1
+            || !is_array($l['from'] ?? null) || array_filter($l['from'], static fn ($a): bool => !is_string($a)) !== []) {
+            throw self::wrong('learn', "until (a time), token (a SHA-256 in hex), from (addresses) -- what request-shield learn writes");
+        }
+        /** @var list<string> $from */
+        $from = array_values($l['from']);
+        return ['until' => $l['until'], 'token' => $l['token'], 'from' => $from];
+    }
+
+    /**
      * @param array<mixed> $c
      * @return array<int|string, array<string, string>> status (a number keeps its key as one) => language => HTML
      */
@@ -1315,7 +1338,7 @@ final class Settings
     /** The capabilities a Plugin may have: hook name => its interface (recorded by compiledExt()). */
     private const HOOKS = ['ruleCounts' => RuleCounts::class, 'sink' => Sink::class, 'pages' => Pages::class, 'ruleProvider' => RuleProvider::class, 'handler' => Handler::class];
 
-    private const FORMAT = 55;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats; 43: routes compiled, stats path in ext.stats; 44: dashboardAccess, dashboardSession (stats-group in ext.stats); 45: hooks recorded; 46: the sink hook; 47: the pages hook; 48: the ruleProvider hook; 49: the handler hook; 50: pluginFiles; 51: routeBases; 52: docsUrl; 53: errorPages; 54: the WAF's pages are a plugin (routes with ext waf); 55: challenge.alwaysMethods
+    private const FORMAT = 56;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats; 43: routes compiled, stats path in ext.stats; 44: dashboardAccess, dashboardSession (stats-group in ext.stats); 45: hooks recorded; 46: the sink hook; 47: the pages hook; 48: the ruleProvider hook; 49: the handler hook; 50: pluginFiles; 51: routeBases; 52: docsUrl; 53: errorPages; 54: the WAF's pages are a plugin (routes with ext waf); 55: challenge.alwaysMethods; 56: learn
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

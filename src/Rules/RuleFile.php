@@ -270,6 +270,17 @@ final class RuleFile
             }
             $r->listing = false;
         }
+        // A learning run (0016): its state file, so start and stop build the settings again.
+        if (is_string($r->c['storeDir'] ?? null)) {
+            $learnFile = \CjwNetwork\RequestShield\Learn::stateFile($r->c['storeDir']);
+            $stat = self::stat($learnFile);
+            if ($stat !== null) {
+                // Only a file that is there: a missing one would make the settings stale for good.
+                // start and stop touch the main file as well (as deny does): seen without APCu too.
+                $r->seen[$learnFile] = $stat;
+                $r->c['learn'] = \CjwNetwork\RequestShield\Learn::read($r->c['storeDir']);
+            }
+        }
         // The fetched feeds: a new fetch builds the settings again.
         $feedsDir = is_string($r->c['storeDir'] ?? null) ? $r->c['storeDir'] . '/feeds' : null;
         if ($feedsDir !== null && !empty($r->c['feeds'])) {

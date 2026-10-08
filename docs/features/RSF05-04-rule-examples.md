@@ -193,8 +193,56 @@ replay: session.har (HAR): 1284 requests, 214 different; left out: 812 static fi
 
 Before switching a rule from `monitor` to enforced, before `set mode enforce`,
 after an update: the replay says in seconds whether your own clicks still get
-through. Recording and suggesting rules from it is the next part of
-[proposal 0016](../proposals/0016-rule-advisor.md#a-learning-run-good-traffic-on-purpose).
+through.
+
+## Recording a learning run: `learn`
+
+The replay needs a recording; the shield can make one itself. A **learning
+run** records the requests of one developer -- or of the site's end-to-end
+tests -- by their **shape**, as the material to build rules from
+([proposal 0016](../proposals/0016-rule-advisor.md#a-learning-run-good-traffic-on-purpose);
+the suggestions from it are its next part):
+
+```bash
+php bin/request-shield learn site.rules start --for=2h                     # a run of two hours (1m to 7d)
+php bin/request-shield learn site.rules start --for=1h --from=203.0.113.7  # only from this address (or ranges, comma-separated)
+php bin/request-shield learn site.rules status                             # until when, and what is recorded so far
+php bin/request-shield learn site.rules stop                               # ended; the recording stays
+```
+
+```text
+learning until 2026-10-08 12:40
+recorded: the requests that carry the token -- their shape (paths, methods, the types of parameters and form fields), never a value
+
+in a browser, two bookmarks -- recording on, and off again:
+  on:  javascript:document.cookie='rs-learn=6f3c…; path=/; max-age=7200; SameSite=Lax';alert('request-shield: recording on')
+  off: javascript:document.cookie='rs-learn=; path=/; max-age=0';alert('request-shield: recording off')
+for tests, a header with every request:
+  Request-Shield-Learn: 6f3c…
+```
+
+- **Which requests:** those that carry the run's token -- the cookie
+  `rs-learn`, set and cleared with the two bookmarks (a developer turns the
+  recording on and off in the browser while clicking), or the header
+  `Request-Shield-Learn` (Playwright, Cypress). With `--from`, the address must
+  match as well. After `--for` nothing is recorded, cookie or not.
+- **The token only marks** a request: it lets none past a check (a leaked token
+  is no key). Only its SHA-256 is kept (`<store-dir>/learn.json`); a new
+  `start` makes a new one, and only one run is active at a time.
+- **What is recorded, one JSON line per request** in
+  `<store-dir>/learned.jsonl`: the time, method, host, path, each query
+  parameter and form field **by type** (`int`, `number`, `id`, `word`, `list`,
+  `text` -- the types of `query`), the content type, what the shield decided,
+  and the status the site answered with. **Never a value, never an address,
+  never a cookie.** A new `start` begins a new recording (`--keep` adds to
+  the old one); it stops growing at 10 MB.
+- **Every server starts and stops within its recheck:** `start` and `stop`
+  write the state file and touch the main rule file, as `deny` does; the
+  settings read the state when they are compiled.
+
+```json
+{"t":1791446553,"method":"GET","host":"www.example.org","path":"/products/","query":{"page":"int","q":"text"},"form":{},"type":null,"decided":"allow","status":200}
+```
 
 ## The built-in rules have examples too
 
@@ -212,6 +260,10 @@ instruction to hand a language model together with a rule file: it proposes
 Nothing in the shield asks a model at run time.
 
 ## Cost
+
+A learning run: nothing while none is active (the settings hold `null`, one
+comparison per request); while one is, only its own requests -- a token
+compared, and their line written when the request ends.
 
 None per request: `expect` lines are read with the rules and kept apart from
 the settings a request loads (the compiled settings are the same with and

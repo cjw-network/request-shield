@@ -169,6 +169,9 @@ final class Config
             // The site's own error pages (proposal 0030): status or '4xx' => language ('' for
             // all) => HTML; a rule file's "set error-page 404 errors/404.html" reads them.
             'errorPages' => [],
+            // A learning run (proposal 0016): what request-shield learn … start wrote to
+            // <store-dir>/learn.json, read when the rules are compiled; null: none.
+            'learn' => null,
             // Plugins by class name: told what was decided and how a request ended
             // (proposal 0023). The statistics come with 'ext' => ['stats' => ['enabled' => true]].
             'plugins' => [],

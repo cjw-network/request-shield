@@ -64,6 +64,21 @@ feature by feature, for what exists today and for the proposals.
 - The check inside the form and pages that ask for the check use the same
   cookies.
 
+### A learning run (`request-shield learn`, [docs](features/RSF05-04-rule-examples.md#recording-a-learning-run-learn))
+
+- **Whose requests:** only those that carry the run's token -- a developer's
+  own browser (a cookie set with a bookmark) or the site's tests (a header),
+  optionally only from given addresses, and only for the run's time (at most 7
+  days). A visitor without the token is never recorded.
+- **Recorded:** the shape of each request -- time, method, host, path, the
+  *types* of query parameters and form fields, the content type, the shield's
+  decision and the site's status. **No values, no address, no cookie.** The
+  path itself is kept as it was (a path can name things -- it is the
+  developer's own clicks).
+- **Kept:** in `<store-dir>/learned.jsonl` until the next `start` (or deleted by
+  hand); at most 10 MB.
+- **Basis:** the site's own development and testing; no visitor's data.
+
 ### Trusted proxies (X-Forwarded-For)
 
 - **Processed:** the client address a trusted proxy reports, used instead of

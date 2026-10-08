@@ -128,6 +128,7 @@ final class Cli
         $testOpts = ['only' => null, 'asWritten' => false, 'junit' => null];
         $replayAll = false;
         $ipGiven = false;
+        $learn = ['from' => [], 'keep' => false];
         foreach ($args as $a) {
             if ($a === '--force') {
                 $force = true;
@@ -137,6 +138,10 @@ final class Cli
                 $days = max(1, (int) substr($a, 7));
             } elseif (preg_match('/^--(from|to)=(\d{4})-(\d{2})-(\d{2})$/', $a, $m) === 1) {
                 $period[$m[1]] = $m[2] . $m[3] . $m[4];
+            } elseif (strncmp($a, '--from=', 7) === 0) {
+                $learn['from'] = array_merge($learn['from'], array_values(array_filter(array_map('trim', explode(',', substr($a, 7))), static fn (string $x): bool => $x !== '')));
+            } elseif ($a === '--keep') {
+                $learn['keep'] = true;
             } elseif (preg_match('/^--by=(day|week|month|year)$/', $a, $m) === 1) {
                 $period['by'] = $m[1];
             } elseif (strncmp($a, '--site=', 7) === 0) {
@@ -283,12 +288,13 @@ final class Cli
                 }
             }
         }
-        $core = ['check', 'show', 'reload', 'trace', 'test', 'replay', 'crawlers', 'feeds', 'access-token', 'deny', 'allow', 'unlist', 'lists'];
+        $core = ['check', 'show', 'reload', 'trace', 'test', 'replay', 'crawlers', 'feeds', 'access-token', 'deny', 'allow', 'unlist', 'lists', 'learn'];
         if (!in_array($command, array_merge($core, array_keys($commands)), true) || $file === null
             || ($command === 'access-token' && $what === null)
             || ($command === 'feeds' && $what !== null && !in_array($what, ['list', 'update', 'export'], true))
             || (in_array($command, ['trace', 'deny', 'allow', 'unlist', 'replay'], true) && $what === null)
-            || ($command === 'crawlers' && $what !== null && $what !== 'update')) {
+            || ($command === 'crawlers' && $what !== null && $what !== 'update')
+            || ($command === 'learn' && !in_array($what, ['start', 'stop', 'status'], true))) {
             fwrite(STDERR, "usage: request-shield check|show|reload <main.rules> [--source=<glob>]...\n"
                 . "       request-shield trace <main.rules> \"GET https://www.example.org/path\" [--ip=<address>] [--ua=<User-Agent>] [--source=<glob>]...\n"
                 . "       request-shield test <main.rules> [--source=<glob>]... [--only=<ID>] [--as-written] [--junit=<file>]\n"
@@ -300,6 +306,7 @@ final class Cli
                 . "       request-shield deny|allow <main.rules> <address|range> [--for=7d | --until=2026-10-07[T15:30]] [--reason=\"…\"] [--force]\n"
                 . "       request-shield unlist <main.rules> <address|range>\n"
                 . "       request-shield lists <main.rules>\n"
+                . "       request-shield learn <main.rules> start [--for=2h] [--from=<address|range>,…] [--keep] | stop | status\n"
                 . "       request-shield version [<main.rules>]\n"
                 . "       request-shield init --app=" . implode('|', Shipped::starters()) . " [--docroot=<dir>] [--out=<file>] [--force]\n"
                 . "       request-shield verify <request-shield.php> [--sums=<SHA256SUMS>] [--sig=<file.minisig>] [--key=<public key>]\n"
@@ -561,6 +568,48 @@ final class Cli
                 self::mistake('request-shield: ' . $e->getMessage());
                 exit(1);
             }
+        }
+
+        if ($command === 'learn') {
+            // A learning run (0016): the state file written or removed, then the main
+            // file touched -- every server reads it within its recheck, as the lists.
+            $dir = $settings->storeDir;
+            $now = time();
+            try {
+                if ($what === 'start') {
+                    $for = $listFor ?? 7200;
+                    $token = \CjwNetwork\RequestShield\Learn::start($dir, $for, $learn['from'], $learn['keep'], $now);
+                    touch($file);
+                    $b = \CjwNetwork\RequestShield\Learn::bookmarks($token, $for);
+                    echo 'learning until ' . date('Y-m-d H:i', $now + $for) . ($learn['from'] !== [] ? ', only from ' . implode(', ', $learn['from']) : '') . "\n"
+                        . "recorded: the requests that carry the token -- their shape (paths, methods, the types of parameters and form fields), never a value\n\n"
+                        . "in a browser, two bookmarks -- recording on, and off again:\n  on:  {$b['start']}\n  off: {$b['stop']}\n"
+                        . "for tests, a header with every request:\n  Request-Shield-Learn: $token\n\n"
+                        . "the token only marks requests, it lets none past a check; every server starts within its recheck\n"
+                        . 'into: ' . \CjwNetwork\RequestShield\Learn::recordFile($dir) . "\n";
+                    exit(0);
+                }
+                $run = \CjwNetwork\RequestShield\Learn::read($dir);
+                if ($what === 'stop') {
+                    $stopped = \CjwNetwork\RequestShield\Learn::stop($dir);
+                    touch($file);
+                    echo $stopped ? "learning stopped\n" : "no learning run\n";
+                } else {
+                    echo $run === null ? "no learning run\n" : ($now < $run['until'] ? 'learning until ' . date('Y-m-d H:i', $run['until']) : 'the learning run ended ' . date('Y-m-d H:i', $run['until']) . ' (learn stop clears it)')
+                        . ($run['from'] !== [] ? ', only from ' . implode(', ', $run['from']) : '') . "\n";
+                }
+                $sum = \CjwNetwork\RequestShield\Learn::summary($dir);
+                $methods = [];
+                foreach ($sum['methods'] as $m => $n) {
+                    $methods[] = "$n $m";
+                }
+                echo "recorded: {$sum['requests']} requests" . ($methods !== [] ? ' (' . implode(', ', $methods) . ')' : '') . ", {$sum['paths']} paths, {$sum['parameters']} parameters, {$sum['forms']} form" . ($sum['forms'] === 1 ? '' : 's') . ' -- '
+                    . \CjwNetwork\RequestShield\Learn::recordFile($dir) . "\n";
+            } catch (\InvalidArgumentException | \RuntimeException $e) {
+                self::mistake('request-shield: ' . $e->getMessage());
+                exit(1);
+            }
+            exit(0);
         }
 
         if (in_array($command, ['deny', 'allow', 'unlist', 'lists'], true)) {

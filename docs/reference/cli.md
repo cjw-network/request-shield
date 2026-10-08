@@ -19,6 +19,7 @@ usage: request-shield check|show|reload <main.rules> [--source=<glob>]...
        request-shield deny|allow <main.rules> <address|range> [--for=7d | --until=2026-10-07[T15:30]] [--reason="…"] [--force]
        request-shield unlist <main.rules> <address|range>
        request-shield lists <main.rules>
+       request-shield learn <main.rules> start [--for=2h] [--from=<address|range>,…] [--keep] | stop | status
        request-shield version [<main.rules>]
        request-shield init --app=exponential|plain|symfony|wordpress [--docroot=<dir>] [--out=<file>] [--force]
        request-shield verify <request-shield.php> [--sums=<SHA256SUMS>] [--sig=<file.minisig>] [--key=<public key>]
