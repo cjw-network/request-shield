@@ -112,7 +112,7 @@ return [
             }
             truthy(!is_dir("$dir/site/.request-shield"), 'nothing could be made next to the rules');
             same('', trim((string) @file_get_contents("$dir/php-errors.log")), 'no error: compiled on every request, quietly');
-            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' check ' . escapeshellarg("$dir/site/site.rules") . ' 2>&1', $out, $code);
+            exec(escapeshellarg(PHP_BINARY) . ' -d apc.enable_cli=0 ' . escapeshellarg(rsCli()) . ' check ' . escapeshellarg("$dir/site/site.rules") . ' 2>&1', $out, $code);
             $text = implode("\n", $out);
             truthy(strpos($text, 'tier: S0') !== false, "check names the tier:\n$text");
             truthy(strpos($text, 'warning: nothing is counted') !== false, "and what is off:\n$text");
@@ -177,7 +177,8 @@ return [
             same(429, $get('/')['status'], 'the third is one too many: counted in files');
             truthy(is_dir("$dir/site/.request-shield/store"), 'the store next to the rules');
             truthy(glob("$dir/site/.request-shield/settings-*.php") !== [], 'the compiled settings next to the rules');
-            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' version ' . escapeshellarg("$dir/site/site.rules") . ' 2>&1', $out, $code);
+            // The command line as the host has it: no APCu (in CI the ini switches it on for the CLI).
+            exec(escapeshellarg(PHP_BINARY) . ' -d apc.enable_cli=0 ' . escapeshellarg(rsCli()) . ' version ' . escapeshellarg("$dir/site/site.rules") . ' 2>&1', $out, $code);
             truthy(strpos(implode("\n", $out), 'tier: S1') !== false, "version names the tier:\n" . implode("\n", $out));
         });
     },
