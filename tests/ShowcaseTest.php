@@ -177,6 +177,7 @@ return [
             same(200, $st, 'the front page');
             truthy(strpos($page, 'Bots raus.') !== false && strpos($page, 'showcase.rules') !== false, 'in German, with the rules');
             truthy(strpos($get('GET', '/?lang=en')[2], 'Bots out.') !== false, 'in English');
+            truthy(strpos($page, 'mit Hilfe von KI generiert') !== false && strpos($get('GET', '/?lang=en')[2], 'generated with the help of AI') !== false, 'says it was made with the help of AI, in both languages');
             $hero = (string) strstr((string) strstr($page, '<header id="top"'), '</header>', true);
             truthy(strpos($hero, 'Exponential') !== false && strpos($hero, 'href="#exponential"') !== false, 'the hero names Exponential and leads to its example');
             $texts = require dirname(__DIR__) . '/examples/showcase/texts.php';

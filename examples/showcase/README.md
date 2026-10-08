@@ -78,6 +78,9 @@ Open http://127.0.0.1:8090/ (`?lang=de` or `?lang=en`).
   so you can watch it, and count this machine too (`exempt none` -- by
   default the shield leaves its own machine alone).
 
+The page and its content were generated with the help of AI; the footer
+says so in both languages.
+
 Bootstrap 5.3.8 and Bootstrap Icons 1.13.1 are in `assets/vendor/` (MIT, their
 licences beside them): the page loads nothing from another host. The store
 goes to `/tmp/request-shield-showcase` (`REQUEST_SHIELD_SHOWCASE_VAR`).

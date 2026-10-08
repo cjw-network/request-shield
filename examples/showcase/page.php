@@ -422,7 +422,8 @@ Shield::protectFile(__DIR__ . '/settings/request-shield/exponential-admin-uri.ru
   </div>
 </aside>
 
-<footer class="footer"><div class="container text-center small"><?= $e($t['footer']) ?></div></footer>
+<footer class="footer"><div class="container text-center small"><?= $e($t['footer']) ?>
+  <p class="ai-note mb-0 mt-2"><i class="bi bi-stars" aria-hidden="true"></i> <?= $e($t['aiNote']) ?></p></div></footer>
 
 <script id="showcase-data" type="application/json"><?= json_encode($client, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?></script>
 <script src="/assets/vendor/bootstrap/bootstrap.bundle.min.js"></script>

@@ -184,6 +184,7 @@ return [
         'liveLogWide' => 'Breiter / schmaler', 'liveLogNice' => 'Aufbereitet', 'liveLogRaw' => 'Original', 'liveLogMasked' => 'Adressen anonymisiert auf ihr Netz (log-ip masked)',
         'installMonitor' => 'Erst beobachten: Mit <code>set mode monitor</code> weist der Shield niemanden ab und schreibt ins Log (<code>set log</code>), was er getan hätte — in jeder dieser Zeilen steht <code>monitor-reject</code>, <code>monitor-throttle</code> … Ohne <code>set log</code> gibt es keine Log-Datei.',
         'footer' => 'request-shield · MIT-Lizenz · eine Demo, die auf deinem Rechner läuft',
+        'aiNote' => 'Diese Seite und ihre Inhalte wurden mit Hilfe von KI generiert.',
         'notes' => [
             'every rule\'s name starts with SHOW-: decisions and the log name it' => 'jede Regel heißt SHOW-…: Entscheidungen und Log nennen den Namen',
             'this rule set\'s own version' => 'die Version dieser Regeln',
@@ -420,6 +421,7 @@ return [
         'liveLogWide' => 'Wider / narrower', 'liveLogNice' => 'Readable', 'liveLogRaw' => 'Original', 'liveLogMasked' => 'Addresses masked to their network (log-ip masked)',
         'installMonitor' => 'Watch first: with <code>set mode monitor</code> the shield refuses nobody and writes to its log (<code>set log</code>) what it would have done — each of these lines says <code>monitor-reject</code>, <code>monitor-throttle</code> … Without <code>set log</code> there is no log file.',
         'footer' => 'request-shield · MIT licence · a demo running on your own machine',
+        'aiNote' => 'This page and its content were generated with the help of AI.',
         'notes' => [],
         'tries' => [],
     ],

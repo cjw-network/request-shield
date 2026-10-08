@@ -279,3 +279,6 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 /* The hero's line on Exponential */
 .hero-exp { font-weight: 600; color: #065f46; }
 .hero-exp a { color: #047857; font-weight: 700; white-space: nowrap; }
+
+/* The note that the page was made with the help of AI */
+.ai-note { font-weight: 600; }
