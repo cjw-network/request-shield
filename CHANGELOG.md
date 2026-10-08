@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- **`ATK-SSRF-META` costs a seventh on a plain query**: its first part,
+  "not after a digit or a dot", is a look-behind now (`(?<![\d.])` instead of
+  `(^|[^\d.])`), so PCRE skips ahead to a `1`, `m`, `f`, `/` or `@` instead of
+  trying at every character -- 6.1 to 0.9 µs on 1 KB of text, 6.8 to 2.5 µs
+  on 1 KB of addresses; a request with all attack rules and a 1 KB query
+  42.6 to 37.3 µs. The same matches (500,000 random strings compared).
 - **The recorded demo is no longer published on every push** (GitHub Pages
   is off for now): `.github/workflows/pages.yml` runs only when started by
   hand.
