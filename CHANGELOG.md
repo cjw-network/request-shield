@@ -66,8 +66,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (CVE-2014-6271 and after), scanned for everywhere, dangerous for CGI
   scripts behind the site; `() {` inside a value passes (a search for
   `var f = function () { return x };`), cookies are not looked at. The
-  attack rules' `headers` target now normalises each value on its own (a
-  comment opened in one header no longer hides the next) and joins them with
+  attack rules' `headers` target now normalises each value on its own when
+  the decoded headers hold a `/*` (a comment opened in one header no longer
+  hides the next, also one that decoding makes: `/%2a`) and joins them with
   `\x1e`, no white space, so a pattern can tell where a value starts; it
   takes the Content-Type too (PHP's `CONTENT_TYPE`). A passing request with
   all attack rules: about +0.5 to 1 µs (each request now gathers

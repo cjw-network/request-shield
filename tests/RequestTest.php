@@ -71,6 +71,8 @@ return [
         truthy(strpos($r->content('headers'), 'a b') !== false, 'headers: every HTTP_ value, white space collapsed');
         truthy(strpos($r->content('headers'), 'sid=secret') === false, 'the Cookie header is not in "headers"');
         same("x/*\x1e() {\x1e*/ y", Request::fromServer(['HTTP_X_A' => 'x/*', 'HTTP_X_B' => '() {', 'HTTP_X_C' => '*/ y'])->content('headers'), 'each value normalised on its own: no comment across headers');
+        same("x/*\x1e() {\x1e*/ y", Request::fromServer(['HTTP_X_A' => 'x/%2a', 'HTTP_X_B' => '() {', 'HTTP_X_C' => '*/ y'])->content('headers'), 'also when decoding makes the "/*"');
+        same("gr\xc3\xbcn tee\x1etext/html", Request::fromServer(['HTTP_REFERER' => 'gr%C3%BCn%20tee', 'HTTP_ACCEPT' => 'text/html'])->content('headers'), 'without one: all at once, the same');
         same("text/html\x1emultipart/form-data", Request::fromServer(['HTTP_ACCEPT' => 'text/html', 'CONTENT_TYPE' => 'multipart/form-data'])->content('headers'), 'the Content-Type is a header too');
         truthy(strpos($r->content('headers'), "\x1e") !== false && strpos($r->content('headers'), ' ' . "\x1e") === false, 'the values joined by \\x1e, no white space: a pattern sees where a value starts');
         truthy(strpos($r->content('header:cookie'), 'sid=secret') !== false, 'but can be asked for by name');

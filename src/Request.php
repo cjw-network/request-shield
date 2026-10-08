@@ -205,12 +205,12 @@ final class Request
         } elseif (strncmp($target, 'header:', 7) === 0) {
             $v = self::normal((string) $this->header(substr($target, 7)));
         } elseif ($target === 'headers') {
-            // A comment opened in one header must not swallow the next: where one could be
-            // there (a "/*", or a "%2f"/"%25" decoding could turn into one), each value on its
-            // own. Else all at once -- the same: "\x1e" is no white space, a %-escape cannot span it.
-            $raw = $this->rawHeaders();
-            $v = strpos($raw, '/*') === false && strpos($raw, '%2f') === false && strpos($raw, '%2F') === false && strpos($raw, '%25') === false ? self::normal($raw)
-                : implode("\x1e", array_map([self::class, 'normal'], $this->headerValues));
+            // A comment opened in one header must not swallow the next: when the decoded
+            // headers hold a "/*" (also one decoding made: "/%2a", "%%32%66*"), each value
+            // on its own. Else all at once -- the same: decoding never spans "\x1e" (no
+            // %-escape does), and "\x1e" is no white space.
+            $decoded = self::decoded($this->rawHeaders());
+            $v = strpos($decoded, '/*') === false ? self::cleaned($decoded) : implode("\x1e", array_map([self::class, 'normal'], $this->headerValues));
         } else {
             $v = self::normal($this->path) . ' ' . $this->content('query') . ' ' . $this->content('headers');
         }
@@ -281,12 +281,21 @@ final class Request
 
     private static function normal(string $v): string
     {
-        if ($v === '') {
-            return '';
-        }
+        return $v === '' ? '' : self::cleaned(self::decoded($v));
+    }
+
+    /** Percent-decoded, twice at most: "%2527" is "'". */
+    private static function decoded(string $v): string
+    {
         for ($i = 0; $i < 2 && strpos($v, '%') !== false; $i++) {
             $v = rawurldecode($v);
         }
+        return $v;
+    }
+
+    /** The rest of normal(), on a decoded value: lower case, comments, white space. */
+    private static function cleaned(string $v): string
+    {
         $v = strtolower($v);
         if (strpos($v, '/*') !== false) {
             // A comment is a space -- except MySQL's versioned one (/*!50000union*/,

