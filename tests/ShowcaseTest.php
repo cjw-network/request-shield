@@ -280,6 +280,18 @@ return [
                 truthy(strpos($guard, 'class="check-demo"') !== false && strpos($guard, 'href="/__login"') !== false, "$lang: the browser check, shown and to try, high on the front page");
                 truthy(strpos($guard, 'class="stairs"') !== false && strpos($guard, 'data-kind="login"') !== false && strpos($guard, 'counter-form') !== false, "$lang: the growing pause, drawn and the sign-in to try");
                 truthy(strpos($main, '<section id="guard"') < strpos($main, '<section id="what"'), "$lang: right after the promises");
+                // The staircase as the rules have it: SHOW-LOGINS lets 3 through, SHOW-LOGIN-BAN pauses 5 s, ban-growth 2.
+                $texts = (require dirname(__DIR__) . '/examples/showcase/texts.php')[$lang]['guard']['stairs'];
+                $rules = (string) file_get_contents(dirname(__DIR__) . '/examples/showcase/showcase.rules');
+                preg_match('/limit logins (\d+)\/15m/', $rules, $free);
+                preg_match('/\[SHOW-LOGIN-BAN\]\s+ban after 1 logins in 15m for (\d+)s/', $rules, $first);
+                preg_match('/set\s+ban-growth (\d+)/', $rules, $growth);
+                $want = [];
+                for ($i = 0; $i < count($texts); $i++) {
+                    $want[] = ($i < (int) ($free[1] ?? 0) ? 0 : (int) ($first[1] ?? 0) * ((int) ($growth[1] ?? 2)) ** ($i - (int) ($free[1] ?? 0))) . ' s';
+                }
+                same($want, array_column($texts, 1), "$lang: the staircase is what the rules do");
+                truthy(strpos($guard, 'role="img" aria-label="') !== false, "$lang: the staircase read out as one sentence");
                 truthy(strpos($main, 'href="/try?lang=' . $lang . '"') !== false && strpos($main, 'href="/exponential?lang=' . $lang . '"') !== false, "$lang: the way to /try and /exponential");
                 truthy(strpos($main, 'json-form') === false && strpos($main, 'burst-go') === false && strpos($main, 'exp-row') === false, "$lang: the rest is on its own pages");
                 [$st, , $try] = $get('GET', "/try?lang=$lang");

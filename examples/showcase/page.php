@@ -216,11 +216,13 @@ require __DIR__ . '/nav.php';
       <div class="col-lg-6"><div class="guard-card h-100">
         <h3 class="h4"><i class="bi bi-hourglass-split"></i> <?= $e($gd['slowTitle']) ?></h3>
         <p><?= $e($gd['slowLead']) ?></p>
-        <figure class="stairs" aria-label="<?= $e($gd['stairsLabel']) ?>">
-          <?php foreach ($gd['stairs'] as $i => [$try, $wait]): ?>
-          <div class="stair" style="--h: <?= (int) [8, 8, 8, 14, 26, 50, 100][$i] ?>%"><span class="stair-bar<?= $i < 3 ? ' stair-free' : '' ?>"></span><b><?= $e($wait) ?></b><small><?= $e($try) ?></small></div>
-          <?php endforeach ?>
-          <figcaption class="small text-secondary"><?= $e($gd['stairsCaption']) ?></figcaption>
+        <figure class="mb-0">
+          <div class="stairs" role="img" aria-label="<?= $e($gd['stairsLabel'] . ': ' . implode(', ', array_map(static fn (array $s): string => $s[0] . ' ' . $s[1], $gd['stairs']))) ?>">
+            <?php foreach ($gd['stairs'] as $i => [$try, $wait]): ?>
+            <div class="stair" style="--h: <?= (int) [8, 8, 8, 14, 26, 50, 100][$i] ?>%" aria-hidden="true"><span class="stair-bar<?= $i < 3 ? ' stair-free' : '' ?>"></span><b><?= $e($wait) ?></b><small><?= $e($try) ?></small></div>
+            <?php endforeach ?>
+          </div>
+          <figcaption class="small text-secondary mb-3"><?= $e($gd['stairsCaption']) ?></figcaption>
         </figure>
         <div class="row"><div class="col-12"><?php $counterCard('login') ?></div></div>
         <p class="small mt-3 mb-0"><a href="/try?lang=<?= $lang ?>#try"><i class="bi bi-rocket-takeoff"></i> <?= $e($gd['burstLink']) ?></a></p>

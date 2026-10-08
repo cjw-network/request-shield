@@ -103,7 +103,7 @@ return [
             'checkWait' => 'Einen Moment, bitte …',
             'checkDone' => 'Geprüft ✓',
             'checkFacts' => [
-                ['bi-lightning-charge', 'Bruchteile einer Sekunde, auf einem alten Handy wenige Sekunden'],
+                ['bi-lightning-charge', 'auf einer echten Website Bruchteile einer Sekunde, auf einem alten Handy wenige — diese Demo rechnet absichtlich länger, damit du den Ring siehst'],
                 ['bi-ticket-perforated', 'einmal, dann gilt ein Pass (eine Stunde, einstellbar)'],
                 ['bi-universal-access', 'kein Bild, kein Klick, kein Rätsel — auch mit Screenreader'],
                 ['bi-robot', 'ein Bot ohne Browser kommt nicht weiter, mit Browser kostet ihn jeder Versuch Rechenzeit'],
@@ -400,7 +400,7 @@ return [
             'checkWait' => 'One moment, please …',
             'checkDone' => 'Checked ✓',
             'checkFacts' => [
-                ['bi-lightning-charge', 'a fraction of a second, a few seconds on an old phone'],
+                ['bi-lightning-charge', 'on a real website a fraction of a second, a few on an old phone — this demo works longer on purpose, so you see the ring'],
                 ['bi-ticket-perforated', 'once, then a pass holds (an hour, adjustable)'],
                 ['bi-universal-access', 'no picture, no click, no puzzle — with a screen reader too'],
                 ['bi-robot', 'a bot without a browser gets no further; with one, every try costs it computing time'],
