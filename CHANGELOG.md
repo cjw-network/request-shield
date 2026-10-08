@@ -88,7 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   never a mode that keeps PHP from writing; above the site blocks. Applies to store-dir and its folders, the log, the lists,
   the feeds, the crawler lists, the statistics, the HTTP cache, a ban kept
   in store-dir, a learning run, `advise --write`, a new `feeds export
-  --write` file (one there keeps its mode). The secret stays `0600`, the
+  --write` file (one there keeps its read and write bits). The secret stays `0600`, the
   compiled settings `0600` in `0700`. `check` warns about a mode everyone
   may read, files in store-dir, lists-dir and the log everyone may read
   already (bans a folder down too), and a store-dir owned by another user

@@ -103,6 +103,7 @@ return [
                 same('0640', modeOf("$dir/open/x/new"), 'in its mode the moment it exists (umask 0): no handle opened in between could read what follows');
                 fclose($h);
                 same(false, @Files::create("$dir/open/x/new", 0640), 'exclusive');
+                same(0, umask(), 'the umask as it was after create()');
                 Files::append("$dir/open/x/log", "1\n");
                 Files::write("$dir/open/x/w", '1');
                 same(['0700', '0700', '0600', '0600'], [modeOf("$dir/open"), modeOf("$dir/open/x"), modeOf("$dir/open/x/log"), modeOf("$dir/open/x/w")], 'umask 0: nothing more for others');
@@ -127,6 +128,10 @@ return [
                     Files::append("$dir/open/x/empty2", "7\n");
                     same(['0600', "6\n", '0600', "7\n"], [modeOf("$dir/open/x/zts"), file_get_contents("$dir/open/x/zts"), modeOf("$dir/open/x/empty2"), file_get_contents("$dir/open/x/empty2")],
                         'with threads (no umask): made, then file-mode while still empty (made by a parallel request too), then the line');
+                    $h = Files::create("$dir/open/x/zts-new", 0640);
+                    truthy($h !== false && fclose($h), 'made with threads');
+                    truthy(Files::write("$dir/open/x/zts-w", 'w'), 'written with threads');
+                    same(['0640', '0600', 0], [modeOf("$dir/open/x/zts-new"), modeOf("$dir/open/x/zts-w"), umask()], 'with threads: chmod after making (the umask left alone)');
                     exec('rm -rf ' . escapeshellarg("$dir/open/y"));
                     truthy(Files::append("$dir/open/y/z", "8\n") && modeOf("$dir/open/y/z") === '0600', 'with threads: the folder made');
                 } finally {

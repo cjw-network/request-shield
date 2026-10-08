@@ -99,8 +99,9 @@ final class Files
     /**
      * A file written whole: a temporary file made exclusive in file-mode
      * (create()), then the data, then renamed -- a reader never sees half of it, and
-     * the data is never in a file of another mode. $keep: the mode of the file
-     * it replaces (a file named by the user, read by something else).
+     * the data is never in a file of another mode. $keep: the read and write
+     * bits of the file it replaces (a file named by the user, read by
+     * something else).
      */
     public static function write(string $file, string $data, string $suffix = '', bool $keep = false): bool
     {
