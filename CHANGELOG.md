@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   50 -> 36 µs; short values are matched as before (one call).
 
 ### Fixed
+- **Compiled settings cut short just before their end are compiled anew**:
+  a file that still parsed but lacked its last entries was taken -- the
+  constructor fills them in with defaults. Every compiled file now ends with
+  a marker (`whole`); one without it is built again. (With PHP 8.1-8.3's JIT
+  not even a cut in the middle was noticed.)
 - **The dashboard's sign-in form works in a browser**: its pages said
   `Referrer-Policy: no-referrer`, and with that policy Chromium and Firefox
   send `Origin: null` with the page's own form -- the form's check (sent

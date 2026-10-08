@@ -31,7 +31,8 @@ function withFailing(string $rules, string $known, callable $body): void
     file_put_contents("$dir/prepend.php", '<?php require ' . var_export(rsEntry(), true) . ";\n"
         . '\CjwNetwork\RequestShield\Shield::protectFile(' . var_export("$dir/site.rules", true) . ', ' . $known . ', ' . var_export("$dir/cache", true) . ');');
     $port = freePort();
-    $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=/nonexistent exec %s -d auto_prepend_file=%s -d log_errors=1 -d error_log=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
+    // OPcache, where it is on (the CI), looks at a changed file at once: the tests change files under it.
+    $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=/nonexistent exec %s -d opcache.revalidate_freq=0 -d auto_prepend_file=%s -d log_errors=1 -d error_log=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
         serverPhp(), escapeshellarg("$dir/prepend.php"), escapeshellarg("$dir/php-errors.log"), $port, escapeshellarg("$dir/docroot")), [], $pipes);
     for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
         usleep(100000);
@@ -180,6 +181,7 @@ return [
             $whole = (int) filesize($compiled);
             // Cut inside the array, as a full disk would: not even parseable.
             file_put_contents($compiled, substr((string) file_get_contents($compiled), 0, intdiv($whole, 2)));
+            touch($compiled, time() + 5);           // changed, as a write that broke off changes it: OPcache sees it (by the second)
             same(404, $get('/secret/x')['status'], 'decided all the same -- from the rule file');
             same(200, $get('/')['status']);
             same($whole, (int) filesize($compiled), 'the compiled file is whole again');
@@ -187,8 +189,17 @@ return [
             $php = (string) file_get_contents($compiled);
             $cut = strrpos($php, "'challenge' =>");
             file_put_contents($compiled, substr($php, 0, (int) $cut) . ");\n");
+            touch($compiled, time() + 5);           // changed, as a write that broke off changes it: OPcache sees it (by the second)
             same(404, $get('/secret/x')['status'], 'decided all the same');
             same($whole, (int) filesize($compiled), 'compiled anew');
+            // Cut before its last entries only: the constructor would fill them in with defaults
+            // and take it -- the end marker says it is not whole.
+            $php = (string) file_get_contents($compiled);
+            $cut = strrpos($php, "'errorPages' =>");
+            file_put_contents($compiled, substr($php, 0, (int) $cut) . "),\n);\n");
+            touch($compiled, time() + 5);           // changed, as a write that broke off changes it: OPcache sees it (by the second)
+            same(404, $get('/secret/x')['status'], 'decided all the same');
+            same($whole, (int) filesize($compiled), 'its end missing: compiled anew');
             same('', trim((string) @file_get_contents("$dir/php-errors.log")), 'nothing for the log: nothing was wrong with the rules');
         });
     },

@@ -1430,8 +1430,11 @@ final class Settings
             @unlink($path);
             return null;
         }
-        // Written by write() below, so trusted beyond its format and file.
-        return is_array($e) && ($e['format'] ?? 0) === self::FORMAT && ($e['file'] ?? '') === $file ? $e : null;
+        // Written by write() below, so trusted beyond its format, its file -- and its end: "whole"
+        // comes last, so a file cut short (a full disk) that still parses lacks it. The constructor
+        // would take a short array (its last arguments have defaults), and with PHP 8.1-8.3's JIT
+        // not even a TypeError for a missing one stops it.
+        return is_array($e) && ($e['format'] ?? 0) === self::FORMAT && ($e['file'] ?? '') === $file && ($e['whole'] ?? false) === true ? $e : null;
     }
 
     /**
@@ -1718,10 +1721,10 @@ final class Settings
         $settings = self::from($config);
         foreach ($sites as $id => $one) {
             self::write($cacheDir . '/settings-' . $key . '-' . hash('crc32b', $id) . '.php', "<?php\n// Compiled by cjw-network/request-shield from $file, site $id; rebuilt when it changes.\nreturn "
-                . var_export(['format' => self::FORMAT, 'file' => $file, 'site' => $id, 'seen' => $seen, 'settings' => $one->export()], true) . ";\n");
+                . var_export(['format' => self::FORMAT, 'file' => $file, 'site' => $id, 'seen' => $seen, 'settings' => $one->export(), 'whole' => true], true) . ";\n");
         }
         self::write($cacheDir . '/settings-' . $key . '.php', "<?php\n// Compiled by cjw-network/request-shield from $file; rebuilt when it changes.\nreturn "
-            . var_export(['format' => self::FORMAT, 'file' => $file, 'seen' => $seen, 'env' => $env, 'recheck' => $recheck, 'settings' => $settings->export()], true) . ";\n");
+            . var_export(['format' => self::FORMAT, 'file' => $file, 'seen' => $seen, 'env' => $env, 'recheck' => $recheck, 'settings' => $settings->export(), 'whole' => true], true) . ";\n");
         if ($recheck > 0 && Capability::apcu()) {
             apcu_store('rshield:fresh:' . $key, true, $recheck);
         }
