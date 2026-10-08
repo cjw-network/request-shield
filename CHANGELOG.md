@@ -62,12 +62,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 - **A new attack rule, `ATK-SHELLSHOCK`** (attack rules `2026.10.2`,
-  `include @attacks`): `() { … }` and a command after it in a header --
-  Shellshock (CVE-2014-6271), scanned for everywhere, dangerous for CGI
-  scripts behind the site; `f() {`, `() {build 7}` or a search for
-  `function () { return x }` pass, cookies are not looked at. A passing request with all attack rules: unchanged within noise (each
-  request now gathers its headers once for the attack rules' `headers` and
-  `anywhere` targets, which also makes `anywhere` cheaper). Attack patterns
+  `include @attacks`): a header whose value starts with `() {` -- Shellshock
+  (CVE-2014-6271 and after), scanned for everywhere, dangerous for CGI
+  scripts behind the site; `() {` inside a value passes (a search for
+  `var f = function () { return x };`), cookies are not looked at. The
+  attack rules' `headers` target now joins the values with `\x1e`, no white
+  space, so a pattern can tell where a value starts. A passing request with
+  all attack rules: about +0.5 µs on a short one (each request now gathers
+  its headers once for the attack rules' `headers` and `anywhere` targets,
+  which also makes `anywhere` cheaper). Attack patterns
   may now use look-arounds (`(?<!…)`, `(?=…)`); back references, named
   groups and calls or conditions by number (`(?1)`, `(?R)`, `(?(1)…)`) are
   refused -- in the combined expression they would reach another pattern.

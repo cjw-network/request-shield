@@ -247,10 +247,11 @@ final class Request
     }
 
     /**
-     * Every header's value but the cookies', as sent, joined by a space (what a
-     * line break would have become anyway) -- once per request: the attack
-     * rules' "headers" and "anywhere" both look at it, and $_SERVER holds some
-     * forty entries under PHP-FPM.
+     * Every header's value but the cookies', as sent, joined by a record
+     * separator ("\x1e": no white space, so normalising keeps it and a
+     * pattern can tell where a value starts -- ATK-SHELLSHOCK) -- once per
+     * request: the attack rules' "headers" and "anywhere" both look at it,
+     * and $_SERVER holds some forty entries under PHP-FPM.
      */
     private function rawHeaders(): string
     {
@@ -261,7 +262,7 @@ final class Request
                     $all[] = $value;
                 }
             }
-            $this->rawHeaders = implode(' ', $all);
+            $this->rawHeaders = implode("\x1e", $all);
         }
         return $this->rawHeaders;
     }

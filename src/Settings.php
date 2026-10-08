@@ -1276,7 +1276,7 @@ final class Settings
                 // \g<1>, (?(1)…)) would reach another pattern's group too. A look
                 // around ((?<!…), (?=…)) or a relative call ((?-1)) is fine.
                 if (preg_match('/\\\\[1-9]|\\\\g\{?-?\d|\\\\g[<\']\+?\d|\\\\k[<{\']|\(\?(P?<(?![=!])|\'|P[=>]|[R0-9]|\+\d|\((\d|R))/', $m[1])) {
-                    throw self::wrong("contentRules.$i.patterns", 'expressions without back references or named groups');
+                    throw self::wrong("contentRules.$i.patterns", 'expressions without back references, named groups or groups called by number');
                 }
                 $bodies[$target][] = '(?:' . $m[1] . ')';
             }

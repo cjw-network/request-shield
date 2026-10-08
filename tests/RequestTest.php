@@ -70,6 +70,7 @@ return [
         same('', $r->content('header:x-missing'), 'a header not sent');
         truthy(strpos($r->content('headers'), 'a b') !== false, 'headers: every HTTP_ value, white space collapsed');
         truthy(strpos($r->content('headers'), 'sid=secret') === false, 'the Cookie header is not in "headers"');
+        truthy(strpos($r->content('headers'), "\x1e") !== false && strpos($r->content('headers'), ' ' . "\x1e") === false, 'the values joined by \\x1e, no white space: a pattern sees where a value starts');
         truthy(strpos($r->content('header:cookie'), 'sid=secret') !== false, 'but can be asked for by name');
         $all = $r->content('anywhere');
         truthy(strpos($all, '/a path') !== false && strpos($all, 'union select') !== false && strpos($all, 'a b') !== false,

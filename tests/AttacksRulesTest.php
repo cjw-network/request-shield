@@ -170,6 +170,8 @@ return [
             ['/', ['HTTP_X_FORWARDED_HOST' => '(){ :;};echo;/bin/cat /etc/passwd'], 'ATK-SHELLSHOCK'],      // any header, no space
             ['/', ['HTTP_USER_AGENT' => "()\t{ ignored;}; echo x"], 'ATK-SHELLSHOCK'],                  // a tab
             ['/', ['HTTP_USER_AGENT' => '() { _; } >_[$($())] { id; }'], 'ATK-SHELLSHOCK'],              // CVE-2014-6278
+            ['/', ['HTTP_USER_AGENT' => '() { (a)=>\\'], 'ATK-SHELLSHOCK'],                              // CVE-2014-7169: no closing brace, no command
+            ['/', ['HTTP_ACCEPT' => 'text/html', 'HTTP_X_API_VERSION' => '() { :; }'], 'ATK-SHELLSHOCK'],   // a later header's value
             ['/', ['HTTP_REFERER' => '%28%29%20%7B%20%3A%3B%20%7D%3B%20id'], 'ATK-SHELLSHOCK'],   // percent-encoded: decoded as everywhere
         ];
         foreach ($cases as [$uri, $server, $id]) {
@@ -208,6 +210,9 @@ return [
             ['HTTP_USER_AGENT' => 'Tool/1.0 (x)(y) {z}'],
             ['HTTP_USER_AGENT' => 'MyApp/1.0 () {build 7}'],                                  // no command after the braces
             ['HTTP_REFERER' => 'https://www.example.org/search?q=arrow%20function%20()%20%7B%20return%20x%20%7D'],   // a search for code
+            ['HTTP_REFERER' => 'https://www.example.org/search?q=var%20f%20%3D%20function%20()%20%7B%20return%20x%20%7D%3B'],   // with a ; after it
+            ['HTTP_USER_AGENT' => 'Foo/1.0 () {x}; bar'],
+            ['HTTP_X_A' => 'x ()', 'HTTP_X_B' => '{a} ;'],                                       // no match across two headers
             ['HTTP_ACCEPT' => 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8'],
             ['HTTP_COOKIE' => 'note=() { not looked at }']] as $server) {         // cookies are not part of "headers"
             same('allow', attacksDecide($s, '/', $server), 'passes: ' . json_encode($server));
