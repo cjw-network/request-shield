@@ -8,7 +8,7 @@
 # them (what the rule refuses, and near misses it must let through).
 
 ids SCAN required
-version 2026.10.1
+version 2026.10.2
 
 [SCAN-HIDDEN@1] block regex /\.(git|svn|hg|bzr|env|htpasswd|ds_store|idea|vscode)(/|$)                 # hidden files and folders: .env, .git, .htpasswd, editor settings
 expect GET /.env                      404
@@ -31,3 +31,8 @@ expect GET /pma-conference           answered   # a near miss: pma, then more
 expect GET /cgi-bin/status           404
 expect GET /.well-known/acme-challenge/token  answered   # certificates keep working
 expect GET /.well-known/change-password       answered
+[SCAN-CONFIG@1] block regex /(composer\.(json|lock)|web\.config|docker-compose\.ya?ml|\.npmrc|id_(rsa|dsa|ecdsa|ed25519)(\.pub)?)$   # project and key files: composer.json, web.config, docker-compose.yml, .npmrc, id_rsa
+expect GET /composer.json            404
+expect GET /vendor/x/composer.lock   404
+expect GET /id_rsa                    404
+expect GET /composer-guide           answered   # a near miss

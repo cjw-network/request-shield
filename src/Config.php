@@ -208,6 +208,7 @@ final class Config
             '#/(phpinfo|php_info|info|test)\.php$#',
             '#/(vendor/phpunit|phpmyadmin|pma|adminer)(/|\.php|$)#',
             '#/(cgi-bin|\.well-known/(?!acme-challenge|security\.txt|change-password))#',
+            '#/(composer\.(json|lock)|web\.config|docker-compose\.ya?ml|\.npmrc|id_(rsa|dsa|ecdsa|ed25519)(\.pub)?)$#',
         ];
     }
 
@@ -238,6 +239,7 @@ final class Config
             $s[2] => ['SCAN-TEST', 'test and info scripts: phpinfo.php, info.php, test.php'],
             $s[3] => ['SCAN-DBTOOL', 'database and test tools: phpMyAdmin, Adminer, PHPUnit'],
             $s[4] => ['SCAN-CGI', 'cgi-bin, and .well-known except certificates, security.txt and password change'],
+            $s[5] => ['SCAN-CONFIG', 'project and key files: composer.json, web.config, docker-compose.yml, .npmrc, id_rsa'],
             $w[0] => ['WP-FOLDERS', 'WordPress folders: /wp-admin, /wp-includes, /wp-content'],
             $w[1] => ['WP-SCRIPTS', 'WordPress scripts: wp-login.php, xmlrpc.php, wp-config.php'],
         ];

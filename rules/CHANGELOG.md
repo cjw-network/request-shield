@@ -11,6 +11,12 @@ revision here is newer — the rule itself applies at once.
 
 ## 2026.10.2
 
+`scanners.rules` (built in):
+
+| Rule | Revision | Matches |
+|---|---|---|
+| `SCAN-CONFIG` | 1 (new) | project and key files: `composer.json`, `composer.lock`, `web.config`, `docker-compose.yml` / `.yaml`, `.npmrc`, `id_rsa`, `id_dsa`, `id_ecdsa`, `id_ed25519` (and `.pub`), in any folder. `/composer-guide` passes. |
+
 `attacks.rules` (`include @attacks`):
 
 | Rule | Revision | Matches |

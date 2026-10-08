@@ -61,6 +61,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **A new built-in scanner rule, `SCAN-CONFIG`** (scanner rules
+  `2026.10.2`): project and key files -- `composer.json`, `composer.lock`,
+  `web.config`, `docker-compose.yml`, `.npmrc`, `id_rsa` and the other SSH
+  keys -- answered 404 before the site starts; `/composer-guide` passes.
+  `unblock [SCAN-CONFIG]` takes it back.
 - **`ATK-PHP@2`** (attack rules `2026.10.2`, `include @attacks`): also
   ThinkPHP's way into its own code -- a `\think\…` class in the query
   (`?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=system`,

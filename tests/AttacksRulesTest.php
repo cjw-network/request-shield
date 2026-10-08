@@ -223,7 +223,16 @@ return [
             '/GponForm/diag' => 'ATK-EXPLOIT',
             '/_ignition/execute-solution' => 'ATK-EXPLOIT',   // Laravel Ignition (CVE-2021-3129)
             '/.aws/credentials' => 'ATK-EXPLOIT',
-            '/.ssh/id_rsa' => 'ATK-EXPLOIT',
+            '/.ssh/authorized_keys' => 'ATK-EXPLOIT',
+            '/.ssh/id_rsa' => 'SCAN-CONFIG',                // a key: the scanner rule answers first
+            '/composer.json' => 'SCAN-CONFIG',              // project files that tell a scanner what the site runs on
+            '/vendor/x/composer.lock' => 'SCAN-CONFIG',
+            '/web.config' => 'SCAN-CONFIG',
+            '/docker-compose.yml' => 'SCAN-CONFIG',
+            '/app/docker-compose.yaml' => 'SCAN-CONFIG',
+            '/.npmrc' => 'SCAN-CONFIG',
+            '/id_ed25519.pub' => 'SCAN-CONFIG',
+            '/Composer.JSON' => 'SCAN-CONFIG',              // case does not matter
             '/cgi-mod/index.cgi' => 'ATK-EXPLOIT',
             '/mifs/user/index.html' => 'ATK-EXPLOIT',
             '/x/wp-file-manager/lib/php/connector.minimal.php' => 'ATK-EXPLOIT',
@@ -275,6 +284,10 @@ return [
             '/?q=formaction%3Dsave',                 // the word without a tag
             '/?q=%3Cb%3Eformaction%3D%3C/b%3E',      // the tag closed before it
             '/?q=bash%20/dev/tcp%20tutorial',        // the device named, no host and port
+            '/composer-guide',                       // near misses of SCAN-CONFIG
+            '/docs/composer.json-explained',
+            '/configuration',
+            '/blog/web-config-tips',
             '/?q=invokefunction',                    // the word alone: a search
             '/?q=think%20about%20it&ns=App%5CThink',  // "think" as a word, a namespace that ends in it
             '/?class=App%5CThink%5CFoo',             // Think inside a namespace, no ThinkPHP class after it

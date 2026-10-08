@@ -17,8 +17,9 @@ revisions and examples (`expect`) that `request-shield test` checks.
 
 ## Use cases
 
-- **Every site:** hidden files, backups, test scripts and database tools are
-  never part of a public site; scanners try them all day.
+- **Every site:** hidden files, backups, test scripts, database tools and
+  project or key files (composer.json, id_rsa) are never part of a public
+  site; scanners try them all day.
 - **A site that is not WordPress:** `include @wordpress` turns away the
   requests for `/wp-login.php` and `/wp-admin/` that make up a large share of
   all attack traffic.
@@ -56,6 +57,7 @@ The shipped rules:
 | `SCAN-TEST` | `@scanners` | test and info scripts: phpinfo.php, info.php, test.php |
 | `SCAN-DBTOOL` | `@scanners` | database and test tools: phpMyAdmin, Adminer, PHPUnit |
 | `SCAN-CGI` | `@scanners` | cgi-bin, and .well-known except certificates, security.txt and password change |
+| `SCAN-CONFIG` | `@scanners` | project and key files: composer.json, composer.lock, web.config, docker-compose.yml, .npmrc, id_rsa (also id_dsa, id_ecdsa, id_ed25519 and their .pub) -- a scanner asks for them to learn what the site runs on; the web server sends a file that exists without PHP, so the rule spares the site's front controller the ones that do not |
 | `WP-FOLDERS` | `@wordpress` | WordPress folders: /wp-admin, /wp-includes, /wp-content |
 | `WP-SCRIPTS` | `@wordpress` | WordPress scripts: wp-login.php, xmlrpc.php, wp-config.php |
 

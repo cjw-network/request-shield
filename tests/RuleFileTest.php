@@ -109,7 +109,7 @@ return [
         same(['GET', 'HEAD', 'POST', 'OPTIONS', 'PUT'], $s->methods);
         truthy(in_array('#^/wp\-admin(?:/.*)?$#', $s->blockedPaths, true), 'glob block');
         truthy(in_array('#^/(phpmyadmin|adminer)#', $s->blockedPaths, true), 'regex block');
-        truthy(count($s->blockedPaths) === 3 + 5, 'added to the scanner paths');
+        truthy(count($s->blockedPaths) === 3 + count(\CjwNetwork\RequestShield\Config::scannerPaths()), 'added to the scanner paths');
         same(['page', 'offset'], $s->cacheableQuery);
         same(['#^/$#', '#^/news(?:/.*)?$#'], $s->cacheablePaths);
         same([600, 60, 300, false], [$s->budgets['requests']->limit, $s->budgets['requests']->window, $s->budgets['requests']->challengeAt, $s->budgets['requests']->onDemand]);
@@ -132,7 +132,7 @@ return [
         same(null, $s->cacheablePaths, 'any: every path');
         same(['GET'], $s->methods);
         same([], rulesFrom("cache-query none\n")->cacheableQuery, 'none: no parameter');
-        truthy(count(rulesFrom("block @wordpress\n")->blockedPaths) === 5 + 2, 'the WordPress set');
+        truthy(count(rulesFrom("block @wordpress\n")->blockedPaths) === count(\CjwNetwork\RequestShield\Config::scannerPaths()) + 2, 'the WordPress set');
     },
     'RSF05-01 the decisions follow the rules' => function (): void {
         $s = rulesFrom("host www.example.org\nblock /wp-admin/**\ncache-path / /page/*\ncache-query page\nchallenge /login\n");
@@ -462,7 +462,7 @@ return [
         same(\CjwNetwork\RequestShield\Settings::from([])->blockedPaths, $defaults->blockedPaths, 'PHP array settings get the same blocks');
         same(count(\CjwNetwork\RequestShield\Config::scannerPaths()) + 2, count(rulesFrom("block @wordpress\n")->blockedPaths), 'block @wordpress = include @wordpress');
         same(count(rulesFrom("include @wordpress\nblock @wordpress\n")->blockedPaths), count(rulesFrom("include @wordpress\n")->blockedPaths), 'twice is once');
-        same(4, count(rulesFrom("unblock [SCAN-CGI]\n")->blockedPaths), 'one taken back by its ID');
+        same(count(\CjwNetwork\RequestShield\Config::scannerPaths()) - 1, count(rulesFrom("unblock [SCAN-CGI]\n")->blockedPaths), 'one taken back by its ID');
         same('SCAN-BACKUP', \CjwNetwork\RequestShield\Config::setName(\CjwNetwork\RequestShield\Config::scannerPaths()[1]), 'PHP array settings: the ID too');
     },
     'RSF05-01 versions: one per file, named by its namespace; shown by check' => function (): void {
@@ -470,10 +470,10 @@ return [
         $dir = ruleDir(['site.rules' => "ids SITE\nversion 2026-09-29.2\ninclude ext/*.rules\n", 'ext/shop.rules' => "version 1.4.0\nblock /x\n"]);
         try {
             $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
-            same(['SCAN' => '2026.10.1', 'CRAWL' => '2026.10.1', 'ext/shop.rules' => '1.4.0', 'SITE' => '2026-09-29.2'], $s->origins['versions'], 'the built-ins, then in the order read; a file without namespace by its name');
+            same(['SCAN' => '2026.10.2', 'CRAWL' => '2026.10.1', 'ext/shop.rules' => '1.4.0', 'SITE' => '2026-09-29.2'], $s->origins['versions'], 'the built-ins, then in the order read; a file without namespace by its name');
             $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli());
             exec("$bin check " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
-            truthy(strpos(implode("\n", $out), 'rule sets SCAN 2026.10.1, CRAWL 2026.10.1, ext/shop.rules 1.4.0, SITE 2026-09-29.2') !== false, implode("\n", $out));
+            truthy(strpos(implode("\n", $out), 'rule sets SCAN 2026.10.2, CRAWL 2026.10.1, ext/shop.rules 1.4.0, SITE 2026-09-29.2') !== false, implode("\n", $out));
             $html = \CjwNetwork\RequestShield\Waf\RulesPage::render($s, ['store' => new MemoryStore()]);
             truthy(strpos($html, '<code>SITE 2026-09-29.2</code>') !== false, 'on the rules page');
         } finally {
