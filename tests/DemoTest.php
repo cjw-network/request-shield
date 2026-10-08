@@ -292,6 +292,13 @@ function demoGroup(array $g, string $prefix): void
     }
 }
 
+if (!class_exists(\CjwNetwork\RequestShield\Waf\DemoSite::class)) {
+    // The single file without the WAF edition (REQUEST_SHIELD_ENTRY): the demo's pages are that
+    // plugin's -- and this file is read by every test process, so no class may be missing here.
+    return ['RSF05-04 the demo site (the WAF plugin\'s pages)' => static function (): void {
+        skip('the WAF plugin is not loaded (the core single file)');
+    }];
+}
 $demoGroups = \CjwNetwork\RequestShield\Waf\DemoSite::groups(dirname(__DIR__) . '/examples/demo/request-shield.rules');
 
 $forms = function (string $prefix): void {

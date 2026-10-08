@@ -93,6 +93,8 @@ jobs:
       # Against the built file (0031 E.3). Skips are expected: the demos show the
       # source tree's integration, ShippedTest needs the source tree's Shipped.
       - name: Tests (against the single file)
+        # The core: the plugins' tests (RSF06-*, RSF04-03, and those calling needsPlugins())
+        # are skipped here -- the core single file has none; the source-tree legs test them.
         if: matrix.entry == 'single'
         env:
           REQUEST_SHIELD_ENTRY: ${{ github.workspace }}/build/out/request-shield.php

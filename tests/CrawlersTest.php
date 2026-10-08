@@ -162,6 +162,7 @@ return [
         same(Decision::THROTTLE, $shield->settle($shield->decide($r, 1000.0), $r, 1000.0)['decision']->action, 'past the limit: 429, never the check');
     },
     'RSF01-04 the log notes a claimed name; the rules page counts it and lists the crawlers' => function (): void {
+        needsPlugins();         // the shipped plugins' pages (the WAF's, the statistics'): not in the core single file
         $dir = sys_get_temp_dir() . '/rshield-crawl-log-' . getmypid() . '-' . mt_rand();
         mkdir($dir);
         try {

@@ -176,6 +176,7 @@ return [
         truthy($settle('/account', $old) !== Decision::CHALLENGE, 'elsewhere the long pass counts');
     },
     'RSF05-03 the rules page names the mode and the watched rules; trace says what they would do' => function (): void {
+        needsPlugins();         // the shipped plugins' pages (the WAF's, the statistics'): not in the core single file
         $s = modesSettings("[SITE-OLD] monitor block /old/**   # the old API\n[SITE-CO] challenge /checkout max-age 5m\n");
         $html = \CjwNetwork\RequestShield\Waf\RulesPage::render($s, ['check' => ['url' => '/old/x', 'method' => 'GET', 'ip' => '198.51.100.7'], 'store' => new MemoryStore()]);
         truthy(strpos($html, '1 rule is only watched (monitor)') !== false, 'the mode line');

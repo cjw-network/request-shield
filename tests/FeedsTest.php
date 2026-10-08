@@ -275,6 +275,7 @@ return [
         same([null, null], [$t::bounds('10.0.0.0/33'), $t::bounds('nonsense')]);
     },
     'RSF01-03 the live view and the rules page name the list' => function (): void {
+        needsPlugins();         // the shipped plugins' pages (the WAF's, the statistics'): not in the core single file
         $dir = feedsDir();
         try {
             feedFile($dir, 'spamhaus-drop', ['45.10.0.0/16']);

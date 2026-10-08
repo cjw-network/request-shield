@@ -164,6 +164,7 @@ return [
         same(Decision::ALLOW, queryDecide(querySettings("query strict\nset widget-path /rs-check\n"), '/rs-check/widget.js?v=1')[0], 'also with no parameter declared at all');
     },
     'RSF02-05 the rules page, trace and show name the known parameters' => function (): void {
+        needsPlugins();         // the shipped plugins' pages (the WAF's, the statistics'): not in the core single file
         $s = querySettings(QUERY_RULES . "query strict\n");
         $html = RulesPage::render($s);
         truthy(strpos($html, 'Known parameters') !== false, 'a group of its own');

@@ -146,6 +146,9 @@ foreach ($tests as $file => $set) {
             echo "@@START $name\n";                 // for the parent: where a crash happened
         }
         try {
+            if (pluginFeature((string) $name)) {
+                needsPlugins();             // against the core single file: the core only
+            }
             $test();
             $pass++;
         } catch (TestSkipped $e) {

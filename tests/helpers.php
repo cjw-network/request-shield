@@ -121,3 +121,21 @@ function rsWrapper(string $single, string $kind): string
     return $file;
 }
 
+
+/**
+ * A test that needs the shipped plugins (the WAF's pages, the statistics, the API, the cache):
+ * skipped against the core single file (REQUEST_SHIELD_ENTRY), which has none -- the CI tests
+ * the core there; the plugins are tested in the source tree.
+ */
+function needsPlugins(): void
+{
+    if (rsSingle() !== null && !class_exists(\CjwNetwork\RequestShield\Waf\WafExtension::class)) {
+        skip('needs the shipped plugins: the core single file has none (they are tested in the source tree)');
+    }
+}
+
+/** A plugin's feature (RSF06-*: dashboard, statistics, live view, API; RSF04-03: the cache) -- needsPlugins() for a whole test. */
+function pluginFeature(string $name): bool
+{
+    return preg_match('/^RSF(06-\d{2}|04-03)\b/', $name) === 1;
+}

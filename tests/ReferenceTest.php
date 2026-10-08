@@ -26,6 +26,7 @@ function refRun(string $script, string $args = ''): array
 
 return [
     'RSF05-01 the reference: every word and set key of the core and of the shipped extension has its row -- no row for a word that is not there' => function (): void {
+        needsPlugins();         // the shipped plugins' pages (the WAF's, the statistics'): not in the core single file
         $words = [];
         foreach (Reference::RULES as $r) {
             $words = array_merge($words, $r['words']);
@@ -64,6 +65,7 @@ return [
         truthy($code === 0 && is_array($v) && count($v['rules']) === count(Reference::RULES) && ($v['features']['stats-skip'] ?? null) === 'RSF06-03', substr($json, 0, 200));
     },
     'RSF05-04 request-shield examples: the demo groups as Markdown, as a page recorded by test, and what is covered' => function (): void {
+        needsPlugins();         // the shipped plugins' pages (the WAF's, the statistics'): not in the core single file
         $demo = escapeshellarg(dirname(__DIR__) . '/examples/demo/request-shield.rules');
         [$md, $code] = refRun(rsCli(), "examples $demo --markdown --feature=RSF02-03");
         same(0, $code, $md);

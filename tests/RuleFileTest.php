@@ -382,6 +382,7 @@ return [
         same('allow', $a->decide(Request::fromServer(['REQUEST_URI' => '/files/.env', 'REMOTE_ADDR' => '198.51.100.7']), 1000.0)->action);
     },
     'RSF02-03 unblock at: shown in the check, on the page, and warned about without "for"' => function (): void {
+        needsPlugins();         // the shipped plugins' pages (the WAF's, the statistics'): not in the core single file
         $dir = ruleDir(['site.rules' => "unblock at /admin/files/** for 192.0.2.0/24\nunblock [SCAN-BACKUP] at /downloads/**\n"]);
         try {
             $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
@@ -403,6 +404,7 @@ return [
         }
     },
     'RSF05-05 IDs: [SITE-10] before a rule names it everywhere; the comment after it describes it' => function (): void {
+        needsPlugins();         // the shipped plugins' pages (the WAF's, the statistics'): not in the core single file
         $dir = ruleDir(['site.rules' => "ids SITE\n\n[SITE-10] restrict /admin/** to 192.0.2.0/24   # the admin area: office only\n[SITE-ADMIN-FILES] unblock [SCAN-HIDDEN] at /admin/files/** for 192.0.2.0/24\n block /x/**   # no ID: file and line\n[SITE-20] limit requests 5/min\n"]);
         try {
             $s = Settings::load("$dir/site.rules", "$dir/cache");
@@ -464,6 +466,7 @@ return [
         same('SCAN-BACKUP', \CjwNetwork\RequestShield\Config::setName(\CjwNetwork\RequestShield\Config::scannerPaths()[1]), 'PHP array settings: the ID too');
     },
     'RSF05-01 versions: one per file, named by its namespace; shown by check' => function (): void {
+        needsPlugins();         // the shipped plugins' pages (the WAF's, the statistics'): not in the core single file
         $dir = ruleDir(['site.rules' => "ids SITE\nversion 2026-09-29.2\ninclude ext/*.rules\n", 'ext/shop.rules' => "version 1.4.0\nblock /x\n"]);
         try {
             $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
@@ -481,6 +484,7 @@ return [
         rulesFail(['site.rules' => "[X-1] version 1\n"], 'site.rules:1', 'version <version>');
     },
     'RSF05-01 revisions: [ID@n] defines and pins; a changed rule is a warning, and still applies' => function (): void {
+        needsPlugins();         // the shipped plugins' pages (the WAF's, the statistics'): not in the core single file
         same('1', rulesFrom('')->origin('rev', 'SCAN-BACKUP'), 'the built-ins have revisions');
         same([], rulesFrom("unblock [SCAN-BACKUP@1] at /downloads/**\n")->origins['warnings'] ?? [], 'the reviewed revision: no warning');
         same([], rulesFrom("unblock [SCAN-BACKUP] at /downloads/**\n")->origins['warnings'] ?? [], 'no revision named: no warning');

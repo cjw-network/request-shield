@@ -68,6 +68,7 @@ return [
         same(serialize($s), serialize($round));
     },
     'RSF05-02 ext, hooks and routes: the extensions\' slots travel through compile, export and import unchanged (0031 B.1)' => function (): void {
+        needsPlugins();         // the shipped plugins' pages (the WAF's, the statistics'): not in the core single file
         $s = Settings::from(['ext' => ['stats' => ['depth' => 2, 'parts' => ['forms']], 'rs-test' => []],
             'hooks' => ['handler' => ['\\Vendor\\Pkg\\Cache', 'Vendor\\Pkg\\Cache', 'Vendor\\Pkg\\Routes'], 'sink' => []],
             'routes' => ['/rs/own' => ['key' => 'own', 'tab' => ['Own', 'Eigene'], 'role' => 'reader', 'order' => 80]]]);

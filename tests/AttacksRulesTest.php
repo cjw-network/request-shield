@@ -310,6 +310,7 @@ return [
         truthy(strncmp(attacksDecide($s, '/', ['HTTP_USER_AGENT' => 'nuclei']), 'allow', 5) === 0, 'the rest of the list is gone with the rule');
     },
     'RSF02-06 attacks: trace, the rules page, check and show see them' => function (): void {
+        needsPlugins();         // the shipped plugins' pages (the WAF's, the statistics'): not in the core single file
         $s = attacksRules();
         $find = static function (array $steps, string $check): array {
             foreach ($steps as $st) {
