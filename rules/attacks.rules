@@ -30,9 +30,9 @@ version 2026.10.2
 
 # --- cross-site scripting ----------------------------------------------------
 [ATK-XSS-TAG@1]     block query <\s*(script|iframe|object|embed|applet|base|meta)\b                            # cross-site scripting: <script>, <iframe> in the address
-[ATK-XSS-EVENT@2]   block query <(?:[^>=]|=(?!\s*[\x22\x27])|=\s*\x22[^\x22]*\x22|=\s*\x27[^\x27]*\x27)*\bon(error|load|mouseover|focus|blur|click|toggle|begin|animationstart|pointerenter)\s*=   # cross-site scripting: an event handler in a tag, <img onerror=...> -- also after a quoted value holding ">" (title=">")
+[ATK-XSS-EVENT@2]   block query <[^>]*\bon(error|load|mouseover|focus|blur|click|toggle|begin|animationstart|pointerenter)\s*=|<[^<>\x22\x27]*(?:(?:\x22[^\x22<]*\x22|\x27[^\x27<]*\x27)[^<>\x22\x27]*)*\bon(error|load|mouseover|focus|blur|click|toggle|begin|animationstart|pointerenter)\s*=   # cross-site scripting: an event handler in a tag, <img onerror=...> -- also after a quoted value holding ">" (title=">")
 [ATK-XSS-URL@1]     block query (^|[=&])\s*(javascript|vbscript|livescript)\s*:|(^|[=&])\s*data\s*:\s*text/html      # cross-site scripting: a parameter that is a javascript: address
-[ATK-XSS-ATTR@1]    block query <[a-z](?:[^>=]|=(?!\s*[\x22\x27])|=\s*\x22[^\x22]*\x22|=\s*\x27[^\x27]*\x27)*\b(formaction|xlink:href)\s*=   # cross-site scripting through attributes without on…: <button formaction=…> (sends the form elsewhere), <a xlink:href=…> in SVG
+[ATK-XSS-ATTR@1]    block query <[a-z][^>]*\b(formaction|xlink:href)\s*=|<[a-z][^<>\x22\x27]*(?:(?:\x22[^\x22<]*\x22|\x27[^\x27<]*\x27)[^<>\x22\x27]*)*\b(formaction|xlink:href)\s*=   # cross-site scripting through attributes without on…: <button formaction=…> (sends the form elsewhere), <a xlink:href=…> in SVG
 
 # --- code and shell injection -------------------------------------------------
 [ATK-PHP@1]         block query <\?(php|=)|\b(base64_decode|gzinflate|str_rot13|shell_exec|passthru|proc_open|popen|pcntl_exec)\s*\(|\b(eval|assert)\s*\(\s*(\$|base64|gz|str_|\$_)     # PHP code in the address: <?php, eval(base64_decode(...))

