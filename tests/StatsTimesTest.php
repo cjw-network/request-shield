@@ -79,6 +79,10 @@ return [
         same(['miss', null], StatsPlugin::cacheKind(200, [$html, 'X-RS-Cache: miss']), 'asked the site: the answer may be kept');
         same(['nostore', 'cookie'], StatsPlugin::cacheKind(200, [$html, 'X-RS-Cache: miss', 'Set-Cookie: session=1']), 'a cookie: not kept');
         same(['nostore', 'private'], StatsPlugin::cacheKind(200, [$html, 'X-RS-Cache: miss', 'Cache-Control: private, max-age=60']), 'private');
+        same(['miss', null], StatsPlugin::cacheKind(200, [$html, 'X-RS-Cache: miss; role', 'Cache-Control: private, no-cache']), 'a role\'s page: its private, no-cache is the cache\'s own (G.4)');
+        same(['nostore', 'cookie'], StatsPlugin::cacheKind(200, [$html, 'X-RS-Cache: miss; role', 'Cache-Control: private, no-cache', 'Set-Cookie: s=1']), 'a role\'s page that sets a cookie: not kept');
+        same(['nostore', 'vary'], StatsPlugin::cacheKind(200, [$html, 'X-RS-Cache: miss', 'Vary: Accept-Language']), 'Vary on the language: not one page');
+        same(['miss', null], StatsPlugin::cacheKind(200, [$html, 'X-RS-Cache: miss', 'Vary: X-User-Hash']), 'Vary on the role\'s hash: the shield\'s to follow');
         same(['nostore', 'status'], StatsPlugin::cacheKind(404, [$html, 'X-RS-Cache: miss']), 'a page not found');
         same(['nostore', 'vary'], StatsPlugin::cacheKind(200, [$html, 'X-RS-Cache: miss', 'Vary: Accept-Language']), 'varies by language');
         same(['past', null], StatsPlugin::cacheKind(200, [$html]), 'no cache asked');

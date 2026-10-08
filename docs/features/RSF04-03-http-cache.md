@@ -120,6 +120,8 @@ role, editors get the editors' page from the cache, members the members'
   `Vary` is kept as before; a request that sends `X-User-Hash` or
   `X-User-Context-Hash` itself is never answered from the cache nor kept
   (an application that believes the header would make a role's page).
+  On a miss it carries `X-RS-Cache: miss; role`: the statistics then know
+  that `private` is the cache's own, not the site's.
 - **Which cookies:** `http-cache-session-cookie` names the session cookies
   (`wordpress_logged_in_* eZSESSID* PHPSESSID`). A request with any other
   cookie besides those and the harmless ones (a cart) is the visitor's own,
