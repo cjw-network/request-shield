@@ -1088,11 +1088,19 @@ final class Cli
         }
         // store-dir and lists-dir with their folders (bans and caches lie one or two levels down), at
         // most 20,000 entries; the counters (*.c: newlines, their size counts) and empty files hold nothing.
-        $paths = array_values(array_unique(array_filter([$s->storeDir, $s->listsDir], 'is_string')));
+        // A root may be a link (store-dir on /var/lib); a link inside is not followed; lists-dir inside
+        // store-dir is looked at once.
+        $roots = [$s->storeDir];
+        $lists = $s->listsDir !== null ? (string) realpath($s->listsDir) : '';
+        $store = (string) realpath($s->storeDir);
+        if ($lists !== '' && ($store === '' || strpos($lists . '/', rtrim($store, '/') . '/') !== 0)) {
+            $roots[] = $s->listsDir;
+        }
+        $paths = $roots;
         for ($i = 0; $i < count($paths) && count($paths) < 20000; $i++) {
-            if (is_dir($paths[$i]) && !is_link($paths[$i])) {
+            if (is_dir($paths[$i]) && ($i < count($roots) || !is_link($paths[$i]))) {
                 foreach (@scandir($paths[$i]) ?: [] as $name) {
-                    if ($name !== '.' && $name !== '..') {
+                    if ($name !== '.' && $name !== '..' && count($paths) < 20000) {
                         $paths[] = $paths[$i] . '/' . $name;
                     }
                 }

@@ -124,13 +124,10 @@ final class Log
         if ($size !== false && $size > $maxSize) {
             @rename($file, $file . '.1');
         }
-        if ($size === false || $size > $maxSize) {
-            // A new file (or one just moved away): made in file-mode before the line is in it.
-            Files::append($file, $line);
-            return;
-        }
-        // O_APPEND: lines from parallel requests do not overwrite each other.
-        @file_put_contents($file, $line, FILE_APPEND);
+        // O_APPEND: lines from parallel requests do not overwrite each other. Always through Files:
+        // the file may be moved away (a parallel rotation, logrotate) after the size was read --
+        // made anew, then in file-mode.
+        Files::append($file, $line);
     }
 
     /** 198.51.100.7 -> 198.51.100.0/24, 2001:db8:1:2::5 -> 2001:db8:1::/48 */

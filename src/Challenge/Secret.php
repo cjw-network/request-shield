@@ -31,16 +31,21 @@ final class Secret
         \CjwNetwork\RequestShield\Files::dir($dir);
         $secret = bin2hex(random_bytes(32));
         $tmp = $file . '.' . bin2hex(random_bytes(4));
-        if (@file_put_contents($tmp, $secret) !== false) {
-            @chmod($tmp, 0600);
-            // Two first requests at once: the second rename wins, and both
-            // processes read the same file on their next request.
-            @rename($tmp, $file);
-            $kept = @file_get_contents($file);
-            if (is_string($kept) && strlen($kept) >= 64) {
-                return $kept;
-            }
+        // Made empty, 0600, then the key: store-dir may be a group's (dir-mode), the key never is.
+        $h = @fopen($tmp, 'xb');
+        if ($h === false) {
+            return $secret;
         }
-        return $secret;
+        @chmod($tmp, 0600);
+        $written = @fwrite($h, $secret) === strlen($secret);
+        fclose($h);
+        // Two first requests at once: the second rename wins, and both
+        // processes read the same file on their next request.
+        if (!$written || !@rename($tmp, $file)) {
+            @unlink($tmp);
+            return $secret;
+        }
+        $kept = @file_get_contents($file);
+        return is_string($kept) && strlen($kept) >= 64 ? $kept : $secret;
     }
 }

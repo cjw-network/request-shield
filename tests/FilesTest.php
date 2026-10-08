@@ -88,10 +88,14 @@ return [
                 truthy(Files::write("$dir/a/w.json", '{}'), 'written');
                 same('0640', modeOf("$dir/a/w.json"));
                 truthy(Files::append("$dir/a/log", "1\n") && Files::append("$dir/a/log", "2\n"), 'appended');
+                same(0077, umask(), 'the umask as it was after appending');
                 same(['0640', "1\n2\n"], [modeOf("$dir/a/log"), file_get_contents("$dir/a/log")]);
                 same([], glob("$dir/a/w.json.*") ?: [], 'no temporary file left');
             });
             withUmask(0, static function () use ($dir): void {
+                Files::modes(0640, 02770);
+                \CjwNetwork\RequestShield\Challenge\Secret::resolve(null, "$dir/keyed");
+                same(['02770', '0600'], [modeOf("$dir/keyed"), modeOf("$dir/keyed/secret")], 'store-dir made for the secret in dir-mode; the secret 0600 whatever is set');
                 Files::modes(0600, 0700);
                 Files::dir("$dir/open/x");
                 Files::append("$dir/open/x/log", "1\n");
@@ -191,6 +195,9 @@ return [
             $w = $warn(Settings::from(['storeDir' => "$dir/store", 'log' => ['file' => "$dir/shield.log"]]));
             truthy(strpos($w, "$dir/store/learned.jsonl (0644)") !== false && strpos($w, "$dir/store/ab/f00.m (0644)") !== false && strpos($w, "$dir/shield.log (0604)") !== false
                 && strpos($w, 'chmod o-rwx') !== false && strpos($w, '.c (') === false, $w);
+            symlink("$dir/store", "$dir/linked");
+            $w = $warn(Settings::from(['storeDir' => "$dir/linked", 'listsDir' => "$dir/linked/ab"]));
+            truthy(strpos($w, "$dir/linked/ab/f00.m (0644)") !== false && substr_count($w, 'f00.m') === 1, "store-dir a link (/var/lib/...): looked into; lists-dir inside it once: $w");
             $w = $warn(Settings::from(['storeDir' => "$dir/store", 'fileMode' => 0644, 'log' => ['file' => "$dir/shield.log"]]));
             truthy(strpos($w, 'everyone on this machine may read what') !== false && strpos($w, 'made before') === false, "set so on purpose: no second warning about the files: $w");
         } finally {

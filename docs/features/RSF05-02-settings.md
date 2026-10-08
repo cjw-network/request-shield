@@ -112,16 +112,16 @@ set dir-mode 02770     # the group writes too; setgid: new files keep the folder
   to another user. Run the command as that user (`sudo -u www-data
   request-shield deny …`), or share a group: `set file-mode 0640`,
   `set dir-mode 02750`.
-- **Not set by these:** the secret is always `0600` (in store-dir, which
-  gets dir-mode), the compiled settings `0600` in a `0700` folder -- they
+- **Not set by these:** the secret is always `0600`, from its first byte (in
+  store-dir, which gets dir-mode), the compiled settings `0600` in a `0700` folder -- they
   hold the key. The counters in store-dir hold only newlines (their size
   counts) and keep the umask's mode, in folders of dir-mode: a `chmod()` for
   each would cost on the passing path. `check` passes them over.
 
-Cost on the passing path: none for the log (it knows its size). The
-statistics without APCu set the umask around their line: two `umask()`
-calls, about 0.6 µs a request on the test machine (the append itself 11
-µs). Nothing without statistics or with APCu.
+Cost: a line in the log and, without APCu, the statistics' line set the
+umask around their write -- two `umask()` calls, about 0.6 µs on the test
+machine (the append itself 11 µs). A passing request that is not logged
+and not counted in files pays nothing.
 
 ## Limits
 

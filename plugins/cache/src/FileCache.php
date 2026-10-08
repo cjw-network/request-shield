@@ -62,10 +62,6 @@ final class FileCache
             $this->sweep(sprintf('%02x', mt_rand(0, 255)), $now);
         }
         $file = $this->path($key);
-        $dir = dirname($file);
-        if (!\CjwNetwork\RequestShield\Files::dir($dir)) {
-            return false;
-        }
         $meta = json_encode(['key' => $key, 'path' => $path, 'status' => $status, 'headers' => $headers, 'stored' => (int) $now, 'expires' => (int) $now + $ttl], JSON_UNESCAPED_SLASHES);
         if ($meta === false) {
             return false;           // a header that is no UTF-8: not kept, rather than a file that never reads

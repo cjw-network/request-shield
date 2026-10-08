@@ -93,8 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   may read, files in store-dir, lists-dir and the log everyone may read
   already (bans a folder down too), and a store-dir owned by another user
   than the command's (what `deny` writes there in 0600 the web server's PHP
-  could not read). Cost on the passing path: none, except the statistics
-  without APCu: two `umask()` calls around their line, about 0.6 µs.
+  could not read). Cost: two `umask()` calls around a log line and, without
+  APCu, a statistics line -- about 0.6 µs; nothing else on the passing path.
   Settings `FORMAT` 58.
   ([settings](docs/features/RSF05-02-settings.md#file-and-folder-modes))
 

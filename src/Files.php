@@ -138,13 +138,14 @@ final class Files
     {
         if (!(self::$threads ?? ZEND_THREAD_SAFE)) {
             $umask = umask(0777 & ~self::$fileMode);
-            $ok = @file_put_contents($file, $data, FILE_APPEND | ($lock ? LOCK_EX : 0));
-            if ($ok === false && !is_dir(dirname($file))) {
+            try {
+                $ok = @file_put_contents($file, $data, FILE_APPEND | ($lock ? LOCK_EX : 0));
+            } finally {
                 umask($umask);
-                $ok = self::dir(dirname($file)) ? self::append($file, $data, $lock) : false;
-                return $ok !== false;
             }
-            umask($umask);
+            if ($ok === false && !is_dir(dirname($file)) && self::dir(dirname($file))) {
+                return self::append($file, $data, $lock);
+            }
             return $ok !== false;
         }
         $h = @fopen($file, 'ab');
