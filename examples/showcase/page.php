@@ -106,7 +106,8 @@ $client = [
       <div class="col-lg-6">
         <p class="eyebrow"><?= $e($t['heroEyebrow']) ?></p>
         <h1 class="display-3 fw-bold"><?= $t['heroTitle'] ?></h1>
-        <p class="lead my-4"><?= $e($t['heroLead']) ?></p>
+        <p class="lead mt-4 mb-2"><?= $e($t['heroLead']) ?></p>
+        <p class="hero-exp mb-4"><i class="bi bi-boxes"></i> <?= $e($t['heroExp'][0]) ?> <a href="#exponential"><?= $e($t['heroExp'][1]) ?> <i class="bi bi-arrow-down-short"></i></a></p>
         <div class="d-flex flex-wrap gap-3">
           <a class="btn btn-accent btn-lg" href="#try"><i class="bi bi-play-fill"></i> <?= $e($t['heroTry']) ?></a>
           <a class="btn btn-soft btn-lg" href="#rules"><?= $e($t['heroRules']) ?></a>

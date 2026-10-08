@@ -275,3 +275,7 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .comp-list li::before { position: absolute; left: 0; top: 0; font-family: bootstrap-icons; }
 .comp-yes li::before { content: "\F26A"; color: #047857; }
 .comp-diff li::before { content: "\F430"; color: #b45309; }
+
+/* The hero's line on Exponential */
+.hero-exp { font-weight: 600; color: #065f46; }
+.hero-exp a { color: #047857; font-weight: 700; white-space: nowrap; }

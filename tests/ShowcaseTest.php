@@ -177,6 +177,8 @@ return [
             same(200, $st, 'the front page');
             truthy(strpos($page, 'Bots raus.') !== false && strpos($page, 'showcase.rules') !== false, 'in German, with the rules');
             truthy(strpos($get('GET', '/?lang=en')[2], 'Bots out.') !== false, 'in English');
+            $hero = (string) strstr((string) strstr($page, '<header id="top"'), '</header>', true);
+            truthy(strpos($hero, 'Exponential') !== false && strpos($hero, 'href="#exponential"') !== false, 'the hero names Exponential and leads to its example');
             $texts = require dirname(__DIR__) . '/examples/showcase/texts.php';
             $shape = static function (array $a) use (&$shape): array {
                 return array_map(static fn ($v) => is_array($v) ? $shape($v) : (is_string($v) && $v !== '' ? 's' : 'EMPTY'), $a);
