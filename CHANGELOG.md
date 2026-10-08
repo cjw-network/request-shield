@@ -61,6 +61,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **Proposal 0046 response times in the statistics** (draft): with a new
+  part `times`, the end of a request the statistics already hear gives how
+  long the site took -- per hour p50/p95 by kind of visitor next to the
+  requests (load), the slowest pages, the last minutes in the live view, an
+  optional slow log without addresses; off by default, about 1 µs with APCu.
 - **The showcase's live log names who is banned right now**: from the
   store (as the dashboard), with the masked address, the seconds left, the
   rule and the visitor's kind guessed from the User-Agent (browser, crawler,
