@@ -205,7 +205,12 @@ final class Request
         } elseif (strncmp($target, 'header:', 7) === 0) {
             $v = self::normal((string) $this->header(substr($target, 7)));
         } elseif ($target === 'headers') {
-            $v = self::normal($this->rawHeaders());
+            // A comment opened in one header must not swallow the next: where one could be
+            // there (a "/*", or a "%2f"/"%25" decoding could turn into one), each value on its
+            // own. Else all at once -- the same: "\x1e" is no white space, a %-escape cannot span it.
+            $raw = $this->rawHeaders();
+            $v = strpos($raw, '/*') === false && strpos($raw, '%2f') === false && strpos($raw, '%2F') === false && strpos($raw, '%25') === false ? self::normal($raw)
+                : implode("\x1e", array_map([self::class, 'normal'], $this->headerValues));
         } else {
             $v = self::normal($this->path) . ' ' . $this->content('query') . ' ' . $this->content('headers');
         }
@@ -247,25 +252,30 @@ final class Request
     }
 
     /**
-     * Every header's value but the cookies', as sent, joined by a record
-     * separator ("\x1e": no white space, so normalising keeps it and a
-     * pattern can tell where a value starts -- ATK-SHELLSHOCK) -- once per
-     * request: the attack rules' "headers" and "anywhere" both look at it,
-     * and $_SERVER holds some forty entries under PHP-FPM.
+     * Every header's value but the cookies' -- and the Content-Type, which PHP
+     * keeps as CONTENT_TYPE (a CGI script's bash gets it too) -- as sent,
+     * joined by a record separator ("\x1e": no white space, so normalising
+     * keeps it and a pattern can tell where a value starts -- ATK-SHELLSHOCK)
+     * -- once per request: the attack rules' "headers" and "anywhere" both
+     * look at it, and $_SERVER holds some forty entries under PHP-FPM.
      */
     private function rawHeaders(): string
     {
         if ($this->rawHeaders === null) {
             $all = [];
             foreach ($this->server as $name => $value) {
-                if (is_string($value) && strncmp($name, 'HTTP_', 5) === 0 && $name !== 'HTTP_COOKIE') {
+                if (is_string($value) && (strncmp($name, 'HTTP_', 5) === 0 ? $name !== 'HTTP_COOKIE' : $name === 'CONTENT_TYPE')) {
                     $all[] = $value;
                 }
             }
+            $this->headerValues = $all;
             $this->rawHeaders = implode("\x1e", $all);
         }
         return $this->rawHeaders;
     }
+
+    /** @var list<string> the values rawHeaders() joins */
+    private array $headerValues = [];
 
     private ?string $rawHeaders = null;
 

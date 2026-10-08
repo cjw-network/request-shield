@@ -120,14 +120,16 @@ the patterns are always regular expressions and case does not matter:
 ```text
 block query \bunion\s+select\b          # the query string
 block header User-Agent \b(sqlmap|nikto)\b   # one header
-block headers \$\{jndi:                 # every header (not Cookie: name it)
+block headers \$\{jndi:                 # every header and the Content-Type (not Cookie: name it)
 block anywhere \$\{env:                 # path, query and every header
 ```
 
 Matched after the value is normalised — decoded twice, lower case, SQL
 comments and runs of white space as one space (the body of MySQL's versioned
 `/*!50000UNION*/` stays: MySQL runs it) — so `%2527`, `UnIoN/**/SeLeCt` or
-`/*!50000UNION*/SELECT` do not get past; the answer is 403 and the log and trace name the rule. Form
+`/*!50000UNION*/SELECT` do not get past. `headers` normalises each value on
+its own and joins them with `\x1e` (no white space: `^` and `\x1e` mark where
+a value starts, `\s` does not reach into the next one); the answer is 403 and the log and trace name the rule. Form
 contents (POST bodies) are not looked at. `unblock`, `unblock at` and `replace`
 work for these rules exactly as for path blocks; `rules/attacks.rules`
 (`include @attacks`) is a reviewed set, after the OWASP Core Rule Set's first

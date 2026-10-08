@@ -45,7 +45,7 @@ include @attacks                                   # the shipped set
 
 block query \bunion\s+select\b                     # a pattern of your own: the query string
 block header User-Agent \b(sqlmap|nikto)\b         # one header
-block headers \$\{jndi:                            # every header (not Cookie: name it)
+block headers \$\{jndi:                            # every header and the Content-Type (not Cookie: name it)
 block anywhere \$\{env:                            # path, query and every header
 
 unblock [ATK-XSS-URL@1]                            # one shipped rule taken back
@@ -75,7 +75,7 @@ The shipped rules:
 | `ATK-XSS-URL` | cross-site scripting: a parameter that is a javascript: address |
 | `ATK-PHP` | PHP code in the address: &lt;?php, eval(base64_decode(...)) |
 | `ATK-SHELL` | shell commands in the address: ; cat /etc/passwd, \| wget http://…, $(id) |
-| `ATK-SHELLSHOCK` | Shellshock (CVE-2014-6271 and the ones after it): a header whose value starts with `() {` -- what a CGI script's bash runs (`User-Agent: () { :; }; /bin/bash -c id`); `() {` inside a value passes (a search for `function () { return x };`), cookies are not looked at. The `headers` target joins the values with a separator that is no white space (`\x1e`), so a pattern can tell where a value starts |
+| `ATK-SHELLSHOCK` | Shellshock (CVE-2014-6271 and the ones after it): a header whose value starts with `() {` (also written `(){`) -- what a CGI script's bash runs (`User-Agent: () { :; }; /bin/bash -c id`), the Content-Type too; `() {` inside a value passes (a search for `function () { return x };`), cookies are not looked at |
 | `ATK-LFI` | reading the server's files: ../../, /etc/passwd |
 | `ATK-WRAPPER` | PHP stream wrappers in the address: php://filter, phar://, data:// |
 | `ATK-PHP-OBJ` | a serialised PHP object in the query: O:8:"stdClass":0:{}, also O:+8:… and C:… (the way into unserialize() gadget chains) -- a serialised array passes |

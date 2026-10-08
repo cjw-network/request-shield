@@ -172,6 +172,8 @@ return [
             ['/', ['HTTP_USER_AGENT' => '() { _; } >_[$($())] { id; }'], 'ATK-SHELLSHOCK'],              // CVE-2014-6278
             ['/', ['HTTP_USER_AGENT' => '() { (a)=>\\'], 'ATK-SHELLSHOCK'],                              // CVE-2014-7169: no closing brace, no command
             ['/', ['HTTP_ACCEPT' => 'text/html', 'HTTP_X_API_VERSION' => '() { :; }'], 'ATK-SHELLSHOCK'],   // a later header's value
+            ['/', ['CONTENT_TYPE' => '() { :; }; /bin/id'], 'ATK-SHELLSHOCK'],                          // Content-Type: PHP keeps it without HTTP_
+            ['/', ['HTTP_X_A' => 'x/*', 'HTTP_X_B' => '() { :; }; id', 'HTTP_X_C' => '*/'], 'ATK-SHELLSHOCK'],   // a comment cannot reach across headers
             ['/', ['HTTP_REFERER' => '%28%29%20%7B%20%3A%3B%20%7D%3B%20id'], 'ATK-SHELLSHOCK'],   // percent-encoded: decoded as everywhere
         ];
         foreach ($cases as [$uri, $server, $id]) {
