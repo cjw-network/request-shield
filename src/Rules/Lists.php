@@ -334,13 +334,7 @@ final class Lists
         if (!\CjwNetwork\RequestShield\Files::dir($dir)) {
             throw new \RuntimeException("cannot create $dir");
         }
-        $tmp = $file . '.' . bin2hex(random_bytes(4));
-        if (@file_put_contents($tmp, $lines === [] ? '' : implode("\n", $lines) . "\n") === false) {
-            throw new \RuntimeException("cannot write $file");
-        }
-        \CjwNetwork\RequestShield\Files::own($tmp);
-        if (!@rename($tmp, $file)) {
-            @unlink($tmp);
+        if (!\CjwNetwork\RequestShield\Files::write($file, $lines === [] ? '' : implode("\n", $lines) . "\n")) {
             throw new \RuntimeException("cannot write $file");
         }
     }

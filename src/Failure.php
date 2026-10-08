@@ -46,8 +46,7 @@ final class Failure
                 if ($last !== false && $now - $last < 60) {
                     return;
                 }
-                Files::dir($dir);
-                @touch($marker);
+                Files::write($marker, '');
             }
         }
         error_log('request-shield: ' . $message);

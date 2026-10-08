@@ -339,9 +339,7 @@ final class Feeds
 
     private static function write(string $file, string $text): void
     {
-        $tmp = $file . '.' . bin2hex(random_bytes(4));
-        if (@file_put_contents($tmp, $text) === false || !\CjwNetwork\RequestShield\Files::own($tmp) || !@rename($tmp, $file)) {
-            @unlink($tmp);
+        if (!\CjwNetwork\RequestShield\Files::write($file, $text)) {
             throw new \RuntimeException("cannot write $file");
         }
     }

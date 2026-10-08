@@ -144,9 +144,7 @@ final class CrawlerLists
                 continue;
             }
             $out = ['source' => $source, 'creationTime' => $new['created'], 'fetched' => gmdate('Y-m-d'), 'prefixes' => $new['prefixes']];
-            $tmp = $file . '.' . bin2hex(random_bytes(4));
-            if (@file_put_contents($tmp, json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n") === false || !\CjwNetwork\RequestShield\Files::own($tmp) || !@rename($tmp, $file)) {
-                @unlink($tmp);
+            if (!\CjwNetwork\RequestShield\Files::write($file, json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n")) {
                 $report[$name] = "failed: cannot write $file";
                 continue;
             }

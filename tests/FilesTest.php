@@ -100,9 +100,35 @@ return [
                 chmod("$dir/open/x/log", 0644);
                 Files::append("$dir/open/x/log", "2\n");
                 same('0644', modeOf("$dir/open/x/log"), 'a file that is there keeps its mode');
+                unlink("$dir/open/x/log");
+                truthy(Files::append("$dir/open/x/log", "3\n"), 'the file removed: made anew');
+                same(["3\n", '0600'], [file_get_contents("$dir/open/x/log"), modeOf("$dir/open/x/log")]);
                 exec('rm -rf ' . escapeshellarg("$dir/open"));
-                truthy(Files::append("$dir/open/x/log", "3\n"), 'its folder removed while the process knew the file: made anew');
-                same(["3\n", '0600', '0700'], [file_get_contents("$dir/open/x/log"), modeOf("$dir/open/x/log"), modeOf("$dir/open/x")]);
+                truthy(Files::append("$dir/open/x/log", "4\n"), 'its folder removed: made anew');
+                same(["4\n", '0600', '0700'], [file_get_contents("$dir/open/x/log"), modeOf("$dir/open/x/log"), modeOf("$dir/open/x")]);
+                touch("$dir/open/x/empty");
+                Files::append("$dir/open/x/empty", "5\n");
+                same('0666', modeOf("$dir/open/x/empty"), 'a file that is there keeps its mode, also an empty one');
+                $threads = new ReflectionProperty(Files::class, 'threads');
+                $threads->setAccessible(true);                            // PHP 8.0
+                $threads->setValue(null, true);
+                try {
+                    Files::append("$dir/open/x/zts", "6\n");
+                    touch("$dir/open/x/empty2");
+                    Files::append("$dir/open/x/empty2", "7\n");
+                    same(['0600', "6\n", '0600', "7\n"], [modeOf("$dir/open/x/zts"), file_get_contents("$dir/open/x/zts"), modeOf("$dir/open/x/empty2"), file_get_contents("$dir/open/x/empty2")],
+                        'with threads (no umask): made, then file-mode while still empty (made by a parallel request too), then the line');
+                    exec('rm -rf ' . escapeshellarg("$dir/open/y"));
+                    truthy(Files::append("$dir/open/y/z", "8\n") && modeOf("$dir/open/y/z") === '0600', 'with threads: the folder made');
+                } finally {
+                    $threads->setValue(null, null);
+                }
+                file_put_contents("$dir/open/x/nginx.conf", 'old');
+                chmod("$dir/open/x/nginx.conf", 0644);
+                truthy(Files::write("$dir/open/x/nginx.conf", 'new', '', true), 'written');
+                same(['0644', 'new'], [modeOf("$dir/open/x/nginx.conf"), file_get_contents("$dir/open/x/nginx.conf")], 'keep: a file named by the user keeps its mode');
+                Files::write("$dir/open/x/nginx.conf", 'newer');
+                same('0600', modeOf("$dir/open/x/nginx.conf"), 'written whole otherwise: a new file, file-mode');
             });
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
@@ -115,6 +141,12 @@ return [
                 $s = Settings::from(['storeDir' => "$dir/store", 'fileMode' => 0640, 'dirMode' => 0750, 'log' => ['file' => "$dir/logs/shield.log"]]);
                 Log::write($s, Request::fromServer(['REQUEST_URI' => '/x', 'REMOTE_ADDR' => '198.51.100.7']), Decision::reject(404, 'x'), null);
                 same(['0750', '0640'], [modeOf("$dir/logs"), modeOf("$dir/logs/shield.log")], 'the log and its folder');
+                chmod("$dir/logs/shield.log", 0600);
+                Log::append("$dir/logs/shield.log", "y\n", 1);
+                same(['0640', "y\n", '0600'], [modeOf("$dir/logs/shield.log"), file_get_contents("$dir/logs/shield.log"), modeOf("$dir/logs/shield.log.1")], 'rotated: the new file in file-mode, the old one keeps its mode');
+                $mon = Settings::from(['mode' => 'monitor', 'fileMode' => 0660, 'dirMode' => 02770, 'monitorRules' => ['storeDir' => "$dir/store"]]);
+                same([0660, 02770, 0660], [$mon->fileMode, $mon->dirMode, Files::fileMode()], 'a whole site in monitor mode keeps the modes');
+                Files::modes($s->fileMode, $s->dirMode);
                 (new FileStore("$dir/store"))->mark('ban:198.51.100.7', time() + 60, (float) time());
                 $marks = array_values(array_filter(explode("\n", (string) shell_exec('find ' . escapeshellarg("$dir/store") . ' -type f'))));
                 truthy($marks !== [], 'a mark');
@@ -128,6 +160,9 @@ return [
             exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' deny ' . escapeshellarg("$dir/site.rules") . ' 203.0.113.7 --for=1d 2>&1', $out, $code);
             same(0, $code, implode("\n", $out));
             same(['02770', '0660'], [modeOf("$dir/cli/lists"), modeOf("$dir/cli/lists/deny.rules")], 'the command line takes the rule words');
+            file_put_contents("$dir/site.rules", "site www.example.org {\n  set dir-mode 0750\n}\n");
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' check ' . escapeshellarg("$dir/site.rules") . ' 2>&1', $out2, $code);
+            truthy($code !== 0 && strpos(implode("\n", $out2), 'site.rules:2: set dir-mode is about the server') !== false, 'one folder for all sites: above the site blocks ' . implode("\n", $out2));
         } finally {
             Files::modes(0600, 0700);
             exec('rm -rf ' . escapeshellarg($dir));
@@ -137,18 +172,25 @@ return [
         $dir = filesDir();
         try {
             mkdir("$dir/store", 0700);
-            file_put_contents("$dir/store/learned.jsonl", '');
+            file_put_contents("$dir/store/learned.jsonl", "{}\n");
             chmod("$dir/store/learned.jsonl", 0600);
+            mkdir("$dir/store/ab", 0700);
+            file_put_contents("$dir/store/ab/60-1-abc.c", "\n\n");
+            chmod("$dir/store/ab/60-1-abc.c", 0644);                    // a counter: its size counts, nothing in it
             $m = new ReflectionMethod(Cli::class, 'modeWarnings');
             $m->setAccessible(true);                                  // PHP 8.0
             $warn = static fn (Settings $s): string => implode("\n", $m->invoke(null, $s));
-            same('', $warn(Settings::from(['storeDir' => "$dir/store"])), 'nothing to say');
+            same('', $warn(Settings::from(['storeDir' => "$dir/store"])), 'nothing to say (a counter everyone may read holds nothing)');
+            same('', $warn(Settings::from(['storeDir' => "$dir/store", 'dirMode' => 0711])), 'x alone for others lists nothing');
             truthy(strpos($warn(Settings::from(['storeDir' => "$dir/store", 'fileMode' => 0644])), 'file-mode 0644 / dir-mode 0700: everyone on this machine may read') === 0, 'a mode for everyone');
             chmod("$dir/store/learned.jsonl", 0644);
-            file_put_contents("$dir/shield.log", '');
+            file_put_contents("$dir/shield.log", "line\n");
             chmod("$dir/shield.log", 0604);
+            file_put_contents("$dir/store/ab/f00.m", "1\nban:198.51.100.7");
+            chmod("$dir/store/ab/f00.m", 0644);                         // a ban kept by an older version, a folder down
             $w = $warn(Settings::from(['storeDir' => "$dir/store", 'log' => ['file' => "$dir/shield.log"]]));
-            truthy(strpos($w, "$dir/store/learned.jsonl (0644)") !== false && strpos($w, "$dir/shield.log (0604)") !== false && strpos($w, 'chmod o-rwx') !== false, $w);
+            truthy(strpos($w, "$dir/store/learned.jsonl (0644)") !== false && strpos($w, "$dir/store/ab/f00.m (0644)") !== false && strpos($w, "$dir/shield.log (0604)") !== false
+                && strpos($w, 'chmod o-rwx') !== false && strpos($w, '.c (') === false, $w);
             $w = $warn(Settings::from(['storeDir' => "$dir/store", 'fileMode' => 0644, 'log' => ['file' => "$dir/shield.log"]]));
             truthy(strpos($w, 'everyone on this machine may read what') !== false && strpos($w, 'made before') === false, "set so on purpose: no second warning about the files: $w");
         } finally {

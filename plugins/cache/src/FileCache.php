@@ -70,16 +70,7 @@ final class FileCache
         if ($meta === false) {
             return false;           // a header that is no UTF-8: not kept, rather than a file that never reads
         }
-        $tmp = $file . '.' . bin2hex(random_bytes(4)) . '.tmp';
-        if (@file_put_contents($tmp, $meta . "\n" . $body) === false) {
-            return false;
-        }
-        \CjwNetwork\RequestShield\Files::own($tmp);
-        if (!@rename($tmp, $file)) {
-            @unlink($tmp);
-            return false;
-        }
-        return true;
+        return \CjwNetwork\RequestShield\Files::write($file, $meta . "\n" . $body, '.tmp');
     }
 
     /**

@@ -27,9 +27,8 @@ final class Secret
         if (is_string($secret) && strlen($secret) >= 64) {
             return $secret;
         }
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0700, true);
-        }
+        // store-dir in dir-mode (it holds more than the secret); the secret itself is 0600 whatever is set.
+        \CjwNetwork\RequestShield\Files::dir($dir);
         $secret = bin2hex(random_bytes(32));
         $tmp = $file . '.' . bin2hex(random_bytes(4));
         if (@file_put_contents($tmp, $secret) !== false) {

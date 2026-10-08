@@ -85,30 +85,43 @@ set dir-mode 02770     # the group writes too; setgid: new files keep the folder
 
 - **Exactly what is set:** a new folder (each missing parent too) and a new
   file get their mode with `chmod()` right after they are made -- the umask
-  takes nothing away (`02770` keeps its setgid bit) and adds nothing. A file
-  is never readable with another mode, not even for a moment: a file written
-  whole is a temporary file in file-mode, then renamed; a line appended to a
-  new file goes in after its mode is set.
+  takes nothing away (`02770` keeps its setgid bit) and adds nothing. No
+  data is ever in a file of another mode: a file written whole is a
+  temporary file, made empty, given file-mode, then filled and renamed; a
+  line appended to a file that is not there yet makes it in file-mode at
+  once (the umask set to match for that one call; with a threaded PHP,
+  where the umask is the whole process's: made, then file-mode while it is
+  still empty, then the line). A file system
+  without modes (some mounts) refuses the `chmod()`: written all the same.
+- **About the server:** `set file-mode` and `set dir-mode` go above the site
+  blocks, as `store-dir` does -- the folders are shared.
 - **Never allowed:** writable for everyone (`0666`, `0777`), a file with an
   x bit or setuid, a mode that keeps PHP from writing (the owner needs `rw`,
   for a folder `rwx`). `check` names the line; the settings array
   (`fileMode`, `dirMode`, ints or octal strings) throws.
-- **What exists keeps its mode:** the shield changes no file it did not make.
-  `check` names files and folders in store-dir and the log that everyone may
-  read (made by an older version or by an umask) -- `chmod o-rwx` them once.
+- **What exists keeps its mode:** a folder that is there, a file appended
+  to, a file named by the user (`feeds export
+  --write`). A file written whole anew (a list, a feed) is a new file in
+  file-mode. `check` names files and folders in store-dir, lists-dir and the
+  log that everyone may read (made by an older version or by an umask; it
+  looks two levels down and more, up to 20,000 entries) -- `chmod -R o-rwx`
+  them once.
 - **The command line and the web server:** `deny`, `learn` and `advise` write
   into store-dir as the user they run as. With `0600` the web server's PHP
   cannot read what another user wrote; `check` warns when store-dir belongs
   to another user. Run the command as that user (`sudo -u www-data
   request-shield deny …`), or share a group: `set file-mode 0640`,
   `set dir-mode 02750`.
-- **Not set by these:** the secret and the compiled settings are always
-  `0600` in a `0700` folder -- they hold the key. The counters in store-dir
-  are empty files (their size counts); they keep the umask's mode, as
-  touching each would cost a `chmod()` on the passing path.
+- **Not set by these:** the secret is always `0600` (in store-dir, which
+  gets dir-mode), the compiled settings `0600` in a `0700` folder -- they
+  hold the key. The counters in store-dir hold only newlines (their size
+  counts) and keep the umask's mode, in folders of dir-mode: a `chmod()` for
+  each would cost on the passing path. `check` passes them over.
 
-Cost: nothing on the passing path -- a `chmod()` only when a file or folder
-is new (an hour's statistics file, a rotated log: once per PHP process).
+Cost on the passing path: none for the log (it knows its size). The
+statistics without APCu set the umask around their line: two `umask()`
+calls, about 0.6 µs a request on the test machine (the append itself 11
+µs). Nothing without statistics or with APCu.
 
 ## Limits
 

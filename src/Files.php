@@ -17,12 +17,13 @@ namespace CjwNetwork\RequestShield;
  * advice) -- `set dir-mode` and `set file-mode`, by default 0700 and 0600:
  * only the user PHP runs as. A server's own rules for new folders (0750,
  * 02770 so the group is inherited, 0755) are set exactly: a new folder or
- * file gets its mode with chmod() after it is made, so the umask takes
- * nothing away from it. What exists already keeps its mode.
+ * file gets its mode with chmod() after it is made and before anything is
+ * written into it, so the umask takes nothing away and adds nothing. What
+ * exists keeps its mode; a file written whole is a new file.
  *
  * Never allowed: writing for everyone, and a mode that keeps PHP itself from
- * writing (the owner's rw, for a folder rwx). The secret and the compiled
- * settings stay 0600 in a 0700 folder whatever is set: they hold the key.
+ * writing (the owner's rw, for a folder rwx). The secret stays 0600 and the
+ * compiled settings 0600 in a 0700 folder whatever is set: they hold the key.
  *
  * The modes are taken from the settings when they are made (Settings'
  * constructor) -- the one place every request and every command passes
@@ -34,8 +35,9 @@ final class Files
 
     private static int $dirMode = 0700;
 
-    /** @var array<string, true> files this process has made or found (appending): no second look */
-    private static array $known = [];
+    /** Whether to append as with threads (ZTS: no umask); null: as PHP is built (a test sets it) */
+    /** @phpstan-ignore property.unusedType */
+    private static ?bool $threads = null;
 
     /** Whether a mode may be a file's: the owner reads and writes, nobody else writes everyone's, no special bits. */
     public static function fileModeOk(int $mode): bool
@@ -95,61 +97,72 @@ final class Files
     }
 
     /**
-     * A file written whole: a temporary file in file-mode, then renamed -- a
-     * reader never sees half of it, and it never has another mode.
+     * A file written whole: a temporary file made empty and exclusive, its mode
+     * set, then the data, then renamed -- a reader never sees half of it, and
+     * the data is never in a file of another mode. $keep: the mode of the file
+     * it replaces (a file named by the user, read by something else).
      */
-    public static function write(string $file, string $data): bool
+    public static function write(string $file, string $data, string $suffix = '', bool $keep = false): bool
     {
         if (!self::dir(dirname($file))) {
             return false;
         }
-        $tmp = $file . '.' . bin2hex(random_bytes(4));
-        if (@file_put_contents($tmp, $data) === false || !@chmod($tmp, self::$fileMode) || !@rename($tmp, $file)) {
+        $tmp = $file . '.' . bin2hex(random_bytes(4)) . $suffix;
+        $h = @fopen($tmp, 'xb');
+        if ($h === false) {
+            return false;
+        }
+        $old = $keep ? @fileperms($file) : false;
+        // A file system without modes (some mounts) refuses chmod: written all the same.
+        @chmod($tmp, $old !== false ? $old & 0777 : self::$fileMode);
+        $ok = @fwrite($h, $data) === strlen($data);
+        fclose($h);
+        if (!$ok || !@rename($tmp, $file)) {
             @unlink($tmp);
             return false;
         }
         return true;
     }
 
-    /** The mode for a temporary file before it is renamed into place (for code that writes it itself). */
-    public static function own(string $file): bool
-    {
-        return @chmod($file, self::$fileMode);
-    }
-
     /**
      * A line added to a file (O_APPEND: the lines of parallel requests do not
-     * overwrite each other). A new file gets file-mode before anything is in
-     * it: made empty and exclusive, its mode set, then appended to. Once per
-     * process and file -- a file this process knows is appended to at once;
-     * when that fails (its folder was removed), it is made anew, once.
+     * overwrite each other). A new file is made in file-mode at once: the
+     * umask is file-mode's complement for that one call (a file mode has no
+     * x and no special bits, so the result is exact) -- no second look, no
+     * moment in another mode. With threads (ZTS) the umask is the whole
+     * process's: then the file is opened, and one still empty (just made, by
+     * this request or a parallel one) gets file-mode before the line. A
+     * missing folder is made. $lock: an exclusive lock while writing.
      */
-    public static function append(string $file, string $data): bool
+    public static function append(string $file, string $data, bool $lock = false): bool
     {
-        if (isset(self::$known[$file])) {
-            if (@file_put_contents($file, $data, FILE_APPEND) !== false) {
-                return true;
+        if (!(self::$threads ?? ZEND_THREAD_SAFE)) {
+            $umask = umask(0777 & ~self::$fileMode);
+            $ok = @file_put_contents($file, $data, FILE_APPEND | ($lock ? LOCK_EX : 0));
+            if ($ok === false && !is_dir(dirname($file))) {
+                umask($umask);
+                $ok = self::dir(dirname($file)) ? self::append($file, $data, $lock) : false;
+                return $ok !== false;
             }
-            unset(self::$known[$file]);
+            umask($umask);
+            return $ok !== false;
         }
-        $new = @fopen($file, 'xb');
-        if ($new === false && !is_file($file) && self::dir(dirname($file))) {
-            $new = @fopen($file, 'xb');
+        $h = @fopen($file, 'ab');
+        if ($h === false && self::dir(dirname($file))) {
+            $h = @fopen($file, 'ab');
         }
-        if ($new !== false) {
-            fclose($new);
+        if ($h === false) {
+            return false;
+        }
+        $st = fstat($h);
+        if (is_array($st) && $st['size'] === 0 && ($st['mode'] & 07777) !== self::$fileMode) {
             @chmod($file, self::$fileMode);
         }
-        if (count(self::$known) >= 256) {
-            self::$known = [];
+        if ($lock) {
+            flock($h, LOCK_EX);
         }
-        self::$known[$file] = true;
-        return @file_put_contents($file, $data, FILE_APPEND) !== false;
-    }
-
-    /** Forgets that a file is known (it was moved away: the next append makes it anew, in file-mode). */
-    public static function forget(string $file): void
-    {
-        unset(self::$known[$file]);
+        $ok = @fwrite($h, $data) === strlen($data);
+        fclose($h);
+        return $ok;
     }
 }

@@ -80,19 +80,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   writes**, for servers with rules for new folders and files: `0600` and
   `0700` by default; a group (`0640`, `0750`), an inherited group (`02770`).
   Set exactly with `chmod()` after a file or folder is made -- the umask
-  takes nothing away and adds nothing, each missing parent folder too; a
-  file is never readable with another mode in between (written whole: a
-  temporary file in file-mode, renamed; appended: made empty, its mode set,
-  then the line). Never writable for everyone, never a mode that keeps PHP
-  from writing. Applies to store-dir and its folders, the log, the lists,
+  takes nothing away and adds nothing, each missing parent folder too; no
+  data is ever in a file of another mode (written whole: a temporary file
+  made empty, its mode set, filled, renamed; appended: a new file made in
+  file-mode at once, the umask set to match for that call -- with threaded
+  PHP made, its mode set, then the line). Never writable for everyone,
+  never a mode that keeps PHP from writing; above the site blocks. Applies to store-dir and its folders, the log, the lists,
   the feeds, the crawler lists, the statistics, the HTTP cache, a ban kept
-  in store-dir, a learning run, `advise --write`. The secret and the
-  compiled settings stay `0600` in `0700`. `check` warns about a mode
-  everyone may read, files in store-dir and the log everyone may read
-  already, and a store-dir owned by another user than the command's (what
-  `deny` writes there in 0600 the web server's PHP could not read). Cost on
-  the passing path: none -- a `chmod()` only for a new file (an hour's
-  statistics, a rotated log), once per PHP process. Settings `FORMAT` 58.
+  in store-dir, a learning run, `advise --write`, a new `feeds export
+  --write` file (one there keeps its mode). The secret stays `0600`, the
+  compiled settings `0600` in `0700`. `check` warns about a mode everyone
+  may read, files in store-dir, lists-dir and the log everyone may read
+  already (bans a folder down too), and a store-dir owned by another user
+  than the command's (what `deny` writes there in 0600 the web server's PHP
+  could not read). Cost on the passing path: none, except the statistics
+  without APCu: two `umask()` calls around their line, about 0.6 µs.
+  Settings `FORMAT` 58.
   ([settings](docs/features/RSF05-02-settings.md#file-and-folder-modes))
 
 - **`request-shield advise`** (proposal 0016, step 2): suggestions from a

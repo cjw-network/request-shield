@@ -74,17 +74,14 @@ final class Learn
         }
         $token = bin2hex(random_bytes(16));
         $state = ['until' => $now + $for, 'token' => hash('sha256', $token), 'from' => $from, 'started' => $now];
-        if (@file_put_contents(self::stateFile($storeDir), json_encode($state) . "\n", LOCK_EX) === false) {
+        if (!Files::write(self::stateFile($storeDir), json_encode($state) . "\n")) {
             throw new \RuntimeException('cannot write ' . self::stateFile($storeDir));
         }
-        Files::own(self::stateFile($storeDir));
         $record = self::recordFile($storeDir);
         if (!$keep || !is_file($record)) {
-            // A new recording, created here so it is its owner's only (it holds paths):
-            // the requests only append to it.
-            @file_put_contents($record, '', LOCK_EX);
+            // A new recording, in file-mode (it holds paths): the requests only append to it.
+            Files::write($record, '');
         }
-        Files::own($record);
         return $token;
     }
 
@@ -245,7 +242,7 @@ final class Learn
         if ($json === null || ($size !== false && $size > self::MAX_BYTES)) {
             return;
         }
-        @file_put_contents($file, $json . "\n", FILE_APPEND | LOCK_EX);
+        Files::append($file, $json . "\n", true);
     }
 
     /**

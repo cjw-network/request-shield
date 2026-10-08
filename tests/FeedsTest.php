@@ -18,7 +18,7 @@ use CjwNetwork\RequestShield\Store\MemoryStore;
 function feedsDir(): string
 {
     $dir = sys_get_temp_dir() . '/rs-feeds-' . getmypid() . '-' . mt_rand();
-    mkdir("$dir/store/feeds", 0750, true);
+    mkdir("$dir/store/feeds", 0700, true);
     return $dir;
 }
 
@@ -27,6 +27,8 @@ function feedFile(string $dir, string $name, array $ranges, ?int $checked = null
 {
     file_put_contents("$dir/store/feeds/$name.txt", implode("\n", $ranges) . "\n");
     file_put_contents("$dir/store/feeds/$name.json", json_encode(['checked' => $checked ?? time(), 'count' => count($ranges)]));
+    chmod("$dir/store/feeds/$name.txt", 0600);              // as Feeds writes them: check warns about files everyone may read
+    chmod("$dir/store/feeds/$name.json", 0600);
 }
 
 function feedsSettings(string $dir, string $rules): Settings

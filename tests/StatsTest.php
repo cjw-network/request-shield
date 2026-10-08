@@ -482,7 +482,7 @@ return [
             truthy(preg_match('~^Subtree /de/news/2026/: 1 views \(people 1, crawlers 0, bots 0\)$~m', implode("\n", $out)) === 1, 'stats-depth 3: the third level exact: ' . implode("\n", $out));
             $out = [];
             exec("$bin check " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);
-            truthy($code === 0 && strpos(implode("\n", $out), 'past the limit') === false, 'check: no note while the sections fit');
+            truthy($code === 0 && strpos(implode("\n", $out), 'past the limit') === false, 'check: no note while the sections fit: ' . implode("\n", $out));
             \CjwNetwork\RequestShield\Stats\Stats::of(Settings::from(RuleFile::read(["$dir/site.rules"])['config']))->count(['pd:people|(other)', 'pd:bots|(other)'], time());
             $out = [];
             exec("$bin check " . escapeshellarg("$dir/site.rules") . ' 2>&1', $out, $code);

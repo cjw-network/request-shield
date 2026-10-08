@@ -114,7 +114,7 @@ final class Log
             . ' "' . self::clean((string) $request->header('user-agent'), 150) . "\"\n";
     }
 
-    /** Appends a line; one rotation (file.1) past $maxSize; the file 0640, its directory 0750. */
+    /** Appends a line; one rotation (file.1) past $maxSize; a new file in file-mode, its directory in dir-mode (Files). */
     public static function append(string $file, string $line, int $maxSize): void
     {
         // Only checked when there is something to write -- and past PHP's stat
@@ -126,7 +126,6 @@ final class Log
         }
         if ($size === false || $size > $maxSize) {
             // A new file (or one just moved away): made in file-mode before the line is in it.
-            Files::forget($file);
             Files::append($file, $line);
             return;
         }

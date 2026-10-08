@@ -567,9 +567,8 @@ final class Cli
                         exit(0);
                     }
                     $target = $feedOpts['write'];
-                    $tmp = $target . '.' . bin2hex(random_bytes(4));
-                    if (@file_put_contents($tmp, $text) === false || !@rename($tmp, $target)) {
-                        @unlink($tmp);
+                    // file-mode for a new file (it holds addresses); one there keeps its mode (a web server may read it)
+                    if (!\CjwNetwork\RequestShield\Files::write($target, $text, '', true)) {
                         throw new \RuntimeException("cannot write $target");
                     }
                     echo 'wrote ' . count($x['cidrs']) . " range(s) to $target\n";
@@ -1026,11 +1025,10 @@ final class Cli
         $written = null;
         if ($write && $suggestions !== []) {
             $written = rtrim($settings->storeDir, '/') . '/advice.rules';
-            if (@file_put_contents($written, $advice) === false) {
+            if (!\CjwNetwork\RequestShield\Files::write($written, $advice)) {
                 fwrite(STDERR, "request-shield: cannot write $written\n");
                 return 2;
             }
-            \CjwNetwork\RequestShield\Files::own($written);
         }
         if ($json) {
             echo json_encode(['source' => $source, 'requests' => count($records), 'suggestions' => $suggestions,
@@ -1085,13 +1083,19 @@ final class Cli
     private static function modeWarnings(Settings $s): array
     {
         $out = [];
-        if (($s->fileMode & 0004) !== 0 || ($s->dirMode & 0005) !== 0) {
+        if ((($s->fileMode | $s->dirMode) & 0004) !== 0) {
             $out[] = sprintf('file-mode 0%03o / dir-mode 0%03o: everyone on this machine may read what the shield writes -- the log, the lists, the statistics hold addresses; 0640/0750 shares them with a group only', $s->fileMode, $s->dirMode);
         }
-        $paths = [$s->storeDir];
-        foreach (array_slice(@scandir($s->storeDir) ?: [], 0, 200) as $name) {
-            if ($name !== '.' && $name !== '..') {
-                $paths[] = $s->storeDir . '/' . $name;
+        // store-dir and lists-dir with their folders (bans and caches lie one or two levels down), at
+        // most 20,000 entries; the counters (*.c: newlines, their size counts) and empty files hold nothing.
+        $paths = array_values(array_unique(array_filter([$s->storeDir, $s->listsDir], 'is_string')));
+        for ($i = 0; $i < count($paths) && count($paths) < 20000; $i++) {
+            if (is_dir($paths[$i]) && !is_link($paths[$i])) {
+                foreach (@scandir($paths[$i]) ?: [] as $name) {
+                    if ($name !== '.' && $name !== '..') {
+                        $paths[] = $paths[$i] . '/' . $name;
+                    }
+                }
             }
         }
         if ($s->logFile !== null) {
@@ -1099,8 +1103,10 @@ final class Cli
         }
         $open = [];
         foreach ($paths as $path) {
-            $perms = @fileperms($path);
-            if ($perms !== false && ($perms & 0004) !== 0 && (is_dir($path) ? ($s->dirMode & 0004) === 0 : ($s->fileMode & 0004) === 0)) {
+            $st = @lstat($path);
+            $perms = is_array($st) ? $st['mode'] : 0;
+            $dir = ($perms & 0170000) === 0040000;
+            if (($perms & 0004) !== 0 && ($perms & 0170000) !== 0120000 && ($dir ? ($s->dirMode & 0004) === 0 : ($s->fileMode & 0004) === 0 && is_array($st) && $st['size'] > 0 && substr($path, -2) !== '.c')) {
                 $open[] = sprintf('%s (0%03o)', $path, $perms & 07777);
             }
         }
