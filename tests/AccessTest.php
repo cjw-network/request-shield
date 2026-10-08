@@ -99,7 +99,12 @@ return [
             same([null, 401], [$g['who'], $g['status']], 'nobody: the form');
             truthy(strpos((string) $g['body'], 'name="rs-token"') !== false && strpos((string) $g['body'], 'type="password"') !== false, 'a field for the token');
             truthy(in_array('X-Robots-Tag: noindex, nofollow', $g['headers'], true) && in_array('Cache-Control: private, no-store', $g['headers'], true)
-                && in_array('Referrer-Policy: no-referrer', $g['headers'], true) && in_array("Content-Security-Policy: frame-ancestors 'self'", $g['headers'], true), 'never indexed, kept or framed elsewhere');
+                && in_array("Content-Security-Policy: frame-ancestors 'self'", $g['headers'], true), 'never indexed, kept or framed elsewhere');
+            // same-origin, not no-referrer: no address leaves the site either way, but a page with no-referrer makes the
+            // browser send "Origin: null" with its own form (Chromium, Firefox) -- and the form refuses that.
+            same(['Referrer-Policy: same-origin'], array_values(preg_grep('/^Referrer-Policy:/i', $g['headers'])), 'no address to other sites; the page\'s own Origin to its form');
+            $g = Access::gate($s, accessReq('/rs/stats/visitors', ['Origin' => 'null'], 'POST'), [], ['rs-token' => ACCESS_A], $o);
+            same([403, ''], [$g['status'], accessCookie($g)], 'Origin: null (an opaque origin): refused all the same');
             $g = Access::gate($s, accessReq('/rs/stats/visitors', ['Origin' => 'https://stats.example.org'], 'POST'), [], ['rs-token' => 'wrong'], $o);
             same([401, ''], [$g['status'], accessCookie($g)], 'a wrong token: no cookie');
             same(1.0, $store->peek('access:203.0.113.9', 60, 1790800000.0), 'counted');
@@ -245,8 +250,11 @@ echo StatsPage::render($s, ["view" => $view, "who" => $g["who"], "links" => Acce
                 $out = (string) @file_get_contents("http://127.0.0.1:$port$uri", false, $ctx);
                 return [(int) substr((string) ($http_response_header[0] ?? ''), 9, 3), $http_response_header ?? [], $out];
             };
-            [$status, , $page] = $http('GET', '/rs/stats/visitors');
+            [$status, $headers, $page] = $http('GET', '/rs/stats/visitors');
             truthy($status === 401 && strpos($page, 'name="rs-token"') !== false, 'asked first');
+            truthy((bool) preg_grep('/^Referrer-Policy: same-origin$/i', $headers), 'the form\'s page: Referrer-Policy same-origin, so a browser sends its Origin with the form, not "null"');
+            [$status] = $http('POST', '/rs/stats/visitors', ['Origin' => 'null'], 'rs-token=' . rawurlencode(ACCESS_A));
+            same(403, $status, 'Origin: null: refused');
             [$status, $headers] = $http('POST', '/rs/stats/visitors', ['Origin' => "http://127.0.0.1:$port"], 'rs-token=' . rawurlencode(ACCESS_A));
             $cookie = '';
             foreach ($headers as $line) {

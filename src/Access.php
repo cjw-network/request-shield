@@ -256,7 +256,7 @@ final class Access
      */
     public static function headers(Settings $s): array
     {
-        return ['X-Robots-Tag: noindex, nofollow', 'Cache-Control: private, no-store', 'Referrer-Policy: no-referrer', "Content-Security-Policy: frame-ancestors 'self'"];
+        return ['X-Robots-Tag: noindex, nofollow', 'Cache-Control: private, no-store', 'Referrer-Policy: same-origin', "Content-Security-Policy: frame-ancestors 'self'"];
     }
 
     /** The Set-Cookie header: who, until when, signed; HttpOnly, SameSite=Lax (a signed link arrives from another site), Secure on HTTPS. */

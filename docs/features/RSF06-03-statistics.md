@@ -359,7 +359,7 @@ set dashboard-session 8h                                      # how long a login
 - **The door itself:** wrong tokens and links count against a budget of their
   own (10 a minute per address, then 429), each logged without the token.
   Every page: `X-Robots-Tag: noindex`, `Cache-Control: private, no-store`,
-  `Referrer-Policy: no-referrer`, `frame-ancestors 'self'`. A site's
+  `Referrer-Policy: same-origin`, `frame-ancestors 'self'`. A site's
   `restrict /rs/** to …` still applies first.
 - **The form in the site's look:** a plugin with the `Pages` capability draws
   the login form (`access-login`), the shield keeps the headers and the cookie
