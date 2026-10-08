@@ -34,6 +34,27 @@ return [
         $json = (string) json_encode($shape);
         truthy(strpos($json, 'secret') === false && strpos($json, 'someone') === false && strpos($json, '41') === false && strpos($json, '203.0.113') === false, 'no value, no address: ' . $json);
     },
+    'RSF05-04 learn: what a page of the site offers -- forms with their fields by type, links and the addresses in its scripts by path and parameter names, the site\'s other hosts; never a value' => function (): void {
+        $r = Request::fromServer(['REQUEST_URI' => '/shop/list?page=2', 'HTTP_HOST' => 'www.example.org']);
+        $html = '<html><body>
+            <form action="/contact/send?ref=nav" method="post"><input name="email" type="email" value="someone@example.org"><textarea name="message">Hello</textarea>
+              <select name="topic"><option>a</option></select><input type="hidden" name="csrf" value="s3cret"><button>Send</button></form>
+            <form><input name="q"></form>
+            <form action="https://api.example.org/v1/subscribe" method="POST"><input name="email"></form>
+            <form action="https://elsewhere.example.net/x"><input name="y"></form>
+            <a href="/news/?page=3&amp;sort=new">News</a> <a href="detail?id=7">Detail</a> <a href="#top">Top</a> <a href="mailto:a@b">Mail</a>
+            <a href="https://www.example.org/about">About</a> <a href="https://shop.example.org/cart">Cart</a> <a href="https://other.example.net/">Other</a>
+            <script>fetch("/api/v1/messages", {method: "POST"}); const u = \'/api/v1/products?format=xml\'; var t = "two words /not a path";</script>
+            </body></html>';
+        $f = Learn::found($html, $r);
+        same([['action' => '/contact/send?ref', 'method' => 'POST', 'fields' => ['email' => 'email', 'message' => 'textarea', 'topic' => 'select', 'csrf' => 'hidden']],
+            ['action' => '/shop/list', 'method' => 'GET', 'fields' => ['q' => 'text']]], $f['forms'], 'the forms: where to, how, which fields');
+        same(['/news/?page&sort', '/shop/detail?id', '/about'], $f['links'], 'links on this site: path and parameter names');
+        same(['/api/v1/messages', '/api/v1/products?format'], $f['scripts'], 'the addresses the scripts name');
+        same(['api.example.org', 'shop.example.org'], $f['hosts'], 'the site\'s other hosts; another website\'s not');
+        $json = (string) json_encode($f);
+        truthy(strpos($json, 'someone') === false && strpos($json, 's3cret') === false && strpos($json, 'Hello') === false && strpos($json, 'xml') === false, 'no value: ' . $json);
+    },
     'RSF05-04 learn: a request belongs to the run by its token (cookie or header), within its time, from its addresses -- else not' => function (): void {
         $token = 'f00d';
         $run = ['until' => 2000, 'token' => hash('sha256', $token), 'from' => []];
@@ -94,6 +115,8 @@ return [
         $dir = sys_get_temp_dir() . '/rs-learn-e2e-' . getmypid() . '-' . mt_rand();
         mkdir("$dir/docroot", 0700, true);
         file_put_contents("$dir/docroot/index.php", '<?php if (($_GET["page"] ?? "") === "9") { http_response_code(404); } echo "the site";');
+        file_put_contents("$dir/docroot/page.php", '<?php ob_start(); echo "<h1>Contact</h1>"; ?><form action="/send.php" method="post"><input name="email" type="email" value="x@example.org"></form><a href="/index.php?page=1">On</a><script>fetch("/api/v1/messages")</script><?php ob_end_flush();');
+        file_put_contents("$dir/docroot/data.php", '<?php header("Content-Type: application/json"); echo "{\\"a\\":\\"<form action=/x>\\"}";');
         file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset recheck 0\n");
         $cli = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli());
         exec("$cli learn " . escapeshellarg("$dir/site.rules") . ' start --for=1h 2>&1', $out, $code);
@@ -123,12 +146,18 @@ return [
             same(200, $send('GET', '/index.php?from=tests', ['Request-Shield-Learn' => $token]), 'the header');
             same(200, $send('GET', '/index.php?unmarked=1'), 'a visitor without the token');
             same(404, $send('GET', '/index.php/.env', $cookie), 'the token lets nothing past a check');
+            same(200, $send('GET', '/page.php', $cookie), 'a page with a form, a link, a script');
+            same(200, $send('GET', '/data.php', $cookie), 'JSON: not read for forms');
             $lines = [];
-            for ($i = 0; $i < 40 && count(file(Learn::recordFile("$dir/store")) ?: []) < 5; $i++) {
+            for ($i = 0; $i < 40 && count(file(Learn::recordFile("$dir/store")) ?: []) < 7; $i++) {
                 usleep(50000);          // the line is written when the request has ended
             }
             $lines = array_values(array_filter(array_map(static fn (string $l) => json_decode($l, true), file(Learn::recordFile("$dir/store")) ?: [])));
-            same(5, count($lines), 'five requests recorded, the unmarked one not: ' . json_encode($lines));
+            same(7, count($lines), 'seven requests recorded, the unmarked one not: ' . json_encode($lines));
+            same(['forms' => [['action' => '/send.php', 'method' => 'POST', 'fields' => ['email' => 'email']]], 'links' => ['/index.php?page'], 'scripts' => ['/api/v1/messages'], 'hosts' => []],
+                $lines[5]['found'] ?? null, 'what the page offered, read from its answer -- through its own buffer');
+            truthy(!isset($lines[6]['found']) && !isset($lines[4]['found']), 'not for JSON, not for a refusal');
+            $lines = array_slice($lines, 0, 5);
             same([['GET', '/index.php', ['page' => 'int', 'q' => 'text'], 200], ['GET', '/index.php', ['page' => 'int'], 404], ['POST', '/index.php', [], 200],
                 ['GET', '/index.php', ['from' => 'id'], 200], ['GET', '/index.php/.env', [], 404]],
                 array_map(static fn (array $l): array => [$l['method'], $l['path'], $l['query'], $l['status']], $lines), 'method, path, parameter types, the status');
@@ -136,17 +165,17 @@ return [
             same('reject', $lines[4]['decided'], 'what the shield decided');
             $raw = (string) file_get_contents(Learn::recordFile("$dir/store"));
             truthy(strpos($raw, 'someone') === false && strpos($raw, 'red') === false, 'no value in the recording');
-            same(['t', 'method', 'host', 'path', 'query', 'form', 'type', 'decided', 'status'], array_keys($lines[0]), 'these fields, no address among them');
+            same(['t', 'method', 'host', 'path', 'query', 'form', 'type', 'decided', 'status', 'found'], array_keys($lines[0]), 'these fields, no address among them');
             $out = [];
             exec("$cli learn " . escapeshellarg("$dir/site.rules") . ' stop 2>&1', $out, $code);
-            truthy($code === 0 && strpos(implode("\n", $out), 'recorded: 5 requests (4 GET, 1 POST), 2 paths, 3 parameters, 1 form') !== false, implode("\n", $out));
+            truthy($code === 0 && strpos(implode("\n", $out), 'recorded: 7 requests (6 GET, 1 POST), 4 paths, 3 parameters, 1 form') !== false && strpos(implode("\n", $out), 'found on its pages: 1 form, 1 links, 1 addresses in scripts') !== false, implode("\n", $out));
             $out = [];
             exec("$cli learn " . escapeshellarg("$dir/site.rules") . ' start --from=2026-10-01 2>&1', $out, $code);
             truthy($code !== 0 && strpos(implode("\n", $out), 'address') !== false, 'a date as --from: refused, not taken as "from anywhere": ' . implode("\n", $out));
             truthy(!is_file(Learn::stateFile("$dir/store")), 'and no run started');
             same(200, $send('GET', '/index.php?after=1', $cookie));
             usleep(300000);
-            same(5, count(file(Learn::recordFile("$dir/store")) ?: []), 'stopped: the cookie records nothing more');
+            same(7, count(file(Learn::recordFile("$dir/store")) ?: []), 'stopped: the cookie records nothing more');
         } finally {
             proc_terminate($proc);
             proc_close($proc);

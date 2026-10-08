@@ -239,13 +239,29 @@ for tests, a header with every request:
   recording, readable only by its owner (`--keep` adds to the old one); it
   stops growing at 10 MB. Not recorded: the check inside the form's own
   endpoint (`widget-path`), answered before the rest.
+- **What the site's pages offer, too** -- not only what was clicked: for an
+  HTML answer of the site, the line gets `found` -- every **form** (where it
+  goes, GET or POST, its fields by their type: `email`, `hidden`, `select` …),
+  every **link** on the site (path and parameter names), the **addresses its
+  inline scripts name** (`fetch("/api/v1/messages")`), and the **site's other
+  hosts** it links or sends to (`api.example.org` beside `www.example.org`).
+  Still no value: no field's content, no parameter's. A form nobody sent and
+  an API nobody called in the run are found this way. Read as the answer is
+  sent (at most 2 MB of it), never changed; not for JSON, not for the
+  shield's own pages.
 - **Every server starts and stops within its recheck:** `start` and `stop`
   write the state file and touch the main rule file, as `deny` does; the
   settings read the state when they are compiled.
 
 ```json
-{"t":1791446553,"method":"GET","host":"www.example.org","path":"/products/","query":{"page":"int","q":"text"},"form":{},"type":null,"decided":"allow","status":200}
+{"t":1791446553,"method":"GET","host":"www.example.org","path":"/contact","query":{},"form":{},"type":null,"decided":"allow","status":200,
+ "found":{"forms":[{"action":"/contact/send","method":"POST","fields":{"email":"email","message":"textarea","csrf":"hidden"}}],
+          "links":["/news/?page&sort","/about"],"scripts":["/api/v1/messages"],"hosts":["api.example.org"]}}
 ```
+
+(one line in the file; wrapped here.) `learn status` and `learn stop` count
+both: *"recorded: 1284 requests … — found on its pages: 9 forms, 214 links,
+12 addresses in scripts; other hosts of the site: api.example.org"*.
 
 ## The built-in rules have examples too
 
@@ -266,7 +282,8 @@ Nothing in the shield asks a model at run time.
 
 A learning run: nothing while none is active (the settings hold `null`, one
 comparison per request); while one is, only its own requests -- a token
-compared, and their line written when the request ends.
+compared, the site's HTML answer read for its forms and links (up to 2 MB),
+and their line written when the request ends.
 
 None per request: `expect` lines are read with the rules and kept apart from
 the settings a request loads (the compiled settings are the same with and

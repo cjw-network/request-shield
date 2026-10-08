@@ -54,8 +54,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   addresses, for `--for` (1m to 7d). One JSON line per request in
   `<store-dir>/learned.jsonl`: method, host, path, the type of each
   parameter and form field, the content type, the shield's decision and the
-  site's status -- never a value or an address. The token only marks; it
-  lets nothing past a check. Without a run: nothing on the request path.
+  site's status -- never a value or an address. For the site's HTML answers
+  also what they offer (`found`): forms with action, method and field types,
+  links and the addresses inline scripts name, and the site's other hosts --
+  so a form nobody sent and an API nobody called are found too. The token
+  only marks; it lets nothing past a check. Without a run: nothing on the
+  request path.
 - **A new attack rule, `ATK-SSRF-META`** (attack rules `2026.10.2`,
   `include @attacks`): a cloud's metadata address in the query --
   `169.254.169.254`, `metadata.google.internal`, `100.100.100.200`,

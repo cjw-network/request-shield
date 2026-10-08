@@ -72,7 +72,9 @@ feature by feature, for what exists today and for the proposals.
   days). A visitor without the token is never recorded.
 - **Recorded:** the shape of each request -- time, method, host, path, the
   *types* of query parameters and form fields, the content type, the shield's
-  decision and the site's status. **No values, no address, no cookie.** The
+  decision and the site's status; from the site's own HTML answers, its forms
+  (action, method, field names and types), links and script addresses.
+  **No values, no address, no cookie.** The
   path itself is kept as it was (a path can name things -- it is the
   developer's own clicks).
 - **Kept:** in `<store-dir>/learned.jsonl` until the next `start` (or deleted by

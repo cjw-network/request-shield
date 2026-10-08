@@ -35,6 +35,8 @@ final class Learn
     public const HEADER = 'request-shield-learn';
     /** The recording stops growing here: a forgotten run fills no disk. */
     public const MAX_BYTES = 10485760;
+    /** At most so much of a page is read for what it offers (forms, links, scripts). */
+    public const MAX_PAGE = 2097152;
     /** At most so many query parameters and form fields in a line: it stays small. */
     public const MAX_FIELDS = 200;
     /** At most this long a run (--for). */
@@ -152,16 +154,184 @@ final class Learn
         }
         $line = self::shape($request, $_POST, $d, $now);
         $file = self::recordFile($s->storeDir);
-        register_shutdown_function(static function () use ($line, $file): void {
-            $status = http_response_code();
-            $line['status'] = is_int($status) ? $status : null;
-            $size = @filesize($file);
-            $json = self::line($line);
-            if ($json === null || ($size !== false && $size > self::MAX_BYTES)) {
-                return;
+        if (!$d->passes()) {
+            // The shield answers itself (it empties the buffers first): no page of the
+            // site to read -- the line when the request has ended, with its status.
+            register_shutdown_function(static function () use ($line, $file): void {
+                self::append($file, $line, http_response_code(), null);
+            });
+            return;
+        }
+        // The site's answer, read as it is sent (never changed): what it offers -- forms,
+        // links, addresses in its scripts -- goes into the line too. Written once, when
+        // the buffer ends: at the end of the request, or when the site ends it earlier.
+        $body = '';
+        $full = false;
+        $done = false;
+        ob_start(static function (string $buffer, int $phase) use (&$body, &$full, &$done, $line, $file, $request): string {
+            if (($phase & PHP_OUTPUT_HANDLER_CLEAN) !== 0) {
+                $body = '';                     // what the site threw away was never sent
+            } elseif (!$full) {
+                $body .= $buffer;
+                if (strlen($body) > self::MAX_PAGE) {
+                    $body = substr($body, 0, self::MAX_PAGE);
+                    $full = true;
+                }
             }
-            @file_put_contents($file, $json . "\n", FILE_APPEND | LOCK_EX);
+            if (($phase & PHP_OUTPUT_HANDLER_FINAL) !== 0 && !$done) {
+                $done = true;
+                // The site's Content-Type, else PHP's default (default_mimetype: it is not in headers_list()).
+                $type = '';
+                foreach (headers_list() as $h) {
+                    if (stripos($h, 'content-type:') === 0) {
+                        $type = $h;
+                    }
+                }
+                $html = stripos($type !== '' ? $type : (string) ini_get('default_mimetype'), 'text/html') !== false;
+                self::append($file, $line, http_response_code(), $html ? self::found($body, $request) : null);
+            }
+            return $buffer;
         });
+    }
+
+    /**
+     * One line to the recording -- unless it is full (MAX_BYTES).
+     *
+     * @param array<string, mixed> $line
+     * @param int|bool $status http_response_code()
+     * @param array<string, mixed>|null $found what the page offered
+     */
+    private static function append(string $file, array $line, $status, ?array $found): void
+    {
+        $line['status'] = is_int($status) ? $status : null;
+        if ($found !== null) {
+            $line['found'] = $found;
+        }
+        $size = @filesize($file);
+        $json = self::line($line);
+        if ($json === null || ($size !== false && $size > self::MAX_BYTES)) {
+            return;
+        }
+        @file_put_contents($file, $json . "\n", FILE_APPEND | LOCK_EX);
+    }
+
+    /**
+     * What a page of the site offers: its forms (where they go, how, which fields
+     * by type), its links and the addresses its inline scripts name -- on this
+     * site by path with the names of their parameters, on the site's other hosts
+     * (same domain) by host. Never a value: no field's content, no parameter's.
+     *
+     * @return array{forms: list<array{action: string, method: string, fields: array<string, string>}>, links: list<string>, scripts: list<string>, hosts: list<string>}
+     */
+    public static function found(string $html, Request $request): array
+    {
+        $out = ['forms' => [], 'links' => [], 'scripts' => [], 'hosts' => []];
+        $place = static function (string $url) use ($request, &$out): ?string {
+            $url = html_entity_decode(trim($url), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if ($url === '' || $url[0] === '#' || preg_match('#^(mailto|tel|javascript|data|blob):#i', $url) === 1) {
+                return $url === '' ? self::target($request->path, '') : null;
+            }
+            if (preg_match('#^(?:https?:)?//([^/?\#:]+)(?::\d+)?([^?\#]*)(\?[^\#]*)?#i', $url, $m) === 1) {
+                $host = strtolower($m[1]);
+                if ($host !== strtolower($request->host)) {
+                    if (self::sameDomain($host, strtolower($request->host)) && !in_array($host, $out['hosts'], true) && count($out['hosts']) < 50) {
+                        $out['hosts'][] = $host;
+                    }
+                    return null;
+                }
+                return self::target($m[2] === '' ? '/' : $m[2], $m[3] ?? '');
+            }
+            $q = strpos($url, '?');
+            $path = (string) preg_replace('/#.*$/', '', $q === false ? $url : substr($url, 0, $q));
+            if ($path === '') {
+                $path = $request->path;
+            } elseif ($path[0] !== '/') {
+                $path = rtrim((string) preg_replace('#[^/]*$#', '', $request->path), '/') . '/' . $path;     // relative to this page
+            }
+            return self::target($path, $q === false ? '' : (string) preg_replace('/#.*$/', '', substr($url, $q)));
+        };
+        if (preg_match_all('#<form\b([^>]*)>(.*?)(?:</form>|$)#is', $html, $forms, PREG_SET_ORDER) > 0) {
+            foreach (array_slice($forms, 0, 50) as $f) {
+                $a = self::attributes($f[1]);
+                $action = $place($a['action'] ?? '');
+                if ($action === null) {
+                    continue;                   // to another website, or to another of the site's hosts (in hosts)
+                }
+                $fields = [];
+                if (preg_match_all('#<(input|select|textarea|button)\b([^>]*)>#i', $f[2], $els, PREG_SET_ORDER) > 0) {
+                    foreach ($els as $el) {
+                        $ea = self::attributes($el[2]);
+                        $name = $ea['name'] ?? '';
+                        if ($name !== '' && count($fields) < self::MAX_FIELDS) {
+                            $tag = strtolower($el[1]);
+                            $fields[$name] = $tag === 'input' ? strtolower($ea['type'] ?? 'text') : $tag;
+                        }
+                    }
+                }
+                $out['forms'][] = ['action' => $action, 'method' => strtoupper($a['method'] ?? 'get') === 'POST' ? 'POST' : 'GET', 'fields' => $fields];
+            }
+        }
+        if (preg_match_all('#<a\b[^>]*?\bhref\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)#i', $html, $links) > 0) {
+            foreach ($links[1] as $raw) {
+                $t = $place(trim($raw, '"\''));
+                if ($t !== null && !in_array($t, $out['links'], true) && count($out['links']) < 500) {
+                    $out['links'][] = $t;
+                }
+            }
+        }
+        if (preg_match_all('#<script\b[^>]*>(.*?)</script>#is', $html, $scripts) > 0) {
+            foreach ($scripts[1] as $js) {
+                // A quoted address: a path ("/api/v1/messages") or a full one to a host of the site.
+                if (preg_match_all('#(["\'`])((?:https?:)?//[a-z0-9.-]+(?::\d+)?/[^"\'`\s]*|/[a-z0-9_.~-][a-z0-9_.~/-]*(?:\?[^"\'`\s]*)?)\1#i', $js, $m) > 0) {
+                    foreach ($m[2] as $url) {
+                        $t = $place($url);
+                        if ($t !== null && !in_array($t, $out['scripts'], true) && count($out['scripts']) < 200) {
+                            $out['scripts'][] = $t;
+                        }
+                    }
+                }
+            }
+        }
+        return $out;
+    }
+
+    /** A target as the recording keeps it: the path, and the names of its parameters (never a value). */
+    private static function target(string $path, string $query): string
+    {
+        $names = [];
+        foreach (explode('&', ltrim($query, '?')) as $pair) {
+            $n = urldecode(explode('=', $pair, 2)[0]);
+            $b = strpos($n, '[');
+            $n = $b === false ? $n : substr($n, 0, $b);
+            if ($n !== '' && !in_array($n, $names, true)) {
+                $names[] = $n;
+            }
+        }
+        $path = (string) preg_replace('#/(?:\./)+|/{2,}#', '/', $path);
+        return $path . ($names === [] ? '' : '?' . implode('&', $names));
+    }
+
+    /** Whether two hosts share their last two labels (www.example.org, api.example.org). */
+    private static function sameDomain(string $a, string $b): bool
+    {
+        $base = static fn (string $h): string => implode('.', array_slice(explode('.', $h), -2));
+        return strpos($a, '.') !== false && $base($a) === $base($b);
+    }
+
+    /**
+     * A tag's attributes, lower-case names; values as written (entities decoded later).
+     *
+     * @return array<string, string>
+     */
+    private static function attributes(string $tag): array
+    {
+        $out = [];
+        if (preg_match_all('#([a-z][a-z0-9_:-]*)\s*(?:=\s*("[^"]*"|\'[^\']*\'|[^\s>]+))?#i', $tag, $m, PREG_SET_ORDER) > 0) {
+            foreach ($m as $a) {
+                $out[strtolower($a[1])] ??= trim($a[2] ?? '', '"\'');
+            }
+        }
+        return $out;
     }
 
     /**
@@ -236,11 +406,12 @@ final class Learn
     /**
      * What a recording holds, for `learn status|stop`.
      *
-     * @return array{requests: int, paths: int, methods: array<string, int>, parameters: int, forms: int}
+     * @return array{requests: int, paths: int, methods: array<string, int>, parameters: int, forms: int, offered: array{forms: int, links: int, scripts: int, hosts: list<string>}}
      */
     public static function summary(string $storeDir): array
     {
-        $out = ['requests' => 0, 'paths' => 0, 'methods' => [], 'parameters' => 0, 'forms' => 0];
+        $out = ['requests' => 0, 'paths' => 0, 'methods' => [], 'parameters' => 0, 'forms' => 0, 'offered' => ['forms' => 0, 'links' => 0, 'scripts' => 0, 'hosts' => []]];
+        $offered = ['forms' => [], 'links' => [], 'scripts' => [], 'hosts' => []];
         $h = @fopen(self::recordFile($storeDir), 'r');
         if ($h === false) {
             return $out;
@@ -262,11 +433,25 @@ final class Learn
             if (($r['form'] ?? []) !== []) {
                 $forms[$r['method'] . ' ' . $r['path']] = true;
             }
+            $f = is_array($r['found'] ?? null) ? $r['found'] : [];
+            foreach ((array) ($f['forms'] ?? []) as $form) {
+                if (is_array($form) && is_string($form['method'] ?? null) && is_string($form['action'] ?? null)) {
+                    $offered['forms'][$form['method'] . ' ' . $form['action']] = true;
+                }
+            }
+            foreach (['links', 'scripts', 'hosts'] as $k) {
+                foreach ((array) ($f[$k] ?? []) as $v) {
+                    if (is_string($v)) {
+                        $offered[$k][$v] = true;
+                    }
+                }
+            }
         }
         fclose($h);
         $out['paths'] = count($paths);
         $out['parameters'] = count($params);
         $out['forms'] = count($forms);
+        $out['offered'] = ['forms' => count($offered['forms']), 'links' => count($offered['links']), 'scripts' => count($offered['scripts']), 'hosts' => array_map('strval', array_keys($offered['hosts']))];
         return $out;
     }
 
