@@ -64,6 +64,15 @@ Open http://127.0.0.1:8090/ (`?lang=de` or `?lang=en`).
   decides them in one request (one by one they would run into `SHOW-PACE`).
   A second website cannot be opened from this page, so nothing here is a
   real request to it.
+- **Build rules** (`/learn`, its own page): a learning run (proposal 0016)
+  for your browser -- *Start recording* sets the cookie `rs-learn`, the
+  showcase you click through in a second tab is recorded by shape (paths,
+  parameter and field types, what each page offers), the table shows it
+  live, and *Check the rules* sends it through `showcase.rules` as
+  `request-shield replay` does: ✓, ✕ for a click that would be refused, ? for
+  what a page only offers. Starting a run works only from this machine
+  (127.0.0.1), or with `REQUEST_SHIELD_SHOWCASE_LEARN=on`. Below: the
+  commands for a real server and CI, and what `advise` will suggest.
 - **The live log** is docked bottom right on every part of the page: the
   end of the showcase's own log (`set log`, `/__log`, addresses masked),
   each line as time, decision, status, rule and request, new ones lit up;

@@ -70,36 +70,10 @@ $client = [
     'tries' => $tries,
     'words' => ['api' => $t['api'], 'self' => $t['self'], 'outcome' => $t['outcome'], 'say' => $t['say'], 'details' => $t['details'], 'send' => $t['send'], 'sent' => $t['sent'], 'from' => $t['from'], 'tries' => array_map($tr, array_column($tries, 'text', 'n'))],
 ];
-?><!doctype html>
-<html lang="<?= $lang ?>">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><?= $e($t['title']) ?></title>
-  <link rel="stylesheet" href="/assets/vendor/bootstrap/bootstrap.min.css">
-  <link rel="stylesheet" href="/assets/vendor/bootstrap-icons/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="/assets/showcase.css?v=<?= (int) @filemtime(__DIR__ . '/assets/showcase.css') ?>">
-</head>
-<body data-bs-spy="scroll" data-bs-target="#nav">
-
-<nav id="nav" class="navbar navbar-expand-lg navbar-light fixed-top">
-  <div class="container">
-    <a class="navbar-brand d-flex align-items-center gap-2" href="#top"><span class="logo"><i class="bi bi-shield-check"></i></span> request-shield</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu" aria-controls="menu" aria-expanded="false" aria-label="Menu"><span class="navbar-toggler-icon"></span></button>
-    <div class="collapse navbar-collapse" id="menu">
-      <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
-        <?php foreach (['what', 'rules', 'try', 'compliance', 'exponential', 'install'] as $k): ?>
-        <li class="nav-item"><a class="nav-link" href="#<?= $k ?>"><?= $e($t['nav'][$k]) ?></a></li>
-        <?php endforeach ?>
-        <li class="nav-item ms-lg-3"><div class="btn-group btn-group-sm" role="group" aria-label="Language">
-          <a class="btn <?= $lang === 'de' ? 'btn-dark' : 'btn-outline-dark' ?>" href="/?lang=de" hreflang="de">DE</a>
-          <a class="btn <?= $lang === 'en' ? 'btn-dark' : 'btn-outline-dark' ?>" href="/?lang=en" hreflang="en">EN</a>
-        </div></li>
-      </ul>
-    </div>
-  </div>
-</nav>
-
+$here = 'main';
+$title = $t['title'];
+require __DIR__ . '/nav.php';
+?>
 <header id="top" class="hero">
   <div class="container">
     <div class="row align-items-center g-4 g-lg-5">

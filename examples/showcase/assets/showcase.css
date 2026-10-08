@@ -282,3 +282,22 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 
 /* The note that the page was made with the help of AI */
 .ai-note { font-weight: 600; }
+
+/* The page on building rules */
+.learn-hero { padding-bottom: 48px; }
+.learn-lead { max-width: 52rem; }
+.learn-step { background: #fff; border: 1px solid #d7ece3; border-radius: 20px; padding: 20px; }
+.learn-step.learn-soon { border-style: dashed; }
+.learn-n { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: #065f46; color: #fff; font-size: .85rem; margin-right: 4px; }
+.learn-panel { background: #fff; border: 1px solid #d7ece3; border-radius: 24px; padding: 24px; }
+.learn-state { color: #3f5f55; }
+.learn-state.learn-on { color: #b91c1c; font-weight: 700; }
+.learn-state.learn-on::before { content: "● "; }
+.learn-sub { color: #3f5f55; letter-spacing: .06em; }
+.learn-table td code { white-space: nowrap; }
+.learn-stopped td { color: #8a5a00; }
+.learn-r { padding: 4px 0; border-bottom: 1px solid #eef3f1; }
+.learn-mark { display: inline-block; width: 1.4rem; font-weight: 800; }
+.learn-r-pass .learn-mark { color: #047857; }
+.learn-r-refused .learn-mark { color: #b91c1c; }
+.learn-r-offered .learn-mark, .learn-r-check .learn-mark { color: #b45309; }

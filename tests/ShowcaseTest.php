@@ -232,4 +232,33 @@ return [
                 '"see the check": the pass forgotten, on to the login -- ' . $raw);
         });
     },
+    'RSF05-04 the showcase\'s page on building rules: a learning run started for this browser, its clicks recorded by shape and shown, the rules checked against them (replay), stopped' => function (): void {
+        withShowcase(static function (callable $get): void {
+            foreach (['de' => 'Regeln bauen', 'en' => 'Build rules'] as $lang => $title) {
+                [$st, , $page] = $get('GET', "/learn?lang=$lang");
+                truthy($st === 200 && strpos($page, $title) !== false && strpos($page, 'learn-start') !== false && strpos($page, 'learned.jsonl') !== false, "$lang: the page, with the start button (this machine)");
+            }
+            truthy(strpos($get('GET', '/?lang=de')[2], 'href="/learn?lang=de"') !== false, 'the front page\'s menu leads to it');
+            [$st, , $body, , $headers] = $get('POST', '/__learn/start', ['Origin' => 'http://127.0.0.1']);
+            truthy($st === 200 && preg_match('/Set-Cookie: rs-learn=([0-9a-f]{32})/i', $headers, $m) === 1, 'started, the cookie set: ' . $headers);
+            $cookie = ['Cookie' => 'rs-learn=' . ($m[1] ?? '')];
+            usleep(1100000);                // the settings see the run (the rule file touched, recheck 0)
+            same(200, $get('GET', '/search?q=red+shoes', $cookie)[0]);
+            same(200, $get('GET', '/?lang=en', $cookie)[0]);
+            same(200, $get('GET', '/?page=3')[0], 'without the cookie: not recorded');
+            $j = [];
+            for ($i = 0; $i < 30 && count($j['rows'] ?? []) < 2; $i++) {
+                usleep(100000);
+                $j = (array) json_decode($get('GET', '/__learned')[2], true);
+            }
+            same([['/', ['lang' => 'id']], ['/search', ['q' => 'text']]], array_map(static fn (array $r): array => [$r['path'], $r['query']], $j['rows'] ?? []), 'the two clicks, newest first, by shape');
+            truthy(is_int($j['until'] ?? null) && count($j['rows'][0]['found']['forms'] ?? []) > 0, 'running; what the front page offers was found');
+            $replay = (array) json_decode($get('GET', '/__replay')[2], true);
+            $kinds = array_count_values(array_column($replay['results'] ?? [], 'kind'));
+            truthy(($kinds['pass'] ?? 0) >= 2 && !isset($kinds['refused']), 'the rules against the run: the clicks pass -- ' . json_encode($replay));
+            same(200, $get('POST', '/__learn/stop', ['Origin' => 'http://127.0.0.1'] + $cookie)[0]);
+            $after = (array) json_decode($get('GET', '/__learned')[2], true);
+            truthy(array_key_exists('until', $after) && $after['until'] === null, 'stopped: ' . json_encode($after['until'] ?? 'missing'));
+        });
+    },
 ];
