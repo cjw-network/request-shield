@@ -36,7 +36,7 @@ version 2026.10.2
 
 # --- code and shell injection -------------------------------------------------
 [ATK-PHP@1]         block query <\?(php|=)|\b(base64_decode|gzinflate|str_rot13|shell_exec|passthru|proc_open|popen|pcntl_exec)\s*\(|\b(eval|assert)\s*\(\s*(\$|base64|gz|str_|\$_)     # PHP code in the address: <?php, eval(base64_decode(...))
-[ATK-SHELL@1]       block query (;|\||&&|`|\$\()\s*(cat|head|tail|more|less)\s+/|(;|\||&&|`|\$\()\s*(wget|curl|fetch)\s+\S*://|(;|\||&&|`|\$\()\s*(bash|sh|nc|ncat|python3?|perl)\s+-|/bin/(ba|z|k)?sh\b|\$\(\s*(id|whoami|uname)\b    # shell commands in the address: ; cat /etc/passwd, | wget http://…, $(id)
+[ATK-SHELL@2]       block query (;|\||&&|`|\$\()\s*(cat|head|tail|more|less)\s+/|(;|\||&&|`|\$\()\s*(wget|curl|fetch)\s+\S*://|(;|\||&&|`|\$\()\s*(bash|sh|nc|ncat|python3?|perl)\s+-|/bin/(ba|z|k)?sh\b|\$\(\s*(id|whoami|uname)\b|/dev/(tcp|udp)/[^/\s]+/\d    # shell commands in the address: ; cat /etc/passwd, | wget http://…, $(id), a reverse shell's /dev/tcp/host/port
 [ATK-SHELLSHOCK@1] block headers \(\)(?<=^\(\)|\x1e\(\)|^\x20\(\)|\x1e\x20\(\))\s*\{                             # Shellshock (CVE-2014-6271 and after): a header whose value starts with "() {" (also without the space) -- what a CGI script's bash runs; Content-Type too, cookies not
 
 # --- file inclusion ------------------------------------------------------------

