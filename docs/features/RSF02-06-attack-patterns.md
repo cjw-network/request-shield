@@ -83,7 +83,7 @@ The shipped rules:
 | `ATK-SSRF-META` | a cloud's metadata address in the query -- 169.254.169.254 (AWS, Azure, OpenStack), metadata.google.internal, 100.100.100.200 (Alibaba), 169.254.170.2 (ECS), fd00:ec2::254, also as mapped IPv6, as one number, in hex or octal and as AWS's `instance-data` after `//` or `@`: a site that fetches an address from the request would hand out its own credentials (SSRF) |
 | `ATK-JNDI` | Log4Shell: ${jndi:ldap://…}, also nested (${${lower:j}ndi:…}), anywhere in the request -- a `${` before the first one closes is refused (`${a}${b}` passes, `${a ${b}` does not); where such text belongs, `unblock [ATK-JNDI] at <paths>` |
 | `ATK-SSTI` | template injection in the query: {{7*7}}, {{_self.env…}} (Twig), {{''.__class__}} (Jinja) -- a placeholder such as {{ name }} passes, but any call or `*` inside `{{ }}` is refused ({{ fn(x) }}, {{ price * 2 }}); a page that documents templates opens it with `unblock [ATK-SSTI] at <paths>` |
-| `ATK-UA-TOOLS` | attack tools by their name: sqlmap, nikto, nuclei, wpscan, feroxbuster, dirsearch, whatweb … -- and ffuf by its own User-Agent ("Fuzz Faster U Fool") |
+| `ATK-UA-TOOLS` | attack tools by their name: sqlmap, nikto, nuclei, wpscan, feroxbuster, whatweb, arachni, w3af … -- and ffuf by its own User-Agent ("Fuzz Faster U Fool"); a tool that sends a browser's User-Agent (dirsearch and wafw00f do by default) is not known by it |
 | `ATK-EXPLOIT` | paths of well-known exploits: PHPUnit eval-stdin, routers, Laravel Ignition, stored keys |
 
 ## Cost

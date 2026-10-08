@@ -62,9 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 - **`ATK-UA-TOOLS@2`** (attack rules `2026.10.2`, `include @attacks`): also
-  feroxbuster, dirsearch, arachni, sqlninja, wafw00f, whatweb and w3af by
-  their User-Agent, and ffuf by the one it really sends ("Fuzz Faster U Fool
-  v2…") -- revision 1 looked for "ffuf", which ffuf does not send.
+  feroxbuster, arachni, whatweb and w3af by their default User-Agent, and
+  ffuf by the one it really sends ("Fuzz Faster U Fool v2…") -- revision 1
+  looked for "ffuf", which ffuf does not send; dirsearch, wafw00f and
+  sqlninja when they send their name (by default dirsearch and wafw00f send
+  a browser's).
 - **A new attack rule, `ATK-XSS-ATTR`** (attack rules `2026.10.2`,
   `include @attacks`): cross-site scripting through attributes that need no
   `on…` event -- `<button formaction=…>`, `<a xlink:href=…>` in SVG -- only

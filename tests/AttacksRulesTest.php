@@ -180,10 +180,10 @@ return [
             ['/', ['HTTP_USER_AGENT' => 'nuclei - Open-source project'], 'ATK-UA-TOOLS'],
             ['/', ['HTTP_USER_AGENT' => 'Fuzz Faster U Fool v2.1.0-dev'], 'ATK-UA-TOOLS'],          // ffuf's own User-Agent: "ffuf" is not in it
             ['/', ['HTTP_USER_AGENT' => 'feroxbuster/2.10.4'], 'ATK-UA-TOOLS'],
-            ['/', ['HTTP_USER_AGENT' => 'dirsearch/0.4.3'], 'ATK-UA-TOOLS'],
+            ['/', ['HTTP_USER_AGENT' => 'dirsearch/0.4.3'], 'ATK-UA-TOOLS'],                          // when it sends its name (by default a browser's)
             ['/', ['HTTP_USER_AGENT' => 'WhatWeb/0.5.5'], 'ATK-UA-TOOLS'],
             ['/', ['HTTP_USER_AGENT' => 'Arachni/v1.6.1.3'], 'ATK-UA-TOOLS'],
-            ['/', ['HTTP_USER_AGENT' => 'w3af.org'], 'ATK-UA-TOOLS'],
+            ['/', ['HTTP_USER_AGENT' => 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; w3af.org)'], 'ATK-UA-TOOLS'],   // w3af's default
             ['/', ['HTTP_USER_AGENT' => 'wafw00f/2.2.0'], 'ATK-UA-TOOLS'],
             ['/', ['HTTP_USER_AGENT' => 'sqlninja/0.2.999'], 'ATK-UA-TOOLS'],
             // Shellshock (CVE-2014-6271): a function definition in a header, for a CGI script's bash
