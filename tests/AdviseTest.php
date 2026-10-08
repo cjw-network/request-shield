@@ -127,6 +127,12 @@ return [
             $offered = ['method' => 'GET', 'path' => '/search', 'host' => 'www.example.org', 'query' => [], 'form' => [], 'type' => null, 'decided' => 'allow', 'status' => 200,
                 'found' => ['links' => ['?q=1', '/b?q'], 'forms' => [['action' => '', 'method' => 'GET', 'fields' => ['q' => 'text']]]]];
             same(['ADV-PARAMS-AT' => 'query q text at /b', 'ADV-TRACKING' => 'include @tracking'], adviseRules(Advise::suggest([$offered], $s)), 'a relative link and a form without action are the page\'s own (/search, declared); /b gets its line');
+            file_put_contents("$dir/glob.rules", "query utm_* any at /x\n");
+            $g = Settings::from(RuleFile::read(["$dir/glob.rules"])['config']);
+            same('query utm_foo text at /y', adviseRules(Advise::suggest([['method' => 'GET', 'path' => '/y', 'host' => 'www.example.org', 'query' => ['utm_foo' => 'text'], 'form' => [], 'type' => null, 'decided' => 'allow', 'status' => 200]], $g))['ADV-PARAMS-AT'] ?? null, 'declared with a "*" for some paths: an at line too');
+            $rel = ['method' => 'GET', 'path' => '/a/b/page', 'host' => 'www.example.org', 'query' => [], 'form' => [], 'type' => null, 'decided' => 'allow', 'status' => 200,
+                'found' => ['links' => ['./x?q', '../y?q', '//evil.example/z?q']]];
+            same('query q text at /a/b/x /a/y', adviseRules(Advise::suggest([$rel], $s))['ADV-PARAMS-AT'] ?? null, '"." and ".." as a browser reads them; another host\'s address is none of this site\'s paths');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }

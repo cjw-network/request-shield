@@ -80,6 +80,9 @@ final class Advise
         $types = [];
         $where = [];
         $see = static function (string $name, string $type, string $path) use (&$types, &$where): void {
+            if ($path === '') {
+                return;                         // another host's address: none of this site's parameters
+            }
             $name = (string) preg_replace('/\[[^\]]*\]$/', '', $name);
             $types[$name] = $type === '' ? ($types[$name] ?? '') : Learn::wider($types[$name] ?? null, $type);
             $where[$name][$path] = true;
@@ -266,7 +269,7 @@ final class Advise
                 return true;
             }
             foreach (array_keys($r['globs']) as $glob) {
-                if (fnmatch((string) $glob, $name)) {
+                if (@preg_match((string) $glob, $name) === 1) {        // kept as an expression (#^utm_.*$#), as QueryRule reads it
                     return true;
                 }
             }
@@ -284,10 +287,22 @@ final class Advise
         if ($path === '') {
             return $page;
         }
-        if ($path[0] === '/') {
-            return $path;
+        if (strncmp($path, '//', 2) === 0) {
+            return '';                          // another host's address: no path of this site
         }
-        return rtrim(substr($page, 0, (int) strrpos($page, '/') + 1), '/') . '/' . $path;
+        if ($path[0] !== '/') {
+            $path = substr($page, 0, (int) strrpos($page, '/') + 1) . $path;
+        }
+        // "." and ".." as a browser reads them: /a/b/../y is /a/y.
+        $out = [];
+        foreach (explode('/', $path) as $i => $seg) {
+            if ($seg === '..') {
+                array_pop($out);
+            } elseif ($seg !== '.' && ($seg !== '' || $i === 0)) {
+                $out[] = $seg;
+            }
+        }
+        return implode('/', $out) . (substr($path, -1) === '/' && count($out) > 1 ? '/' : '');
     }
 
     /**
