@@ -304,6 +304,70 @@ replay: learned.jsonl (learning run): 1312 requests, 260 different; left out: 3 
 260 different requests: 258 pass, 1 refused, 1 only offered on a page would be refused (never clicked in the run -- a note; --found=fail counts them).
 ```
 
+## Suggestions from a learning run: `advise`
+
+`request-shield advise site.rules [learned.jsonl]` reads a learning run (by
+default `<store-dir>/learned.jsonl`) and suggests the rules that say what the
+site takes ([proposal 0016](../proposals/0016-rule-advisor.md), step 2) --
+only what the rules do not say yet, each a sentence and a line:
+
+- **`query <name> <type> …`**: every parameter the run's requests had, with
+  the type all its values fit (the recording keeps types, never values), and
+  the names the pages offered (a link's or a script's `?page&sort`, a GET
+  form's fields) as `text`. Typed values are no longer scanned for attacks;
+  nothing is refused for this line.
+- **`include @tracking`** and **`monitor query strict`**: anything else in the
+  query answered 404 -- watched first.
+- **`monitor allow POST …`** (and PUT, PATCH, DELETE): where the run sent forms
+  and where its pages offered them; numbers and keys in a path as `*`
+  (`/node/*/edit`) -- anywhere else 405, watched first.
+- **`post-origin same`**: forms only from the site's own pages.
+- **`api-path …`**: the folders the pages' scripts call, and where the run
+  sent JSON.
+
+Then it **checks** them: each line with the rule parser, and the run replayed
+through the rules with all of them **enforced** (`monitor` taken off) -- so
+the site sees before it adopts anything whether one would refuse its own
+clicks, and which.
+
+```text
+$ php bin/request-shield advise site.rules
+advise: learned.jsonl, 3 requests recorded
+
+# 4 query parameters your pages took, each with the type all its values fit -- typed values are no longer scanned for attacks; nothing is refused for this line.
+[ADV-PARAMS] query page int  q text  since text  sort word
+
+# The marketing tags (utm_*, gclid, fbclid …) as known parameters, so links from newsletters and ads keep working with query strict.
+include @tracking
+
+# Anything else in the query answered 404 -- watched first (monitor): the log shows what it would refuse; take "monitor" off when that is only scanners.
+[ADV-STRICT] monitor query strict
+
+# POST only where your pages sent it (2 addresses) -- anywhere else 405; watched first (monitor).
+[ADV-POST] monitor allow POST /account/login /contact/send
+
+# Forms only from your own pages: …
+[ADV-ORIGIN] post-origin same
+
+# Addresses your pages' scripts call: …
+[ADV-API] api-path /api/**
+
+With all of them enforced ("monitor" taken off), the 7 different requests of your run: none refused.
+```
+
+- **`--write`** keeps them in `<store-dir>/advice.rules` (as watched, with
+  `monitor`); the site adds `include <that file>` to its rules, watches the
+  log, then takes `monitor` off -- or copies the lines it wants into its own
+  rule file, which is the way for rules kept in version control.
+- **`--json`**: the suggestions, the replay's result and the refused requests,
+  for a tool or a dashboard.
+- **Limits:** it suggests only what one run showed -- what nobody clicked is
+  not in it (the replay's "offered" addresses help); a name no rule line can
+  hold (`at`, a quote in it) is left out, and the replay then shows that
+  `query strict` would refuse it. Suggestions from the counters of live
+  traffic (limits, `include @wordpress`, `set mode enforce`) are the next step
+  of 0016.
+
 ## The built-in rules have examples too
 
 `rules/scanners.rules`, `rules/wordpress.rules` and `rules/tracking.rules`

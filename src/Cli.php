@@ -60,6 +60,12 @@ use CjwNetwork\RequestShield\Rules\Shipped;
  *         websites' addresses are left out (--all keeps the static files);
  *         every request comes from --ip (log: each line's own address).
  *         Exit 0: none refused, 1: one is, 2: a mistake in the files.
+ * advise: suggests rules from a learning run (store-dir/learned.jsonl, or the
+ *         file named): the query parameters and their types, query strict and
+ *         allow watched first, post-origin same, api-path -- only what the rules
+ *         do not say yet; each line checked by the parser, then the run replayed
+ *         with all of them enforced. --write keeps them in store-dir/advice.rules
+ *         for an include, --json for tools. Exit 0, 2: no recording.
  * crawlers: the known crawlers, what the site does with each, and how old
  *         their address lists are. "update" fetches the operators' current
  *         lists into store-dir (cron, a deploy -- or where there is internet,
@@ -130,6 +136,7 @@ final class Cli
         $replayFound = 'note';
         $ipGiven = false;
         $learn = ['from' => [], 'keep' => false];
+        $adviseWrite = false;
         foreach ($args as $a) {
             if ($a === '--force') {
                 $force = true;
@@ -170,6 +177,8 @@ final class Cli
                 $listReason = substr($a, 9);
             } elseif (strncmp($a, '--format=', 9) === 0) {
                 $feedOpts['format'] = substr($a, 9);
+            } elseif ($a === '--write') {
+                $adviseWrite = true;                    // advise: <store-dir>/advice.rules
             } elseif (strncmp($a, '--write=', 8) === 0) {
                 $feedOpts['write'] = substr($a, 8);
             } elseif (strncmp($a, '--only=', 7) === 0) {
@@ -291,7 +300,7 @@ final class Cli
                 }
             }
         }
-        $core = ['check', 'show', 'reload', 'trace', 'test', 'replay', 'crawlers', 'feeds', 'access-token', 'deny', 'allow', 'unlist', 'lists', 'learn'];
+        $core = ['check', 'show', 'reload', 'trace', 'test', 'replay', 'crawlers', 'feeds', 'access-token', 'deny', 'allow', 'unlist', 'lists', 'learn', 'advise'];
         if (!in_array($command, array_merge($core, array_keys($commands)), true) || $file === null
             || ($command === 'access-token' && $what === null)
             || ($command === 'feeds' && $what !== null && !in_array($what, ['list', 'update', 'export'], true))
@@ -310,6 +319,7 @@ final class Cli
                 . "       request-shield unlist <main.rules> <address|range>\n"
                 . "       request-shield lists <main.rules>\n"
                 . "       request-shield learn <main.rules> start [--for=2h] [--from=<address|range>,…] [--keep] | stop | status\n"
+                . "       request-shield advise <main.rules> [learned.jsonl] [--write] [--json]\n"
                 . "       request-shield version [<main.rules>]\n"
                 . "       request-shield init --app=" . implode('|', Shipped::starters()) . " [--docroot=<dir>] [--out=<file>] [--force]\n"
                 . "       request-shield verify <request-shield.php> [--sums=<SHA256SUMS>] [--sig=<file.minisig>] [--key=<public key>]\n"
@@ -483,6 +493,10 @@ final class Cli
         } catch (\InvalidArgumentException $e) {
             self::mistake($e->getMessage());
             exit(1);
+        }
+
+        if ($command === 'advise') {
+            exit(self::advise($files, $settings, $what, $adviseWrite, $json));
         }
 
         // An extension's command: run from the table with what the script read and parsed.
@@ -949,6 +963,84 @@ final class Cli
 
     /** @var list<string> the folders of the rule files the command line names */
     private static array $dirs = [];
+
+    /**
+     * `request-shield advise` (proposal 0016, step 2): suggestions from a learning
+     * run -- each checked by the rule parser, then the run replayed through the
+     * rules with all of them enforced ("monitor" taken off), so the site sees
+     * whether one would refuse its own clicks. --write keeps them in
+     * <store-dir>/advice.rules (as watched, with "monitor"), for an include.
+     *
+     * @param list<string> $files
+     */
+    private static function advise(array $files, Settings $settings, ?string $source, bool $write, bool $json): int
+    {
+        $source ??= \CjwNetwork\RequestShield\Learn::recordFile($settings->storeDir);
+        $text = is_file($source) ? @file_get_contents($source) : false;
+        if ($text === false || trim($text) === '') {
+            fwrite(STDERR, "request-shield: no learning run in $source -- record one: request-shield learn <main.rules> start\n");
+            return 2;
+        }
+        $records = \CjwNetwork\RequestShield\Rules\Advise::read($text);
+        $suggestions = \CjwNetwork\RequestShield\Rules\Advise::suggest($records, $settings);
+        $advice = \CjwNetwork\RequestShield\Rules\Advise::file($suggestions, basename($source), time());
+        // Checked as the rules will read them: the site's files, then the advice -- as written
+        // (watched) and enforced. A line the parser refuses is the advisor's mistake: said, not written.
+        $dir = sys_get_temp_dir() . '/rshield-advise-' . getmypid() . '-' . bin2hex(random_bytes(3));
+        @mkdir($dir, 0700, true);
+        $tmp = "$dir/advice.rules";
+        try {
+            file_put_contents($tmp, $advice);
+            RuleFile::read(array_merge($files, [$tmp]));
+            file_put_contents($tmp, (string) preg_replace('/^(\[[A-Z0-9-]+\] )?monitor /m', '$1', $advice));
+            $enforced = Settings::from(RuleFile::read(array_merge($files, [$tmp]))['config']);
+            $recording = \CjwNetwork\RequestShield\Rules\Replay::read($text);
+            $run = \CjwNetwork\RequestShield\Rules\Replay::run($recording['requests'], static fn (string $host): Settings => $enforced, null);
+        } catch (\InvalidArgumentException $e) {
+            fwrite(STDERR, 'request-shield: the advice does not read as rules -- please report this: ' . $e->getMessage() . "\n");
+            return 1;
+        } finally {
+            @unlink($tmp);
+            @rmdir($dir);
+        }
+        $refused = array_values(array_filter($run['results'], static fn (array $r): bool => $r['kind'] === 'refused' && !$r['found']));
+        $offered = array_values(array_filter($run['results'], static fn (array $r): bool => $r['kind'] === 'refused' && $r['found']));
+        $written = null;
+        if ($write && $suggestions !== []) {
+            $written = rtrim($settings->storeDir, '/') . '/advice.rules';
+            if (@file_put_contents($written, $advice) === false) {
+                fwrite(STDERR, "request-shield: cannot write $written\n");
+                return 2;
+            }
+        }
+        if ($json) {
+            echo json_encode(['source' => $source, 'requests' => count($records), 'suggestions' => $suggestions,
+                'replay' => ['different' => count($run['results']), 'refused' => count($refused), 'offeredRefused' => count($offered),
+                    'refusedList' => array_map(static fn (array $r): array => ['method' => $r['method'], 'url' => $r['url'], 'got' => $r['got'], 'rule' => $r['rule']], $refused)],
+                'written' => $written], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
+            return 0;
+        }
+        echo 'advise: ' . basename($source) . ', ' . count($records) . " requests recorded\n\n";
+        if ($suggestions === []) {
+            echo "Nothing to suggest: your rules say already what this run shows.\n";
+            return 0;
+        }
+        foreach ($suggestions as $a) {
+            echo '# ' . $a['text'] . "\n" . (strncmp($a['rule'], 'include ', 8) === 0 ? '' : '[' . $a['id'] . '] ') . $a['rule'] . "\n\n";
+        }
+        echo 'With all of them enforced ("monitor" taken off), the ' . count($run['results']) . ' different requests of your run: '
+            . ($refused === [] ? 'none refused.' : count($refused) . ' refused -- leave those lines watched, or widen them:') . "\n";
+        foreach ($refused as $r) {
+            echo '  ✕ ' . $r['method'] . ' ' . (string) preg_replace('#^https?://[^/]+#i', '', $r['url']) . ' -- ' . $r['got'] . ($r['rule'] !== null ? ' by ' . $r['rule'] : '') . "\n";
+        }
+        if ($offered !== []) {
+            echo '  (' . count($offered) . " address(es) only offered on a page, never clicked, would be refused -- request-shield replay lists them)\n";
+        }
+        echo $written !== null
+            ? "\nWritten to $written -- add \"include $written\" to your rules, watch the log, then take \"monitor\" off.\n"
+            : "\nTo keep them: --write (<store-dir>/advice.rules), or copy the lines into your rules.\n";
+        return 0;
+    }
 
     /**
      * A mistake on stderr, and where it is explained (0031 F.9): the feature

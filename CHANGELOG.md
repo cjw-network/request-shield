@@ -67,6 +67,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **`request-shield advise`** (proposal 0016, step 2): suggestions from a
+  learning run -- the query parameters with the type all their values fit,
+  `include @tracking` and `monitor query strict`, `monitor allow POST …` where
+  the run sent forms (numbers in a path as `*`), `post-origin same`,
+  `api-path` for what the pages' scripts call; only what the rules do not say
+  yet. Each line checked by the rule parser, then the run replayed with all
+  of them enforced, so the site sees whether one would refuse its own clicks.
+  `--write` keeps them in `<store-dir>/advice.rules` for an include, `--json`
+  for tools.
 - **A new built-in scanner rule, `SCAN-CONFIG`** (scanner rules
   `2026.10.2`): project and key files -- `composer.json`, `composer.lock`,
   `web.config`, `docker-compose.yml`, `.npmrc`, `id_rsa` and the other SSH

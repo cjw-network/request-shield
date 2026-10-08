@@ -31,12 +31,15 @@ $cli = "# record: two bookmarks switch it on and off in your browser\n"
     . "cp .request-shield/store/learned.jsonl tests/learned.jsonl\n\n"
     . "# in CI, before every deployment: exit 1 when a rule would refuse one of your clicks\n"
     . "php request-shield.php replay site.rules tests/learned.jsonl --junit=build/rules.xml";
-$advise = "# advice.rules -- from 1,284 recorded requests\n"
-    . "[ADV-PARAMS]  query page int  sort word  q text          # the parameters your pages use, by type\n"
-    . "[ADV-STRICT]  monitor query strict                        # anything else: watched first\n"
-    . "[ADV-FORMS]   allow POST /contact/send /account/login     # the only forms\n"
-    . "[ADV-ORIGIN]  post-origin same                            # sent from your own pages\n"
-    . "[ADV-API]     api-path /api/**                            # called by your scripts: answers as JSON";
+$advise = "$ php request-shield.php advise site.rules\n"
+    . "# 4 query parameters your pages took, each with the type all its values fit …\n"
+    . "[ADV-PARAMS] query page int  q text  since text  sort word\n"
+    . "include @tracking\n"
+    . "[ADV-STRICT] monitor query strict          # anything else in the query: 404 -- watched first\n"
+    . "[ADV-POST]   monitor allow POST /account/login /contact/send\n"
+    . "[ADV-ORIGIN] post-origin same              # forms only from your own pages\n"
+    . "[ADV-API]    api-path /api/**              # what your scripts call: answers as JSON\n\n"
+    . "With all of them enforced (\"monitor\" taken off), the 7 different requests of your run: none refused.";
 $client = ['words' => ['on' => $l['on'], 'off' => $l['off'], 'empty' => $l['empty'], 'foundSum' => $l['foundSum'], 'replaySum' => $l['replaySum'], 'lang' => $lang]];
 ?>
 <header id="top" class="hero learn-hero">
@@ -46,9 +49,9 @@ $client = ['words' => ['on' => $l['on'], 'off' => $l['off'], 'empty' => $l['empt
     <p class="lead my-4 learn-lead"><?= $e($l['lead']) ?></p>
     <div class="row g-3 mt-2">
       <?php foreach ($l['steps'] as $i => [$icon, $name, $text]): ?>
-      <div class="col-sm-6 col-lg-3"><div class="learn-step h-100<?= $i === 3 ? ' learn-soon' : '' ?>">
+      <div class="col-sm-6 col-lg-3"><div class="learn-step h-100">
         <div class="feature-icon"><i class="bi <?= $e($icon) ?>"></i></div>
-        <h2 class="h5 mt-2"><span class="learn-n"><?= $i + 1 ?></span> <?= $e($name) ?><?= $i === 3 ? ' <span class="badge text-bg-light">' . $e($l['soon']) . '</span>' : '' ?></h2>
+        <h2 class="h5 mt-2"><span class="learn-n"><?= $i + 1 ?></span> <?= $e($name) ?></h2>
         <p class="mb-0"><?= $e($text) ?></p>
       </div></div>
       <?php endforeach ?>
@@ -105,7 +108,7 @@ $client = ['words' => ['on' => $l['on'], 'off' => $l['off'], 'empty' => $l['empt
 
 <section id="advise" class="section">
   <div class="container">
-    <div class="section-head"><h2><?= $e($l['adviseTitle']) ?> <span class="badge text-bg-light align-middle"><?= $e($l['soon']) ?></span></h2><p class="lead"><?= $e($l['adviseLead']) ?></p></div>
+    <div class="section-head"><h2><?= $e($l['adviseTitle']) ?></h2><p class="lead"><?= $e($l['adviseLead']) ?></p></div>
     <div class="code-box learn-advise"><pre class="card-paper mb-0"><code><?= $e($advise) ?></code></pre></div>
   </div>
 </section>
