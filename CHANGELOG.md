@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   50 -> 36 µs; short values are matched as before (one call).
 
 ### Fixed
+- **The dashboard's sign-in form works in a browser**: its pages said
+  `Referrer-Policy: no-referrer`, and with that policy Chromium and Firefox
+  send `Origin: null` with the page's own form -- the form's check (sent
+  from this page) refused every browser's token with 403. The pages say
+  `Referrer-Policy: same-origin` now: still no address for other sites, and
+  the browser sends the page's own `Origin`. `Origin: null` stays refused;
+  a program without an `Origin` (curl) passed before and still does.
 - **Log4Shell with a lookup inside a lookup is refused** (`ATK-JNDI@2`,
   attack rules `2026.10.2`): `${${lower:j}ndi:ldap://…}` and
   `${${upper:j}${upper:n}di:…}` got past revision 1. Revision 2 refuses a
