@@ -298,7 +298,7 @@ final class Cli
             fwrite(STDERR, "usage: request-shield check|show|reload <main.rules> [--source=<glob>]...\n"
                 . "       request-shield trace <main.rules> \"GET https://www.example.org/path\" [--ip=<address>] [--ua=<User-Agent>] [--source=<glob>]...\n"
                 . "       request-shield test <main.rules> [--source=<glob>]... [--only=<ID>] [--as-written] [--junit=<file>]\n"
-                . "       request-shield replay <main.rules> <session.har|access.log|urls.txt> [--ip=<address>|log] [--all] [--as-written] [--junit=<file>]\n"
+                . "       request-shield replay <main.rules> <session.har|access.log|urls.txt|learned.jsonl> [--ip=<address>|log] [--all] [--as-written] [--junit=<file>]\n"
                 . "       request-shield crawlers <main.rules> [update] [--force]\n"
                 . "       request-shield access-token <main.rules> \"<principal>\"|'*'\n"
                 . "       request-shield feeds <main.rules> [list|update|export] [--force] [--format=plain|nginx|nftables|ipset] [--write=<file>]\n"
@@ -362,7 +362,8 @@ final class Cli
                 }
             }
             if ($recording['skipped'] > 0) {
-                $out[] = $recording['skipped'] . ($recording['format'] === 'access log' ? ' the site answered with 4xx or 5xx' : ' not for a website');
+                $out[] = $recording['skipped'] . ($recording['format'] === 'access log' ? ' the site answered with 4xx or 5xx'
+                    : ($recording['format'] === 'learning run' ? ' refused or failed in the run' : ' not for a website'));
             }
             echo "replay: " . basename($source) . " ({$recording['format']}): {$run['total']} requests, " . count($run['results']) . ' different'
                 . ($out !== [] ? '; left out: ' . implode(', ', $out) : '') . "\n\n";

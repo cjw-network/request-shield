@@ -8,7 +8,7 @@
 usage: request-shield check|show|reload <main.rules> [--source=<glob>]...
        request-shield trace <main.rules> "GET https://www.example.org/path" [--ip=<address>] [--ua=<User-Agent>] [--source=<glob>]...
        request-shield test <main.rules> [--source=<glob>]... [--only=<ID>] [--as-written] [--junit=<file>]
-       request-shield replay <main.rules> <session.har|access.log|urls.txt> [--ip=<address>|log] [--all] [--as-written] [--junit=<file>]
+       request-shield replay <main.rules> <session.har|access.log|urls.txt|learned.jsonl> [--ip=<address>|log] [--all] [--as-written] [--junit=<file>]
        request-shield crawlers <main.rules> [update] [--force]
        request-shield access-token <main.rules> "<principal>"|'*'
        request-shield feeds <main.rules> [list|update|export] [--force] [--format=plain|nginx|nftables|ipset] [--write=<file>]

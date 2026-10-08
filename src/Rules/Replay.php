@@ -48,7 +48,8 @@ final class Replay
     {
         $trim = ltrim($text);
         if ($trim !== '' && $trim[0] === '{') {
-            return self::har($text);
+            $first = json_decode(strtok($trim, "\n") ?: '', true);
+            return is_array($first) && isset($first['method'], $first['path'], $first['t']) ? self::learned($text) : self::har($text);
         }
         $out = [];
         $skipped = 0;
@@ -80,6 +81,91 @@ final class Replay
             }
         }
         return ['format' => $format, 'requests' => $out, 'skipped' => $skipped];
+    }
+
+    /**
+     * A learning run's recording (request-shield learn, <store-dir>/learned.jsonl):
+     * the requests clicked -- only those the shield let through and the site
+     * answered below 400, as with an access log -- and what their pages offered:
+     * each form (its method, its fields; a POST with the site's own Origin, as a
+     * browser sends it), each link and each address a script named (a GET). The
+     * recording holds no values: each parameter gets one of its type ($sample).
+     *
+     * @return array{format: string, requests: list<Recorded>, skipped: int}
+     */
+    private static function learned(string $text): array
+    {
+        $out = [];
+        $skipped = 0;
+        $found = [];
+        foreach (preg_split('/\R/', $text) ?: [] as $line) {
+            $r = $line === '' ? null : json_decode($line, true);
+            if (!is_array($r) || !is_string($r['method'] ?? null) || !is_string($r['path'] ?? null) || !is_string($r['host'] ?? null)) {
+                continue;
+            }
+            $origin = 'https://' . $r['host'];
+            $status = is_int($r['status'] ?? null) ? $r['status'] : 200;
+            if (!in_array($r['decided'] ?? 'allow', ['allow', 'allow-uncached'], true) || $status >= 400) {
+                $skipped++;                     // refused then, or the site failed it: no request to keep working
+            } else {
+                /** @var array<string, string> $query */
+                $query = is_array($r['query'] ?? null) ? $r['query'] : [];
+                $headers = $r['method'] === 'GET' || $r['method'] === 'HEAD' ? [] : ['origin' => $origin];
+                if (is_string($r['type'] ?? null)) {
+                    $headers['content-type'] = $r['type'];
+                }
+                $out[] = ['method' => $r['method'], 'url' => $origin . self::sampled($r['path'], $query), 'headers' => $headers, 'from' => null];
+            }
+            $f = is_array($r['found'] ?? null) ? $r['found'] : [];
+            foreach (is_array($f['forms'] ?? null) ? $f['forms'] : [] as $form) {
+                if (is_array($form) && is_string($form['action'] ?? null) && is_string($form['method'] ?? null)) {
+                    $fields = [];
+                    foreach (is_array($form['fields'] ?? null) ? array_keys($form['fields']) : [] as $name) {
+                        $fields[(string) $name] = '';       // a form field's type is an input's (email, hidden): any value, "1"
+                    }
+                    $post = $form['method'] === 'POST';
+                    $found[$form['method'] . ' ' . $origin . $form['action'] . ' ' . json_encode($post ? [] : $fields)] = ['method' => $form['method'],
+                        'url' => $origin . self::sampled($form['action'], $post ? [] : $fields),
+                        'headers' => $post ? ['origin' => $origin, 'content-type' => 'application/x-www-form-urlencoded'] : [], 'from' => null];
+                }
+            }
+            foreach (['links', 'scripts'] as $k) {
+                foreach (is_array($f[$k] ?? null) ? $f[$k] : [] as $target) {
+                    if (is_string($target)) {
+                        $found['GET ' . $origin . $target] = ['method' => 'GET', 'url' => $origin . self::sampled($target, []), 'headers' => [], 'from' => null];
+                    }
+                }
+            }
+        }
+        return ['format' => 'learning run', 'requests' => array_merge($out, array_values($found)), 'skipped' => $skipped];
+    }
+
+    /** One value of each type -- the narrowest that is still of it; a name of no known type gets "1", which every type takes. */
+    private const SAMPLE = ['int' => '1', 'number' => '1.5', 'id' => 'a1', 'word' => 'word', 'list' => 'a,b', 'text' => 'two words', '' => '1'];
+
+    /**
+     * An address to replay: the path ("*" where the page had a placeholder: "1"),
+     * its parameters each with a value of its type -- the names of a target
+     * ("/news/?page&sort") get "1".
+     *
+     * @param array<string, string> $types name => type
+     */
+    private static function sampled(string $target, array $types): string
+    {
+        $q = strpos($target, '?');
+        $path = str_replace('*', '1', $q === false ? $target : substr($target, 0, $q));
+        if ($q !== false) {
+            foreach (explode('&', substr($target, $q + 1)) as $name) {
+                if ($name !== '') {
+                    $types[$name] ??= '';
+                }
+            }
+        }
+        $pairs = [];
+        foreach ($types as $name => $type) {
+            $pairs[] = rawurlencode((string) $name) . '=' . rawurlencode(self::SAMPLE[$type] ?? '1');
+        }
+        return $path . ($pairs === [] ? '' : '?' . implode('&', $pairs));
     }
 
     /** @return array{format: string, requests: list<Recorded>, skipped: int} */

@@ -158,6 +158,7 @@ end-to-end tests, and send the recording through the rules:
 php bin/request-shield replay site.rules session.har            # a session recorded in the browser
 php bin/request-shield replay site.rules access.log --ip=log    # a web server's access log, each line's own address
 php bin/request-shield replay site.rules urls.txt --junit=build/replay.xml
+php bin/request-shield replay site.rules tests/learned.jsonl --junit=build/rules.xml   # a learning run (below): a test for every deployment
 ```
 
 ```text
@@ -173,8 +174,9 @@ replay: session.har (HAR): 1284 requests, 214 different; left out: 812 static fi
 - **A recording:** a HAR file -- the browser's developer tools (Network, "Save
   all as HAR"), Playwright (`recordHar` in a browser context), a proxy; a web
   server's access log in the combined or common format (only its 2xx and 3xx
-  lines: the others were no good requests); or a list, one request per line
-  (`GET /path`, `/path`, a full address).
+  lines: the others were no good requests); a list, one request per line
+  (`GET /path`, `/path`, a full address); or a **learning run's recording**
+  (`learned.jsonl`, [below](#recording-a-learning-run-learn)).
 - **Each different request once,** on a fresh store, nothing counted -- one
   session is no measure of a crowd, so no limit decides. The rules are
   switched on as for `test` (`monitor` as enforced); `--as-written` takes them
@@ -266,6 +268,34 @@ for tests, a header with every request:
 (one line in the file; wrapped here.) `learn status` and `learn stop` count
 both: *"recorded: 1284 requests … — found on its pages: 9 forms, 214 links,
 12 addresses in scripts; other hosts of the site: api.example.org"*.
+
+### The recording as a test for every deployment
+
+A learning run's recording holds no values, so it can live in the project's
+repository (`tests/learned.jsonl`) and be replayed in CI before every
+deployment: *are my rules still fine for everything the site does?*
+
+- **What it replays:** the requests clicked in the run that the shield let
+  through and the site answered below 400 (refused or failed ones left out,
+  as with an access log) -- and **what the pages offered**: every form found
+  (a POST with the site's own `Origin`, as a browser sends it; a GET form with
+  its fields), every link and every address a script named. A form nobody
+  sent in the run is tested too.
+- **Values:** the recording has none, so each parameter gets one of its type
+  -- `int` 1, `number` 1.5, `id` a1, `word` word, `list` a,b, `text` "two
+  words"; a name of no known type (a link's, a form field's) "1", which every
+  type takes; a script's placeholder (`/api/items/${id}`) the segment 1.
+- **Exit 1** when one of them would be refused, with its rule -- the
+  deployment stops before the rules lock out a part of the site.
+
+```text
+replay: learned.jsonl (learning run): 1312 requests, 260 different; left out: 3 refused or failed in the run
+
+  ✕ GET /search?q=1                               404 by APP-STRICT
+  ✕ POST /newsletter/subscribe                    405 by APP-FORMS
+
+260 different requests: 258 pass, 2 refused.
+```
 
 ## The built-in rules have examples too
 

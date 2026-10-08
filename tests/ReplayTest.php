@@ -78,6 +78,44 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF05-04 replay reads a learning run (learned.jsonl): the clicks it let through with a value of each type, and what the pages offered -- forms (a POST with the site\'s Origin), links, script addresses' => function (): void {
+        $l = static fn (array $x): string => (string) json_encode($x + ['t' => 1, 'host' => 'www.example.org', 'query' => [], 'form' => [], 'type' => null, 'decided' => 'allow', 'status' => 200]);
+        $rec = implode("\n", [
+            $l(['method' => 'GET', 'path' => '/products/', 'query' => ['page' => 'int', 'sort' => 'word', 'q' => 'text'],
+                'found' => ['forms' => [['action' => '/contact', 'method' => 'POST', 'fields' => ['email' => 'email']], ['action' => '/search', 'method' => 'GET', 'fields' => ['q' => 'text']]],
+                    'links' => ['/products/?page&sort', '/old/page'], 'scripts' => ['/api/items/*/edit'], 'hosts' => []]]),
+            $l(['method' => 'POST', 'path' => '/contact', 'form' => ['email' => 'text'], 'type' => 'application/x-www-form-urlencoded']),
+            $l(['method' => 'GET', 'path' => '/.env', 'decided' => 'reject', 'status' => 404]),
+            $l(['method' => 'GET', 'path' => '/gone', 'status' => 404]),
+        ]) . "\n";
+        $r = Replay::read($rec);
+        same(['learning run', 2], [$r['format'], $r['skipped']], 'refused then, or failed by the site: left out');
+        same([
+            ['GET', 'https://www.example.org/products/?page=1&sort=word&q=two%20words', []],
+            ['POST', 'https://www.example.org/contact', ['origin' => 'https://www.example.org', 'content-type' => 'application/x-www-form-urlencoded']],
+            ['POST', 'https://www.example.org/contact', ['origin' => 'https://www.example.org', 'content-type' => 'application/x-www-form-urlencoded']],
+            ['GET', 'https://www.example.org/search?q=1', []],
+            ['GET', 'https://www.example.org/products/?page=1&sort=1', []],
+            ['GET', 'https://www.example.org/old/page', []],
+            ['GET', 'https://www.example.org/api/items/1/edit', []],
+        ], array_map(static fn (array $x): array => [$x['method'], $x['url'], $x['headers']], $r['requests']), 'clicked, then found: forms, links, script addresses');
+        $dir = replayDir();
+        try {
+            file_put_contents("$dir/site.rules", REPLAY_RULES);
+            $s = Settings::from(RuleFile::switchedOn(["$dir/site.rules"]));
+            $kinds = [];
+            foreach (Replay::run($r['requests'], static fn (string $h): Settings => $s, null)['results'] as $x) {
+                $kinds[$x['method'] . ' ' . (string) parse_url($x['url'], PHP_URL_PATH)] = $x['kind'] . ($x['kind'] !== 'pass' && $x['rule'] !== null ? ' ' . $x['rule'] : '');
+            }
+            same(['GET /products/' => 'pass', 'POST /contact' => 'pass', 'GET /search' => 'refused APP-STRICT', 'GET /old/page' => 'refused APP-WATCH', 'GET /api/items/1/edit' => 'pass'], $kinds,
+                'the rules against the run: a found form and a link they would refuse are named');
+            file_put_contents("$dir/learned.jsonl", $rec);
+            [$out, $code] = replayCli(escapeshellarg("$dir/site.rules") . ' ' . escapeshellarg("$dir/learned.jsonl") . ' --junit=' . escapeshellarg("$dir/r.xml"));
+            truthy($code === 1 && strpos($out, '(learning run)') !== false && strpos($out, 'left out: 2 refused or failed in the run') !== false && strpos($out, 'APP-STRICT') !== false, 'the command line: a step for CI -- ' . $out);
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'RSF05-04 request-shield replay: the refused with their rule, exit 1; none refused, exit 0; a check is a note; JUnit for CI; a recording that cannot be read, exit 2' => function (): void {
         $dir = replayDir();
         try {
