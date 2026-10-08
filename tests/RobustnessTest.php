@@ -181,7 +181,7 @@ return [
             $whole = (int) filesize($compiled);
             // Cut inside the array, as a full disk would: not even parseable.
             file_put_contents($compiled, substr((string) file_get_contents($compiled), 0, intdiv($whole, 2)));
-            touch($compiled, time() + 5);           // changed, as a write that broke off changes it: OPcache sees it (by the second)
+            touch($compiled, time() + 5);           // changed, as a write that broke off changes it: OPcache sees it (by the second; each cut its own time)
             same(404, $get('/secret/x')['status'], 'decided all the same -- from the rule file');
             same(200, $get('/')['status']);
             same($whole, (int) filesize($compiled), 'the compiled file is whole again');
@@ -189,7 +189,7 @@ return [
             $php = (string) file_get_contents($compiled);
             $cut = strrpos($php, "'challenge' =>");
             file_put_contents($compiled, substr($php, 0, (int) $cut) . ");\n");
-            touch($compiled, time() + 5);           // changed, as a write that broke off changes it: OPcache sees it (by the second)
+            touch($compiled, time() + 10);           // changed, as a write that broke off changes it: OPcache sees it (by the second)
             same(404, $get('/secret/x')['status'], 'decided all the same');
             same($whole, (int) filesize($compiled), 'compiled anew');
             // Cut before its last entries only: the constructor would fill them in with defaults
@@ -197,7 +197,7 @@ return [
             $php = (string) file_get_contents($compiled);
             $cut = strrpos($php, "'errorPages' =>");
             file_put_contents($compiled, substr($php, 0, (int) $cut) . "),\n);\n");
-            touch($compiled, time() + 5);           // changed, as a write that broke off changes it: OPcache sees it (by the second)
+            touch($compiled, time() + 15);           // changed, as a write that broke off changes it: OPcache sees it (by the second)
             same(404, $get('/secret/x')['status'], 'decided all the same');
             same($whole, (int) filesize($compiled), 'its end missing: compiled anew');
             same('', trim((string) @file_get_contents("$dir/php-errors.log")), 'nothing for the log: nothing was wrong with the rules');

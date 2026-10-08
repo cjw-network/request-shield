@@ -1553,8 +1553,8 @@ final class Settings
                 // Another request is building them: the last ones meanwhile, the website's too.
                 $raw = $e['settings'];
                 $site = $raw['sites'] === [] ? null : self::pick($raw['sites'], $raw['siteFrom'], $raw['trustedProxies'], $server);
-                $one = $site === null ? null : @include $cacheDir . '/settings-' . $key . '-' . hash('crc32b', $site) . '.php';
-                if (is_array($one) && ($one['format'] ?? 0) === self::FORMAT && ($one['file'] ?? '') === $file && ($one['site'] ?? null) === $site) {
+                $one = $site === null ? null : self::compiled($cacheDir . '/settings-' . $key . '-' . hash('crc32b', $site) . '.php', $file);    // whole, or not at all
+                if ($one !== null && ($one['site'] ?? null) === $site) {
                     /** @var array{settings: array<string, mixed>} $one */
                     return self::import($one['settings']);
                 }
