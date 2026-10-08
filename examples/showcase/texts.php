@@ -48,7 +48,7 @@ return [
                     'altcha' => 'Laut ALTCHA: keine Cookies, kein Fingerprinting, keine Weitergabe; IP-Adressen würden gelöscht oder so verarbeitet, dass niemand erkennbar ist. Selbst gehostet ohne Dritte; die Verantwortung bleibe beim Betreiber.',
                     'shield' => [
                         'Läuft auf deinem Server: kein Skript von woanders, kein Google, kein CDN. Nach außen geht nur, was du einschaltest: DNS-Abfragen zum Prüfen echter Crawler und das Laden von Sperrlisten (docs/privacy.md).',
-                        'Kein Fingerprinting: Vom Gerät wird nichts gelesen — der Browser rechnet nur und schickt eine Zahl zurück.',
+                        'Kein Fingerprinting: Keine Eigenschaften des Geräts werden gelesen — der Browser rechnet nur und schickt eine Zahl zurück. Die Prüfseite merkt sich im Tab (sessionStorage, eine Minute) nur ihre Versuche, gegen eine Endlosschleife.',
                         'Kein Profil: Gezählt wird pro Adresse für Sekunden bis Minuten; das Log ist aus, und wenn an, sind die Adressen gekürzt (log-ip masked).',
                         'Zweck Sicherheit: Erwägungsgrund 49 nennt sie als berechtigtes Interesse, Grundlage dann Art. 6 Abs. 1 lit. f DSGVO.',
                     ],
@@ -283,7 +283,7 @@ return [
                     'altcha' => 'According to ALTCHA: no cookies, no fingerprinting, no sharing; IP addresses are deleted or processed so that nobody can be identified; self-hosted without third parties. Responsibility, ALTCHA says, stays with the operator.',
                     'shield' => [
                         'Runs on your server: no script from elsewhere, no Google, no CDN. Only what you switch on goes out: DNS lookups to verify real crawlers and the download of block lists (docs/privacy.md).',
-                        'No fingerprinting: nothing is read from the device — the browser only computes and sends back a number.',
+                        'No fingerprinting: no properties of the device are read — the browser only computes and sends back a number. The check page keeps only its attempts in the tab (sessionStorage, one minute), against an endless loop.',
                         'No profile: counted per address for seconds to minutes; the log is off, and when on, addresses are shortened (log-ip masked).',
                         'Purpose security: recital 49 names it a legitimate interest, the basis then Art. 6(1)(f) GDPR.',
                     ],

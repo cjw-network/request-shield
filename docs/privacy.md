@@ -45,8 +45,11 @@ feature by feature, for what exists today and for the proposals.
 ### The browser check (proof of work)
 
 - **Processed:** a task signed for the client bucket; the browser computes a
-  hash and sends back a number. **Nothing is read from the device** — no
-  properties, no fingerprint.
+  hash and sends back a number. **No properties of the device are read** — no
+  fingerprint. The check page (not the box in a form) keeps a guard against an
+  endless loop in the tab's `sessionStorage` (`rs-tries`: the address, a count
+  and a time; it counts for a minute and is gone when the tab closes) — storage
+  on the device, for the same purpose as the cookies below.
 - **Cookies:** a solution cookie (minutes, once) and a pass cookie (an hour by
   default, `pass-ttl`), signed, holding an expiry time and a tag derived from the
   client bucket and — with `bind-user-agent on`, the default — the browser
