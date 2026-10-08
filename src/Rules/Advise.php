@@ -293,16 +293,17 @@ final class Advise
         if ($path[0] !== '/') {
             $path = substr($page, 0, (int) strrpos($page, '/') + 1) . $path;
         }
-        // "." and ".." as a browser reads them: /a/b/../y is /a/y.
+        // "." and ".." as a browser reads them: /a/b/../y is /a/y, and nothing goes above the root.
+        $segs = explode('/', ltrim($path, '/'));
         $out = [];
-        foreach (explode('/', $path) as $i => $seg) {
+        foreach ($segs as $seg) {
             if ($seg === '..') {
                 array_pop($out);
-            } elseif ($seg !== '.' && ($seg !== '' || $i === 0)) {
+            } elseif ($seg !== '.' && $seg !== '') {
                 $out[] = $seg;
             }
         }
-        return implode('/', $out) . (substr($path, -1) === '/' && count($out) > 1 ? '/' : '');
+        return '/' . implode('/', $out) . ($out !== [] && in_array(end($segs), ['', '.', '..'], true) ? '/' : '');
     }
 
     /**

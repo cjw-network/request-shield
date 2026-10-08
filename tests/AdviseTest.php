@@ -133,6 +133,11 @@ return [
             $rel = ['method' => 'GET', 'path' => '/a/b/page', 'host' => 'www.example.org', 'query' => [], 'form' => [], 'type' => null, 'decided' => 'allow', 'status' => 200,
                 'found' => ['links' => ['./x?q', '../y?q', '//evil.example/z?q']]];
             same('query q text at /a/b/x /a/y', adviseRules(Advise::suggest([$rel], $s))['ADV-PARAMS-AT'] ?? null, '"." and ".." as a browser reads them; another host\'s address is none of this site\'s paths');
+            $resolve = new \ReflectionMethod(Advise::class, 'resolve');
+            $resolve->setAccessible(true);
+            $cases = [['/?page=2', '/p', '/'], ['/a/../?sort=1', '/p', '/'], ['/../x?z=1', '/p', '/x'], ['../w?v=1', '/a', '/w'], ['../../x', '/a/b', '/x'],
+                ['.', '/a/b', '/a/'], ['./', '/a/b', '/a/'], ['x/', '/a/b', '/a/x/'], ['?q', '/a/b', '/a/b'], ['', '/a/b', '/a/b'], ['/a//b', '/', '/a/b'], ['//x/y?q', '/', '']];
+            same(array_column($cases, 2), array_map(static fn (array $c): string => $resolve->invoke(null, $c[0], $c[1]), $cases), 'the root is "/", ".." stops there, "." is its folder, another host is none');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }
