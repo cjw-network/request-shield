@@ -59,7 +59,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
             'speed' => 'How fast the site answered', 'spSite' => 'The site (not from the cache)', 'spCount' => 'requests', 'spMedian' => 'median', 'spP95' => 'slow end (95 %)', 'spAvg' => 'average',
             'spHit' => 'from the HTTP cache', 'spMiss' => 'asked the site, kept', 'spNostore' => 'asked the site, not to be kept', 'spPast' => 'not for the cache',
             'spHits' => '%s of the cacheable pages came from the cache (%s instead of %s) — %s of server time saved.', 'spWhy' => 'Not kept, because: %s.',
-            'spShield' => 'The shield took %s a request.', 'spHours' => 'Per hour (the period\'s last 48): median and slow end', 'spSlow' => 'Slow requests (the last)',
+            'spShield' => 'The shield took %s a request.', 'spHours' => 'Per hour (the period\'s last 48): median and slow end', 'spSlow' => 'Slow requests (the last)', 'spPages' => 'Slowest pages (at least %d views)', 'spPage' => 'Page', 'spFromCache' => 'from the cache',
             'spNone' => 'Not measured yet: "set stats … times" counts how long the site takes.',
             'why.status' => 'not 200 (an error, a redirect)', 'why.cookie' => 'it sets a cookie', 'why.private' => 'private / no-store', 'why.encoded' => 'compressed by the site', 'why.expired' => 'expired', 'why.vary' => 'it varies', 'why.ttl' => 'no lifetime',
             'tabAll' => 'Overview', 'tabSite' => 'Visitors & pages', 'tabShield' => 'Protection', 'tabRules' => 'Rules & setup', 'ruleDetails' => 'all rules and settings', 'builtIn' => 'the fixed checks: kind of request, sizes, disguised addresses', 'filter' => 'Filter', 'pathStarts' => 'path starts with', 'subtree' => 'Subtree', 'views' => 'views', 'exact' => 'exact', 'approx' => 'the sum of its most visited pages', 'clear' => 'all pages', 'per' => 'per', 'hour' => 'hour', 'day' => 'day', 'week' => 'week', 'month' => 'month', 'year' => 'year',
@@ -89,7 +89,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
             'speed' => 'Wie schnell die Website antwortete', 'spSite' => 'Die Website (nicht aus dem Cache)', 'spCount' => 'Anfragen', 'spMedian' => 'Median', 'spP95' => 'langsames Ende (95 %)', 'spAvg' => 'Durchschnitt',
             'spHit' => 'aus dem HTTP-Cache', 'spMiss' => 'Website gefragt, gespeichert', 'spNostore' => 'Website gefragt, nicht speicherbar', 'spPast' => 'nicht für den Cache',
             'spHits' => '%s der cachebaren Seiten kamen aus dem Cache (%s statt %s) — %s Server-Zeit gespart.', 'spWhy' => 'Nicht gespeichert, weil: %s.',
-            'spShield' => 'Der Schutz brauchte %s pro Anfrage.', 'spHours' => 'Pro Stunde (die letzten 48 des Zeitraums): Median und langsames Ende', 'spSlow' => 'Langsame Anfragen (die letzten)',
+            'spShield' => 'Der Schutz brauchte %s pro Anfrage.', 'spHours' => 'Pro Stunde (die letzten 48 des Zeitraums): Median und langsames Ende', 'spSlow' => 'Langsame Anfragen (die letzten)', 'spPages' => 'Langsamste Seiten (mindestens %d Aufrufe)', 'spPage' => 'Seite', 'spFromCache' => 'aus dem Cache',
             'spNone' => 'Noch nicht gemessen: "set stats … times" zählt, wie lange die Website braucht.',
             'why.status' => 'nicht 200 (ein Fehler, eine Weiterleitung)', 'why.cookie' => 'setzt ein Cookie', 'why.private' => 'private / no-store', 'why.encoded' => 'von der Website komprimiert', 'why.expired' => 'abgelaufen', 'why.vary' => 'variiert', 'why.ttl' => 'keine Lebensdauer',
             'tabAll' => 'Übersicht', 'tabSite' => 'Besucher & Seiten', 'tabShield' => 'Schutz', 'tabRules' => 'Regeln & Aufbau', 'ruleDetails' => 'alle Regeln und Einstellungen', 'builtIn' => 'die festen Prüfungen: Art der Anfrage, Größen, getarnte Adressen', 'filter' => 'Filtern', 'pathStarts' => 'Pfad beginnt mit', 'subtree' => 'Unterbaum', 'views' => 'Aufrufe', 'exact' => 'genau', 'approx' => 'Summe seiner meistbesuchten Seiten', 'clear' => 'alle Seiten', 'per' => 'pro', 'hour' => 'Stunde', 'day' => 'Tag', 'week' => 'Woche', 'month' => 'Monat', 'year' => 'Jahr',
@@ -492,7 +492,7 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
      *
      * @param array{kinds: array<string, array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int}>, site: array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int},
      *   who: array<string, array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int}>, shield: ?int, reasons: array<string, int>, hitShare: ?float, saved: int,
-     *   hourly: array<string, array{count: int, p50: ?int, p95: ?int}>, slow: list<string>}|null $tm
+     *   hourly: array<string, array{count: int, p50: ?int, p95: ?int}>, slow: list<string>, pages: array<string, array{count: int, avg: ?int, p50: ?int, p95: ?int, hits: int}>}|null $tm
      * @param array<string, string> $t
      */
     private static function speed(?array $tm, bool $on, array $t, string $lang, string $help): string
@@ -531,6 +531,16 @@ final class StatsPage implements \CjwNetwork\RequestShield\RoutePage
         }
         if ($tm['shield'] !== null) {
             $h .= '<p class="note">' . $e(sprintf($t['spShield'], $d($tm['shield']))) . '</p>';
+        }
+        if ($tm['pages'] !== []) {
+            // The slowest pages (step 2): a page that is slow and never comes from the cache is the first to look at.
+            $h .= '<h3 class="sub2">' . $e(sprintf($t['spPages'], StatsReport::PAGE_VIEWS)) . '</h3><div class="wrap"><table class="list speed"><thead><tr><th>' . $e($t['spPage']) . '</th><th class="num">'
+                . $e($t['spCount']) . '</th><th class="num">' . $e($t['spMedian']) . '</th><th class="num">' . $e($t['spP95']) . '</th><th class="num">' . $e($t['spFromCache']) . '</th></tr></thead><tbody>';
+            foreach ($tm['pages'] as $path => $p) {
+                $h .= '<tr><td><code>' . $e(rawurldecode((string) $path)) . '</code></td><td class="num">' . $e($n($p['count'])) . '</td><td class="num">' . $e($d($p['p50']))
+                    . '</td><td class="num">' . $e($d($p['p95'])) . '</td><td class="num">' . $e((string) (int) round(100 * $p['hits'] / max(1, $p['count']))) . ' %</td></tr>';
+            }
+            $h .= '</tbody></table></div>';
         }
         if (count($tm['hourly']) > 1) {
             $h .= '<h3 class="sub2">' . $e($t['spHours']) . '</h3><div class="speedcurves"><span class="dot through"></span>' . self::spark(array_values(array_map(static fn (array $x): int => (int) $x['p50'], $tm['hourly'])))
