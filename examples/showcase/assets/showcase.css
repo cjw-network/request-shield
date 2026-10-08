@@ -226,9 +226,9 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .log-dock-lead { margin: 8px 14px 6px; font-size: .75rem; color: #b8c2d6; }
 /* One height whatever is shown -- the log, the bans, the box of the ones banned now: what is inside scrolls */
 .log-dock-body { height: min(340px, 60vh); display: flex; flex-direction: column; }
-.log-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.log-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }   /* a short screen: the whole pane scrolls */
 .log-pane[hidden], .log-all-bans[hidden] { display: none; }
-.log-rows { list-style: none; margin: 0; padding: 0 8px 10px; flex: 1; min-height: 0; overflow-y: auto; font-size: .76rem; }
+.log-rows { list-style: none; margin: 0; padding: 0 8px 10px; flex: 1; min-height: 5.5rem; overflow-y: auto; font-size: .76rem; }
 .log-row { display: grid; grid-template-columns: 4.3rem 7.6rem 9.4rem 11rem 1fr; gap: 8px; align-items: baseline; padding: 3px 6px; border-radius: 8px; border-left: 3px solid transparent; }
 .log-row code { color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .log-time { color: #94a3b8; font-variant-numeric: tabular-nums; }
@@ -241,7 +241,7 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .log-fresh { animation: fresh 2.5s ease-out; }
 @keyframes fresh { from { background: rgba(147, 197, 253, .25); } to { background: transparent; } }
 .log-empty { color: #94a3b8; padding: 6px; }
-.log-bans { flex: 0 0 auto; max-height: 112px; overflow-y: auto; margin: 0 14px 8px; padding: 6px 8px; border: 1px solid rgba(248, 113, 113, .45); border-radius: 8px; background: rgba(127, 29, 29, .25); font-size: .76rem; }
+.log-bans { flex: 0 0 auto; max-height: min(112px, 14vh); overflow-y: auto; margin: 0 14px 8px; padding: 6px 8px; border: 1px solid rgba(248, 113, 113, .45); border-radius: 8px; background: rgba(127, 29, 29, .25); font-size: .76rem; }
 .log-bans-head { margin: 0 0 4px; font-weight: 600; color: #fca5a5; }
 .log-bans-note { font-weight: 400; color: #94a3b8; }
 .log-ban-list { list-style: none; margin: 0; padding: 0; }

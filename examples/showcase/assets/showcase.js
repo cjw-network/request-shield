@@ -395,7 +395,7 @@
     };
     var showBans = function (list, denied, deniedCount, now) {
       if (typeof now === 'number') { offset = now - Date.now() / 1000; }
-      var key = JSON.stringify([list, denied]);
+      var key = JSON.stringify([list, denied, deniedCount]);
       if (key === bans) { tick(); return; }
       bans = key;
       banList.textContent = ''; autoList.textContent = ''; handList.textContent = '';
