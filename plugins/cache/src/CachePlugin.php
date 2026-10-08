@@ -212,8 +212,8 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
         if ($byRole && ($ttl <= 0 || preg_match('/\b(no-store|no-cache)\b/', $cc) === 1)) {
             $ttl = $this->o['ttl'];     // the adapter's word: the page is the role's, kept for http-cache-ttl
         }
-        if (stripos((string) self::header($headers, 'surrogate-control'), 'ESI/') !== false) {
-            return false;           // ESI: fragments for a cache to put together -- left to the application
+        if ($ttl <= 0 || stripos((string) self::header($headers, 'surrogate-control'), 'ESI/') !== false) {
+            return false;           // nothing to keep it for (http-cache-ttl 0); ESI: fragments for a cache to put together
         }
         $tags = $this->tagsOf($headers);
         if ($tags === null) {
@@ -384,7 +384,6 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
                 header_remove('Expires');
                 header_remove('Pragma');
                 header('X-RS-Cache: miss; role');     // the statistics: this Cache-Control is the shield's, not the site's
-
             }
         });
     }

@@ -354,7 +354,9 @@ final class StatsPlugin implements Plugin, RuleCounts
      * What the HTTP cache did with a request (0046), from the header it sets:
      * "hit" (answered from it), "miss" (asked the site, the answer may be
      * kept), "nostore" (asked the site, the answer may not be kept -- and why,
-     * CachePlugin::refusal(); "miss; role": a role's page), "past" (no cache asked: off, not cacheable, not
+     * CachePlugin::refusal(); "miss; role": a role's page -- its Cache-Control is
+     * the shield's then, so only what refuses any page counts: a role's page
+     * the site sent private, with only a Vary on the hash, counts as a miss), "past" (no cache asked: off, not cacheable, not
      * anonymous, a POST).
      *
      * @param list<string> $headers headers_list()

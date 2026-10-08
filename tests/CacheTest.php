@@ -67,6 +67,12 @@ return [
                 truthy(!$p->keep($c, 'https://www.example.org/b', $status, $h, $body), "not kept: $why");
             }
             truthy($p->keep($c, 'https://www.example.org/v', 200, [...$ok, 'Vary: Accept-Encoding', 'Cache-Control: public, s-maxage=10, max-age=99'], 'V'), 'Vary on encoding only');
+            $none = new CachePlugin(cacheSettings($dir, "set http-cache on\nset http-cache-ttl 0\n"));
+            $shared = new ReflectionProperty(CachePlugin::class, 'shared');
+            $shared->setAccessible(true);                                 // PHP 8.0
+            $shared->setValue($none, true);
+            truthy(!$none->keep($c, 'https://www.example.org/r', 200, [...$ok, 'Cache-Control: private'], 'R', '/r', null, true),
+                'a role\'s page called shared, http-cache-ttl 0 and no max-age: nothing to keep it for');
             $a = $c->get('https://www.example.org/a', microtime(true));
             same(['A', ['Content-Type: text/html', 'Set-Cookie-Not: x']], [$a['body'] ?? null, $a['headers'] ?? null], 'the headers of one answer dropped (X-RS)');
             same(120, ($a['expires'] ?? 0) - ($a['stored'] ?? 0), 'the ttl when the answer says nothing');
