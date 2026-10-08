@@ -457,7 +457,8 @@ return [
             return (float) $best;
         };
         $plain = $time(substr(str_repeat('ax%20', 900), 0, 3800));
-        foreach (['%3Ca%3Dx%20', '%3Ca%3D%22', '%3Ca%20x%3D%22y%22%20', '%3Ca%3D'] as $unit) {
+        // Also without PCRE's JIT (a host may not allow it): "<" after "<", a word cut short before each.
+        foreach (['%3Ca%3Dx%20', '%3Ca%3D%22', '%3Ca%20x%3D%22y%22%20', '%3Ca%3D', '%3C', '%3Conerro', '%3Ca%20%3C1%20formactio'] as $unit) {
             $hostile = $time(substr(str_repeat($unit, 900), 0, 3800));
             truthy($hostile < 20 * $plain, 'a query of "' . rawurldecode($unit) . '" repeated: ' . round($hostile / $plain, 1) . ' times a plain one');
         }

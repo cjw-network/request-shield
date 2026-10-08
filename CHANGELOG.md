@@ -76,7 +76,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `<img title=">" src=x onerror=…>` passed revision 1. Both keep the plain
   expression and add one that follows quoted values up to the next `<`:
   everything revision 1 refused stays refused (`<img src==" onerror=…>`),
-  and a query full of tags costs about what a plain one does. Taken from comparing with
+  and a query full of tags costs about what a plain one does -- each
+  expression stops at the next `<`, also without PCRE's JIT (revision 1 took
+  up to 100 ms on 4 KB of `<` there). Not caught: `title="<>"`. Taken from comparing with
   Mini-WAF's rules.
 - **A new attack rule, `ATK-SHELLSHOCK`** (attack rules `2026.10.2`,
   `include @attacks`): a header whose value starts with `() {` -- Shellshock
