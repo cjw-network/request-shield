@@ -43,6 +43,7 @@ version 2026.10.2
 
 # --- Log4Shell and template injection, anywhere ------------------------------------
 [ATK-JNDI@2]        block anywhere \$\{[^}]{0,40}(jndi|j\$\{|:-j)|\$\{(env|sys|java|date|base64|lower|upper|ctx|main|spring):|\$\{[^}]{0,40}\$\{   # Log4Shell: ${jndi:ldap://…}, also nested (${${lower:j}ndi:…}), anywhere in the request
+[ATK-SSTI@1]        block query \{\{[^}]{0,80}(\*|__|\(|_self\b)[^}]{0,80}\}\}                                           # template injection: {{7*7}}, {{_self.env…}} (Twig), {{''.__class__}} (Jinja) -- a placeholder {{ name }} passes
 
 # --- attack tools -----------------------------------------------------------------------
 [ATK-UA-TOOLS@1]    block header User-Agent \b(sqlmap|nikto|nmap|masscan|zgrab|zmeu|jorgee|wpscan|nuclei|acunetix|nessus|openvas|netsparker|dirbuster|gobuster|ffuf|wfuzz|havij|commix|fimap)\b   # attack tools by their name: sqlmap, nikto, nuclei, wpscan …

