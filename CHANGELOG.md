@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- **The recorded demo is no longer published on every push** (GitHub Pages
+  is off for now): `.github/workflows/pages.yml` runs only when started by
+  hand.
 - **The attack rules look at a long value twice as fast**: from 128 bytes
   on, a value is matched pattern by pattern instead of against one
   expression of all of them -- PCRE finds each pattern's fixed text quickly

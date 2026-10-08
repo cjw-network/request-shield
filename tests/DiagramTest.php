@@ -78,9 +78,10 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
-    'the recorded demo goes to GitHub Pages: the page from request-shield examples --html, the diagrams, actions pinned by commit' => function (): void {
+    'the recorded demo for GitHub Pages (started by hand): the page from request-shield examples --html, the diagrams, actions pinned by commit' => function (): void {
         $yml = (string) file_get_contents(dirname(__DIR__) . '/.github/workflows/pages.yml');
-        truthy(preg_match("/^on:\n  push:\n    branches: \[main\]/m", $yml) === 1, 'on a push to main');
+        // Pages is off for now (owner, 2026-10-08): started by hand only, never on a push.
+        truthy(preg_match("/^on:\n  workflow_dispatch:\n/m", $yml) === 1 && strpos($yml, '  push:') === false, 'by hand only, not on a push');
         truthy(strpos($yml, 'php bin/request-shield examples examples/demo/request-shield.rules --html --out=_site/index.html') !== false, 'the recorded demo');
         truthy(strpos($yml, 'php docs/tools/diagram.php --check') !== false && strpos($yml, 'cp docs/diagrams/*.svg') !== false, 'the diagrams, current');
         preg_match_all('/^\s*(?:-\s+)?uses:\s*(\S+)/m', $yml, $m);

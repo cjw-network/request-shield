@@ -4,11 +4,11 @@ name: Demo on GitHub Pages
 # every row of the demo's "# demo:" groups with what request-shield test
 # decided for it -- a page that needs no server -- and GitHub Pages serves it,
 # with the docs' diagrams. The live demo stays `php -S … examples/demo/router.php`.
-# The repository's Pages setting must be "GitHub Actions" (the owner's).
+# The repository's Pages setting must be "GitHub Actions" (the owner's). Pages is off for
+# now (2026-10-08): the workflow runs only when started by hand (Actions -> Run workflow);
+# to publish on every push again, add "push: branches: [main]" below.
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
