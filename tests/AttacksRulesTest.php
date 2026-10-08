@@ -164,6 +164,11 @@ return [
             ['/', ['HTTP_USER_AGENT' => 'Mozilla/5.0 (compatible; Nmap Scripting Engine)'], 'ATK-UA-TOOLS'],
             ['/', ['HTTP_USER_AGENT' => 'zgrab/0.x'], 'ATK-UA-TOOLS'],
             ['/', ['HTTP_USER_AGENT' => 'nuclei - Open-source project'], 'ATK-UA-TOOLS'],
+            // Shellshock (CVE-2014-6271): a function definition in a header, for a CGI script's bash
+            ['/status', ['HTTP_USER_AGENT' => '() { :; }; /bin/bash -c "id"'], 'ATK-SHELLSHOCK'],
+            ['/', ['HTTP_REFERER' => '() { _; } >_[$($())] { echo vulnerable; }'], 'ATK-SHELLSHOCK'],
+            ['/', ['HTTP_X_FORWARDED_HOST' => '(){ :;};echo;/bin/cat /etc/passwd'], 'ATK-SHELLSHOCK'],      // any header, no space
+            ['/', ['HTTP_REFERER' => '%28%29%20%7B%20%3A%3B%20%7D%3B%20id'], 'ATK-SHELLSHOCK'],   // percent-encoded: decoded as everywhere
         ];
         foreach ($cases as [$uri, $server, $id]) {
             same('reject attack', attacksDecide($s, $uri, $server), "$id does not block $uri");
@@ -194,6 +199,15 @@ return [
     },
     'RSF02-06 attacks: a real visitor\'s request passes (the benign side)' => function (): void {
         $s = attacksRules();
+        // Headers that look a little like Shellshock but are none: brackets in a User-Agent, a Referer with a query.
+        foreach ([['HTTP_USER_AGENT' => 'Mozilla/5.0 (X11; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0'],
+            ['HTTP_USER_AGENT' => 'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)'],
+            ['HTTP_REFERER' => 'https://www.example.org/search?q=f()%20%7Bx%7D'],          // "f() {x}": a name before the brackets -- bash takes only a value that starts with "() {"
+            ['HTTP_USER_AGENT' => 'Tool/1.0 (x)(y) {z}'],
+            ['HTTP_ACCEPT' => 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8'],
+            ['HTTP_COOKIE' => 'note=() { not looked at }']] as $server) {         // cookies are not part of "headers"
+            same('allow', attacksDecide($s, '/', $server), 'passes: ' . json_encode($server));
+        }
         $uris = [
             '/', '/news/2026/what-s-new', '/?a=1&b=2', '/?next=/login',
             '/?q=union bank rates',                  // "union" without "select"

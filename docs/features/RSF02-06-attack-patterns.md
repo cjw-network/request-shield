@@ -75,6 +75,7 @@ The shipped rules:
 | `ATK-XSS-URL` | cross-site scripting: a parameter that is a javascript: address |
 | `ATK-PHP` | PHP code in the address: &lt;?php, eval(base64_decode(...)) |
 | `ATK-SHELL` | shell commands in the address: ; cat /etc/passwd, \| wget http://…, $(id) |
+| `ATK-SHELLSHOCK` | Shellshock (CVE-2014-6271): a header whose value starts with `() {` -- a function that a CGI script's bash would run (`User-Agent: () { :; }; /bin/bash -c id`); `f() {` or a bracket in the middle of a value passes; cookies are not looked at |
 | `ATK-LFI` | reading the server's files: ../../, /etc/passwd |
 | `ATK-WRAPPER` | PHP stream wrappers in the address: php://filter, phar://, data:// |
 | `ATK-PHP-OBJ` | a serialised PHP object in the query: O:8:"stdClass":0:{}, also O:+8:… and C:… (the way into unserialize() gadget chains) -- a serialised array passes |

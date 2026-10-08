@@ -36,6 +36,7 @@ version 2026.10.2
 # --- code and shell injection -------------------------------------------------
 [ATK-PHP@1]         block query <\?(php|=)|\b(base64_decode|gzinflate|str_rot13|shell_exec|passthru|proc_open|popen|pcntl_exec)\s*\(|\b(eval|assert)\s*\(\s*(\$|base64|gz|str_|\$_)     # PHP code in the address: <?php, eval(base64_decode(...))
 [ATK-SHELL@1]       block query (;|\||&&|`|\$\()\s*(cat|head|tail|more|less)\s+/|(;|\||&&|`|\$\()\s*(wget|curl|fetch)\s+\S*://|(;|\||&&|`|\$\()\s*(bash|sh|nc|ncat|python3?|perl)\s+-|/bin/(ba|z|k)?sh\b|\$\(\s*(id|whoami|uname)\b    # shell commands in the address: ; cat /etc/passwd, | wget http://…, $(id)
+[ATK-SHELLSHOCK@1] block headers \(\)(?<!\S\(\))\s*\{                                                     # Shellshock (CVE-2014-6271): a header that starts with "() {" -- a function for a CGI script's bash; cookies are not looked at
 
 # --- file inclusion ------------------------------------------------------------
 [ATK-LFI@1]         block query (\.\./){2}|(\.\.\\){2}|/etc/(passwd|shadow|group|hosts)\b|/proc/self/|\b(boot|win)\.ini\b|\bc:\\windows\\    # reading the server's files: ../../, /etc/passwd
