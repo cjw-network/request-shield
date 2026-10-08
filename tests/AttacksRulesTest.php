@@ -149,6 +149,10 @@ return [
             ['/fetch?url=http://[::ffff:a9fe:a9fe]/latest/', [], 'ATK-SSRF-META'],            // the same address, mapped
             ['/fetch?url=http://2852039166/latest/', [], 'ATK-SSRF-META'],                    // as one number
             ['/fetch?url=http://0xa9fea9fe/latest/', [], 'ATK-SSRF-META'],                    // in hex
+            ['/fetch?url=http://0xa9.0xfe.0xa9.0xfe/latest/', [], 'ATK-SSRF-META'],           // dotted hex
+            ['/fetch?url=http://[0:0:0:0:0:ffff:a9fe:a9fe]/', [], 'ATK-SSRF-META'],           // IPv6 written out
+            ['/fetch?url=http://[fd00:ec2:0:0:0:0:0:254]/', [], 'ATK-SSRF-META'],
+            ['/fetch?url=http://instance-data/latest/meta-data/', [], 'ATK-SSRF-META'],       // AWS's own name for it
             ['/fetch?url=http://user@0251.0376.0251.0376/', [], 'ATK-SSRF-META'],             // in octal, after a user
             ['/?d=C:11:%22ArrayObject%22:21:%7Bx:i:0;a:0:%7B%7D;m:a:0:%7B%7D%7D', [], 'ATK-PHP-OBJ'],   // a custom-serialised one
             ['/?a=${env:AWS_SECRET_ACCESS_KEY}', [], 'ATK-JNDI'],
@@ -209,6 +213,7 @@ return [
             '/fetch?url=https://www.example.org/feed',   // an ordinary address
             '/?id=2852039166',                       // a number on its own, not an address
             '/?ip=169.254.10.20',                    // another link-local address
+            '/?v=1169.254.169.2541',                 // digits around it: not the address
             '/?q=information about cookies',         // not information_schema
             '/?q=load file into outfile tutorial',   // the words, no quote, no bracket
             '/?q=extract value from json',           // extractvalue( needed

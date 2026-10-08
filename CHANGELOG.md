@@ -49,8 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **A new attack rule, `ATK-SSRF-META`** (attack rules `2026.10.2`,
   `include @attacks`): a cloud's metadata address in the query --
   `169.254.169.254`, `metadata.google.internal`, `100.100.100.200`,
-  `169.254.170.2`, `fd00:ec2::254`, also written as one number, in hex or
-  octal: a site that fetches an address from the request would hand out
+  `169.254.170.2`, `fd00:ec2::254`, also as mapped IPv6, written as one
+  number, in hex or octal, and AWS's `instance-data`: a site that fetches an address from the request would hand out
   its own credentials. Taken from comparing with Mini-WAF's rules.
 - **A new attack rule, `ATK-PHP-OBJ`** (attack rules `2026.10.2`,
   `include @attacks`): a serialised PHP object in the query --
