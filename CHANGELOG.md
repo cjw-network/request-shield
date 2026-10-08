@@ -46,6 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **A new attack rule, `ATK-PHP-OBJ`** (attack rules `2026.10.2`,
+  `include @attacks`): a serialised PHP object in the query --
+  `O:8:"stdClass":0:{}`, `O:+8:…`, `C:…`, also inside an array -- the way
+  into `unserialize()` gadget chains; a serialised array passes. Taken from
+  comparing with Mini-WAF's rules.
 - **A new attack rule, `ATK-SSTI`** (attack rules `2026.10.2`,
   `include @attacks`): template injection in the query -- `{{7*7}}`,
   `{{_self.env…}}` (Twig), `{{''.__class__}}` (Jinja); a plain placeholder

