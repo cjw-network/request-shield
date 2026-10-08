@@ -47,14 +47,14 @@ final class Replay
     public static function read(string $text): array
     {
         $trim = ltrim($text);
-        if ($trim !== '' && $trim[0] === '{') {
-            // A learning run: any of its first lines one of its objects (a rotated file may begin cut off).
-            foreach (array_slice(preg_split('/\R/', $trim) ?: [], 0, 20) as $line) {
-                $one = json_decode($line, true);
-                if (is_array($one) && isset($one['method'], $one['path'], $one['t'])) {
-                    return self::learned($text);
-                }
+        // A learning run: any of its first lines one of its objects (a rotated file may begin in the middle of one).
+        foreach (array_slice(preg_split('/\R/', $trim) ?: [], 0, 20) as $line) {
+            $one = $line !== '' && $line[0] === '{' ? json_decode($line, true) : null;
+            if (is_array($one) && isset($one['method'], $one['path'], $one['t'])) {
+                return self::learned($text);
             }
+        }
+        if ($trim !== '' && $trim[0] === '{') {
             return self::har($text);
         }
         $out = [];

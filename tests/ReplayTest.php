@@ -110,7 +110,7 @@ return [
             same(['GET /products/?page=1&sort=word&q=two%20words' => 'refused APP-STRICT', 'POST /contact' => 'pass', 'GET /search?q=1' => 'refused APP-STRICT (found)',
                 'GET /products/?page=1&sort=1' => 'pass (found)', 'GET /old/page' => 'refused APP-WATCH (found)', 'GET /api/items/1/edit' => 'pass (found)'], $kinds,
                 'the rules against the run: clicked and only found, each with its rule; POST /contact clicked once -- clicked');
-            file_put_contents("$dir/learned.jsonl", "{\"cut off\n" . $rec);
+            file_put_contents("$dir/learned.jsonl", "d\":\"allow\",\"status\":200}\n" . $rec);      // a rotated file: it begins in the middle of a line
             [$out, $code] = replayCli(escapeshellarg("$dir/site.rules") . ' ' . escapeshellarg("$dir/learned.jsonl") . ' --junit=' . escapeshellarg("$dir/r.xml"));
             truthy($code === 1 && strpos($out, '(learning run)') !== false && strpos($out, 'left out: 2 refused or failed in the run') !== false
                 && preg_match('/✕ GET \/products\/\?page=1&sort=word&q=two%20words\s+404 by APP-STRICT/u', $out) === 1 && preg_match('/\? GET \/search\?q=1\s+404 by APP-STRICT/u', $out) === 1
