@@ -12,8 +12,7 @@
 
 declare(strict_types=1);
 
-$lang = ($_GET['lang'] ?? '') === 'en' ? 'en' : (($_GET['lang'] ?? '') === 'de' ? 'de'
-    : (stripos((string) ($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''), 'de') === 0 ? 'de' : 'en'));
+$lang = showcaseLang();          // ?lang= first, else the browser's (site.php)
 $all = require __DIR__ . '/texts.php';
 $t = $all[$lang];
 $l = $t['learn'];

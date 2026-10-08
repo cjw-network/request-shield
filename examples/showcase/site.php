@@ -126,6 +126,34 @@ function exponentialGroups(string $dir): array
     return array_values(array_filter($groups, static fn (array $g): bool => $g['tries'] !== []));
 }
 
+/**
+ * The page's language: ?lang=de or ?lang=en when the address names one, else the one of
+ * the two the browser ranks higher (Accept-Language, by its q weights and order) -- English
+ * when it names neither.
+ */
+function showcaseLang(): string
+{
+    $asked = (string) ($_GET['lang'] ?? '');
+    if ($asked === 'de' || $asked === 'en') {
+        return $asked;
+    }
+    $best = ['lang' => 'en', 'q' => -1.0];
+    foreach (explode(',', (string) ($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '')) as $part) {
+        $bits = explode(';', trim($part));
+        $tag = strtolower(substr(trim($bits[0]), 0, 2));
+        $q = 1.0;
+        foreach (array_slice($bits, 1) as $param) {
+            if (preg_match('/^\s*q\s*=\s*([01](?:\.\d{1,3})?)\s*$/', $param, $m) === 1) {
+                $q = (float) $m[1];
+            }
+        }
+        if (($tag === 'de' || $tag === 'en') && $q > $best['q']) {
+            $best = ['lang' => $tag, 'q' => $q];        // the first of equal weight stays: the browser's order
+        }
+    }
+    return $best['lang'];
+}
+
 /** @param array<string, mixed> $data */
 function showcaseJson(int $status, array $data): void
 {
