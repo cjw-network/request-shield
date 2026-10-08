@@ -420,7 +420,8 @@ final class Shield
             try {
                 Learn::note($s, $request, $decision, $now);    // a learning run (0016): only its own requests, their shape
             } catch (\Throwable $e) {
-                // A recording's trouble never turns a decision around (fail safe for the site, not for the run).
+                // A recording's trouble never turns a decision around: noted (once a minute), the request goes on.
+                Failure::note('learn', $e->getMessage(), $s->storeDir);
             }
         }
         if ($shield->plugins() !== []) {
