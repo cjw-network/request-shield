@@ -200,7 +200,7 @@ require __DIR__ . '/nav.php';
         <h3 class="h4"><i class="bi bi-shield-check"></i> <?= $e($gd['checkTitle']) ?></h3>
         <p><?= $e($gd['checkLead']) ?></p>
         <?php $sh = \CjwNetwork\RequestShield\Shield::active(); ?>
-        <iframe class="check-preview" title="<?= $e($gd['previewTitle']) ?>" tabindex="-1" loading="lazy"
+        <iframe class="check-preview" title="<?= $e($gd['previewTitle']) ?>" tabindex="-1" loading="lazy" sandbox="allow-scripts"
           srcdoc="<?= $e(\CjwNetwork\RequestShield\Challenge\ChallengePage::preview(\CjwNetwork\RequestShield\Texts::all($lang), $sh !== null ? $sh->settings->challenge->logo : null)) ?>"></iframe>
         <ul class="guard-facts list-unstyled">
           <?php foreach ($gd['checkFacts'] as [$icon, $fact]): ?><li><i class="bi <?= $e($icon) ?>"></i> <?= $e($fact) ?></li><?php endforeach ?>
