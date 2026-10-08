@@ -147,7 +147,7 @@ function showcaseLang(): string
                 $q = (float) $m[1];
             }
         }
-        if (($tag === 'de' || $tag === 'en') && $q > $best['q']) {
+        if (($tag === 'de' || $tag === 'en') && $q > 0 && $q > $best['q']) {     // q=0: "not this one"
             $best = ['lang' => $tag, 'q' => $q];        // the first of equal weight stays: the browser's order
         }
     }

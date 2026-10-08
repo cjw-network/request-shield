@@ -306,7 +306,7 @@ return [
         withShowcase(static function (callable $get): void {
             $is = static fn (string $html): string => preg_match('/<html lang="(de|en)"/', $html, $m) === 1 ? $m[1] : '?';
             foreach ([['de-DE,de;q=0.9,en;q=0.8', 'de'], ['en-US,en;q=0.9,de;q=0.8', 'en'], ['fr-FR,fr;q=0.9,de;q=0.8,en;q=0.5', 'de'],
-                    ['fr-FR,en;q=0.7,de;q=0.6', 'en'], ['de;q=0.3,en;q=0.9', 'en'], ['de-AT', 'de'], ['fr', 'en'], ['', 'en']] as [$accept, $want]) {
+                    ['fr-FR,en;q=0.7,de;q=0.6', 'en'], ['de;q=0.3,en;q=0.9', 'en'], ['de-AT', 'de'], ['fr', 'en'], ['', 'en'], ['de;q=0', 'en'], ['de;q=0,en;q=0.1', 'en']] as [$accept, $want]) {
                 same($want, $is($get('GET', '/', $accept === '' ? [] : ['Accept-Language' => $accept])[2]), "Accept-Language: $accept");
             }
             same('en', $is($get('GET', '/?lang=en', ['Accept-Language' => 'de-DE'])[2]), '?lang=en wins over the browser');
