@@ -65,7 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `include @attacks`): cross-site scripting through attributes that need no
   `on…` event -- `<button formaction=…>`, `<a xlink:href=…>` in SVG -- only
   inside a tag, also past an `&` in it (decoded, a `%26` is no different from
-  a separator); the words alone and `x < y formaction=1` pass. Taken from comparing with
+  a separator) and past a quoted `>`; the words alone and `x < y
+  formaction=1` pass. `ATK-XSS-EVENT@2` reads past a quoted `>` too:
+  `<img title=">" src=x onerror=…>` passed revision 1. Taken from comparing with
   Mini-WAF's rules.
 - **A new attack rule, `ATK-SHELLSHOCK`** (attack rules `2026.10.2`,
   `include @attacks`): a header whose value starts with `() {` -- Shellshock
