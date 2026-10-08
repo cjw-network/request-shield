@@ -100,8 +100,7 @@ return [
             'lead' => 'Zwei Werkzeuge, die Bots teuer machen und Menschen in Ruhe lassen: ein Browser-Check, den niemand lösen muss — und Pausen, die mit jedem Übertreiben länger werden.',
             'checkTitle' => 'Der Browser-Check',
             'checkLead' => 'Wer verdächtig schnell ist oder sich anmelden will, bekommt für einen Moment diese Seite. Der Browser rechnet eine kleine Aufgabe — der Mensch wartet kurz und muss nichts tun.',
-            'checkWait' => 'Einen Moment, bitte …',
-            'checkDone' => 'Geprüft ✓',
+            'previewTitle' => 'Die Prüfseite, wie Besucher sie sehen (eine Vorschau)',
             'checkFacts' => [
                 ['bi-lightning-charge', 'auf einer echten Website Bruchteile einer Sekunde, auf einem alten Handy wenige — diese Demo rechnet absichtlich länger, damit du den Ring siehst'],
                 ['bi-ticket-perforated', 'einmal, dann gilt ein Pass (eine Stunde, einstellbar)'],
@@ -397,8 +396,7 @@ return [
             'lead' => 'Two tools that make bots expensive and leave people alone: a browser check nobody has to solve — and pauses that grow each time someone overdoes it.',
             'checkTitle' => 'The browser check',
             'checkLead' => 'Whoever is suspiciously fast, or wants to sign in, gets this page for a moment. The browser works out a small sum — the person waits briefly and does nothing.',
-            'checkWait' => 'One moment, please …',
-            'checkDone' => 'Checked ✓',
+            'previewTitle' => 'The check page as visitors see it (a preview)',
             'checkFacts' => [
                 ['bi-lightning-charge', 'on a real website a fraction of a second, a few on an old phone — this demo works longer on purpose, so you see the ring'],
                 ['bi-ticket-perforated', 'once, then a pass holds (an hour, adjustable)'],

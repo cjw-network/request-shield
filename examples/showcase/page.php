@@ -200,13 +200,9 @@ require __DIR__ . '/nav.php';
       <div class="col-lg-6"><div class="guard-card h-100">
         <h3 class="h4"><i class="bi bi-shield-check"></i> <?= $e($gd['checkTitle']) ?></h3>
         <p><?= $e($gd['checkLead']) ?></p>
-        <div class="check-demo" aria-hidden="true">
-          <svg viewBox="0 0 120 120" width="120" height="120" focusable="false">
-            <circle class="cd-track" cx="60" cy="60" r="52"/><circle class="cd-fill" cx="60" cy="60" r="52" transform="rotate(-90 60 60)"/>
-            <g class="cd-ok"><circle cx="60" cy="60" r="27"/><path d="M47 61l9 9 17-19"/></g>
-          </svg>
-          <div class="cd-text"><span class="cd-wait"><?= $e($gd['checkWait']) ?></span><span class="cd-done"><?= $e($gd['checkDone']) ?></span></div>
-        </div>
+        <?php $sh = \CjwNetwork\RequestShield\Shield::active(); ?>
+        <iframe class="check-preview" title="<?= $e($gd['previewTitle']) ?>" tabindex="-1" loading="lazy"
+          srcdoc="<?= $e(\CjwNetwork\RequestShield\Challenge\ChallengePage::preview(\CjwNetwork\RequestShield\Texts::all($lang), $sh !== null ? $sh->settings->challenge->logo : null)) ?>"></iframe>
         <ul class="guard-facts list-unstyled">
           <?php foreach ($gd['checkFacts'] as [$icon, $fact]): ?><li><i class="bi <?= $e($icon) ?>"></i> <?= $e($fact) ?></li><?php endforeach ?>
         </ul>

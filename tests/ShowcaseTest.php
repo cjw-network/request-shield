@@ -277,7 +277,7 @@ return [
                 truthy(strpos($main, 'href="#try"') === false && strpos($main, 'href="#taste"') !== false, "$lang: the hero's button leads to the taste on this page");
                 same(3, $cards($main), "$lang: three cards to taste on the front page");
                 $guard = (string) strstr((string) strstr($main, '<section id="guard"'), '</section>', true);
-                truthy(strpos($guard, 'class="check-demo"') !== false && strpos($guard, 'href="/__login"') !== false, "$lang: the browser check, shown and to try, high on the front page");
+                truthy(strpos($guard, 'class="check-preview"') !== false && strpos($guard, 'srcdoc="&lt;!doctype html&gt;') !== false && strpos($guard, 'href="/__login"') !== false, "$lang: the browser check -- the real page's ring as a preview -- and to try, high on the front page");
                 truthy(strpos($guard, 'class="stairs"') !== false && strpos($guard, 'data-kind="login"') !== false && strpos($guard, 'counter-form') !== false, "$lang: the growing pause, drawn and the sign-in to try");
                 truthy(strpos($main, '<section id="guard"') < strpos($main, '<section id="what"'), "$lang: right after the promises");
                 // The staircase as the rules have it: SHOW-LOGINS lets 3 through, SHOW-LOGIN-BAN pauses 5 s, ban-growth 2.

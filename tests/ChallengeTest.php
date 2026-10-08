@@ -50,6 +50,15 @@ function cookieValue(array $cookies, string $name): ?string
 }
 
 return [
+    'RSF03-02 the check page\'s preview (for a page about it): the same ring and words, no task, no cookie, three times then the smile' => function (): void {
+        $live = \CjwNetwork\RequestShield\Challenge\ChallengePage::render(['algorithm' => 'SHA-256', 'challenge' => str_repeat('a', 64), 'maxnumber' => 10, 'salt' => 's', 'signature' => str_repeat('b', 64)], 'rss', false, \CjwNetwork\RequestShield\Texts::all('de'));
+        $preview = \CjwNetwork\RequestShield\Challenge\ChallengePage::preview(\CjwNetwork\RequestShield\Texts::all('de'));
+        $ring = static fn (string $html): string => (string) strstr((string) strstr($html, '<svg id="r"'), '</svg>', true);
+        truthy($ring($live) !== '' && $ring($live) === $ring($preview), 'the same ring as the live page');
+        truthy(strpos($preview, 'Einen Moment, bitte') !== false && strpos($preview, 'Ihr Browser wird geprüft') !== false, 'the same words, in the language asked for');
+        truthy(strpos($preview, 'document.cookie') === false && strpos($preview, 'var RS=') === false && strpos($preview, 'signature') === false, 'no task, no cookie, no solver');
+        truthy(strpos($preview, 'n<3') !== false && strpos($preview, 'prefers-reduced-motion') !== false, 'three times, then the smile; reduced motion: the smile at once');
+    },
     'RSF03-02 proof of work: a solution verifies; tampering, expiry and another client do not' => function (): void {
         $pow = new ProofOfWork(SECRET);
         $c = $pow->create('203.0.113.7', 2000, 2000);

@@ -52,12 +52,7 @@ final class ChallengePage
         return '<!doctype html><html lang="' . $e($t['lang']) . '"><head><meta charset="utf-8">'
             . '<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">'
             . '<title>' . $e($t['title']) . '</title><style>' . self::CSS . '</style></head><body><main>'
-            . '<svg id="r" viewBox="0 0 120 120" width="120" height="120" aria-hidden="true" focusable="false">'
-            . '<circle class="t" cx="60" cy="60" r="52"/><circle id="b" class="f" cx="60" cy="60" r="52" transform="rotate(-90 60 60)"/>'
-            . '<g class="o"><circle cx="60" cy="8" r="5"/></g>'
-            . '<g class="l">' . ($logo ?? ChallengeLogo::DEFAULT) . '</g>'
-            . '<g class="s"><circle cx="60" cy="60" r="27"/><circle class="e" cx="50" cy="54" r="3.2"/><circle class="e" cx="70" cy="54" r="3.2"/><path d="M47 66q13 12 26 0"/></g>'
-            . '<g class="x"><path d="M60 43v20"/><circle cx="60" cy="75" r="3.4"/></g></svg>'
+            . self::ring($logo)
             . '<h1>' . $e($t['title']) . '</h1><p id="m" role="status">' . $e($t['text']) . '</p>'
             . '<noscript><p><strong>' . $e($t['noscript']) . '</strong></p></noscript>'
             . self::resendForm($resend, $t, $e)
@@ -65,6 +60,41 @@ final class ChallengePage
             . ($about !== null ? '<p class="home"><a href="' . $e($about) . '" target="_blank" rel="noopener">' . $e($t['about']) . '</a></p>' : '')
             . '</main>'
             . '<script>var RS=' . $config . ';' . self::SCRIPT . '</script></body></html>';
+    }
+
+    /** The ring: its track, the arc that fills, the circling dot, the logo, the smile, the "!". */
+    private static function ring(?string $logo): string
+    {
+        return '<svg id="r" viewBox="0 0 120 120" width="120" height="120" aria-hidden="true" focusable="false">'
+            . '<circle class="t" cx="60" cy="60" r="52"/><circle id="b" class="f" cx="60" cy="60" r="52" transform="rotate(-90 60 60)"/>'
+            . '<g class="o"><circle cx="60" cy="8" r="5"/></g>'
+            . '<g class="l">' . ($logo ?? ChallengeLogo::DEFAULT) . '</g>'
+            . '<g class="s"><circle cx="60" cy="60" r="27"/><circle class="e" cx="50" cy="54" r="3.2"/><circle class="e" cx="70" cy="54" r="3.2"/><path d="M47 66q13 12 26 0"/></g>'
+            . '<g class="x"><path d="M60 43v20"/><circle cx="60" cy="75" r="3.4"/></g></svg>';
+    }
+
+    /**
+     * The check page as a visitor sees it, for a page about it (the showcase): the same
+     * ring, styles and words, no task and no cookie -- the ring fills and smiles three
+     * times, then rests on the smile (no motion that goes on; with reduced motion only
+     * the smile). A whole document, for an iframe's srcdoc.
+     *
+     * @param array<string, string> $texts in the visitor's language (Texts::all())
+     */
+    public static function preview(array $texts = [], ?string $logo = null): string
+    {
+        $t = $texts + \CjwNetwork\RequestShield\Texts::all('en');
+        $e = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        return '<!doctype html><html lang="' . $e($t['lang']) . '"><head><meta charset="utf-8"><title>' . $e($t['title']) . '</title>'
+            . '<style>' . self::CSS . 'body{min-height:0;height:100vh}main{padding:1rem}</style></head><body><main>'
+            . self::ring($logo)
+            . '<h1>' . $e($t['title']) . '</h1><p>' . $e($t['text']) . '</p></main>'
+            . '<script>(function(){var r=document.getElementById("r"),b=document.getElementById("b"),n=0;'
+            . 'function show(p){b.style.strokeDashoffset=(326.7*(1-p)).toFixed(1);}'
+            . 'if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches){show(1);r.setAttribute("class","ok");return;}'
+            . 'function once(){var t0=Date.now();r.setAttribute("class","run");show(0);'
+            . 'var i=setInterval(function(){var p=Math.min(1,(Date.now()-t0)/2200);show(p);if(p>=1){clearInterval(i);r.setAttribute("class","ok");if(++n<3){setTimeout(once,2000);}}},50);}'
+            . 'once();})();</script></body></html>';
     }
 
     /**
