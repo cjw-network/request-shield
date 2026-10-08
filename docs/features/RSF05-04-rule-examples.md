@@ -314,16 +314,23 @@ only what the rules do not say yet, each a sentence and a line:
 - **`query <name> <type> …`**: every parameter the run's requests had, with
   the type all its values fit (the recording keeps types, never values), and
   the names the pages offered (a link's or a script's `?page&sort`, a GET
-  form's fields) as `text`. Typed values are no longer scanned for attacks;
-  nothing is refused for this line.
+  form's fields) as `text`; `tags[]` as `tags`, as PHP reads it. Typed values
+  are no longer scanned for attacks; nothing is refused for this line. A name
+  the rules declare for some paths only (`query q text at /search`) gets a
+  line with `at` for the other paths it was seen on -- never one for all.
 - **`include @tracking`** and **`monitor query strict`**: anything else in the
   query answered 404 -- watched first.
 - **`monitor allow POST …`** (and PUT, PATCH, DELETE): where the run sent forms
   and where its pages offered them; numbers and keys in a path as `*`
   (`/node/*/edit`) -- anywhere else 405, watched first.
 - **`post-origin same`**: forms only from the site's own pages.
-- **`api-path …`**: the folders the pages' scripts call, and where the run
-  sent JSON.
+- **`api-path …`**: the folders the run sent JSON to, and those the pages'
+  scripts call that are an API by their name (`/api/`, `/ajax/`, `/json/`,
+  `/rest/`, `/graphql/`, `/wp-json/` …) -- a script names navigation too, and an
+  API path answers a check as JSON, which a browser cannot pass.
+- **Never a pattern from the recording:** a path or a form's address with
+  `*` in it (`/**`, a script's `/${lang}/…` placeholder) is left out; the only
+  `*` in a line is the advisor's own (`/node/*/edit`).
 
 Then it **checks** them: each line with the rule parser, and the run replayed
 through the rules with all of them **enforced** (`monitor` taken off) -- so
@@ -364,7 +371,9 @@ With all of them enforced ("monitor" taken off), the 7 different requests of you
 - **Limits:** it suggests only what one run showed -- what nobody clicked is
   not in it (the replay's "offered" addresses help); a name no rule line can
   hold (`at`, a quote in it) is left out, and the replay then shows that
-  `query strict` would refuse it. Suggestions from the counters of live
+  `query strict` would refuse it. Site blocks are not looked at (the main
+  rules' settings). Exit 0; 1 a suggestion the parser refused (the advisor's
+  mistake -- please report it); 2 no learning run to read. Suggestions from the counters of live
   traffic (limits, `include @wordpress`, `set mode enforce`) are the next step
   of 0016.
 

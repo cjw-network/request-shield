@@ -70,9 +70,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **`request-shield advise`** (proposal 0016, step 2): suggestions from a
   learning run -- the query parameters with the type all their values fit,
   `include @tracking` and `monitor query strict`, `monitor allow POST …` where
-  the run sent forms (numbers in a path as `*`), `post-origin same`,
-  `api-path` for what the pages' scripts call; only what the rules do not say
-  yet. Each line checked by the rule parser, then the run replayed with all
+  the run sent forms (numbers in a path as `*`; a `*` from the recording
+  never), `post-origin same`, `api-path` for the folders the run sent JSON to
+  or that are an API by their name; a name declared for some paths only gets
+  a line with `at`; only what the rules do not say yet. Each line checked by the rule parser, then the run replayed with all
   of them enforced, so the site sees whether one would refuse its own clicks.
   `--write` keeps them in `<store-dir>/advice.rules` for an include, `--json`
   for tools.

@@ -65,7 +65,9 @@ use CjwNetwork\RequestShield\Rules\Shipped;
  *         allow watched first, post-origin same, api-path -- only what the rules
  *         do not say yet; each line checked by the parser, then the run replayed
  *         with all of them enforced. --write keeps them in store-dir/advice.rules
- *         for an include, --json for tools. Exit 0, 2: no recording.
+ *         for an include, --json for tools. Site blocks are not looked at: the
+ *         main rules' settings. Exit 0; 1: a suggestion the parser refused (the
+ *         advisor's mistake -- please report it); 2: no learning run to read.
  * crawlers: the known crawlers, what the site does with each, and how old
  *         their address lists are. "update" fetches the operators' current
  *         lists into store-dir (cron, a deploy -- or where there is internet,
@@ -982,20 +984,36 @@ final class Cli
             return 2;
         }
         $records = \CjwNetwork\RequestShield\Rules\Advise::read($text);
+        try {
+            $recording = \CjwNetwork\RequestShield\Rules\Replay::read($text);
+        } catch (\InvalidArgumentException $e) {
+            $recording = null;
+        }
+        if ($records === [] || $recording === null || $recording['format'] !== 'learning run') {
+            fwrite(STDERR, "request-shield: $source is no learning run (request-shield learn writes one: one JSON line per request)\n");
+            return 2;
+        }
         $suggestions = \CjwNetwork\RequestShield\Rules\Advise::suggest($records, $settings);
         $advice = \CjwNetwork\RequestShield\Rules\Advise::file($suggestions, basename($source), time());
         // Checked as the rules will read them: the site's files, then the advice -- as written
         // (watched) and enforced. A line the parser refuses is the advisor's mistake: said, not written.
         $dir = sys_get_temp_dir() . '/rshield-advise-' . getmypid() . '-' . bin2hex(random_bytes(3));
-        @mkdir($dir, 0700, true);
+        if (!@mkdir($dir, 0700, true) && !is_dir($dir)) {
+            fwrite(STDERR, "request-shield: cannot make a temporary directory in " . sys_get_temp_dir() . "\n");
+            return 2;
+        }
         $tmp = "$dir/advice.rules";
         try {
-            file_put_contents($tmp, $advice);
+            if (@file_put_contents($tmp, $advice) === false) {
+                throw new \RuntimeException("cannot write $tmp");
+            }
             RuleFile::read(array_merge($files, [$tmp]));
             file_put_contents($tmp, (string) preg_replace('/^(\[[A-Z0-9-]+\] )?monitor /m', '$1', $advice));
             $enforced = Settings::from(RuleFile::read(array_merge($files, [$tmp]))['config']);
-            $recording = \CjwNetwork\RequestShield\Rules\Replay::read($text);
             $run = \CjwNetwork\RequestShield\Rules\Replay::run($recording['requests'], static fn (string $host): Settings => $enforced, null);
+        } catch (\RuntimeException $e) {
+            fwrite(STDERR, 'request-shield: ' . $e->getMessage() . "\n");
+            return 2;
         } catch (\InvalidArgumentException $e) {
             fwrite(STDERR, 'request-shield: the advice does not read as rules -- please report this: ' . $e->getMessage() . "\n");
             return 1;
@@ -1012,6 +1030,7 @@ final class Cli
                 fwrite(STDERR, "request-shield: cannot write $written\n");
                 return 2;
             }
+            @chmod($written, 0640);
         }
         if ($json) {
             echo json_encode(['source' => $source, 'requests' => count($records), 'suggestions' => $suggestions,

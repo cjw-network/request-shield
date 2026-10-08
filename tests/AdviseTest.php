@@ -100,4 +100,42 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF05-04 advise: what a page or a script names never becomes a pattern of its own -- no API for a placeholder or a navigation string, no "/**" from a form, "name[]" as "name"' => function (): void {
+        $run = static fn (array ...$lines): string => implode("\n", array_map(static fn (array $l): string => (string) json_encode($l + ['t' => 1, 'host' => 'www.example.org', 'query' => [], 'form' => [], 'type' => null, 'decided' => 'allow', 'status' => 200]), $lines));
+        $got = adviseRules(Advise::suggest(Advise::read($run(['method' => 'GET', 'path' => '/', 'found' => [
+            'scripts' => ['/*/api/messages', '/en/products/', '/ajax/cart'],              // a placeholder (/${lang}/api), navigation, an API by its name
+            'forms' => [['action' => '/**', 'method' => 'POST', 'fields' => []], ['action' => '/save', 'method' => 'POST', 'fields' => []],
+                ['action' => '/search', 'method' => 'GET', 'fields' => ['tags[]' => 'text', 'q' => 'text']]]]])), Settings::from([])));
+        same('api-path /ajax/**', $got['ADV-API'] ?? null, 'only the folder that is an API by its name -- "/*/**" would take every page\'s browser check away');
+        same('monitor allow POST /save', $got['ADV-POST'] ?? null, 'a form\'s "/**" is no address: left out');
+        same('query q text  tags text', $got['ADV-PARAMS'] ?? null, '"tags[]" as "tags", as PHP reads it');
+    },
+    'RSF05-04 advise: a parameter the rules declare for some paths only gets a line with "at" for the others; @tracking also when strict is there already' => function (): void {
+        $dir = sys_get_temp_dir() . '/rshield-adv-' . getmypid() . '-' . mt_rand();
+        mkdir($dir, 0700, true);
+        try {
+            file_put_contents("$dir/site.rules", "query q text at /search\nmonitor query strict\n");
+            $s = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
+            $run = static fn (string $path): array => ['method' => 'GET', 'path' => $path, 'host' => 'www.example.org', 'query' => ['q' => 'text'], 'form' => [], 'type' => null, 'decided' => 'allow', 'status' => 200];
+            same(['ADV-TRACKING' => 'include @tracking'], adviseRules(Advise::suggest([$run('/search')], $s)), 'q at /search is declared; strict is watched already -- only the marketing tags');
+            same('query q text at /other', adviseRules(Advise::suggest([$run('/search'), $run('/other')], $s))['ADV-PARAMS-AT'] ?? null, 'q at /other: a line for it alone, never one for every path');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'RSF05-04 request-shield advise: a file that is no learning run says so (exit 2), not "please report this"' => function (): void {
+        if (!function_exists('exec')) {
+            skip('no exec');
+        }
+        $dir = sys_get_temp_dir() . '/rshield-adv-' . getmypid() . '-' . mt_rand();
+        mkdir("$dir/store", 0700, true);
+        try {
+            file_put_contents("$dir/site.rules", "set store-dir $dir/store\n");
+            file_put_contents("$dir/broken.jsonl", "garbage line\n{not json\n");
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' advise ' . escapeshellarg("$dir/site.rules") . ' ' . escapeshellarg("$dir/broken.jsonl") . ' 2>&1', $out, $code);
+            truthy($code === 2 && strpos(implode("\n", $out), 'is no learning run') !== false, implode("\n", $out));
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
 ];
