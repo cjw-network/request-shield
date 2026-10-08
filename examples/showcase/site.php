@@ -154,6 +154,64 @@ function showcaseLang(): string
     return $best['lang'];
 }
 
+/**
+ * Who is banned right now: the store's bans (APCu or files; with ban-keep file also the files
+ * that outlast a restart) -- the same list the dashboard's lists page shows. The address masked
+ * as the log masks it (log-ip); the rule and what kind of visitor it looks like from the log's
+ * end, when it still has a line of that address -- the kind is a guess from the User-Agent.
+ *
+ * @param list<string> $lines
+ * @return list<array{client: string, until: int, rule: ?string, kind: string, agent: string}>
+ */
+function showcaseBans(?Shield $shield, array $lines, int $now): array
+{
+    if ($shield === null) {
+        return [];
+    }
+    $s = $shield->settings;
+    $marks = $shield->store()->marks('ban:', $now);
+    if ($s->banKeep === 'file' && !$shield->store() instanceof \CjwNetwork\RequestShield\Store\FileStore) {
+        foreach ((new \CjwNetwork\RequestShield\Store\FileStore($s->storeDir))->marks('ban:', $now) as $key => $until) {
+            $marks[$key] = max($until, $marks[$key] ?? 0);
+        }
+    }
+    $seen = [];         // masked address => the latest line about it (a ban's first names the rule)
+    foreach ($lines as $line) {
+        $r = \CjwNetwork\RequestShield\LogStats::parse($line);
+        if ($r !== null) {
+            $was = $seen[$r['client']] ?? null;
+            $seen[$r['client']] = ['rule' => $r['reason'] === 'banned' && $r['rule'] !== null ? $r['rule'] : ($was['rule'] ?? null),
+                'claimed' => $r['claimed'], 'agent' => $r['agent']];
+        }
+    }
+    $bans = [];
+    foreach ($marks as $key => $until) {
+        $bucket = substr($key, 4);
+        $client = $s->logIp === 'full' ? $bucket : \CjwNetwork\RequestShield\Log::mask(explode('/', $bucket)[0]);
+        if ($until <= $now || (isset($bans[$client]) && $bans[$client]['until'] >= $until)) {
+            continue;
+        }
+        $l = $seen[$client] ?? ['rule' => null, 'claimed' => null, 'agent' => null];
+        $bans[$client] = ['client' => $client, 'until' => $until, 'rule' => $l['rule'],
+            'kind' => $l['agent'] === null ? 'unknown' : showcaseVisitorKind($l['claimed'], $l['agent']), 'agent' => substr((string) $l['agent'], 0, 80)];
+    }
+    $out = array_values($bans);
+    usort($out, static fn (array $a, array $b): int => $b['until'] <=> $a['until']);
+    return $out;
+}
+
+/** What a User-Agent looks like: crawler (says so), tool (a script, a library), browser (likely a person), unknown. */
+function showcaseVisitorKind(?string $claimed, string $agent): string
+{
+    if ($claimed !== null || preg_match('/bot\b|crawler|spider|slurp|bingpreview/i', $agent) === 1) {
+        return 'crawler';
+    }
+    if ($agent === '' || $agent === '-' || preg_match('#^(curl|wget|python|go-http|java/|okhttp|libwww|php|node|axios|httpie|scrapy|ruby|perl)#i', $agent) === 1) {
+        return 'tool';
+    }
+    return preg_match('#Mozilla/5\.0 .*(Firefox|Chrome|Safari|Edg)/#', $agent) === 1 ? 'browser' : 'unknown';
+}
+
 /** @param array<string, mixed> $data */
 function showcaseJson(int $status, array $data): void
 {
@@ -377,21 +435,21 @@ if ($path === '/__log') {
     // The end of the shield's own log (set log): what it stopped, checked or slowed down, addresses
     // masked (log-ip masked, the default). The showcase runs on your machine; a real site keeps its log to itself.
     $file = Shield::active()?->settings->logFile;
-    $lines = [];
+    $lines = $all = [];
     if (is_string($file) && is_file($file)) {
         $size = (int) filesize($file);
         $h = fopen($file, 'rb');
         if ($h !== false) {
-            fseek($h, max(0, $size - 16384));
+            fseek($h, max(0, $size - 65536));
             $all = array_values(array_filter(explode("\n", (string) stream_get_contents($h)), 'strlen'));
             fclose($h);
-            if ($size > 16384) {
+            if ($size > 65536) {
                 array_shift($all);      // read from the middle of the file: the first line may be cut
             }
             $lines = array_slice($all, -14);
         }
     }
-    showcaseJson(200, ['lines' => $lines]);
+    showcaseJson(200, ['lines' => $lines, 'bans' => showcaseBans(Shield::active(), $all, time()), 'now' => time()]);
     return;
 }
 if ($path === '/__forget') {

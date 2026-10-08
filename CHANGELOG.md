@@ -61,6 +61,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **The showcase's live log names who is banned right now**: from the
+  store (as the dashboard), with the masked address, the seconds left, the
+  rule and the visitor's kind guessed from the User-Agent (browser, crawler,
+  script).
 - **`request-shield replay` takes a learning run's recording**
   (`learned.jsonl`) -- a test for every deployment: the requests clicked in
   the run (those it let through) and what the pages offered (forms, links,

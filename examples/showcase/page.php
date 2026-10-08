@@ -460,6 +460,10 @@ Shield::protectFile(__DIR__ . '/settings/request-shield/exponential-admin-uri.ru
         <button type="button" class="btn btn-outline-light" data-mode="raw" aria-pressed="false"><?= $e($t['liveLogRaw']) ?></button>
       </div>
     </div>
+    <div class="log-bans" hidden data-left="<?= $e($t['liveBansLeft']) ?>" data-kinds="<?= $e((string) json_encode($t['liveBansKinds'])) ?>">
+      <p class="log-bans-head"><i class="bi bi-slash-circle" aria-hidden="true"></i> <?= $e($t['liveBansTitle']) ?> <span class="log-bans-note"><?= $e($t['liveBansNote']) ?></span></p>
+      <ul class="log-ban-list" aria-live="polite"></ul>
+    </div>
     <ol class="log-rows" aria-live="off"><li class="log-empty"><?= $e($t['liveLogEmpty']) ?></li></ol>
   </div>
 </aside>

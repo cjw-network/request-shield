@@ -337,6 +337,38 @@
       li.title = line;
       return li;
     };
+    // Who is banned right now (from the log's "banned" lines, server side), counting down each second;
+    // the clock's offset to the server's is taken out, so a wrong clock here shows the right time.
+    var banBox = dock.querySelector('.log-bans'), banList = dock.querySelector('.log-ban-list');
+    var banLeft = banBox.getAttribute('data-left'), banKinds = {};
+    try { banKinds = JSON.parse(banBox.getAttribute('data-kinds')) || {}; } catch (e) {}
+    var bans = [], offset = 0;
+    var tick = function () {
+      var now = Date.now() / 1000 + offset;
+      banList.querySelectorAll('[data-until]').forEach(function (s) {
+        var left = Math.ceil(parseInt(s.getAttribute('data-until'), 10) - now);
+        if (left <= 0) { var li = s.closest('li'); li.parentNode.removeChild(li); } else { s.textContent = banLeft.replace('{s}', left); }
+      });
+      banBox.hidden = !banList.children.length;
+    };
+    var showBans = function (list, now) {
+      if (typeof now === 'number') { offset = now - Date.now() / 1000; }
+      var key = JSON.stringify(list);
+      if (key === bans) { tick(); return; }
+      bans = key;
+      banList.textContent = '';
+      list.forEach(function (b) {
+        var li = el('li', 'log-ban log-ban-' + b.kind);
+        li.appendChild(el('span', 'log-ip', b.client));
+        li.appendChild(el('span', 'log-ban-kind', banKinds[b.kind] || b.kind));
+        li.appendChild(el('span', 'log-rule', b.rule || ''));
+        var left = el('span', 'log-ban-left'); left.setAttribute('data-until', String(b.until)); li.appendChild(left);
+        li.title = b.agent || '';
+        banList.appendChild(li);
+      });
+      tick();
+    };
+    setInterval(tick, 1000);
     var poll = function () {
       fetch('/__log', { credentials: 'omit', cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
         var fresh = 0;
@@ -355,6 +387,7 @@
           rows.appendChild(li);
           while (rows.children.length > 40) { rows.removeChild(rows.firstChild); }
         });
+        showBans(j.bans || [], j.now);
         if (fresh && !open) { unseen += fresh; badge.textContent = '+' + unseen; badge.hidden = false; }
         first = false;
         rows.scrollTop = rows.scrollHeight;

@@ -314,4 +314,28 @@ return [
             same('de', $is($get('GET', '/try', ['Accept-Language' => 'fr,de;q=0.8'])[2]), 'and /try');
         });
     },
+    'RSF05-04 the showcase\'s log window names who is banned right now: the address (masked), until when, the rule, and what kind of visitor it looks like -- a browser, a crawler, a script' => function (): void {
+        withShowcase(static function (callable $get, int $port): void {
+            $ban = static function (string $from, string $ua) use ($get, $port): void {
+                for ($i = 0; $i < 5; $i++) {
+                    $get('POST', '/account/login', ['X-Forwarded-For' => $from, 'Origin' => "http://127.0.0.1:$port", 'User-Agent' => $ua], 'user=demo&password=wrong');
+                }
+            };
+            $ban('198.51.100.77', 'Mozilla/5.0 (X11; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0');
+            $ban('203.0.113.77', 'python-requests/2.32');
+            $ban('192.0.2.77', 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)');
+            $j = (array) json_decode($get('GET', '/__log')[2], true);
+            $by = [];
+            foreach ((array) ($j['bans'] ?? []) as $b) {
+                $by[$b['client']] = $b;
+            }
+            same(['198.51.100.0/24', '203.0.113.0/24', '192.0.2.0/24'], array_values(array_intersect(['198.51.100.0/24', '203.0.113.0/24', '192.0.2.0/24'], array_keys($by))), 'the three, masked as the log has them: ' . json_encode($j['bans'] ?? null));
+            same(['browser', 'tool', 'crawler'], [$by['198.51.100.0/24']['kind'] ?? null, $by['203.0.113.0/24']['kind'] ?? null, $by['192.0.2.0/24']['kind'] ?? null], 'a browser, a script, a crawler -- by their User-Agent');
+            $b = $by['198.51.100.0/24'] ?? [];
+            truthy(is_int($b['until'] ?? null) && $b['until'] > (int) ($j['now'] ?? 0) && $b['until'] - (int) $j['now'] <= 60, 'until when, in a few seconds: ' . json_encode($b));
+            same('SHOW-LOGIN-BAN', $b['rule'] ?? null, 'the rule that banned it');
+            $page = $get('GET', '/?lang=de')[2];
+            truthy(strpos($page, 'class="log-bans"') !== false && strpos($page, 'Gerade gesperrt') !== false, 'the log window has the place for them');
+        });
+    },
 ];

@@ -88,7 +88,12 @@ The parts below describe them; a card behaves the same wherever it stands.
 - **The live log** is docked bottom right on every part of the page: the
   end of the showcase's own log (`set log`, `/__log`, addresses masked),
   each line as time, decision, status, rule and request, new ones lit up;
-  click its bar to fold it away (it remembers that).
+  click its bar to fold it away (it remembers that). Above the lines,
+  *banned right now*: the bans the store holds (APCu or files -- with
+  `ban-keep file` they outlast a restart; the same list as the dashboard's),
+  each with its masked address, the seconds left, the rule, and what kind
+  of visitor it looks like -- a browser, a crawler, a script: a guess from
+  the User-Agent of its last line in the log.
 - **Install** shows the steps with real paths: the folder, `.htaccess`,
   `.user.ini`, `require` in `index.php` or `wp-config.php`, and a first rule
   file in `monitor` mode with `set log` -- without a log file, monitor mode
