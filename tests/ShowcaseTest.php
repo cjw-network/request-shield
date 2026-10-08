@@ -9,6 +9,7 @@ declare(strict_types=1);
  */
 
 /** Starts the showcase (router.php), runs $body with a request function, stops it. */
+/** @param callable(callable, int, string): void $body gets the request function, the port, and the showcase's directory (its log, its store) */
 function withShowcase(callable $body): void
 {
     if (rsSingle() !== null) {
@@ -48,7 +49,7 @@ function withShowcase(callable $body): void
                 }
             }
             return [$status, $xrs, $body, $type, implode("\n", $http_response_header ?? [])];
-        }, $port);
+        }, $port, $var);
     } finally {
         proc_terminate($proc);
         proc_close($proc);
@@ -315,7 +316,7 @@ return [
         });
     },
     'RSF05-04 the showcase\'s log window names who is banned right now: the address (masked), until when, the rule, and what kind of visitor it looks like -- a browser, a crawler, a script' => function (): void {
-        withShowcase(static function (callable $get, int $port): void {
+        withShowcase(static function (callable $get, int $port, string $var): void {
             $ban = static function (string $from, string $ua) use ($get, $port): void {
                 for ($i = 0; $i < 5; $i++) {
                     $get('POST', '/account/login', ['X-Forwarded-For' => $from, 'Origin' => "http://127.0.0.1:$port", 'User-Agent' => $ua], 'user=demo&password=wrong');
@@ -336,6 +337,14 @@ return [
             same('SHOW-LOGIN-BAN', $b['rule'] ?? null, 'the rule that banned it');
             $page = $get('GET', '/?lang=de')[2];
             truthy(strpos($page, 'class="log-bans"') !== false && strpos($page, 'Gerade gesperrt') !== false, 'the log window has the place for them');
+            // The bans are the store's, not the log's: with the log emptied they are still there -- what
+            // only the log knew (the rule, the kind of visitor) is not.
+            file_put_contents($var . '/shield.log', '');
+            $after = [];
+            foreach ((array) (json_decode($get('GET', '/__log')[2], true)['bans'] ?? []) as $b) {
+                $after[$b['client']] = $b;
+            }
+            same(['rule' => null, 'kind' => 'unknown'], array_intersect_key($after['198.51.100.0/24'] ?? [], ['rule' => 1, 'kind' => 1]), 'still banned with the log gone: ' . json_encode($after));
         });
     },
 ];

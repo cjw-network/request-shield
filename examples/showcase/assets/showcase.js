@@ -337,7 +337,8 @@
       li.title = line;
       return li;
     };
-    // Who is banned right now (from the log's "banned" lines, server side), counting down each second;
+    // Who is banned right now (the store's bans, server side; the rule and the kind of visitor from the
+    // log's end), counting down each second;
     // the clock's offset to the server's is taken out, so a wrong clock here shows the right time.
     var banBox = dock.querySelector('.log-bans'), banList = dock.querySelector('.log-ban-list');
     var banLeft = banBox.getAttribute('data-left'), banKinds = {};

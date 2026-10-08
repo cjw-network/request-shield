@@ -179,8 +179,10 @@ function showcaseBans(?Shield $shield, array $lines, int $now): array
     foreach ($lines as $line) {
         $r = \CjwNetwork\RequestShield\LogStats::parse($line);
         if ($r !== null) {
-            $was = $seen[$r['client']] ?? null;
-            $seen[$r['client']] = ['rule' => $r['reason'] === 'banned' && $r['rule'] !== null ? $r['rule'] : ($was['rule'] ?? null),
+            // log-ip full: the line has the address, the ban its bucket (an IPv6 address's network)
+            $who = $s->logIp === 'full' ? \CjwNetwork\RequestShield\IpAddress::bucket($r['client'], $s->ipv6Prefix) : $r['client'];
+            $was = $seen[$who] ?? null;
+            $seen[$who] = ['rule' => $r['reason'] === 'banned' && $r['rule'] !== null ? $r['rule'] : ($was['rule'] ?? null),
                 'claimed' => $r['claimed'], 'agent' => $r['agent']];
         }
     }
