@@ -110,16 +110,28 @@ type.
 
 ## Privacy
 
-With `pass-cookie off`, the check page's answer in the form (point 3) and
-`check` refusing the check on pages (point 4), **the check sets no cookie
-and stores nothing about a visitor** beyond the budgets' counters
-(seconds to minutes, per address) and the used answers' hashes (minutes). The
-question of § 25 TDDDG does not arise for the check. Out of this proposal's
-scope, and to be named in a privacy notice if used: the dashboard's login
-session (`rsd`, only for its administrators). That is the same
-position ALTCHA describes for itself. The privacy notice can say: *"To keep
+With `pass-cookie off` and `check` refusing the check on pages (point 4),
+**the check inside the form sets no cookie and writes nothing into the
+browser**: the box solves in memory and puts the answer into the form. On the
+server it keeps nothing about a visitor beyond the budgets' counters (seconds
+to minutes, per address) and the used answers' hashes (minutes). So the
+question of § 25 TDDDG does not arise for the box. That is the position ALTCHA
+describes for itself.
+
+**The check page is different** (a form sent without an answer, point 3): its
+script keeps a guard against an endless loop in the tab's `sessionStorage`
+(`rs-tries`: the address, a count, a time; it counts only for a minute and is
+gone when the tab closes). That is storage on the device too -- arguably
+strictly necessary, but it has to be named. A site that wants nothing on the
+device at all lets every form carry the box, so the check page does not
+come; or the guard moves into the URL of the resend (an open question).
+
+Out of this proposal's scope, and to be named in a privacy notice if used:
+the dashboard's login session (`rsd`, only for its administrators).
+
+A privacy notice for a site with the box in every form could say: *"To keep
 automated spam out, your browser solves a small computing task when you send
-a form. No cookie is set, nothing is read from your device."* -- *to be
+a form. No cookie is set and nothing is stored on your device."* -- *to be
 confirmed by the data protection officer; not legal advice.*
 
 ## Cost
@@ -139,7 +151,7 @@ confirmed by the data protection officer; not legal advice.*
 - The same answer sent twice: the second is refused (store), with the switch
   off as on.
 - The endpoint never answers `passed` with the switch off.
-- The check page without JavaScript sends the form again with the answer as a
+- The check page sends the form again with the answer as a
   field, no solution cookie.
 - `check` refuses `pass-cookie off` with `challenge-at` and with
   `challenge <GET paths>`; accepts it with `challenge POST …`.
@@ -158,5 +170,8 @@ confirmed by the data protection officer; not legal advice.*
 4. **Forms over several steps** (a wizard): one task per step, or the first
    step's answer carried along by the site? Proposed: one per step -- it is
    solved while the visitor types.
-5. **The showcase:** show both side by side ("with pass" / "without cookie"),
+5. **The check page's loop guard** (`sessionStorage`): keep it (named in the
+   privacy notice), or carry the count in the resend instead, so that nothing
+   at all is stored on the device?
+6. **The showcase:** show both side by side ("with pass" / "without cookie"),
    so a site can see the difference?
