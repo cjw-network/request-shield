@@ -163,8 +163,9 @@ Art. 5(3) read that article broadly — reaching also some information a browser
 sends by itself when it is collected to track; how far is contested and still
 moving. Besides the law: fingerprinting is what privacy-minded browsers
 actively fight, and it would betray the trust the shield's check depends on.
-The shield's proof of work reads nothing from the device — it computes a hash
-and sends back a number. **Recommendation: never fingerprint.**
+The shield's proof of work reads no properties of the device — it computes a
+hash and sends back a number (the check page keeps only its loop guard in the
+tab's `sessionStorage`). **Recommendation: never fingerprint.**
 
 ### Summary
 
