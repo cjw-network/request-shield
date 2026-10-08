@@ -46,7 +46,7 @@ jobs:
           extensions: ${{ matrix.apcu && 'apcu, pcntl' || 'pcntl, :apcu' }}
           ini-values: ${{ matrix.apcu && 'apc.enable_cli=1, opcache.enable_cli=1, opcache.file_update_protection=0' || 'opcache.enable_cli=1, opcache.file_update_protection=0' }}
           coverage: none
-          tools: none
+          tools: composer
 
       - uses: actions/setup-node@v7
         with:
@@ -76,6 +76,12 @@ jobs:
           php -l build/out/request-shield-api.php > /dev/null
           php -l build/out/request-shield-cache.php > /dev/null
           php -l build/out/request-shield-waf.php > /dev/null
+
+      - name: Composer's autoloader, for the test of a Composer install (StatsExtensionTest)
+        # Only the autoloader: the library has no packages to install, and resolving the
+        # development tools (PHPStan, Psalm) is not this job's business.
+        if: matrix.entry == 'source'
+        run: composer dump-autoload --no-dev --no-interaction
 
       - name: Tests (source tree)
         if: matrix.entry == 'source'
