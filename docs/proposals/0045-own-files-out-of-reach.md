@@ -27,13 +27,18 @@ GET /.request-shield/store/secret
    (only a file that does NOT exist → index.php → shield → rules)
 ```
 
-A CMS's usual `.htaccess` passes only **missing** files to `index.php`
-(`RewriteCond %{REQUEST_FILENAME} !-f`). So the only protection that holds on
+A CMS's usual setup passes only **missing** files to `index.php` (Apache:
+`RewriteCond %{REQUEST_FILENAME} !-f`; nginx: `try_files $uri … /index.php`) --
+the typical case; a server that sends every request to PHP is rare. So the only protection that holds on
 every server is the one the docs already give: **the shield's files outside
 the document root**. `request-shield init` refuses a rule file inside it
 (`--docroot`). Nothing checks it later, and nothing protects a directory that
 ends up there anyway (a setting changed by hand, a host that knows no other
-place, `store-dir` pointing into `htdocs`).
+place, `store-dir` pointing into `htdocs`). By default everything lies next
+to the main rule file (`.request-shield/` and `.request-shield/store`), so it
+lands in the document root only when the rule file does; without a rule file
+the store defaults to the system's temp dir. The compiled settings
+(`settings-*.php`) are PHP: a direct request would even run them.
 
 **The proposal:** two safety nets for that case -- not a reason to put the
 files there.
@@ -46,7 +51,9 @@ The shield compares it, as text, with each of its directories and files:
 `store-dir`, the compiled settings' directory, `log`, `lists-dir`,
 `http-cache-dir`, `crawler-log`, the rule files themselves.
 
-- One inside: one line in PHP's error log, once per compile --
+- One inside: one line in PHP's error log, once per compile (in S0, with no
+  writable directory, the settings are compiled on every request: there the
+  line is written at most once an hour, as `Failure::note()` does) --
   *"request-shield: store-dir /var/www/html/.request-shield/store is inside
   the document root /var/www/html -- a browser could read the secret, the
   lists and the log; move it beside it (set store-dir …)"*.
@@ -54,8 +61,9 @@ The shield compares it, as text, with each of its directories and files:
   `check site.rules --docroot /var/www/html` (the CLI has no document root of
   its own; `init` already takes `--docroot`). The tier notice (S0/S1/S2) gets
   the line too.
-- Cost: none on the request path. A string comparison per directory at
-  compile time; no `realpath()` (a stat) -- the paths are compared as written,
+- Cost: none on the passing path in S1/S2 (compiled settings); in S0 a few
+  string comparisons per request, next to a compile that costs far more. A
+  string comparison per directory; no `realpath()` (a stat) -- the paths are compared as written,
   with `..` and `//` folded.
 
 ## 2. A deny file where the shield creates a directory
@@ -63,21 +71,27 @@ The shield compares it, as text, with each of its directories and files:
 Wherever the shield creates a directory of its own (there are about a dozen
 `mkdir()` calls: the store, the secret, the compiled settings, the log's
 directory, lists, feeds, crawler lists, statistics, the HTTP cache), it also
-writes, **once, only into a directory it just created**:
+writes, **once, only into a directory it just created**. Not into the file
+store's shard directories (`FileStore` creates them on the request path): the
+file in the store's root covers them, and the passing path gets no write.
 
 - `.htaccess` with
   ```apache
   # written by request-shield: nothing here is for a browser
   Require all denied
   ```
-  Apache 2.4 reads it only for requests **into that directory** -- not on
+  Apache 2.4 only (2.2 knew `Deny from all`). Apache reads it only for
+  requests **into that directory** -- not on
   every request of the site, so the cost the shield avoids elsewhere
   ("Apache reads .htaccess on every request") does not arise here.
 - nothing for nginx: nginx reads no such file. `check` prints the block to
   add instead:
   ```nginx
-  location ^~ /.request-shield/ { deny all; return 404; }
+  location ^~ /.request-shield/ { return 404; }   # or: deny all;  (a 403)
   ```
+  (`return` runs before `deny` would: together, the answer is the 404.) The
+  path fits the default place; a `store-dir` elsewhere in the document root
+  needs its own line -- `check` prints them all.
 
 It is a second net, never the first: it works only where Apache allows
 `.htaccess` (`AllowOverride AuthConfig` or `All`) and the `authz` module is
@@ -97,14 +111,16 @@ one place, and in the tests.
 ## Tests (when built)
 
 - A store directory under a document root: the compile writes the line to the
-  error log once; a second request (compiled settings) writes nothing.
+  error log once; a second request (compiled settings) writes nothing; in S0
+  at most one line an hour.
 - `check --docroot` names each directory inside it and exits with the warning
   code; outside: no line.
 - A directory the shield creates gets `.htaccess`; a directory that already
   existed gets nothing; an existing `.htaccess` is never overwritten.
 - End to end with Apache if available (`skip()` otherwise): a file in a
   created directory under the document root answers 403.
-- Bench: the passing request unchanged (the check runs only at compile time).
+- Bench: the passing request unchanged in S1/S2 (the check runs only at
+  compile time); no write on the request path (shard directories get no file).
 
 ## Open questions for the owner
 
