@@ -234,8 +234,11 @@ for tests, a header with every request:
   parameter and form field **by type** (`int`, `number`, `id`, `word`, `list`,
   `text` -- the types of `query`), the content type, what the shield decided,
   and the status the site answered with. **Never a value, never an address,
-  never a cookie.** A new `start` begins a new recording (`--keep` adds to
-  the old one); it stops growing at 10 MB.
+  never a cookie.** Form fields are those PHP parsed (a form, not a JSON
+  body); at most 200 parameters and fields a line. A new `start` begins a new
+  recording, readable only by its owner (`--keep` adds to the old one); it
+  stops growing at 10 MB. Not recorded: the check inside the form's own
+  endpoint (`widget-path`), answered before the rest.
 - **Every server starts and stops within its recheck:** `start` and `stop`
   write the state file and touch the main rule file, as `deny` does; the
   settings read the state when they are compiled.

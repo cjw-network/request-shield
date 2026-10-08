@@ -577,6 +577,10 @@ final class Cli
             $now = time();
             try {
                 if ($what === 'start') {
+                    if (isset($period['from'])) {
+                        // --from=2026-10-01 is read as a day (the statistics' option): never a run "from anywhere".
+                        throw new \InvalidArgumentException('--from takes an address or a range for learn, not a day');
+                    }
                     $for = $listFor ?? 7200;
                     $token = \CjwNetwork\RequestShield\Learn::start($dir, $for, $learn['from'], $learn['keep'], $now);
                     touch($file);

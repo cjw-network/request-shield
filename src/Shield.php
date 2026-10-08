@@ -417,7 +417,11 @@ final class Shield
         self::$current = $decision;
         self::$rule = $rule;
         if ($s->learn !== null) {
-            Learn::note($s, $request, $decision, $now);        // a learning run (0016): only its own requests, their shape
+            try {
+                Learn::note($s, $request, $decision, $now);    // a learning run (0016): only its own requests, their shape
+            } catch (\Throwable $e) {
+                // A recording's trouble never turns a decision around (fail safe for the site, not for the run).
+            }
         }
         if ($shield->plugins() !== []) {
             // The plugins (the statistics, …): told now, and -- for a request that

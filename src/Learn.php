@@ -35,6 +35,8 @@ final class Learn
     public const HEADER = 'request-shield-learn';
     /** The recording stops growing here: a forgotten run fills no disk. */
     public const MAX_BYTES = 10485760;
+    /** At most so many query parameters and form fields in a line: it stays small. */
+    public const MAX_FIELDS = 200;
     /** At most this long a run (--for). */
     public const MAX_FOR = 604800;
 
@@ -74,9 +76,13 @@ final class Learn
             throw new \RuntimeException('cannot write ' . self::stateFile($storeDir));
         }
         @chmod(self::stateFile($storeDir), 0600);
-        if (!$keep && is_file(self::recordFile($storeDir))) {
-            @unlink(self::recordFile($storeDir));
+        $record = self::recordFile($storeDir);
+        if (!$keep || !is_file($record)) {
+            // A new recording, created here so it is its owner's only (it holds paths):
+            // the requests only append to it.
+            @file_put_contents($record, '', LOCK_EX);
         }
+        @chmod($record, 0600);
         return $token;
     }
 
@@ -150,15 +156,28 @@ final class Learn
             $status = http_response_code();
             $line['status'] = is_int($status) ? $status : null;
             $size = @filesize($file);
-            if ($size !== false && $size > self::MAX_BYTES) {
+            $json = self::line($line);
+            if ($json === null || ($size !== false && $size > self::MAX_BYTES)) {
                 return;
             }
-            @file_put_contents($file, json_encode($line, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND | LOCK_EX);
+            @file_put_contents($file, $json . "\n", FILE_APPEND | LOCK_EX);
         });
     }
 
     /**
-     * A request's shape: what it was, never what it held.
+     * A shape as one JSON line -- a name that is not UTF-8 replaced, not the line lost.
+     *
+     * @param array<string, mixed> $shape
+     */
+    public static function line(array $shape): ?string
+    {
+        $json = json_encode($shape, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        return is_string($json) ? $json : null;
+    }
+
+    /**
+     * A request's shape: what it was, never what it held. Form fields are the
+     * ones PHP parsed ($_POST: a form, not a JSON body).
      *
      * @param array<mixed> $post the form fields ($_POST)
      * @return array{t: int, method: string, host: string, path: string, query: array<string, string>, form: array<string, string>, type: ?string, decided: string, status: ?int}
@@ -167,10 +186,15 @@ final class Learn
     {
         $query = [];
         foreach ($request->queryPairs() as [$name, $value]) {
-            $query[$name] = self::wider($query[$name] ?? null, self::typeOf($value));
+            if (count($query) < self::MAX_FIELDS || isset($query[$name])) {
+                $query[$name] = self::wider($query[$name] ?? null, self::typeOf($value));
+            }
         }
         $form = [];
         foreach ($post as $name => $value) {
+            if (count($form) >= self::MAX_FIELDS) {
+                break;
+            }
             $form[(string) $name] = is_array($value) ? 'list' : self::typeOf(is_scalar($value) ? (string) $value : '');
         }
         $type = $request->header('content-type');

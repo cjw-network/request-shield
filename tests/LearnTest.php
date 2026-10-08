@@ -24,6 +24,13 @@ return [
         $shape = Learn::shape($r, ['email' => 'someone@example.org', 'tags' => ['a', 'b'], 'age' => '41'], Decision::allow(), 1000.0);
         same(['t' => 1000, 'method' => 'POST', 'host' => 'www.example.org', 'path' => '/contact', 'query' => ['page' => 'int', 'q' => 'text'],
             'form' => ['email' => 'text', 'tags' => 'list', 'age' => 'int'], 'type' => 'application/x-www-form-urlencoded', 'decided' => 'allow', 'status' => null], $shape);
+        $odd = Learn::line(Learn::shape(Request::fromServer(['REQUEST_URI' => '/a?x%ff=1']), [], Decision::allow(), 1.0) + ['status' => 200]);
+        truthy($odd !== null && strpos($odd, '"path":"/a"') !== false, 'a name that is not UTF-8 still makes a line: ' . var_export($odd, true));
+        $many = [];
+        for ($i = 0; $i < 500; $i++) {
+            $many["f$i"] = 'x';
+        }
+        same(Learn::MAX_FIELDS, count(Learn::shape(Request::fromServer(['REQUEST_URI' => '/']), $many, Decision::allow(), 1.0)['form']), 'at most so many fields: a line stays small');
         $json = (string) json_encode($shape);
         truthy(strpos($json, 'secret') === false && strpos($json, 'someone') === false && strpos($json, '41') === false && strpos($json, '203.0.113') === false, 'no value, no address: ' . $json);
     },
@@ -55,7 +62,8 @@ return [
             Learn::start("$dir/store", 3600, [], true, 1000);
             truthy(is_file(Learn::recordFile("$dir/store")), '--keep: the earlier recording stays');
             Learn::start("$dir/store", 3600, [], false, 1000);
-            truthy(!is_file(Learn::recordFile("$dir/store")), 'a new run starts a new recording');
+            truthy(is_file(Learn::recordFile("$dir/store")) && filesize(Learn::recordFile("$dir/store")) === 0, 'a new run starts a new recording');
+            same('0600', substr(sprintf('%o', fileperms(Learn::recordFile("$dir/store"))), -4), 'the recording only for its owner');
             truthy(Learn::stop("$dir/store"), 'stopped');
             same(null, Settings::from(RuleFile::read(["$dir/site.rules"])['config'])->learn, 'stopped: nothing');
             truthy(!Learn::stop("$dir/store"), 'nothing to stop');
@@ -115,7 +123,10 @@ return [
             same(200, $send('GET', '/index.php?from=tests', ['Request-Shield-Learn' => $token]), 'the header');
             same(200, $send('GET', '/index.php?unmarked=1'), 'a visitor without the token');
             same(404, $send('GET', '/index.php/.env', $cookie), 'the token lets nothing past a check');
-            usleep(200000);
+            $lines = [];
+            for ($i = 0; $i < 40 && count(file(Learn::recordFile("$dir/store")) ?: []) < 5; $i++) {
+                usleep(50000);          // the line is written when the request has ended
+            }
             $lines = array_values(array_filter(array_map(static fn (string $l) => json_decode($l, true), file(Learn::recordFile("$dir/store")) ?: [])));
             same(5, count($lines), 'five requests recorded, the unmarked one not: ' . json_encode($lines));
             same([['GET', '/index.php', ['page' => 'int', 'q' => 'text'], 200], ['GET', '/index.php', ['page' => 'int'], 404], ['POST', '/index.php', [], 200],
@@ -129,8 +140,12 @@ return [
             $out = [];
             exec("$cli learn " . escapeshellarg("$dir/site.rules") . ' stop 2>&1', $out, $code);
             truthy($code === 0 && strpos(implode("\n", $out), 'recorded: 5 requests (4 GET, 1 POST), 2 paths, 3 parameters, 1 form') !== false, implode("\n", $out));
+            $out = [];
+            exec("$cli learn " . escapeshellarg("$dir/site.rules") . ' start --from=2026-10-01 2>&1', $out, $code);
+            truthy($code !== 0 && strpos(implode("\n", $out), 'address') !== false, 'a date as --from: refused, not taken as "from anywhere": ' . implode("\n", $out));
+            truthy(!is_file(Learn::stateFile("$dir/store")), 'and no run started');
             same(200, $send('GET', '/index.php?after=1', $cookie));
-            usleep(200000);
+            usleep(300000);
             same(5, count(file(Learn::recordFile("$dir/store")) ?: []), 'stopped: the cookie records nothing more');
         } finally {
             proc_terminate($proc);
