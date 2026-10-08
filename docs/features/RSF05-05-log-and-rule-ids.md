@@ -23,8 +23,10 @@ It appears in
 - `X-RS: reject blocked path; rule=SCAN-HIDDEN` (with
   `set debug-header on`; a request let through also gets
   `Server-Timing: shield;dur=0.042;desc=request-shield` -- the shield's own
-  milliseconds, in the browser's network tab, also on an answer from the HTTP
-  cache; [0046](../proposals/0046-response-times.md) step 3),
+  milliseconds from its decision's start, in the browser's network tab, also
+  on an answer from the HTTP cache (which never stores it); not on a refusal,
+  the check page, the dashboard's pages or when the shield failed;
+  [0046](../proposals/0046-response-times.md) step 3),
 - `$_SERVER['REQUEST_SHIELD_RULE']` and `Shield::currentRule()`, for the
   application,
 - the log.

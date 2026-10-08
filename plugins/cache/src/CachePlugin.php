@@ -30,7 +30,7 @@ use CjwNetwork\RequestShield\Settings;
 final class CachePlugin implements Plugin, Handler
 {
     /** Headers never kept: they belong to one answer, or the web server makes them. */
-    private const DROP = ['set-cookie', 'date', 'age', 'x-rs', 'x-rs-monitor', 'x-rs-cache', 'content-length', 'transfer-encoding', 'connection', 'keep-alive'];
+    private const DROP = ['set-cookie', 'date', 'age', 'x-rs', 'x-rs-monitor', 'x-rs-cache', 'server-timing', 'content-length', 'transfer-encoding', 'connection', 'keep-alive'];
 
     /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>} */
     private array $o;

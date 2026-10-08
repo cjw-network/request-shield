@@ -191,8 +191,11 @@ return [
             $first = $get('/index.php');
             $second = $get('/index.php');
             truthy(strpos($first, 'X-RS-Cache: miss') !== false && strpos($second, 'X-RS-Cache: hit') !== false, "the cache at work: $second");
-            truthy(preg_match('~^Server-Timing: shield;dur=[\d.]+;desc=request-shield$~m', $first) === 1 && preg_match('~^Server-Timing: shield;dur=~m', $second) === 1,
-                'debug-header on: the shield\'s time on a miss and on a hit (0046 step 3)');
+            preg_match_all('~^Server-Timing: shield;dur=([\d.]+);desc=request-shield$~m', $first, $a);
+            preg_match_all('~^Server-Timing:.*$~mi', $second, $b);
+            preg_match_all('~^Server-Timing: shield;dur=([\d.]+);desc=request-shield$~m', $second, $c);
+            same([1, 1, 1], [count($a[1]), count($b[0]), count($c[1])], 'debug-header on: one Server-Timing on a miss, one on a hit -- the stored one is never replayed (0046 step 3): ' . $second);
+            truthy(($a[1][0] ?? '') !== ($c[1][0] ?? ''), 'the hit\'s own time, not the miss\'s');
             $get('/index.php/cart');
             $get('/index.php/slow?who=me');
             $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli());
