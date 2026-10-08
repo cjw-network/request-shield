@@ -14,11 +14,12 @@ ALTCHA sets no cookie at all
 know a visitor passed? **It does not keep a pass.** Its widget solves a task
 for one form, puts the answer (task, number, signature) into a hidden field,
 and the answer goes to the server with the form, in the same request. The
-server checks the signature and the expiry, and remembers that this answer
-was used. The next form: a new task. Nothing has to stay in the browser.
+server checks the signature and the expiry; that an answer is used only once
+is the integrating site's job (ALTCHA's server library only verifies). The
+next form: a new task. Nothing has to stay in the browser.
 
-The shield does the same inside the form today -- the answer travels in the
-hidden field `rss` ([RSF03-03](../features/RSF03-03-browser-check-in-the-form.md)).
+The shield does the same inside the form today -- the answer travels in a
+hidden field (`rss`, the `solution-cookie` setting's name) ([RSF03-03](../features/RSF03-03-browser-check-in-the-form.md)).
 But when the answer is accepted, it **also sets the pass cookie** (an hour
 by default), so the visitor's next pages and forms need no new task. That
 cookie is what a site has to explain in its privacy notice
@@ -68,20 +69,30 @@ type.
      sets no pass cookie;
    - the endpoint never answers `{"passed": true}` (there is no pass to
      report): every form view gets a task;
-   - `requirePass()` accepts only the answer in this request; `requirePass(300)`
-     ("a pass from the last 5 minutes") means the answer's own age.
+   - `requirePass()` accepts only the answer in this request. `requirePass(300)`
+     ("a pass from the last 5 minutes") applies today only to a pass cookie; a
+     posted answer is only held to its own few minutes (`solutionTtl`). With
+     the switch off, `fresh` would have to mean the answer's age -- **new
+     behaviour**, to be specified.
 2. **Used once, as today.** An answer can be sent only once: the shield
    already remembers a used answer (a hash, for its few minutes of life) in
    the store. That needs a store (APCu or a writable directory, tiers S1/S2).
-   Without one (S0) an answer could be sent again within its few minutes --
-   `check` says so, as it does today for the pass's secret.
-3. **Without JavaScript.** Today: the form is sent without an answer, the
-   check page comes, solves, and sends the form again by itself (a form
-   without files) -- carrying the answer in a short-lived **solution cookie**.
-   With the switch off, the check page puts the answer **into the form it
-   sends again** instead (as a hidden field). A form with files cannot be sent
-   again by the check page today either; that stays a limit (see 0038 for a
-   way without JavaScript).
+   Without one (S0) `firstUse()` lets every answer through, so an answer could
+   be sent again within its few minutes; and S0 keeps no secret either, so
+   tasks can only be signed with `set secret` configured. A **new** `check`
+   message would name both (today only the tier notice says what S0 lacks).
+3. **A form sent without an answer** (no box in it, or the box could not
+   finish). Today: the check page comes, its script solves the task, sets the
+   answer as a short-lived **solution cookie** (`document.cookie`, not a
+   `Set-Cookie` header) and sends the form again by itself (a form without
+   files); the page refuses to run when cookies are blocked. With the switch
+   off, the check page puts the answer **into the form it sends again**
+   instead (as a hidden field) and needs no cookie. Two things follow:
+   - the shield reads the answer from a form field only when `widget-path` is
+     set (`postedSolution()`); with the switch off it must read it either way;
+   - a form with files cannot be sent again by the check page, today as then.
+   The check page itself needs JavaScript in both cases; a way without it is
+   [0038](0038-checks-without-friction.md).
 4. **The check on pages needs a cookie** -- a budget's `challenge-at`,
    `challenge /login` for a page someone opens, the pace of page views. A GET
    request has no form field to carry an answer, and without a pass the
@@ -99,10 +110,13 @@ type.
 
 ## Privacy
 
-With `pass-cookie off` and the log off (the default), **the shield sets no
-cookie and stores nothing about a visitor** beyond the budgets' counters
+With `pass-cookie off`, the check page's answer in the form (point 3) and
+`check` refusing the check on pages (point 4), **the check sets no cookie
+and stores nothing about a visitor** beyond the budgets' counters
 (seconds to minutes, per address) and the used answers' hashes (minutes). The
-question of § 25 TDDDG does not arise for the shield. That is the same
+question of § 25 TDDDG does not arise for the check. Out of this proposal's
+scope, and to be named in a privacy notice if used: the dashboard's login
+session (`rsd`, only for its administrators). That is the same
 position ALTCHA describes for itself. The privacy notice can say: *"To keep
 automated spam out, your browser solves a small computing task when you send
 a form. No cookie is set, nothing is read from your device."* -- *to be
@@ -139,8 +153,8 @@ confirmed by the data protection officer; not legal advice.*
 2. **Pages that ask for the check** with the switch off: refuse in `check`
    (proposed), or turn a `challenge-at` into a pause (429) by itself -- which
    is quieter, but changes what a rule says?
-3. **S0** (no store): allow the switch with a warning (an answer could be
-   sent again for a few minutes), or refuse it?
+3. **S0** (no store, no kept secret): allow the switch with a warning and
+   `set secret`, or refuse it there?
 4. **Forms over several steps** (a wizard): one task per step, or the first
    step's answer carried along by the site? Proposed: one per step -- it is
    solved while the visitor types.
