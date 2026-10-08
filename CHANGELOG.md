@@ -61,6 +61,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **`Server-Timing` with debug-header** (proposal 0046 step 3): with `set
+  debug-header on` a request let through -- and an answer from the HTTP cache
+  -- carries `Server-Timing: shield;dur=<ms>;desc=request-shield`, the
+  shield's own time for the browser's network tab; nothing without it.
 - **The slowest pages** (statistics, parts `pages` and `times`, proposal 0046
   step 2): each page view's band, sum and cache hit, kept for the same pages
   as the views (past the limit as "(other)" too); the statistics page and

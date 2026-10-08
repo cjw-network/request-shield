@@ -177,7 +177,7 @@ return [
             header("Cache-Control: public, max-age=60");
             echo "page " . $u;');
         $port = freePort();
-        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset stats requests pages times\nset http-cache on\nset http-cache-hosts 127.0.0.1:$port\nexempt none\n");
+        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset stats requests pages times\nset http-cache on\nset http-cache-hosts 127.0.0.1:$port\nexempt none\nset debug-header on\n");
         $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1', escapeshellarg("$dir/site.rules"),
             serverPhp(), escapeshellarg(rsEntry()), $port, escapeshellarg("$dir/docroot")), [], $pipes);
         for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
@@ -191,6 +191,8 @@ return [
             $first = $get('/index.php');
             $second = $get('/index.php');
             truthy(strpos($first, 'X-RS-Cache: miss') !== false && strpos($second, 'X-RS-Cache: hit') !== false, "the cache at work: $second");
+            truthy(preg_match('~^Server-Timing: shield;dur=[\d.]+;desc=request-shield$~m', $first) === 1 && preg_match('~^Server-Timing: shield;dur=~m', $second) === 1,
+                'debug-header on: the shield\'s time on a miss and on a hit (0046 step 3)');
             $get('/index.php/cart');
             $get('/index.php/slow?who=me');
             $bin = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli());

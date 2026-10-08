@@ -531,6 +531,11 @@ Slow requests (the last):
 
 `--json` has it under `times` (in microseconds).
 
+For one request in the browser: with `set debug-header on` the answer carries
+`Server-Timing: shield;dur=0.042;desc=request-shield`, the shield's own time
+(the site's is not over when the headers go out). Only then: for every visitor
+it would tell that a shield is in front and cost bytes on every answer.
+
 **Cost.** Without `times`: one look in the list of parts a request (nothing
 with the statistics off). With it, measured on
 this machine with APCu (StatsPlugin, a request that reaches the site): about

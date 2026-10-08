@@ -48,7 +48,7 @@ function withServer(array $config, callable $body): void
                     $cookies[$m[1]] = $m[2];
                 }
             }
-            return ['status' => $status, 'body' => (string) $body, 'json' => json_decode((string) $body, true), 'retry' => $retry, 'cookies' => $cookies];
+            return ['status' => $status, 'body' => (string) $body, 'json' => json_decode((string) $body, true), 'retry' => $retry, 'cookies' => $cookies, 'headers' => implode("\n", $http_response_header ?? [])];
         });
     } finally {
         proc_terminate($proc);
@@ -147,6 +147,20 @@ return [
             $r = $get('GET', '/index.php?id=1');
             same(200, $r['status'], 'a clean request reaches the application');
             same('allow', $r['json']['shield'] ?? null);
+        });
+    },
+    'RSF05-05 debug-header on: the answer says how long the shield took (Server-Timing, for the browser\'s network tab, 0046 step 3); off: not a byte of it' => function (): void {
+        if (!function_exists('proc_open')) {
+            skip('no proc_open');
+        }
+        withServer(['debugHeader' => true], function (callable $get): void {
+            $r = $get('GET', '/');
+            same(200, $r['status']);
+            truthy(preg_match('~^Server-Timing: shield;dur=\d+\.\d{3};desc=request-shield$~m', $r['headers']) === 1, 'the shield\'s time: ' . $r['headers']);
+        });
+        withServer([], function (callable $get): void {
+            $r = $get('GET', '/');
+            truthy(stripos($r['headers'], 'Server-Timing') === false, 'debug-header off: no Server-Timing');
         });
     },
 ];

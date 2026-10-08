@@ -25,9 +25,6 @@ use CjwNetwork\RequestShield\Stats\StatsPlugin;
  */
 final class StatsReport
 {
-    /** Views a page needs in the period to be on the slowest pages (0046 step 2): one odd request is no slow page. */
-    public const PAGE_VIEWS = 10;
-
     /**
      * The last $days days, or a period: $o['from'] and $o['to'] (yyyymmdd),
      * grouped by $o['by'] (day, week, month, year) into 'periods', and
@@ -49,7 +46,7 @@ final class StatsReport
      *   forms: array<string, array{sent: int, saved: int, error: int, refused: int, checked: int, throttled: int, cross-site: int, from: array<string, int>, stopped: int}>, backend: array<string, array{sent: int, saved: int, error: int, refused: int, checked: int, throttled: int, cross-site: int, from: array<string, int>, stopped: int}>,
      *   times: array{kinds: array<string, array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int}>, site: array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int},
      *     who: array<string, array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int}>, shield: ?int, reasons: array<string, int>, hitShare: ?float, saved: int,
-     *     hourly: array<string, array{count: int, p50: ?int, p95: ?int}>, slow: list<string>, pages: array<string, array{count: int, avg: ?int, p50: ?int, p95: ?int, hits: int}>}|null}  times (0046, in microseconds): null when nothing was timed
+     *     hourly: array<string, array{count: int, p50: ?int, p95: ?int}>, slow: list<string>}|null}  times (0046, in microseconds): null when nothing was timed
      */
     public static function build(Settings $s, ?Stats $stats = null, int $days = 7, ?int $now = null, array $o = []): array
     {
@@ -103,8 +100,6 @@ final class StatsReport
         $shieldUs = 0;
         /** @var array<string, int> $reasons */
         $reasons = [];
-        /** @var array<string, array{count: int, sum: int, bands: list<int>, hits: int}> $pageTimes path => its times, all visitors (0046 step 2) */
-        $pageTimes = [];
         foreach ($read['days'] as $day => $counts) {
             $daily[(string) $day] = self::buckets($counts);
         }
@@ -224,29 +219,6 @@ final class StatsReport
                     case 'rn':
                         $reasons[$rest] = ($reasons[$rest] ?? 0) + $n;
                         break;
-                    case 'pt':
-                    case 'ps':
-                    case 'pc':
-                        // A page view's time: its band, its sum, a hit -- added up over who came.
-                        $parts = explode('|', $rest, 2);
-                        if (count($parts) === 2) {
-                            $page = $parts[1];
-                            $band = null;
-                            if ($type === 'pt') {
-                                $bar = (int) strrpos($page, '|');
-                                [$page, $band] = [substr($page, 0, $bar), (int) substr($page, $bar + 1)];
-                            }
-                            $pageTimes[$page] ??= ['count' => 0, 'sum' => 0, 'bands' => array_fill(0, count(Stats::BANDS) + 1, 0), 'hits' => 0];
-                            if ($type === 'ps') {
-                                $pageTimes[$page]['sum'] += $n;
-                            } elseif ($type === 'pc') {
-                                $pageTimes[$page]['hits'] += $n;
-                            } elseif (isset($pageTimes[$page]['bands'][(int) $band])) {
-                                $pageTimes[$page]['bands'][(int) $band] += $n;
-                                $pageTimes[$page]['count'] += $n;
-                            }
-                        }
-                        break;
                     case 'p':
                         $colon = (int) strpos($rest, ':');
                         $id = substr($rest, 0, $colon);
@@ -351,7 +323,7 @@ final class StatsReport
                 'checked' => $c['checked'] ?? 0, 'refused' => $c['refused'] ?? 0, 'throttled' => $c['throttled'] ?? 0, 'robots' => $c['robots'] ?? 0,
                 'pages' => array_slice($top, 0, 10, true), 'last' => $read['last'][$id] ?? null];
         }
-        $times = $timed === [] ? null : self::times($timed, $shieldUs, $reasons, $read['hours'], $now, self::slowLines($s, $stats, $from, $to, $o['site'] ?? null), $pageTimes);
+        $times = $timed === [] ? null : self::times($timed, $shieldUs, $reasons, $read['hours'], $now, self::slowLines($s, $stats, $from, $to, $o['site'] ?? null));
         return ['times' => $times, 'from' => $from, 'to' => $to, 'days' => $days, 'by' => $by, 'periods' => $periods, 'totals' => $totals, 'monitor' => $monitor, 'daily' => $daily, 'hourly' => $hourly,
             'rules' => $rules, 'crawlers' => $out, 'bots' => $bots, 'statuses' => $statuses, 'notFound' => $notFound, 'sitemaps' => $maps, 'pages' => $views, 'folders' => $folders, 'subtree' => $subtree, 'sort' => $sort, 'stopped' => $stoppedTop, 'forms' => $forms, 'backend' => $backend,
             'sentences' => array_merge(self::sentences($out, $days, $o['lang'] ?? 'en'), self::maps($maps, $days, $o['lang'] ?? 'en'), self::missing($notFound, $days, $o['lang'] ?? 'en'))];
@@ -368,12 +340,11 @@ final class StatsReport
      * @param array<string, int> $reasons
      * @param array<string, array<string, int>> $hours
      * @param list<string> $slow
-     * @param array<string, array{count: int, sum: int, bands: list<int>, hits: int}> $pageTimes
      * @return array{kinds: array<string, array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int}>, site: array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int},
      *   who: array<string, array{count: int, sum: int, bands: list<int>, avg: ?int, p50: ?int, p95: ?int}>, shield: ?int, reasons: array<string, int>, hitShare: ?float, saved: int,
-     *   hourly: array<string, array{count: int, p50: ?int, p95: ?int}>, slow: list<string>, pages: array<string, array{count: int, avg: ?int, p50: ?int, p95: ?int, hits: int}>}
+     *   hourly: array<string, array{count: int, p50: ?int, p95: ?int}>, slow: list<string>}
      */
-    private static function times(array $timed, int $shieldUs, array $reasons, array $hours, int $now, array $slow, array $pageTimes = []): array
+    private static function times(array $timed, int $shieldUs, array $reasons, array $hours, int $now, array $slow): array
     {
         $zero = ['count' => 0, 'sum' => 0, 'bands' => array_fill(0, count(Stats::BANDS) + 1, 0)];
         $kinds = ['hit' => $zero, 'miss' => $zero, 'nostore' => $zero, 'past' => $zero];
@@ -400,8 +371,7 @@ final class StatsReport
         $saved = $hits > 0 ? max(0, (int) round($hits * $instead - $kinds['hit']['sum'])) : 0;
         // The period's last 48 hours (the hours kept and read for it): up to its end, not to now.
         $hourly = [];
-        $latest = $hours === [] ? '1970010100' : (string) max(array_map('strval', array_keys($hours)));
-        $lastHour = (int) strtotime(substr($latest, 0, 8) . ' UTC') + 3600 * (int) substr($latest, 8, 2);
+        $lastHour = $hours === [] ? 0 : (int) strtotime(substr((string) max(array_map('strval', array_keys($hours))), 0, 8) . ' UTC') + 3600 * (int) substr((string) max(array_map('strval', array_keys($hours))), 8, 2);
         foreach ($hours as $hour => $counts) {
             if ((string) $hour < gmdate('YmdH', $lastHour - 47 * 3600)) {
                 continue;
@@ -422,17 +392,7 @@ final class StatsReport
             }
         }
         arsort($reasons);
-        // The slowest pages (step 2): those viewed often enough that one odd request is no "slow page",
-        // by their median; each with its slow end, its average and how many came from the cache.
-        $pages = [];
-        foreach ($pageTimes as $path => $x) {
-            if ($x['count'] >= self::PAGE_VIEWS && (string) $path !== '(other)') {
-                $pages[(string) $path] = ['count' => $x['count'], 'avg' => (int) round($x['sum'] / $x['count']), 'p50' => self::percentile($x['bands'], 0.5),
-                    'p95' => self::percentile($x['bands'], 0.95), 'hits' => $x['hits']];
-            }
-        }
-        uasort($pages, static fn (array $a, array $b): int => [$b['p50'], $b['p95']] <=> [$a['p50'], $a['p95']]);
-        return ['pages' => array_slice($pages, 0, 20, true), 'kinds' => array_map([self::class, 'summed'], $kinds), 'site' => self::summed($site), 'who' => array_map([self::class, 'summed'], $who), 'shield' => $all > 0 ? (int) round($shieldUs / $all) : null,
+        return ['kinds' => array_map([self::class, 'summed'], $kinds), 'site' => self::summed($site), 'who' => array_map([self::class, 'summed'], $who), 'shield' => $all > 0 ? (int) round($shieldUs / $all) : null,
             'reasons' => $reasons, 'hitShare' => $asked > 0 ? $hits / $asked : null, 'saved' => $saved, 'hourly' => $hourly, 'slow' => $slow];
     }
 

@@ -472,6 +472,9 @@ final class Shield
             $response = $shield->handle($request, $decision);
             if ($response !== null) {
                 $_SERVER['REQUEST_SHIELD'] = $decision->action;
+                if ($s->debugHeader && !headers_sent()) {
+                    header(self::serverTiming($now));       // the shield and the plugin that answered (a cache hit)
+                }
                 $response->send();
                 exit;
             }
@@ -484,6 +487,7 @@ final class Shield
             $_SERVER['REQUEST_SHIELD_RULE'] = $rule;
         }
         if ($s->debugHeader && !headers_sent()) {
+            header(self::serverTiming($now));
             header('X-RS: ' . ($watched !== null && $s->mode === 'monitor' ? 'monitor ' . $watched
                 : $decision->action . ($decision->reason !== '' ? ' ' . $decision->reason : '') . ($rule !== null ? '; rule=' . $rule : '')));
             if ($watched !== null && $s->mode !== 'monitor') {
@@ -491,6 +495,18 @@ final class Shield
             }
         }
         return $decision;
+    }
+
+    /**
+     * The shield's own time for the browser's network tab (0046 step 3), with
+     * debug-header on only: from its decision's start to here, in
+     * milliseconds -- "Server-Timing: shield;dur=0.042;desc=request-shield".
+     * The site's time is not over when the headers go out; for every visitor
+     * it would tell that a shield is in front and cost bytes on every answer.
+     */
+    private static function serverTiming(float $start): string
+    {
+        return 'Server-Timing: shield;dur=' . number_format(max(0.0, microtime(true) - $start) * 1000, 3, '.', '') . ';desc=request-shield';
     }
 
     /**

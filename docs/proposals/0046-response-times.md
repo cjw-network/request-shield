@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** -- steps 1 and 2 built (2026-10-08): [how fast the site answered](../features/RSF06-03-statistics.md#how-fast-the-site-answered) |
+| Status | **Draft** -- steps 1 to 3 built (2026-10-08), the "under load" mark later: [how fast the site answered](../features/RSF06-03-statistics.md#how-fast-the-site-answered) |
 | Proposed | 2026-10-08 |
 | Affects | the statistics plugin (`plugins/stats`: `StatsPlugin::ended()`, `Stats`, the statistics page, the live view), `stats` parts, `RSF06-03` |
 | Relates to | [RSF06-03 statistics](../features/RSF06-03-statistics.md) · [0022 visitors page](0022-visitors-page.md) · [0041 risk score](0041-risk-score.md) (a busy server could raise the bar) · [0039 cache compatible](0039-cache-compatible.md) |

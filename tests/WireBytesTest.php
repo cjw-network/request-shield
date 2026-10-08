@@ -24,7 +24,7 @@ const WIRE_PASS_HEADERS_MAX = 176;       // the header lines the shield adds to 
 /** The lines of an answer that come from the shield (the built-in server adds Host, Date, Connection, X-Powered-By, Content-type). */
 function wireShieldLines(array $lines): array
 {
-    return array_values(array_filter($lines, fn (string $l) => preg_match('/^(Set-Cookie|Cache-Control|X-Robots-Tag|Vary|Retry-After|Allow|X-RS|X-Request-Shield)/i', $l) === 1));
+    return array_values(array_filter($lines, fn (string $l) => preg_match('/^(Set-Cookie|Cache-Control|X-Robots-Tag|Vary|Retry-After|Allow|X-RS|X-Request-Shield|Server-Timing)/i', $l) === 1));
 }
 
 function wireBytes(array $lines): int
