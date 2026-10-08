@@ -73,6 +73,7 @@ The shipped rules:
 | `ATK-XSS-TAG` | cross-site scripting: &lt;script&gt;, &lt;iframe&gt; in the address |
 | `ATK-XSS-EVENT` | cross-site scripting: an event handler in a tag, &lt;img onerror=...&gt; |
 | `ATK-XSS-URL` | cross-site scripting: a parameter that is a javascript: address |
+| `ATK-XSS-ATTR` | cross-site scripting through attributes without `on…`: `<button formaction=…>` (sends the form elsewhere), `<a xlink:href=…>` in SVG, `<frame srcdoc=…>` -- only inside a tag (`<` and a letter, up to its `>`, within one parameter); the word alone, `x < y formaction=1` or `a<b&srcdoc=1` pass |
 | `ATK-PHP` | PHP code in the address: &lt;?php, eval(base64_decode(...)) |
 | `ATK-SHELL` | shell commands in the address: ; cat /etc/passwd, \| wget http://…, $(id) |
 | `ATK-SHELLSHOCK` | Shellshock (CVE-2014-6271 and the ones after it): a header whose value starts with `() {` (also written `(){`) -- what a CGI script's bash runs (`User-Agent: () { :; }; /bin/bash -c id`), the Content-Type too; `() {` inside a value passes (a search for `function () { return x };`), cookies are not looked at |
