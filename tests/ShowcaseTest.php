@@ -177,11 +177,17 @@ return [
             same(200, $st, 'the front page');
             truthy(strpos($page, 'Bots raus.') !== false && strpos($page, 'showcase.rules') !== false, 'in German, with the rules');
             truthy(strpos($get('GET', '/?lang=en')[2], 'Bots out.') !== false, 'in English');
+            $texts = require dirname(__DIR__) . '/examples/showcase/texts.php';
+            $shape = static function (array $a) use (&$shape): array {
+                return array_map(static fn ($v) => is_array($v) ? $shape($v) : (is_string($v) && $v !== '' ? 's' : 'EMPTY'), $a);
+            };
+            same($shape($texts['de']['comp']), $shape($texts['en']['comp']), 'the section in German and English: the same keys, as many points, none empty');
             foreach (['de' => 'nicht verbunden', 'en' => 'not affiliated'] as $lang => $note) {
                 $p = $lang === 'de' ? $page : $get('GET', '/?lang=en')[2];
                 truthy(strpos($p, 'id="compliance"') !== false && strpos($p, 'href="#compliance"') !== false, "$lang: the WCAG and GDPR section, in the menu");
                 truthy(strpos($p, 'href="https://altcha.org/legal/compliance/wcag/"') !== false && strpos($p, 'href="https://altcha.org/legal/compliance/gdpr/"') !== false, "$lang: ALTCHA's two pages linked");
-                truthy(strpos($p, $note) !== false && strpos($p, 'TDDDG') !== false, "$lang: says it is not ALTCHA, and that there is a cookie");
+                $sec = (string) strstr((string) strstr($p, 'id="compliance"'), '<section id="exponential"', true);
+                truthy(strpos($sec, $note) !== false && strpos($sec, '§ 25') !== false, "$lang: in the section: not ALTCHA, and that there is a cookie (§ 25 TDDDG)");
             }
             [$st, , , $type] = $get('GET', '/assets/showcase.css');
             truthy($st === 200 && strpos($type, 'text/css') === 0, 'its own styles, as CSS');
