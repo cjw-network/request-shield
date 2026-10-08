@@ -9,6 +9,19 @@
 declare(strict_types=1);
 
 require __DIR__ . '/helpers.php';
+
+/**
+ * In GitHub Actions, a failure also as an annotation (::error::) -- readable on the run's
+ * page and through the API without the log, which needs a login.
+ */
+function ciAnnotate(string $what, string $label, string $message): void
+{
+    if (getenv('GITHUB_ACTIONS') !== 'true') {
+        return;
+    }
+    $esc = static fn (string $s): string => str_replace(['%', "\r", "\n"], ['%25', '%0D', '%0A'], $s);
+    echo '::error title=' . $esc(str_replace([',', ':'], [';', ' '], "$what: $label")) . ' (PHP ' . PHP_VERSION . ')::' . $esc(substr($message, 0, 2000)) . "\n";
+}
 require rsEntry();                                   // bootstrap.php, or the built single file (REQUEST_SHIELD_ENTRY, 0031 E.3)
 require __DIR__ . '/support/RsTestExtension.php';   // the test extension (0031 B.2); an E2E server loads it from its prepend file
 require __DIR__ . '/support/CountingPlugin.php';    // a plugin with the RuleCounts capability (0031 B.8)
@@ -138,9 +151,13 @@ foreach ($tests as $file => $set) {
         } catch (TestSkipped $e) {
             $skipped++;
             printf("  SKIP  %s\n        %s\n", $label, $e->getMessage());
+            if (getenv('TESTS_FAIL_ON_SKIP') === '1') {
+                ciAnnotate('skipped (TESTS_FAIL_ON_SKIP)', $label, $e->getMessage());
+            }
         } catch (Throwable $e) {
             $fail++;
             printf("  FAIL  %s\n        %s\n", $label, $e->getMessage());
+            ciAnnotate('failed', $label, $e->getMessage());
         }
     }
 }
