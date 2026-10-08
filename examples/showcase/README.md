@@ -70,8 +70,11 @@ Open http://127.0.0.1:8090/ (`?lang=de` or `?lang=en`).
   parameter and field types, what each page offers), the table shows it
   live, and *Check the rules* sends it through `showcase.rules` as
   `request-shield replay` does: ✓, ✕ for a click that would be refused, ? for
-  what a page only offers. Starting a run works only from this machine
-  (127.0.0.1), or with `REQUEST_SHIELD_SHOWCASE_LEARN=on`. Below: the
+  what a page only offers. Starting a run, and seeing what it recorded, works
+  only from this machine (127.0.0.1, as the shield sees the visitor -- behind
+  a proxy it trusts, the forwarded address). `REQUEST_SHIELD_SHOWCASE_LEARN=on`
+  opens it to every visitor: for a private demo only, never on a public
+  server (anyone could start, stop and read the one run). Below: the
   commands for a real server and CI, and what `advise` will suggest.
 - **The live log** is docked bottom right on every part of the page: the
   end of the showcase's own log (`set log`, `/__log`, addresses masked),

@@ -239,6 +239,11 @@ return [
                 truthy($st === 200 && strpos($page, $title) !== false && strpos($page, 'learn-start') !== false && strpos($page, 'learned.jsonl') !== false, "$lang: the page, with the start button (this machine)");
             }
             truthy(strpos($get('GET', '/?lang=de')[2], 'href="/learn?lang=de"') !== false, 'the front page\'s menu leads to it');
+            // Behind a proxy (the showcase trusts 127.0.0.1): the visitor is the forwarded address, not this machine.
+            $remote = ['X-Forwarded-For' => '203.0.113.9', 'Origin' => 'http://127.0.0.1'];
+            same([403, 403, 403], [$get('POST', '/__learn/start', $remote)[0], $get('GET', '/__learned', $remote)[0], $get('GET', '/__replay', $remote)[0]],
+                'from elsewhere: no run started, nothing of a run shown');
+            truthy(strpos($get('GET', '/learn?lang=en', $remote)[2], 'learn-start') === false, 'and no start button');
             [$st, , $body, , $headers] = $get('POST', '/__learn/start', ['Origin' => 'http://127.0.0.1']);
             truthy($st === 200 && preg_match('/Set-Cookie: rs-learn=([0-9a-f]{32})/i', $headers, $m) === 1, 'started, the cookie set: ' . $headers);
             $cookie = ['Cookie' => 'rs-learn=' . ($m[1] ?? '')];

@@ -47,7 +47,12 @@
   };
   var post = function (url) {
     // Same origin: the answer sets or clears this browser's cookie.
-    return fetch(url, { method: 'POST', credentials: 'same-origin', cache: 'no-store' }).then(function () { poll(); });
+    return fetch(url, { method: 'POST', credentials: 'same-origin', cache: 'no-store' }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) { state.textContent = j.error || ('HTTP ' + r.status); state.classList.remove('learn-on'); return; }
+        poll();
+      });
+    }).catch(function () {});
   };
   if (start) {
     start.addEventListener('click', function () { post('/__learn/start'); });

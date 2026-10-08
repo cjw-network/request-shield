@@ -153,21 +153,31 @@ $tries = showcaseTries(__DIR__ . '/showcase.rules');
 
 // The page on building rules (0016): a learning run started here, for this browser -- only from
 // this machine (the showcase runs on yours), or when the showcase is told so (a demo server).
-$learnHere = in_array((string) ($_SERVER['REMOTE_ADDR'] ?? ''), ['127.0.0.1', '::1'], true) || getenv('REQUEST_SHIELD_SHOWCASE_LEARN') === 'on';
-$learnStore = Shield::active() !== null ? Shield::active()->settings->storeDir : null;
+// The visitor as the shield sees it: behind a proxy the shield trusts, the forwarded address -- a
+// local web server in front would otherwise make everyone "this machine".
+$learnShield = Shield::active();
+$learnClient = $learnShield !== null ? \CjwNetwork\RequestShield\Request::fromServer($_SERVER, $learnShield->settings->trustedProxies)->clientIp : '';
+$learnHere = in_array($learnClient, ['127.0.0.1', '::1'], true) || getenv('REQUEST_SHIELD_SHOWCASE_LEARN') === 'on';
+$learnStore = $learnShield !== null ? $learnShield->settings->storeDir : null;
 if ($path === '/learn') {
     require __DIR__ . '/learn.php';
     return;
 }
-if (strncmp($path, '/__learn/', 9) === 0 && $method === 'POST') {
+if ((strncmp($path, '/__learn/', 9) === 0 && $method === 'POST') || $path === '/__learned' || $path === '/__replay') {
     if (!$learnHere || $learnStore === null) {
-        showcaseJson(403, ['error' => 'only on this machine']);
+        showcaseJson(403, ['error' => 'only on this machine']);        // a run, and what it recorded, is this machine's
         return;
     }
+}
+if (strncmp($path, '/__learn/', 9) === 0 && $method === 'POST') {
     if ($path === '/__learn/start') {
         $for = 600;
+        if (!@touch(__DIR__ . '/showcase.rules')) {         // as learn start does: the settings read the run
+            showcaseJson(500, ['error' => 'showcase.rules cannot be touched: the settings would not see the run']);
+            return;
+        }
         $token = \CjwNetwork\RequestShield\Learn::start($learnStore, $for, [], false, time());
-        @touch(__DIR__ . '/showcase.rules');             // as learn start does: the settings read the run
+        @touch(__DIR__ . '/showcase.rules');
         setcookie(\CjwNetwork\RequestShield\Learn::COOKIE, $token, ['expires' => time() + $for, 'path' => '/', 'samesite' => 'Lax', 'httponly' => true]);
         showcaseJson(200, ['until' => time() + $for]);
         return;
@@ -180,7 +190,7 @@ if (strncmp($path, '/__learn/', 9) === 0 && $method === 'POST') {
         return;
     }
 }
-if ($path === '/__learned' && $learnStore !== null) {
+if ($path === '/__learned') {
     // The recording's end, newest first: its lines are shapes (no values), shown as they are.
     $run = \CjwNetwork\RequestShield\Learn::read($learnStore);
     $lines = @file(\CjwNetwork\RequestShield\Learn::recordFile($learnStore), FILE_IGNORE_NEW_LINES) ?: [];
@@ -194,7 +204,7 @@ if ($path === '/__learned' && $learnStore !== null) {
     showcaseJson(200, ['until' => $run !== null && $run['until'] > time() ? $run['until'] : null, 'count' => count($lines), 'rows' => $rows]);
     return;
 }
-if ($path === '/__replay' && $learnStore !== null) {
+if ($path === '/__replay') {
     // replay, as request-shield replay does: the recording through the showcase's rules, switched on.
     $file = \CjwNetwork\RequestShield\Learn::recordFile($learnStore);
     $text = (string) @file_get_contents($file);
