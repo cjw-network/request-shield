@@ -333,7 +333,6 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .guard-facts li { margin-bottom: 6px; }
 .guard-facts .bi { color: #047857; margin-right: 4px; }
 .stairs { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; align-items: end; margin: 18px 0 8px; padding: 0; }
-.stairs figcaption { grid-column: 1 / -1; margin-top: 4px; }
 .stair { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 130px; }
 .stair-bar { width: 100%; height: var(--h); min-height: 6px; border-radius: 8px 8px 3px 3px; background: linear-gradient(180deg, #f59e0b, #d97706); }
 .stair-bar.stair-free { background: #a7f3d0; }
