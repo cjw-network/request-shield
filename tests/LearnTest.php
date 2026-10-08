@@ -53,6 +53,7 @@ return [
         same(['/api/v1/messages', '/api/v1/products?format'], $f['scripts'], 'the addresses the scripts name');
         same(['api.example.org', 'shop.example.org'], $f['hosts'], 'the site\'s other hosts; another website\'s not');
         truthy(Learn::sameDomain('shop.example.co.uk', 'www.example.co.uk') && !Learn::sameDomain('evil.co.uk', 'www.example.co.uk') && !Learn::sameDomain('example.net', 'www.example.org'), 'one domain, also under co.uk -- not every .co.uk');
+        truthy(!Learn::sameDomain('127.0.0.1', '10.0.0.1') && !Learn::sameDomain('192.168.0.1', '10.20.0.1') && !Learn::sameDomain('[2001:db8::1]', '[2001:db8::2]'), 'addresses are no domain: never "the same"');
         $g = Learn::found('<a href="../up/x">u</a><a href="../../../../y">y</a><a href="./z/">z</a><script>fetch(`/api/items/${id}/edit`)</script>'
             . '<form action="/big" method="post"><input name="a">' . str_repeat('<p>filler</p>', 120000) . '<input name="b"></form>', Request::fromServer(['REQUEST_URI' => '/shop/list/', 'HTTP_HOST' => 'www.example.org']));
         same(['/shop/up/x', '/y', '/shop/list/z/'], $g['links'], '../ resolved as a browser does, never above the root');

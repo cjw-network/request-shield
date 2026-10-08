@@ -392,6 +392,10 @@ final class Learn
             $l = explode('.', $h);
             return implode('.', array_slice($l, in_array(implode('.', array_slice($l, -2)), self::SUFFIXES, true) ? -3 : -2));
         };
+        $ip = static fn (string $h): bool => filter_var(trim($h, '[]'), FILTER_VALIDATE_IP) !== false;
+        if ($ip($a) || $ip($b)) {
+            return false;               // an address is no domain: another one is another host
+        }
         return strpos($a, '.') !== false && $base($a) === $base($b);
     }
 
