@@ -14,7 +14,9 @@ function diagramRun(string $args): array
     if (!function_exists('exec')) {
         skip('no exec');
     }
-    exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/docs/tools/diagram.php') . " $args 2>&1", $out, $code);
+    // Without the JIT: PHP 8.1-8.3's tracing JIT (setup-php turns it on in CI) now and then misread
+    // the tool's quotes -- "a quote is not closed" for a line that has them all; 8.4 does not.
+    exec(escapeshellarg(PHP_BINARY) . ' -d opcache.jit=disable ' . escapeshellarg(dirname(__DIR__) . '/docs/tools/diagram.php') . " $args 2>&1", $out, $code);
     return [implode("\n", $out), $code];
 }
 
