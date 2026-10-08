@@ -446,26 +446,20 @@ return [
         // Including it twice is once.
         same($s->contentRules, attacksRules("include @attacks\n")->contentRules, 'twice is once');
     },
-    'RSF02-06 attacks: a query full of tags costs about what a plain one of the same length costs -- no pattern scans to the end from every "<"' => function (): void {
-        $s = attacksRules();
-        $shield = new Shield($s, new MemoryStore());
-        $time = static function (string $q) use ($shield): float {
-            $r = attacksRequest('/?q=' . $q);
-            $best = INF;
-            for ($i = 0; $i < 5; $i++) {
-                $t = hrtime(true);
-                for ($j = 0; $j < 10; $j++) {
-                    $shield->decide(attacksRequest('/?q=' . $q), 1000.0);
-                }
-                $best = min($best, hrtime(true) - $t);
+    'RSF02-06 attacks: a query full of tags costs about what a plain one of the same length costs -- with PCRE\'s JIT and without (a host may not allow it): no pattern scans to the end from every "<"' => function (): void {
+        if (!function_exists('exec')) {
+            skip('no exec');
+        }
+        foreach (['', '-d pcre.jit=0 '] as $flag) {
+            $out = [];
+            exec(escapeshellarg(PHP_BINARY) . ' ' . $flag . escapeshellarg(__DIR__ . '/tools/attack-cost.php') . ' ' . escapeshellarg(rsEntry()) . ' 2>&1', $out, $code);
+            $r = json_decode(implode("\n", $out), true);
+            truthy($code === 0 && is_array($r), 'measured: ' . implode("\n", $out));
+            $jit = ($r['jit'] ?? false) ? 'with JIT' : 'without JIT';
+            unset($r['jit']);
+            foreach ($r as $unit => $ratio) {
+                truthy($ratio < 10, "$jit, a query of \"$unit\" repeated: $ratio times a plain one");
             }
-            return (float) $best;
-        };
-        $plain = $time(substr(str_repeat('ax%20', 900), 0, 3800));
-        // Also without PCRE's JIT (a host may not allow it): "<" after "<", a word cut short before each.
-        foreach (['%3Ca%3Dx%20', '%3Ca%3D%22', '%3Ca%20x%3D%22y%22%20', '%3Ca%3D', '%3C', '%3Conerro', '%3Ca%20%3C1%20formactio'] as $unit) {
-            $hostile = $time(substr(str_repeat($unit, 900), 0, 3800));
-            truthy($hostile < 20 * $plain, 'a query of "' . rawurldecode($unit) . '" repeated: ' . round($hostile / $plain, 1) . ' times a plain one');
         }
     },
 ];
