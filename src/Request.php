@@ -205,14 +205,7 @@ final class Request
         } elseif (strncmp($target, 'header:', 7) === 0) {
             $v = self::normal((string) $this->header(substr($target, 7)));
         } elseif ($target === 'headers') {
-            $all = [];
-            foreach ($this->server as $name => $value) {
-                if (is_string($value) && strncmp($name, 'HTTP_', 5) === 0 && $name !== 'HTTP_COOKIE') {
-                    $all[] = $value;
-                }
-            }
-            // Joined by a space: what a line break would have become anyway.
-            $v = self::normal(implode(' ', $all));
+            $v = self::normal($this->rawHeaders());
         } else {
             $v = self::normal($this->path) . ' ' . $this->content('query') . ' ' . $this->content('headers');
         }
@@ -238,11 +231,7 @@ final class Request
         if (strncmp($target, 'header:', 7) === 0) {
             $raw[] = (string) $this->header(substr($target, 7));
         } elseif ($target === 'headers' || $target === 'anywhere') {
-            foreach ($this->server as $name => $value) {
-                if (is_string($value) && strncmp($name, 'HTTP_', 5) === 0 && $name !== 'HTTP_COOKIE') {
-                    $raw[] = $value;
-                }
-            }
+            $raw[] = $this->rawHeaders();
         }
         foreach ($raw as $v) {
             if (strpos($v, '%') !== false) {
@@ -256,6 +245,28 @@ final class Request
         }
         return false;
     }
+
+    /**
+     * Every header's value but the cookies', as sent, joined by a space (what a
+     * line break would have become anyway) -- once per request: the attack
+     * rules' "headers" and "anywhere" both look at it, and $_SERVER holds some
+     * forty entries under PHP-FPM.
+     */
+    private function rawHeaders(): string
+    {
+        if ($this->rawHeaders === null) {
+            $all = [];
+            foreach ($this->server as $name => $value) {
+                if (is_string($value) && strncmp($name, 'HTTP_', 5) === 0 && $name !== 'HTTP_COOKIE') {
+                    $all[] = $value;
+                }
+            }
+            $this->rawHeaders = implode(' ', $all);
+        }
+        return $this->rawHeaders;
+    }
+
+    private ?string $rawHeaders = null;
 
     private static function normal(string $v): string
     {

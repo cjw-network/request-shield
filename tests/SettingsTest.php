@@ -59,6 +59,11 @@ return [
         // of the combined expression -- refused.
         expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => ['#(a)\\1#']]]], 'contentRules.0.patterns');
         expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => ['#(?<n>a)#']]]], 'contentRules.0.patterns');
+        expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => ["#(?'n'a)#"]]]], 'contentRules.0.patterns');
+        expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => ['#(?P<n>a)(?P=n)#']]]], 'contentRules.0.patterns');
+        expectInvalid(['contentRules' => [['target' => 'query', 'patterns' => ['#(?<n>a)\k<n>#']]]], 'contentRules.0.patterns');
+        // A look around refers to no group: allowed (ATK-SHELLSHOCK: "()" not after a letter).
+        same(4, count(Settings::from(['contentRules' => [['target' => 'headers', 'patterns' => ['#\(\)(?<!\S\(\))\s*\{#', '#a(?=b)#', '#(?<=x)y#', '#c(?!d)#']]]])->contentRules[0]['patterns']), 'look arounds pass');
         expectInvalid(['contentRules' => ['not a map']], 'contentRules.0');
     },
     'RSF05-02 export and import lose nothing' => function (): void {

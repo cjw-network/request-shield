@@ -1271,8 +1271,9 @@ final class Settings
                     throw self::wrong("contentRules.$i.patterns", 'regular expressions in #...# (flag i at most)');
                 }
                 // All of a target's patterns become one expression: a back
-                // reference would point at another pattern's group.
-                if (preg_match('/\\\\[1-9]|\\\\g\{?-?\d|\(\?P?[<\'=]/', $m[1])) {
+                // reference would point at another pattern's group, and a name
+                // could be taken twice. A look around ((?<!…), (?=…)) is fine.
+                if (preg_match('/\\\\[1-9]|\\\\g\{?-?\d|\\\\k[<{\']|\(\?(P?<(?![=!])|\'|P[=>])/', $m[1])) {
                     throw self::wrong("contentRules.$i.patterns", 'expressions without back references or named groups');
                 }
                 $bodies[$target][] = '(?:' . $m[1] . ')';
