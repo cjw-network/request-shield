@@ -53,7 +53,7 @@ The shield compares it, as text, with each of its directories and files:
 
 - One inside: one line in PHP's error log, once per compile (in S0, with no
   writable directory, the settings are compiled on every request: there the
-  line is written at most once an hour, as `Failure::note()` does) --
+  line is written at most once a minute, as `Failure::note()` does) --
   *"request-shield: store-dir /var/www/html/.request-shield/store is inside
   the document root /var/www/html -- a browser could read the secret, the
   lists and the log; move it beside it (set store-dir …)"*.
@@ -112,7 +112,7 @@ one place, and in the tests.
 
 - A store directory under a document root: the compile writes the line to the
   error log once; a second request (compiled settings) writes nothing; in S0
-  at most one line an hour.
+  at most one line a minute.
 - `check --docroot` names each directory inside it and exits with the warning
   code; outside: no line.
 - A directory the shield creates gets `.htaccess`; a directory that already
