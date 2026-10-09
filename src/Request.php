@@ -161,7 +161,10 @@ final class Request
 
     /**
      * The key an HTTP cache keeps the answer under (0031 C.4): scheme and host
-     * in lower case, the path as the application routes it, the parameters
+     * in lower case, the path as it was sent -- not decoded, not collapsed:
+     * /news//item, /n%65ws/item and /news/item are three keys, so an
+     * application's redirect from one spelling to another is never the other's
+     * answer (as Varnish's req.url, nginx's $request_uri) -- the parameters
      * sorted by name (a[b]=1&a=2 and a=2&a[b]=1 are one key), nothing of the
      * client. For GET and HEAD; the cache decides whether the answer may be
      * kept (Decision::cacheable()). $only: the parameters with these names
@@ -180,7 +183,7 @@ final class Request
             $pairs[] = rawurlencode(urldecode(explode('=', $raw, 2)[0])) . '=' . rawurlencode($value);
         }
         sort($pairs, SORT_STRING);
-        return strtolower($this->scheme . '://' . $this->host) . $this->matchPath() . ($pairs === [] ? '' : '?' . implode('&', $pairs));
+        return strtolower($this->scheme . '://' . $this->host) . $this->path . ($pairs === [] ? '' : '?' . implode('&', $pairs));
     }
 
     /**

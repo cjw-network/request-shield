@@ -33,7 +33,10 @@ function handlerRequest(string $uri): Request
 
 return [
     'RSF06-04 Request::cacheKey(): scheme and host in lower case, the routed path, the parameters sorted; nothing of the client' => function (): void {
-        same('https://a.example/news/2026/?a%5Bb%5D=1&a=2&page=3', handlerRequest('/news//2026/./?page=3&a[b]=1&a=2')->cacheKey(), 'sorted byte-wise, encoded, the path collapsed');
+        same('https://a.example/news//2026/./?a%5Bb%5D=1&a=2&page=3', handlerRequest('/news//2026/./?page=3&a[b]=1&a=2')->cacheKey(), 'sorted byte-wise, encoded; the path as sent');
+        truthy(handlerRequest('/news//item')->cacheKey() !== handlerRequest('/news/item')->cacheKey()
+            && handlerRequest('/n%65ws/item')->cacheKey() !== handlerRequest('/news/item')->cacheKey()
+            && handlerRequest('/caf%c3%a9')->cacheKey() !== handlerRequest('/caf%C3%A9')->cacheKey(), 'another spelling of a path: another key');
         same(handlerRequest('/x?b=1&a=2')->cacheKey(), handlerRequest('/x?a=2&b=1')->cacheKey(), 'the order of the parameters does not matter');
         same('https://a.example/x', handlerRequest('/x')->cacheKey(), 'no parameters: no question mark');
         same('https://a.example/x?q=caf%C3%A9%20au%20lait', handlerRequest('/x?q=caf%C3%A9+au+lait')->cacheKey(), 'one encoding for one value');

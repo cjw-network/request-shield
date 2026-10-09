@@ -40,12 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `2001:db8::/129`) is refused naming its line; before it was taken and
   matched nobody.
 - **The HTTP cache kept an answer for one spelling of a path under the
-  plain path's key** (RSF04-03): `/news//item`, `/n%65ws/item`,
-  `/news/./item` or a lower-case `%c3%a9` decode to the same key as the
-  plain path -- a CMS's redirect to its one spelling, kept, answered the
-  plain path with a redirect to itself, for everyone. The cache now keeps
-  an address only as a browser spells its path (no `//`, no `.`
-  segment, a `%XX` only for a byte that must be encoded, capital hex).
+  plain path's key** (RSF04-03): `/news//item`, `/n%65ws/item` or
+  `/news/./item` were decoded to the same key as `/news/item` -- a CMS's
+  redirect to its one spelling, kept, answered the plain path with a
+  redirect to itself, for everyone. The key holds the path as it was sent
+  now (as Varnish's `req.url`): another spelling is another key. A purge
+  by address names the spelling it means; tag purges reach every one.
 - **A ban kept in store-dir was written in the umask's mode** -- under the
   usual umask 022 readable for everyone on the machine, and its file holds
   the address. It is written in `file-mode` now (so is the crawler check's

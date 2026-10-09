@@ -42,14 +42,6 @@ function cacheReq(string $uri, array $headers = [], string $method = 'GET'): Req
 }
 
 return [
-    'RSF04-03 the cache keeps an address only as a browser spells its path: other spellings of the same decoded path never share its answer' => function (): void {
-        $cases = ['/news/item' => true, '/caf%C3%A9' => true, '/x%20y' => true, '/a/.well-known/x' => true, '/x(1)' => true,
-            '/news//item' => false, '/n%65ws/x' => false, '/caf%c3%a9' => false, '/a%2Fb' => false, '/a/./b' => false, '/a/../b' => false,
-            '/a/..' => false, '/x%7Ey' => false, "/caf\xc3\xa9" => false, '/x y' => false, '/x%' => false, '/x%g1' => false];
-        foreach ($cases as $path => $plain) {
-            same($plain, CachePlugin::plainPath($path), "plainPath($path)");
-        }
-    },
     'RSF04-03 without set http-cache on there is no cache: no plugin, no handler -- a request pays nothing' => function (): void {
         $dir = cacheDir();
         try {

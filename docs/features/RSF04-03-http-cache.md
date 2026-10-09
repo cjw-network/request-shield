@@ -334,6 +334,13 @@ literally: `--path=/news` takes `/newsletter` too.
   the answers; the purge times (`tags/`) are small files kept 30 days.
 - **Memory is per server:** each PHP pool has its own APCu, and the command
   line reaches it only through the purge times (10 seconds).
+- **One key per spelling of a path:** the key holds the path as it was
+  sent (as Varnish's `req.url`): `/news//item`, `/n%65ws/item` and
+  `/news/item` are three keys, so an application's redirect from one
+  spelling to another is never kept as the other's answer. The parameters
+  are sorted and decoded; an address with a name PHP reads twice or folds
+  (`page=1&page=2`, ` page`) is not kept. A purge by address reaches the
+  spelling it names; a purge by tag reaches every one.
 - **Redirects are kept for everyone:** a 301 or 308 that sends visitors to
   different places by language or device without saying `Vary` is kept as
   the first visitor got it -- send such redirects with `Cache-Control:

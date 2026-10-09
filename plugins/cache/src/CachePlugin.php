@@ -844,14 +844,12 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
 
     /**
      * An address with one key for one answer: no parameter twice (PHP takes
-     * the last, the key sorts them), and the path spelled the one way a
-     * browser spells it -- the key holds it decoded, so /news//item,
-     * /n%65ws/item or /news/./item would share /news/item's answer (a
-     * redirect to it kept for everyone: a loop).
+     * the last, the key sorts them) and no encoded "/", "?" or "#" in the
+     * path. (The key holds the path as sent: other spellings are other keys.)
      */
     private static function plainAddress(Request $request): bool
     {
-        if (!self::plainPath($request->path)) {
+        if (preg_match('/%(2f|3f|23)/i', $request->path) === 1) {
             return false;
         }
         // One key in $_GET for every pair, by PHP's own parser: two spellings of one name (page and " page",
@@ -863,35 +861,6 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
                 return false;
             }
             $keys[$key] = true;
-        }
-        return true;
-    }
-
-    /**
-     * Whether a path is spelled as a browser spells it: no "//", no "." or
-     * ".." segment, and a "%XX" only for a byte that must be encoded (not a
-     * letter, digit or "-._~!$&'()*+,;=:@", nor "/"), with capital hex
-     * digits. Most paths have no "%" and no "/.": one strpbrk and two strpos.
-     */
-    public static function plainPath(string $path): bool
-    {
-        if (strpos($path, '//') !== false || preg_match('#/\.\.?(?:/|$)|[^\x21-\x7e]#', $path) === 1) {
-            return false;                           // also a byte a browser encodes (é as %C3%A9, a space as %20)
-        }
-        if (strpos($path, '%') === false) {
-            return true;
-        }
-        if (preg_match_all('/%(.{0,2})/s', $path, $m) === false) {
-            return false;
-        }
-        foreach ($m[1] as $hex) {
-            if (preg_match('/^[0-9A-F]{2}$/', $hex) !== 1) {
-                return false;                       // %2f, %g1, a "%" at the end: not a browser's spelling
-            }
-            $byte = chr((int) hexdec($hex));
-            if (preg_match('#[A-Za-z0-9\-._~!$&\'()*+,;=:@/]#', $byte) === 1) {
-                return false;                       // n%65ws is news, %2F a "/" the key would not tell apart
-            }
         }
         return true;
     }
