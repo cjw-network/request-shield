@@ -87,6 +87,11 @@ return [
             $second = $req('GET', '/magazin/2', $host);
             truthy($cache($first) === 'miss' && $cache($second) === 'hit' && $second[2] === $first[2], 'the second load: from the cache, the same page');
             truthy($cache($req('GET', '/magazin/2?utm_source=nl&utm_campaign=c7', $host)) === 'hit', 'a campaign link: the same kept page (cache-ignore @tracking)');
+            truthy($cache($req('GET', '/magazin/2?q=x7', $host)) === 'hit', 'a parameter cache-query does not name: answered from the kept page (hit-only)');
+            $t0 = microtime(true);
+            $req('GET', '/magazin/1?q=r' . mt_rand(), $host);
+            truthy(microtime(true) - $t0 < 0.3, 'a made-up parameter on a page not kept: answered at once, no stall');
+            truthy($cache($req('GET', '/magazin/1', $host)) !== 'hit', '... and nothing was kept for it');
             $a = ['Cookie' => 'rs-demo-member=a1'] + $host;
             $b = ['Cookie' => 'rs-demo-member=b1'] + $host;
             $req('GET', '/magazin/3', $a);
@@ -94,7 +99,7 @@ return [
             $page = $req('GET', '/magazin/3', $b);
             truthy($cache($page) === 'hit' && strpos($page[2], 'for members') !== false, 'member B: the members\' page member A made -- ' . $cache($page));
             same(['purged' => ['article-2', 'magazin-list']], json_decode($req('POST', '/__cache/publish', ['Origin' => 'http://127.0.0.1:8090'] + $host, 'n=2')[2], true), 'publish article 2');
-            truthy($cache($req('GET', '/magazin/2', $host)) === 'miss' && $cache($req('GET', '/magazin/1', $host)) !== 'hit', 'article 2 made again');
+            truthy($cache($req('GET', '/magazin/2', $host)) === 'miss', 'article 2 made again');
             $req('GET', '/magazin/5', $host);
             truthy($cache($req('GET', '/magazin/5', $host)) === 'hit', 'another article still a hit after publishing article 2');
             $req('GET', '/', $host);

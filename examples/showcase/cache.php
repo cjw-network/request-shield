@@ -50,13 +50,13 @@ $client = ['words' => ['visitor' => $c['visitor'], 'member' => $c['member'], 'hi
         <select id="cache-article" class="form-select w-auto cache-article">
           <?php for ($i = 1; $i <= 5; $i++): ?><option value="<?= $i ?>"><?= $e($c['article']) ?> <?= $i ?></option><?php endfor ?>
         </select>
-        <button type="button" class="btn btn-accent cache-load"><i class="bi bi-arrow-down-circle"></i> <?= $e($c['load']) ?></button>
+        <button type="button" class="btn btn-accent cache-load"><i class="bi bi-arrow-down-circle" aria-hidden="true"></i> <?= $e($c['load']) ?></button>
         <button type="button" class="btn btn-soft cache-member" data-member="A"><i class="bi bi-person"></i> <?= $e(sprintf($c['member'], 'A')) ?></button>
         <button type="button" class="btn btn-soft cache-member" data-member="B"><i class="bi bi-person"></i> <?= $e(sprintf($c['member'], 'B')) ?></button>
-        <button type="button" class="btn btn-soft cache-campaign"><i class="bi bi-megaphone"></i> <?= $e($c['campaign']) ?></button>
-        <button type="button" class="btn btn-soft cache-list"><i class="bi bi-list-ul"></i> <?= $e($c['list']) ?></button>
-        <button type="button" class="btn btn-dark cache-publish ms-lg-auto"><i class="bi bi-send"></i> <?= $e($c['publish']) ?></button>
-        <button type="button" class="btn btn-outline-dark cache-clear"><i class="bi bi-trash"></i> <?= $e($c['clear']) ?></button>
+        <button type="button" class="btn btn-soft cache-campaign"><i class="bi bi-megaphone" aria-hidden="true"></i> <?= $e($c['campaign']) ?></button>
+        <button type="button" class="btn btn-soft cache-list"><i class="bi bi-list-ul" aria-hidden="true"></i> <?= $e($c['list']) ?></button>
+        <button type="button" class="btn btn-dark cache-publish ms-lg-auto"><i class="bi bi-send" aria-hidden="true"></i> <?= $e($c['publish']) ?></button>
+        <button type="button" class="btn btn-outline-dark cache-clear"><i class="bi bi-trash" aria-hidden="true"></i> <?= $e($c['clear']) ?></button>
       </div>
       <p class="cache-sum fw-bold mb-3" role="status" aria-live="polite"></p>
       <div class="table-responsive">
@@ -88,7 +88,7 @@ $client = ['words' => ['visitor' => $c['visitor'], 'member' => $c['member'], 'hi
   <div class="container">
     <div class="section-head"><h2><?= $e($c['dashTitle']) ?></h2><p class="lead"><?= $e($c['dashLead']) ?></p></div>
     <?php if ($learnHere): ?>
-    <a class="btn btn-dark" href="/rs/stats/overview?lang=<?= $lang ?>" target="_blank" rel="noopener"><i class="bi bi-speedometer2"></i> <?= $e($c['dash']) ?></a>
+    <a class="btn btn-dark" href="/rs/stats/overview?lang=<?= $lang ?>" target="_blank" rel="noopener"><i class="bi bi-speedometer2" aria-hidden="true"></i> <?= $e($c['dash']) ?></a>
     <?php endif ?>
   </div>
 </section>

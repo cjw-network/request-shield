@@ -311,6 +311,9 @@ return [
             'a member of the magazine: one page for every member' => 'ein Mitglied des Magazins: eine Seite für alle Mitglieder',
             'campaign links: one kept page for all of them' => 'Kampagnen-Links: eine gehaltene Seite für alle',
             'the tab\'s buttons: publish an article, empty the cache' => 'die Buttons des Reiters: einen Artikel veröffentlichen, den Cache leeren',
+            'the parameters a kept page may have -- any other (?q=random) never fills the cache' => 'die Parameter, die eine gehaltene Seite haben darf — jeder andere (?q=zufall) füllt den Cache nie',
+            '... but is answered from the page kept without it' => '… wird aber aus der Seite beantwortet, die ohne ihn gehalten wird',
+            'per visitor: 20 purges a minute -- on a public demo nobody empties it for everyone all the time' => 'pro Besucher: 20 Purges pro Minute — auf einer öffentlichen Demo leert ihn niemand ständig für alle',
             'the statistics, with response times: hits and misses side by side (/rs/stats, this machine)' => 'die Statistik mit Antwortzeiten: Treffer und Miss nebeneinander (/rs/stats, dieser Rechner)',
         ],
         'tries' => [

@@ -86,7 +86,10 @@ set         http-cache-ttl 0                          # only a page that says so
 set         http-cache-cookies _ga _ga_* _gid _gat* _pk_* _fbp rsp rss rsd rs-learn   # the showcase's own cookies do not make a page someone's own
 set         http-cache-session-cookie rs-demo-member  # a member of the magazine: one page for every member
 cache-ignore @tracking                                # campaign links: one kept page for all of them
+cache-query lang page                                 # the parameters a kept page may have -- any other (?q=random) never fills the cache
+set         cache-unknown-query hit-only              # ... but is answered from the page kept without it
 [SHOW-CACHE]   allow POST /__cache/publish /__cache/clear   # the tab's buttons: publish an article, empty the cache
+[SHOW-CACHE-PACE] limit cachedemo 20/min at /__cache/**      # per visitor: 20 purges a minute -- on a public demo nobody empties it for everyone all the time
 expect GET  /magazin/1              from 198.51.100.31 answered              # (the magazine: not a card)
 set         stats requests pages times                # the statistics, with response times: hits and misses side by side (/rs/stats, this machine)
 

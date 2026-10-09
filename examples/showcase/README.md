@@ -87,7 +87,12 @@ The parts below describe them; a card behaves the same wherever it stands.
   max-age of its own is). `set stats requests pages times` puts the times by
   hit and miss into the statistics (`/rs/stats`, this machine only). The cache
   keeps what visitors send as host: `127.0.0.1:8090` and `localhost:8090`, or
-  `REQUEST_SHIELD_SHOWCASE_HOST=www.example.org` on a demo server.
+  `REQUEST_SHIELD_SHOWCASE_HOST=www.example.org` on a demo server. On a
+  public demo: `cache-query lang page` keeps made-up parameters out of the
+  cache (they are answered from the kept page, `hit-only`, and never take the
+  magazine's half second); the two buttons have a budget of 20 a minute per
+  visitor; and run it on a server with several workers (PHP-FPM, or
+  `PHP_CLI_SERVER_WORKERS=4`) -- a miss holds one for half a second.
 - **Build rules** (`/learn`, its own page): a learning run (proposal 0016)
   for your browser -- *Start recording* sets the cookie `rs-learn`, the
   showcase you click through in a second tab is recorded by shape (paths,

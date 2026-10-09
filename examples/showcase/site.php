@@ -319,7 +319,9 @@ if ($path === '/magazin' || preg_match('#^/magazin/([1-5])$#', $path, $article) 
         // The adapter's one call: this visitor is a member, and this page is the same for every member.
         Shield::active()?->cacheContext('member', true);
     }
-    usleep(random_int(350000, 650000));
+    if ($_GET === []) {
+        usleep(random_int(350000, 650000));     // only the pages a cache may keep take their time: no stall from made-up parameters
+    }
     header('Content-Type: text/html; charset=utf-8');
     header('Cache-Control: public, max-age=300');
     header('xkey: ' . ($n > 0 ? "article-$n magazin" : 'magazin-list magazin'));     // the tags a publish purges

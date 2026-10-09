@@ -40,7 +40,14 @@
     sum.textContent = w.sum.replace('%s', avg('hit')).replace('%s', avg('miss')).replace('%s', asked ? Math.round(100 * hits / asked) + ' %' : '–');
   };
 
-  const load = async (url, member) => {
+  // One request at a time: a member's cookie belongs to that one request only.
+  let queue = Promise.resolve();
+  const one = (job) => {
+    queue = queue.then(job).catch(() => purged('✕'));
+    return queue;
+  };
+
+  const load = (url, member) => one(async () => {
     if (member) {
       document.cookie = 'rs-demo-member=' + members[member] + '; path=/; SameSite=Lax';
     }
@@ -48,24 +55,25 @@
     try {
       const r = await fetch(url, {cache: 'no-store', credentials: 'same-origin'});
       await r.text();
-      show(url, member ? w.member.replace('%s', member) : w.visitor, (r.headers.get('X-RS-Cache') || '').toLowerCase(), performance.now() - t0);
+      show(url + (r.ok ? '' : ' (' + r.status + ')'), member ? w.member.replace('%s', member) : w.visitor, (r.headers.get('X-RS-Cache') || '').toLowerCase(), performance.now() - t0);
     } finally {
       if (member) {
         document.cookie = 'rs-demo-member=; path=/; max-age=0; SameSite=Lax';
       }
     }
-  };
+  });
 
-  const post = async (path, body) => {
-    await fetch(path, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body});
-  };
+  const post = (path, body, what) => one(async () => {
+    const r = await fetch(path, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body});
+    purged(r.ok ? what : what + ' ✕ ' + r.status);
+  });
 
   document.querySelector('.cache-load').addEventListener('click', () => load('/magazin/' + article.value));
   document.querySelectorAll('.cache-member').forEach((b) => b.addEventListener('click', () => load('/magazin/' + article.value, b.dataset.member)));
   document.querySelector('.cache-campaign').addEventListener('click', () => load('/magazin/' + article.value + '?utm_source=newsletter&utm_campaign=c' + Math.floor(Math.random() * 1000)));
   document.querySelector('.cache-list').addEventListener('click', () => load('/magazin'));
-  // A line in the table for a purge: what the next load of those pages will be a miss for.
-  const purged = (what) => {
+  // A line in the table for a purge (what the next load of those pages will be a miss for), or a failure.
+  function purged(what) {
     const empty = rows.querySelector('.cache-empty');
     if (empty) {
       empty.remove();
@@ -74,13 +82,7 @@
     tr.className = 'table-light';
     tr.append(Object.assign(text('td', '↻ ' + what), {colSpan: 4}));
     rows.prepend(tr);
-  };
-  document.querySelector('.cache-publish').addEventListener('click', async () => {
-    await post('/__cache/publish', 'n=' + encodeURIComponent(article.value));
-    purged('/magazin/' + article.value + ', /magazin');
-  });
-  document.querySelector('.cache-clear').addEventListener('click', async () => {
-    await post('/__cache/clear', '');
-    purged('*');
-  });
+  }
+  document.querySelector('.cache-publish').addEventListener('click', () => post('/__cache/publish', 'n=' + encodeURIComponent(article.value), '/magazin/' + article.value + ', /magazin'));
+  document.querySelector('.cache-clear').addEventListener('click', () => post('/__cache/clear', '', '*'));
 })();
