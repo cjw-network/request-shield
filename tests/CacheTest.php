@@ -465,14 +465,29 @@ return [
             truthy(strpos($huge, 'RuleFileException') !== false && strpos($huge, 'http-cache-memory is a size') !== false, 'too large: ' . $huge);
             truthy($error('set http-cache-disk 100K') !== 'accepted', 'a cap under 1M: refused');
             same('accepted', $error('set http-cache-disk 0'), 'no cap');
-            if (\CjwNetwork\RequestShield\Capability::apcu()) {
-                $c = new FileCache("$dir/c", 1048576 * 256, true);
-                for ($i = 0; $i < 20; $i++) {
-                    $c->put('https://www.example.org/same', 200, [], str_repeat('x', 1000), 60, microtime(true));
-                }
-                $count = apcu_fetch('rshield:hc:' . substr(md5("$dir/c"), 0, 12) . ':d:' . substr(sha1('https://www.example.org/same'), 0, 2));
-                truthy(is_int($count) && $count < 2000, 'one answer written twenty times: counted once (' . var_export($count, true) . ')');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'RSF04-03 with APCu: a rewritten answer counts once against its folder\'s share; after APCu was short of room nothing goes into memory for a while' => function (): void {
+        if (!\CjwNetwork\RequestShield\Capability::apcu()) {
+            skip('no APCu (php -d apc.enable_cli=1)');
+        }
+        $dir = cacheDir();
+        try {
+            $c = new FileCache("$dir/c", 1048576 * 256, true);
+            for ($i = 0; $i < 20; $i++) {
+                $c->put('https://www.example.org/same', 200, [], str_repeat('x', 1000), 60, microtime(true));
             }
+            $prefix = 'rshield:hc:' . substr(md5("$dir/c"), 0, 12) . ':';
+            $count = apcu_fetch($prefix . 'd:' . substr(sha1('https://www.example.org/same'), 0, 2));
+            truthy(is_int($count) && $count < 2000, 'one answer written twenty times: counted once (' . var_export($count, true) . ')');
+            $m = new MemoryCache("$dir/c", 1024, 1048576);
+            truthy($m->put('k1', 200, [], 'a', time(), time() + 60, microtime(true), [], microtime(true), microtime(true)), 'room: kept in memory');
+            apcu_store($prefix . 'm:full', true, 10);       // as put() leaves it when APCu would keep less than a quarter free
+            truthy(!$m->put('k2', 200, [], 'a', time(), time() + 60, microtime(true), [], microtime(true), microtime(true)) && $m->get('k2', microtime(true)) === null,
+                'APCu short of room a moment ago: not kept in memory');
+            truthy($m->bytes(microtime(true)) > 0 && $m->bytes(microtime(true)) < 1000, 'the mark is not counted as bytes');
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }

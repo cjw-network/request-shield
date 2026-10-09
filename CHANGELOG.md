@@ -84,7 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   on their next hit. `set http-cache-memory` (`32M`) caps the answers'
   share of APCu, and a quarter of APCu always stays free (a full APCu is
   emptied whole, budgets and roles with it). `set http-cache-disk` (`256M`,
-  `0`: none) caps the folder: each of its 256 folders holds a 256th, the
+  at least `1M`; `0`: none) caps the folder: each of its 256 folders holds a 256th, the
   oldest going first -- counted as written with APCu, at the sweep without;
   `cache … expired` trims every folder. The command line's `cache purge`
   makes the answers in memory out of date (the web server sees it within
