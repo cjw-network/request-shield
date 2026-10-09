@@ -404,6 +404,10 @@
   const wait = (ms) => new Promise((go) => setTimeout(go, ms));
   const tell = (key, n) => {
     say(story, w.story[key].replace('%s', n));
+    // The last step's result goes: during the lead nothing stands next to the new story but what is coming.
+    say(caption, '');
+    say(detail, '');
+    badge('', '');
   };
   // What comes next, and when: a countdown with the next step's story, so a reader is not surprised.
   const next = document.querySelector('.cache-next');
