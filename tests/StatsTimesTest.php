@@ -91,6 +91,8 @@ return [
             [StatsPlugin::cacheKind(200, [$html, 'X-Exp-Cache: HIT']), StatsPlugin::cacheKind(200, [$html, 'X-Exp-Cache: STALE']),
                 StatsPlugin::cacheKind(200, [$html, 'X-Exp-Cache: MISS (stored)']), StatsPlugin::cacheKind(200, [$html, 'X-Exp-Cache: BYPASS (siteaccess not cached)'])],
             'X-Exp-Cache: a hit, a stale page (from the cache too), a miss, a bypass');
+        same([['nostore', 'status'], ['hit', null]], [StatsPlugin::cacheKind(404, [$html, 'X-Exp-Cache: MISS']), StatsPlugin::cacheKind(200, [$html, 'x-exp-cache:  hit '])],
+            'a page not found is not kept, as the shield\'s; the header in any case');
         same(['nostore', 'appcache'], StatsPlugin::cacheKind(200, [$html, 'X-RS-Cache: miss', 'X-Exp-Cache: MISS (stored)']),
             'both caches: the shield\'s header first -- and it keeps nothing the site\'s own cache keeps');
         $dir = timesDir();

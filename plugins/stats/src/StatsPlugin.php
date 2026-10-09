@@ -396,7 +396,7 @@ final class StatsPlugin implements Plugin, RuleCounts
                 return ['hit', null];
             }
             if (strncmp($app, 'MISS', 4) === 0) {
-                return ['miss', null];
+                return in_array($status, [200, 301, 308], true) ? ['miss', null] : ['nostore', 'status'];     // as the shield's: an error page is not kept
             }
             if (strncmp($app, 'BYPASS', 6) === 0) {
                 return ['nostore', 'app-bypass'];
