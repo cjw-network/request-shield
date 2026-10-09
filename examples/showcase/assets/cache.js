@@ -86,7 +86,24 @@
   // ── The picture ──────────────────────────────────────────────────────────
   // Station x offsets from the visitor: doorkeeper +220, shelf +440, newsroom +660.
   const X = [0, 220, 440, 660];
-  const ROUTES = {hit: [0, 1, 2, 1, 0], miss: [0, 1, 2, 3, 2, 1, 0], notkept: [0, 1, 2, 3, 2, 1, 0], refused: [0, 1, 0]};
+  const ROUTES = {hit: [0, 1, 2, 1, 0], miss: [0, 1, 2, 3, 2, 1, 0], notkept: [0, 1, 2, 3, 2, 1, 0], off: [0, 1, 2, 3, 2, 1, 0], refused: [0, 1, 0]};
+  // The result in the picture, above the station that decided it: the doorkeeper refuses, the shelf answers or not.
+  const result = document.querySelector('.flow-result');
+  const resultText = result.querySelector('text');
+  const resultBox = result.querySelector('rect');
+  const decides = (kind) => (kind === 'refused' ? 1 : 2);
+  const badge = (kind, label) => {
+    if (!label) {
+      result.setAttribute('class', 'flow-result');
+      return;
+    }
+    resultText.textContent = label;
+    const width = Math.max(60, label.length * 7.4 + 22);
+    resultBox.setAttribute('width', String(width));
+    resultBox.setAttribute('x', String(-width / 2));
+    result.setAttribute('transform', `translate(${80 + X[decides(kind)]}, 0)`);
+    result.setAttribute('class', 'flow-result show ' + kind);
+  };
   const STEP = 280;       // ms from one station to the next; slower while Auto plays (AUTO_STEP)
   const AUTO_STEP = 480;
   let film = Promise.resolve();
@@ -96,11 +113,22 @@
     el.title = s2;
   };
   const pace = () => (auto ? AUTO_STEP : STEP);
-  const play = (kind, text1, text2) => {
+  // Who sends it: a bot turns the visitor into a robot (in both views), anyone else is the visitor again.
+  const visitorIcon = stations[0].querySelector('.flow-icon');
+  const visitorName = stations[0].querySelector('.flow-name');
+  const actor = (bot) => {
+    stations[0].classList.toggle('bot', bot);
+    visitorIcon.textContent = bot ? '🤖' : (tech ? visitorIcon.dataset.tech : visitorIcon.dataset.plain);
+    visitorName.textContent = bot ? w.bot : (tech ? visitorName.dataset.tech : visitorName.dataset.plain);
+  };
+  const play = (kind, text1, text2, label, bot) => {
     film = film.then(() => new Promise((done) => {
+      actor(Boolean(bot));
       say(caption, text1);
       say(detail, text2 || '');
+      badge(kind, '');
       if (still || !dot.animate) {
+        badge(kind, label);
         done();
         return;
       }
@@ -112,8 +140,11 @@
         s.classList.toggle('on', n === st);
         s.classList.toggle('no', kind === 'refused' && n === 1 && st === 1);
       }), pace() * k));
+      // The result shows when the dot reaches the station that decides it, and stays until the next request.
+      timers.push(setTimeout(() => badge(kind, label), pace() * path.indexOf(decides(kind))));
       anim.onfinish = () => {
         timers.forEach(clearTimeout);
+        badge(kind, label);
         stations.forEach((s) => s.classList.remove('on', 'no'));
         done();
       };
@@ -167,10 +198,10 @@
   };
   // Long values (an address with a campaign, a header) end in "…" -- the whole value on hover.
   const cut = (td) => Object.assign(td, {title: td.textContent});
-  const techCell = (s2) => cut(text('td', s2 || '—', 'tech-col mono cut'));
+  const techCell = (s2, cls) => cut(text('td', s2 || '—', 'tech-col mono cut' + (cls ? ' ' + cls : '')));
   const show = (url, who, kind, label, ms, t) => {
     line([text('td', clock(), 'mono when'), cut(text('td', url, 'mono url cut')), text('td', who), pill(kind, label), text('td', fmt(ms), 'mono num'),
-      techCell(t.status), techCell(t.xrs), techCell(t.cache), techCell(t.cc), techCell(t.age), techCell(t.role)]);
+      techCell(t.status), techCell(t.xrs), techCell(t.cache), techCell(t.cc), techCell(t.age ? t.age + ' s' : '', 'num'), techCell(t.role, 'role')]);
     seen.push({kind, ms});
     const avg = (k) => {
       const list = seen.filter((s) => s.kind === k).map((s) => s.ms);
@@ -199,16 +230,18 @@
       const ms = performance.now() - t0;
       const cache = (r.headers.get('X-RS-Cache') || '').toLowerCase();
       const place = shelfOf(url);
-      const kind = !r.ok ? 'refused' : (cache.startsWith('hit') ? 'hit' : (cache.startsWith('miss') && place !== null ? 'miss' : 'notkept'));
-      const label = {hit: w.hit, miss: w.miss, refused: w.refused + ' (' + r.status + ')', notkept: w.notKept}[kind];
-      const role = by ? 'bot · ' + w.anonymous : (who ? roleOf(who) + ' · rs-demo-member=' + sessions[who] : w.anonymous);
+      // No X-RS-Cache at all: the cache did not look (off for this host name) -- said so, not a made-up hit.
+      const kind = !r.ok ? 'refused' : (cache === '' ? 'off' : (cache.startsWith('hit') ? 'hit' : (cache.startsWith('miss') && place !== null ? 'miss' : 'notkept')));
+      const label = {hit: w.hit, miss: w.miss, refused: w.refused + ' (' + r.status + ')', notkept: w.notKept, off: w.off}[kind];
+      // The role the cache keys by, and for a member the session (the cookie rs-demo-member's value, the detail line names it).
+      const role = by ? 'bot · ' + w.anonymous : (who ? roleOf(who) + ' · ' + sessions[who] : w.anonymous);
       show(url, by || (who === 'E' ? w.editor : (who ? w.member.replace('%s', who) : w.visitor)), kind, label, ms,
         {status: String(r.status), xrs: r.headers.get('X-RS'), cache: r.headers.get('X-RS-Cache'), cc: r.headers.get('Cache-Control'), age: r.headers.get('Age'), role});
       if ((kind === 'hit' || kind === 'miss') && place !== null) {
         fill(roleOf(who), place);
       }
-      play(kind, words({hit: 'capHit', miss: 'capMiss', refused: 'capRefused', notkept: 'capNotKept'}[kind]),
-        'GET ' + url + ' → ' + r.status + ' · X-RS-Cache: ' + (cache || '—') + ' · ' + fmt(ms) + (who ? ' · rs-demo-member=' + sessions[who] : ''));
+      play(kind, words({hit: 'capHit', miss: 'capMiss', refused: 'capRefused', notkept: 'capNotKept', off: 'capOff'}[kind]),
+        'GET ' + url + ' → ' + r.status + ' · X-RS-Cache: ' + (cache || '—') + ' · ' + fmt(ms) + (who ? ' · rs-demo-member=' + sessions[who] : ''), label, Boolean(by));
     } finally {
       if (who) {
         document.cookie = 'rs-demo-member=; path=/; max-age=0; SameSite=Lax';
@@ -221,6 +254,7 @@
       after();
       film = film.then(() => {
         say(caption, words(what === '*' ? 'capClear' : 'capPurge'));     // after the dot that is still on its way
+        badge('', '');
         say(detail, 'POST ' + path + (body ? ' ' + body : '') + ' → ' + r.status);
       });
     }
@@ -361,12 +395,13 @@
   const nextBar = next.querySelector('.cache-next-bar span');
   const countdown = async (id, ms, upcoming) => {
     const end = performance.now() + ms;
+    next.hidden = false;                            // shown first: a hidden element starts no transition
+    nextBar.parentElement.hidden = still;           // with reduced motion the seconds alone count down
     nextBar.style.transition = 'none';
     nextBar.style.width = '100%';
     void nextBar.offsetWidth;                       // the bar starts full, then empties over ms
     nextBar.style.transition = 'width ' + ms + 'ms linear';
     nextBar.style.width = '0%';
-    next.hidden = false;
     while (auto && id === round) {
       const left = end - performance.now();
       if (left <= 0) {
@@ -376,7 +411,8 @@
       nextText.title = upcoming;
       await wait(Math.min(250, left));
     }
-    nextText.textContent = w.now.replace('%s', upcoming);       // while the step runs: what it is
+    nextText.textContent = w.now;       // while the step runs (the story line above says what it is)
+    nextText.title = '';
   };
   // One article's steps: the story's key and the request it makes.
   const steps = (n) => {

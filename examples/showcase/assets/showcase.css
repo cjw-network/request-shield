@@ -354,6 +354,8 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .cache-flow .flow-node { fill: #fff; stroke: var(--rs-line); stroke-width: 3; transition: stroke .2s, fill .2s; }
 .cache-flow .flow-station.on .flow-node { stroke: var(--rs-ink); fill: var(--rs-sky-bg); }
 .cache-flow .flow-station.no .flow-node { stroke: var(--rs-coral); fill: var(--rs-coral-bg); }
+.cache-flow .flow-station.bot .flow-node { stroke: var(--rs-coral); stroke-dasharray: 6 4; }
+.cache-flow .flow-station.bot .flow-name { fill: #b4322c; }
 .cache-flow .flow-icon { font-size: 30px; }
 .cache-flow .flow-name { font-weight: 700; fill: var(--rs-ink); font-size: 17px; }
 .cache-flow .flow-sub { fill: var(--rs-soft-ink); font-size: 13px; }
@@ -361,7 +363,16 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .cache-flow .flow-dot.hit { fill: var(--rs-mint); }
 .cache-flow .flow-dot.miss { fill: var(--rs-sun); }
 .cache-flow .flow-dot.refused { fill: var(--rs-coral); }
-.cache-flow .flow-dot.notkept { fill: #6c8ebf; }
+.cache-flow .flow-dot.notkept, .cache-flow .flow-dot.off { fill: #6c8ebf; }
+/* The result above the station that decided it, in the log's pill colours. */
+.cache-flow .flow-result { opacity: 0; transition: opacity .25s; }
+.cache-flow .flow-result.show { opacity: 1; }
+.cache-flow .flow-result text { font-size: 12px; font-weight: 700; }
+.cache-flow .flow-result.hit rect { fill: var(--rs-mint-bg); } .cache-flow .flow-result.hit text { fill: var(--rs-mint-deeper); }
+.cache-flow .flow-result.miss rect { fill: var(--rs-sun-bg); } .cache-flow .flow-result.miss text { fill: #8a5a00; }
+.cache-flow .flow-result.refused rect { fill: var(--rs-coral-bg); } .cache-flow .flow-result.refused text { fill: #b4322c; }
+.cache-flow .flow-result.notkept rect, .cache-flow .flow-result.off rect { fill: #eef2f7; } .cache-flow .flow-result.notkept text, .cache-flow .flow-result.off text { fill: #475569; }
+.pill-off { background: #eef2f7; color: #475569; }
 .flow-caption { font-weight: 600; color: var(--rs-ink); }
 /* The lines around the picture keep their height whatever they say: the caption two lines, the
    story and the technical line one -- a longer text ends in "…" (whole in its title, on hover). */
@@ -425,7 +436,8 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .cache-dock-log td.cut { overflow: hidden; text-overflow: ellipsis; }
 .cache-dock-log td.url { max-width: 30ch; }
 .cache-dock-log td.tech-col { max-width: 18ch; }
-.cache-dock-log td.num { text-align: right; }
+.cache-dock-log td.tech-col.role { max-width: none; }
+.cache-dock-log td.num, .cache-dock-log th:nth-child(5), .cache-dock-log th:nth-child(10) { text-align: right; }
 .cache-dock-log tr.cache-purge td, .cache-dock-log tr.cache-empty td { white-space: normal; }
 .cache-dock-log tbody tr:nth-child(even) td { background: rgba(31, 42, 68, .025); }
 .cache-dock-log tr.cache-purge td { background: var(--rs-sky-bg) !important; color: var(--rs-ink); font-weight: 600; }

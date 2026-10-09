@@ -31,10 +31,16 @@ $rules = "set http-cache on\n"
     . "Shield::active()?->purge(['article-3']);\n"
     . "// for a member, while the page is made:\n"
     . "Shield::active()?->cacheContext('member', shared: true);";
+// The cache keeps pages only for the host names in http-cache-hosts: on another one the picture would tell of
+// hits that never come -- the page says so, and how to start the showcase for this name.
+$sentHost = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+$active = \CjwNetwork\RequestShield\Shield::active();
+$cacheHosts = $active !== null && class_exists(\CjwNetwork\RequestShield\Cache\CacheExtension::class) ? \CjwNetwork\RequestShield\Cache\CacheExtension::of($active->settings) : null;
+$cacheOff = $cacheHosts === null || !$cacheHosts['enabled'] || !in_array($sentHost, array_map('strtolower', $cacheHosts['hosts']), true);
 $client = ['words' => ['visitor' => $c['visitor'], 'member' => $c['member'], 'editor' => $c['editor'], 'bot' => $c['bot'], 'hit' => $c['hit'], 'miss' => $c['miss'], 'none' => $c['none'],
     'refused' => $c['refused'], 'notKept' => $c['notKept'], 'empty' => $c['empty'], 'sum' => $c['sum'], 'lang' => $lang,
-    'capHit' => $c['capHit'], 'capMiss' => $c['capMiss'], 'capRefused' => $c['capRefused'], 'capNotKept' => $c['capNotKept'], 'capPurge' => $c['capPurge'], 'capClear' => $c['capClear'],
-    'auto' => $c['auto'], 'autoStop' => $c['autoStop'], 'story' => $c['story'], 'next' => $c['next'], 'now' => $c['now'], 'tech' => $c['tech'], 'anonymous' => $c['anonymous'], 'dockPin' => $c['dockPin'], 'dockUnpin' => $c['dockUnpin']]];
+    'capHit' => $c['capHit'], 'capMiss' => $c['capMiss'], 'capRefused' => $c['capRefused'], 'capNotKept' => $c['capNotKept'], 'capOff' => $c['capOff'], 'capPurge' => $c['capPurge'], 'capClear' => $c['capClear'],
+    'auto' => $c['auto'], 'autoStop' => $c['autoStop'], 'story' => $c['story'], 'next' => $c['next'], 'now' => $c['now'], 'off' => $c['off'], 'tech' => $c['tech'], 'anonymous' => $c['anonymous'], 'dockPin' => $c['dockPin'], 'dockUnpin' => $c['dockUnpin']]];
 // The picture: four stations a request passes -- drawn for people who never saw a cache.
 // Each in two words: plain (a doorkeeper, a shelf, a newsroom) and technical (an option, for developers).
 $x = $c['tech'];
@@ -59,6 +65,10 @@ $both = static fn (string $plain, string $tech): string => ' data-plain="' . $e(
           <button type="button" class="btn btn-outline-dark" data-view="tech" aria-pressed="false"><i class="bi bi-code-slash" aria-hidden="true"></i> <?= $e($c['viewTech']) ?></button>
         </div>
       </div>
+      <?php if ($cacheOff): ?>
+      <div class="alert alert-warning small py-2 mb-2" role="alert"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> <?= $e(sprintf($c['offHost'], $sentHost)) ?>
+        <code>REQUEST_SHIELD_SHOWCASE_HOST=<?= $e($sentHost) ?></code></div>
+      <?php endif ?>
       <p class="cache-story mb-1" aria-live="polite"></p>
       <div class="row g-3 align-items-start">
       <div class="col-xl-8">
@@ -74,6 +84,7 @@ $both = static fn (string $plain, string $tech): string => ' data-plain="' . $e(
         </g>
         <?php endforeach ?>
         <circle class="flow-dot" cx="80" cy="56" r="11"/>
+        <g class="flow-result" aria-hidden="true"><rect y="1" height="20" rx="10" width="80" x="-40"/><text y="15" text-anchor="middle"></text></g>
       </svg>
       <p class="flow-caption mb-1" aria-live="polite"></p>
       <p class="flow-detail mb-0" hidden></p>
@@ -101,9 +112,10 @@ $both = static fn (string $plain, string $tech): string => ' data-plain="' . $e(
 <aside class="cache-dock" aria-label="<?= $e($c['dock']) ?>">
   <div class="container-fluid">
     <div class="cache-dock-intro">
-      <h2 class="h6 fw-bold mb-1"><i class="bi bi-hand-index" aria-hidden="true"></i> <?= $e($c['tryTitle']) ?>
-        <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline cache-intro-toggle" aria-expanded="false" aria-controls="cache-intro-text" title="<?= $e($c['tryHelp']) ?>" aria-label="<?= $e($c['tryHelp']) ?>"><i class="bi bi-question-circle" aria-hidden="true"></i></button>
-      </h2>
+      <div class="d-flex align-items-baseline gap-1 mb-1">
+        <h2 class="h6 fw-bold mb-0"><i class="bi bi-hand-index" aria-hidden="true"></i> <?= $e($c['tryTitle']) ?></h2>
+        <button type="button" class="btn btn-link btn-sm p-0 cache-intro-toggle" aria-expanded="false" aria-controls="cache-intro-text" title="<?= $e($c['tryHelp']) ?>" aria-label="<?= $e($c['tryHelp']) ?>"><i class="bi bi-question-circle" aria-hidden="true"></i></button>
+      </div>
       <p class="small text-secondary mb-2" id="cache-intro-text" hidden><?= $e($c['tryLead']) ?></p>
     </div>
     <div class="cache-dock-auto d-flex align-items-center gap-3 mb-2">
