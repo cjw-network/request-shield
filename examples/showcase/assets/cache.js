@@ -45,11 +45,13 @@
       const path = ROUTES[kind] || ROUTES.hit;
       dot.setAttribute('class', 'flow-dot ' + kind);
       const anim = dot.animate(path.map((st) => ({transform: `translate(${X[st]}px, 0)`, opacity: 1})), {duration: STEP * (path.length - 1), easing: 'ease-in-out'});
-      path.forEach((st, k) => setTimeout(() => stations.forEach((s, n) => {
+      // The station the dot is at lights up; the last stop is the end, which clears them all.
+      const timers = path.slice(0, -1).map((st, k) => setTimeout(() => stations.forEach((s, n) => {
         s.classList.toggle('on', n === st);
         s.classList.toggle('no', kind === 'refused' && n === 1 && st === 1);
       }), STEP * k));
       anim.onfinish = () => {
+        timers.forEach(clearTimeout);
         stations.forEach((s) => s.classList.remove('on', 'no'));
         done();
       };
@@ -140,7 +142,9 @@
     const r = await fetch(path, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body});
     if (r.ok) {
       after();
-      caption.textContent = what === '*' ? w.capClear : w.capPurge;
+      film = film.then(() => {
+        caption.textContent = what === '*' ? w.capClear : w.capPurge;     // after the dot that is still on its way
+      });
     }
     purged(r.ok ? what : what + ' ✕ ' + r.status);
   });
