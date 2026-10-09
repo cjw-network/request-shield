@@ -171,13 +171,15 @@ a host, use the built copy.)
 examples/showcase/deploy.sh <document root> --host=showcase.example.org
 --admin=203.0.113.7` builds the copy next to the document root folder,
 takes the running copy's `var/` over (the secret, statistics, cache, log),
-swaps the folders and keeps the one before as `<folder>.previous`. Later
-runs need no options: they are kept in `var/deploy.conf`. `--admin` takes
+swaps the folders and keeps the one before as `<folder>.previous` (back:
+`mv <folder> <folder>.bad && mv <folder>.previous <folder>`). Later runs
+need no options: they are kept in `var/deploy.conf`; `--admin=none`
+forgets the addresses. `--admin` takes
 several, comma-separated: for IPv6 the `/64` of your line (the last half of
 an IPv6 address changes now and then), for IPv4 the address --
-`--admin=2001:db8:1234:5600::/64,203.0.113.7`. The folder must
-be empty, missing or a copy the script made -- it never replaces another
-one, nor a link. A CLI PHP below 8.0: `PHP=/opt/plesk/php/8.3/bin/php sh
+`--admin=2001:db8:1234:5600::/64,203.0.113.7`. The folder and
+`<folder>.previous` must be empty, missing or copies the script made -- it
+never replaces or removes another one, nor a link. A CLI PHP below 8.0: `PHP=/opt/plesk/php/8.3/bin/php sh
 examples/showcase/deploy.sh …`.
 
 - **The host:** Apache that reads `.htaccess` (AllowOverride; mod_rewrite

@@ -103,6 +103,16 @@ return [
             same('kept', (string) @file_get_contents("$dir/site/var/secret"), 'var/ taken over: passes stay valid');
             truthy(strpos((string) file_get_contents("$dir/site/showcase.rules"), 'restrict /rs/** to 203.0.113.7') !== false, '--admin remembered');
             truthy(is_file("$dir/site.previous/lib/public.php"), 'the copy before is kept');
+            same('600', substr(sprintf('%o', fileperms("$dir/site/var/deploy.conf")), -3), 'deploy.conf for the user alone');
+            exec('rm -rf ' . escapeshellarg("$dir/site.previous"));
+            mkdir("$dir/site.previous");
+            file_put_contents("$dir/site.previous/notes.txt", 'mine');
+            [$code] = $run(escapeshellarg("$dir/site//"));
+            truthy($code === 1 && is_file("$dir/site.previous/notes.txt"), 'a .previous it did not make is never removed');
+            exec('rm -rf ' . escapeshellarg("$dir/site.previous"));
+            [$code, $said] = $run(escapeshellarg("$dir/site//") . ' --admin=none');
+            same(0, $code, 'site// is site: ' . $said);
+            truthy(strpos((string) file_get_contents("$dir/site/showcase.rules"), 'restrict /rs/** to 192.0.2.1') !== false, '--admin=none forgets the addresses');
             rename("$dir/site", "$dir/real");
             symlink("$dir/real", "$dir/site");
             [$code] = $run(escapeshellarg("$dir/site"));
