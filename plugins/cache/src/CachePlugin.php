@@ -90,7 +90,7 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
     /** The tag every answer has for its address (path and query, any host): PURGE <address> purges it. */
     private const ADDRESS = 'rs-url:';
 
-    /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string} */
+    /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string, memoryObject: int, memory: int, disk: int} */
     private array $o;
 
     private string $body = '';
@@ -105,6 +105,9 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
     private ?array $sent = null;
 
     private ?Tags $tags = null;
+
+    /** @var MemoryCache|false|null the memory (null: not asked yet, false: none -- no APCu, or set to 0) */
+    private $memory = null;
 
     private Settings $settings;
 
@@ -158,7 +161,7 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
             return null;
         }
         $key = $request->cacheKey();
-        $cache = new FileCache($this->o['dir']);
+        $cache = new FileCache($this->o['dir'], $this->o['disk'], Capability::apcu());
         $now = microtime(true);
         if ($visitor === 'session') {
             // Signed in: the page of the visitor's role, when the session's role is known.
@@ -183,10 +186,7 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
                 $_SERVER['HTTP_' . strtoupper(str_replace('-', '_', $this->o['hashHeader']))] = $known[0];
             }
         }
-        $hit = $visitor === 'anonymous' || $this->context !== null ? $cache->get($this->keyFor($key), $now) : null;
-        if ($hit !== null && $this->tags()->purgedSince($hit['tags'], $hit['born'])) {
-            $hit = null;            // purged since its request began: asked again (and kept anew)
-        }
+        $hit = $visitor === 'anonymous' || $this->context !== null ? $this->find($cache, $this->keyFor($key), $now) : null;
         if ($hit !== null) {
             $headers = [...$hit['headers'], 'Age: ' . max(0, (int) $now - $hit['stored']), 'X-RS-Cache: hit'];
             $etag = self::header($hit['headers'], 'etag');
@@ -226,6 +226,41 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
             return $buffer;
         });
         return null;
+    }
+
+    /**
+     * The answer kept for a key and still good: from memory, else from the
+     * disk (and then into memory for the next hits). Out of date: purged
+     * since its request began -- or, in memory, the memory purged since it
+     * was put there (the disk may still have it).
+     *
+     * @return array{status: int, headers: list<string>, body: string, stored: int, expires: int, tags: list<string>, born: float}|null
+     */
+    private function find(FileCache $cache, string $key, float $now): ?array
+    {
+        $memory = $this->memory();
+        $hit = $memory !== null ? $memory->get($key, $now) : null;
+        if ($hit !== null && !$this->tags()->purgedSince($hit['tags'], $hit['born']) && !$this->tags()->purgedSince([MemoryCache::TAG], $hit['kept'])) {
+            return $hit;
+        }
+        $hit = $cache->get($key, $now);
+        if ($hit === null || $this->tags()->purgedSince($hit['tags'], $hit['born'])) {
+            return null;            // purged since its request began: asked again (and kept anew)
+        }
+        if ($memory !== null) {
+            $memory->put($key, $hit['status'], $hit['headers'], $hit['body'], $hit['stored'], $hit['expires'], $now, $hit['tags'], $hit['born'], $now);
+        }
+        return $hit;
+    }
+
+    /** The memory, with APCu and a size for it; else null. */
+    private function memory(): ?MemoryCache
+    {
+        if ($this->memory === null) {
+            $this->memory = Capability::apcu() && $this->o['memoryObject'] > 0 && $this->o['memory'] > 0
+                ? new MemoryCache($this->o['dir'], $this->o['memoryObject'], $this->o['memory']) : false;
+        }
+        return $this->memory === false ? null : $this->memory;
     }
 
     /**
@@ -289,7 +324,15 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
             $kept[] = 'Cache-Control: private, no-cache';
         }
         $now = microtime(true);
-        return $cache->put($key, $status, $kept, $body, min($ttl, Tags::MAX_AGE), $now, $path, array_values(array_unique($tags)), $born ?? $now);
+        $ttl = min($ttl, Tags::MAX_AGE);
+        $tags = array_values(array_unique($tags));
+        $born ??= $now;
+        // Memory first; the disk too when it lives longer than memory keeps it, or when memory has no room.
+        $memory = $this->memory();
+        if ($memory !== null && $memory->put($key, $status, $kept, $body, (int) $now, (int) $now + $ttl, $now, $tags, $born, $born) && $ttl <= MemoryCache::MAX_TTL) {
+            return true;
+        }
+        return $cache->put($key, $status, $kept, $body, $ttl, $now, $path, $tags, $born);
     }
 
     /**

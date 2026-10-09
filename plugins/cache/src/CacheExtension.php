@@ -61,13 +61,14 @@ final class CacheExtension implements Extension, ApiProvider
         return 'cache';
     }
 
-    /** @return array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string} */
+    /** @return array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string, memoryObject: int, memory: int, disk: int} */
     public static function of(Settings $s): array
     {
         $o = $s->ext['cache'] ?? null;
-        /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string} $o */
+        /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string, memoryObject: int, memory: int, disk: int} $o */
         $o = is_array($o) && isset($o['dir']) ? $o : ['enabled' => false, 'ttl' => 300, 'cookies' => self::COOKIES, 'maxObject' => 1048576, 'dir' => '', 'hosts' => [],
-            'purgers' => self::PURGERS, 'token' => '', 'tagHeaders' => self::TAG_HEADERS, 'sessionCookies' => [], 'contextTtl' => 600, 'userContext' => '', 'hashHeader' => 'x-user-context-hash'];
+            'purgers' => self::PURGERS, 'token' => '', 'tagHeaders' => self::TAG_HEADERS, 'sessionCookies' => [], 'contextTtl' => 600, 'userContext' => '', 'hashHeader' => 'x-user-context-hash',
+            'memoryObject' => 262144, 'memory' => 33554432, 'disk' => 268435456];
         // The folder: the one set, else below the store directory -- resolved here, so the compiled
         // settings do not depend on where they were compiled.
         $o['dir'] = $o['dir'] !== '' ? $o['dir'] : $s->storeDir . '/http-cache';
@@ -79,14 +80,10 @@ final class CacheExtension implements Extension, ApiProvider
         $v->set('http-cache', 'bool', 'the HTTP cache: on or off (default)', null, 'enabled');
         $v->set('http-cache-ttl', 'seconds', 'how long an answer is kept when it says nothing itself (default 5m)', null, 'ttl');
         $v->set('http-cache-cookies', 'words', 'cookies that do not make a page someone\'s own (default: analytics, the pass)', null, 'cookies');
-        $v->set('http-cache-max-object', 'words', 'the largest answer kept: 1M, 500K (default 1M)', static function ($value, string $at): int {
-            $first = is_array($value) ? ($value[0] ?? '') : '';
-            $s = is_scalar($first) ? (string) $first : '';
-            if (preg_match('/^(\d+)([km])?$/i', $s, $m) !== 1) {
-                throw new RuleFileException("$at: http-cache-max-object is a size (1M, 500K), not \"$s\"");
-            }
-            return (int) $m[1] * ['' => 1, 'k' => 1024, 'm' => 1048576][strtolower($m[2] ?? '')];
-        }, 'maxObject');
+        $v->set('http-cache-max-object', 'words', 'the largest answer kept: 1M, 500K (default 1M)', self::size('http-cache-max-object'), 'maxObject');
+        $v->set('http-cache-memory-object', 'words', 'the largest answer kept in memory, with APCu (default 256K; 0: none in memory)', self::size('http-cache-memory-object'), 'memoryObject');
+        $v->set('http-cache-memory', 'words', 'the most of APCu the cache\'s answers may take (default 32M)', self::size('http-cache-memory'), 'memory');
+        $v->set('http-cache-disk', 'words', 'the most the cache\'s folder may hold -- above it the oldest answers go (default 256M; 0: no cap)', self::size('http-cache-disk'), 'disk');
         $v->set('http-cache-hosts', 'words', 'the site\'s host names as visitors send them, a port written out (www.example.org example.org:8080) -- only these are kept', null, 'hosts');
         $v->set('http-cache-dir', 'path', 'where the answers are kept (default <store-dir>/http-cache)', null, 'dir');
         $v->set('http-cache-purgers', 'words', 'the addresses that may purge with a request -- PURGE, PURGEKEYS (default: nobody; 127.0.0.1 ::1 for a CMS on this machine, when no proxy runs on it)', null, 'purgers');
@@ -113,9 +110,22 @@ final class CacheExtension implements Extension, ApiProvider
         $v->set('http-cache-tag-headers', 'words', 'a header with an answer\'s tags besides the known ones (xkey, X-Cache-Tags, X-LiteSpeed-Tag, Surrogate-Key, Cache-Tag, Edge-Cache-Tag, X-Magento-Tags)', null, 'tagHeaders');
     }
 
+    /** A size in a rule file: 1M, 500K, 2G, a number of bytes. */
+    private static function size(string $name): \Closure
+    {
+        return static function ($value, string $at) use ($name): int {
+            $first = is_array($value) ? ($value[0] ?? '') : '';
+            $s = is_scalar($first) ? (string) $first : '';
+            if (preg_match('/^(\d{1,12})([kmg])?$/i', $s, $m) !== 1) {
+                throw new RuleFileException("$at: $name is a size (1M, 500K), not \"$s\"");
+            }
+            return (int) $m[1] * ['' => 1, 'k' => 1024, 'm' => 1048576, 'g' => 1073741824][strtolower($m[2] ?? '')];
+        };
+    }
+
     /**
      * @param array<string, mixed> $raw
-     * @return array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string}
+     * @return array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string, memoryObject: int, memory: int, disk: int}
      */
     public static function compile(array $raw, Settings $base): array
     {
@@ -132,6 +142,12 @@ final class CacheExtension implements Extension, ApiProvider
         $contextTtl = $raw['contextTtl'] ?? 600;
         $userContext = $raw['userContext'] ?? '';
         $hashHeader = $raw['hashHeader'] ?? 'x-user-context-hash';
+        $memoryObject = $raw['memoryObject'] ?? 262144;
+        $memory = $raw['memory'] ?? 33554432;
+        $disk = $raw['disk'] ?? 268435456;
+        if (!is_int($memoryObject) || $memoryObject < 0 || !is_int($memory) || $memory < 0 || !is_int($disk) || $disk < 0) {
+            throw Settings::wrong('ext.cache.memory', 'memoryObject, memory and disk sizes in bytes (0 or more)');
+        }
         if (!is_string($userContext) || ($userContext !== '' && $userContext !== 'on' && preg_match('~^https?://[a-z0-9.:\[\]-]+(/[^\s?#]*)?$~D', $userContext) !== 1)
             || !in_array($hashHeader, ['x-user-context-hash', 'x-user-hash'], true)) {
             throw Settings::wrong('ext.cache.userContext', 'userContext "", "on" or an http(s) address; hashHeader x-user-context-hash or x-user-hash');
@@ -180,7 +196,7 @@ final class CacheExtension implements Extension, ApiProvider
         }
         return ['enabled' => $enabled, 'ttl' => $ttl, 'cookies' => $names, 'maxObject' => $max, 'dir' => $dir, 'hosts' => $names2,
             'purgers' => $ranges, 'token' => $token, 'tagHeaders' => array_values(array_unique($headers)), 'sessionCookies' => $sessions, 'contextTtl' => $contextTtl,
-            'userContext' => $userContext, 'hashHeader' => $hashHeader];
+            'userContext' => $userContext, 'hashHeader' => $hashHeader, 'memoryObject' => min($memoryObject, $max), 'memory' => $memory, 'disk' => $disk];
     }
 
     /** An address, or a range of them (10.0.0.0/8). */

@@ -15,10 +15,23 @@ namespace CjwNetwork\RequestShield\Cache;
  * the store directory -- a line of JSON (status, headers, when kept, until
  * when, its tags and when its request began: Tags), then the body. Written to a temporary file and renamed, so a reader
  * never sees half a page; an expired one is removed when it is read.
+ *
+ * The cap (http-cache-disk, 0031 G.4 part 3) holds per folder: each of the
+ * 256 folders keeps at most a 256th of it -- the addresses spread evenly
+ * over them (sha1), so no folder list is ever read whole. With APCu each
+ * folder's bytes are counted as answers are written; past its share the
+ * folder is measured, and the expired and then the oldest answers go
+ * until it holds nine tenths. Without APCu the sweep (one store in a
+ * hundred) does the same for the folder it sweeps -- the cap then holds
+ * on average, not for every folder at every moment.
  */
 final class FileCache
 {
-    public function __construct(private string $dir)
+    /** The folders the answers are spread over (the first two hex digits of the key's sha1). */
+    private const FOLDERS = 256;
+
+    /** @param int $cap the most the folder may hold, in bytes (0: no cap) */
+    public function __construct(private string $dir, private int $cap = 0, private bool $apcu = false)
     {
     }
 
@@ -67,6 +80,9 @@ final class FileCache
             $folder = sprintf('%02x', mt_rand(0, 255));
             $this->sweep($folder, $now);
             (new Tags($this->dir, false))->sweep($folder, $now);
+            if ($this->cap > 0 && !$this->apcu) {
+                $this->trim($folder, $now);
+            }
         }
         $file = $this->path($key);
         $meta = json_encode(['key' => $key, 'path' => $path, 'status' => $status, 'headers' => $headers, 'stored' => (int) $now, 'expires' => (int) $now + $ttl,
@@ -74,7 +90,70 @@ final class FileCache
         if ($meta === false) {
             return false;           // a header that is no UTF-8: not kept, rather than a file that never reads
         }
-        return \CjwNetwork\RequestShield\Files::write($file, $meta . "\n" . $body, '.tmp');
+        if (!\CjwNetwork\RequestShield\Files::write($file, $meta . "\n" . $body, '.tmp')) {
+            return false;
+        }
+        if ($this->cap > 0 && $this->apcu) {
+            $this->count(substr(sha1($key), 0, 2), strlen($meta) + 1 + strlen($body), $now);
+        }
+        return true;
+    }
+
+    /**
+     * Counts what was written into a folder; past its share of the cap the
+     * folder is measured and trimmed, and the count set to what it holds. A
+     * count that is missing (APCu restarted) measures once.
+     */
+    private function count(string $folder, int $bytes, float $now): void
+    {
+        $key = 'rshield:hc:' . substr(md5($this->dir), 0, 12) . ":d:$folder";
+        $held = apcu_fetch($key);
+        $held = is_int($held) ? apcu_inc($key, $bytes) : false;
+        if (is_int($held) && $held <= intdiv($this->cap, self::FOLDERS)) {
+            return;
+        }
+        apcu_store($key, $this->trim($folder, $now));
+    }
+
+    /**
+     * Brings a folder within its share of the cap: the expired answers
+     * first, then the oldest (by when they were written) until it holds nine
+     * tenths of it. Returns the bytes it holds then.
+     */
+    public function trim(string $folder, float $now): int
+    {
+        $limit = intdiv($this->cap, self::FOLDERS);
+        $this->sweep($folder, $now);
+        $files = [];
+        $held = 0;
+        foreach ($this->files($folder) as $file) {
+            $size = (int) @filesize($file);
+            $files[$file] = [(int) @filemtime($file), $size];
+            $held += $size;
+        }
+        if ($this->cap <= 0 || $held <= $limit) {
+            return $held;
+        }
+        uasort($files, static fn (array $a, array $b): int => $a[0] <=> $b[0]);
+        foreach ($files as $file => [, $size]) {
+            if ($held <= intdiv($limit * 9, 10)) {
+                break;
+            }
+            if (@unlink($file)) {
+                $held -= $size;
+            }
+        }
+        return $held;
+    }
+
+    /** Every folder within its share of the cap (the command line's "expired"); returns the bytes held. */
+    public function trimAll(float $now): int
+    {
+        $held = 0;
+        for ($i = 0; $i < self::FOLDERS; $i++) {
+            $held += $this->trim(sprintf('%02x', $i), $now);
+        }
+        return $held;
     }
 
     /**

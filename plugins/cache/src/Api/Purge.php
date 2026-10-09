@@ -14,6 +14,7 @@ use CjwNetwork\RequestShield\ApiProblem;
 use CjwNetwork\RequestShield\ApiService;
 use CjwNetwork\RequestShield\Cache\CacheExtension;
 use CjwNetwork\RequestShield\Cache\FileCache;
+use CjwNetwork\RequestShield\Cache\MemoryCache;
 use CjwNetwork\RequestShield\Cache\Tags;
 use CjwNetwork\RequestShield\Capability;
 use CjwNetwork\RequestShield\Settings;
@@ -39,6 +40,11 @@ final class Purge implements ApiService
         if ($path !== '' && $path[0] !== '/') {
             throw new ApiProblem(400, 'Bad request', 'path starts with /: /news/');
         }
-        return ['removed' => (new FileCache(CacheExtension::of($s)['dir']))->purge($path !== '' ? $path : null)];
+        $dir = CacheExtension::of($s)['dir'];
+        $removed = (new FileCache($dir))->purge($path !== '' ? $path : null);
+        if (!MemoryCache::forget($dir, Capability::apcu(), microtime(true))) {
+            throw new ApiProblem(500, 'Not purged', 'the purge of the answers in memory could not be written');
+        }
+        return ['removed' => $removed];
     }
 }

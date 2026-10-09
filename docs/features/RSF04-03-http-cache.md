@@ -200,6 +200,35 @@ sequenceDiagram
 - **Needs APCu and an HTTP client** (`allow_url_fopen` or curl); `check`
   says when one is missing, and when no `http-cache-session-cookie` is set.
 
+### Memory first, the disk when needed
+
+With APCu, small answers stay in memory: a hit is one `apcu_fetch`, no
+file (a 20 KB page: about 9 µs instead of 16 µs from the disk, measured
+with the plugin alone).
+
+- **In memory:** answers up to `http-cache-memory-object` (default `256K`),
+  for at most an hour; one that lives longer is on the disk too and comes
+  back into memory on its next hit. Larger answers, and everything without
+  APCu, go to the disk (`http-cache-dir`).
+- **Its share of APCu:** at most `http-cache-memory` (default `32M`) --
+  counted per hour of storing, so the count is an upper bound (a purged
+  answer counts until its hour has passed). Above it, or when APCu would
+  keep less than a quarter free, an answer goes to the disk: a full APCu
+  (with `apc.ttl` 0) is emptied whole, and the shield's budgets and roles
+  with it.
+- **Purges** reach memory as the disk: by tag and address at once. The
+  command line's `cache purge` (everything or below a path) empties the
+  disk and makes every answer in memory out of date -- the web server's
+  APCu sees it within 10 seconds (the command line's APCu is its own); the
+  API's purge and a `PURGE` request at once.
+- **The disk's cap:** `http-cache-disk` (default `256M`, `0`: none). Each of
+  the cache's 256 folders holds a 256th of it; past it, the expired and then
+  the oldest answers go until the folder holds nine tenths. With APCu the
+  folders' bytes are counted as answers are written (exact per folder);
+  without APCu the sweep (one store in a hundred) trims the folder it
+  sweeps -- on average within the cap, not every folder at every moment.
+  `request-shield cache … expired` trims every folder (cron).
+
 ## Use cases
 
 - **A CMS without a page cache of its own** on simple hosting: the news, the
@@ -219,6 +248,9 @@ set http-cache-hosts www.example.org example.org   # the site's names (required:
 set http-cache-ttl 5m                       # when the answer says nothing (its s-maxage or max-age wins)
 set http-cache-cookies _ga* _pk_* rsp       # cookies that do not make a page someone's own (default: analytics, the pass)
 set http-cache-max-object 1M                # the largest answer kept
+set http-cache-memory-object 256K           # with APCu: the largest kept in memory (0: none in memory)
+set http-cache-memory 32M                   # the most of APCu the answers may take
+set http-cache-disk 256M                    # the most the folder holds -- the oldest go first (0: no cap)
 set http-cache-dir /var/cache/request-shield   # default: <store-dir>/http-cache
 set http-cache-purgers 127.0.0.1 ::1        # who may send PURGE / PURGEKEYS (default: nobody; not behind a local proxy)
 set http-cache-purge-token …                # or anyone with this X-Invalidate-Token (16 characters or more)
@@ -236,7 +268,7 @@ Emptying it -- after a deploy, or a CMS after it published a page:
 php bin/request-shield cache site.rules                    # how many answers, how many bytes
 php bin/request-shield cache site.rules purge --path=/news/
 php bin/request-shield cache site.rules purge --tag=c52,l2   # the answers with one of the tags
-php bin/request-shield cache site.rules expired            # cron: remove what has run out
+php bin/request-shield cache site.rules expired            # cron: remove what has run out, keep the folder within http-cache-disk
 ```
 
 The same in the [API](RSF06-05-api.md): `GET /rs/api/v1/cache`, `POST
@@ -253,8 +285,8 @@ literally: `--path=/news` takes `/newsletter` too.
 | | |
 |---|---|
 | off | nothing: the plugin is not loaded |
-| on, a hit | the shield's decision, one file read, and the time of the last purge (one APCu read, or one small file) -- instead of the application; the tags' times only when something was purged since the page was made |
-| on, a miss | one output buffer, a callback before the headers go out (tags and purges taken out), and, when kept, one file written after the answer |
+| on, a hit | the shield's decision, one APCu read (memory) or one file read (the disk; then one APCu write: it comes into memory), and the time of the last purge (one APCu read, or one small file) -- instead of the application; the tags' times only when something was purged since the page was made |
+| on, a miss | one output buffer, a callback before the headers go out (tags and purges taken out), and, when kept, after the answer: two APCu reads, APCu's free memory and one APCu write (memory), or one file written and one APCu count (the disk; past a folder's share the folder is measured and trimmed) |
 | a purge | one small file per tag and one for "anything", with APCu their copies |
 | a signed-in visitor, roles on | one MAC and one APCu read before the cache is asked; `cacheContext()` one APCu write |
 | the user hash (`http-cache-user-context`) | one request to the application per session and `max-age` (a lookup is a small answer; 2 s at most) |
@@ -263,12 +295,10 @@ literally: `--path=/news` takes `/newsletter` too.
 
 - **One server's files:** several servers keep their own unless
   `http-cache-dir` is shared.
-- **No size limit on the folder yet:** the definition keeps made-up paths and
-  parameters out, but a parameter it lets through takes any value
-  (`?page=1` … `?page=99999`). One store in a hundred removes what has
-  expired in a 256th of the folder; `cache … expired` from cron removes the
-  rest. A cap, and answers in APCu, are [proposal
-  0039](../proposals/0039-cache-compatible.md).
+- **The cap is the folder's, not the store's:** `http-cache-disk` holds for
+  the answers; the purge times (`tags/`) are small files kept 30 days.
+- **Memory is per server:** each PHP pool has its own APCu, and the command
+  line reaches it only through the purge times (10 seconds).
 - **Redirects are kept for everyone:** a 301 or 308 that sends visitors to
   different places by language or device without saying `Vary` is kept as
   the first visitor got it -- send such redirects with `Cache-Control:
@@ -286,7 +316,7 @@ literally: `--path=/news` takes `/newsletter` too.
   followed (the tags are still kept with the answer; purges by request
   work).
 - **Not yet:** `BAN` with patterns, a soft purge that serves the stale page
-  while one request renews it, answers in APCu -- the
+  while one request renews it -- the
   further parts of [proposal 0039](../proposals/0039-cache-compatible.md).
 - **Pages that differ by language or device** (`Vary: Accept-Language`,
   `Vary: Cookie`) are not kept: one address, one answer.

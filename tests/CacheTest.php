@@ -5,6 +5,7 @@ declare(strict_types=1);
 use CjwNetwork\RequestShield\Cache\CacheExtension;
 use CjwNetwork\RequestShield\Cache\CachePlugin;
 use CjwNetwork\RequestShield\Cache\FileCache;
+use CjwNetwork\RequestShield\Cache\MemoryCache;
 use CjwNetwork\RequestShield\Cache\Tags;
 use CjwNetwork\RequestShield\Decision;
 use CjwNetwork\RequestShield\Http;
@@ -55,7 +56,7 @@ return [
     'RSF04-03 what is kept: 200, 301, 308, public, no cookie set, no Vary but encoding, within its size -- for its own max-age, else the ttl; expired is gone; purge by path' => function (): void {
         $dir = cacheDir();
         try {
-            $s = cacheSettings($dir, "set http-cache on\nset http-cache-ttl 2m\nset http-cache-max-object 1K\n");
+            $s = cacheSettings($dir, "set http-cache on\nset http-cache-ttl 2m\nset http-cache-max-object 1K\nset http-cache-memory-object 0\n");     // the disk; memory: its own test
             $p = new CachePlugin($s);
             $c = new FileCache("$dir/c");
             $ok = ['Content-Type: text/html', 'X-RS: allow', 'Set-Cookie-Not: x'];
@@ -134,7 +135,7 @@ return [
             if (strpos($_SERVER["REQUEST_URI"], "/big") !== false) { for ($i = 0; $i < 40; $i++) { echo str_repeat("x", 65536); flush(); } echo hrtime(true); return; }
             header("Cache-Control: public, max-age=60");
             echo "page " . $_SERVER["REQUEST_URI"] . " " . hrtime(true);');
-        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset http-cache on\ncache-query page\n");
+        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset http-cache on\ncache-query page\nset http-cache-memory-object 0\n");     // php -S has APCu: the disk here, memory in its own test
         $port = freePort();
         file_put_contents("$dir/site.rules", "set http-cache-hosts 127.0.0.1:$port\n", FILE_APPEND);
         $proc = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d auto_prepend_file=%s -S 127.0.0.1:%d -t %s > /dev/null 2>&1',
@@ -221,7 +222,7 @@ return [
         foreach ([\CjwNetwork\RequestShield\Capability::apcu()] as $apcu) {      // as the plugin finds it; the other way: Tags' own test
             $dir = cacheDir();
             try {
-                $s = cacheSettings($dir, "set http-cache on\nset http-cache-hosts www.example.org\nset http-cache-tag-headers X-My-Tags\n");
+                $s = cacheSettings($dir, "set http-cache on\nset http-cache-hosts www.example.org\nset http-cache-tag-headers X-My-Tags\nset http-cache-memory-object 0\n");
                 $p = new CachePlugin($s);
                 $c = new FileCache("$dir/store/http-cache");
                 $tags = new Tags("$dir/store/http-cache", $apcu);
@@ -400,6 +401,146 @@ return [
         } finally {
             proc_terminate($proc);
             proc_close($proc);
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'RSF04-03 memory (0039, http-cache-memory-object): a small answer in APCu, not on the disk; a larger one, or one that lives longer than an hour, on the disk; the share; a purge of the memory sends to the disk, and the disk\'s answer comes back' => function (): void {
+        if (!\CjwNetwork\RequestShield\Capability::apcu()) {
+            skip('no APCu (php -d apc.enable_cli=1)');
+        }
+        $dir = cacheDir();
+        try {
+            $s = cacheSettings($dir, "set http-cache on\nset http-cache-hosts www.example.org\nset http-cache-memory-object 1K\nset http-cache-memory 2K\n");
+            $p = new CachePlugin($s);
+            $c = new FileCache("$dir/store/http-cache");
+            $m = new MemoryCache("$dir/store/http-cache", 1024, 2048);
+            $born = microtime(true) - 1;
+            $key = static fn (string $path): string => cacheReq($path)->cacheKey();
+            $ok = ['Content-Type: text/html', 'Cache-Control: public, max-age=600'];
+            truthy($p->keep($c, $key('/s'), 200, $ok, 'small', '/s', $born), 'kept');
+            truthy($m->get($key('/s'), microtime(true)) !== null && $c->get($key('/s'), microtime(true)) === null, 'a small answer: in memory, not on the disk');
+            $r = $p->handle(cacheReq('/s'), Decision::allow());
+            truthy($r !== null && $r->body === 'small' && in_array('X-RS-Cache: hit', $r->headers, true), 'answered from memory: ' . json_encode($r));
+            truthy($p->keep($c, $key('/big'), 200, $ok, str_repeat('b', 2000), '/big', $born), 'kept');
+            truthy($m->get($key('/big'), microtime(true)) === null && $c->get($key('/big'), microtime(true)) !== null, 'larger than http-cache-memory-object: on the disk');
+            truthy($p->keep($c, $key('/long'), 200, ['Content-Type: text/html', 'Cache-Control: public, max-age=86400'], 'long', '/long', $born), 'kept');
+            $inMemory = $m->get($key('/long'), microtime(true));
+            truthy($inMemory !== null && $inMemory['expires'] - time() > 3600 && $c->get($key('/long'), microtime(true)) !== null,
+                'a day: in memory (for an hour) and on the disk (for the rest)');
+            // The share: with ~1 KB of others, a second answer of ~1 KB does not fit into 2K -- it goes to the disk.
+            $p->keep($c, $key('/f1'), 200, $ok, str_repeat('x', 900), '/f1', $born);
+            $p->keep($c, $key('/f2'), 200, $ok, str_repeat('x', 900), '/f2', $born);
+            truthy($m->bytes(microtime(true)) <= 2048 && $m->get($key('/f2'), microtime(true)) === null && $c->get($key('/f2'), microtime(true)) !== null,
+                'past http-cache-memory: the disk takes it (' . $m->bytes(microtime(true)) . ' bytes counted)');
+            truthy(!$p->keep($c, $key('/u'), 200, ['Content-Type: text/html', "X-Name: \xff"], 'u', '/u', $born), 'a header that is no UTF-8: kept nowhere');
+            // The command line's purge (a tag every answer in memory counts): memory out of date, the disk's answer is served -- and comes back to memory.
+            usleep(10000);
+            truthy(MemoryCache::forget("$dir/store/http-cache", true, microtime(true)), 'forget');
+            same(null, $p->handle(cacheReq('/s'), Decision::allow()), 'memory purged: the small one is gone (it was only there)');
+            $r = $p->handle(cacheReq('/long'), Decision::allow());
+            truthy($r !== null && $r->body === 'long', 'the disk still has the long one');
+            $back = $m->get($key('/long'), microtime(true));
+            truthy($back !== null && $back['kept'] > $back['born'], 'and it is in memory again, counted from now: ' . json_encode($back));
+            truthy((new CachePlugin($s))->handle(cacheReq('/long'), Decision::allow()) !== null, 'the next request: a hit');
+            // http-cache-memory-object 0: no memory at all.
+            $off = new CachePlugin(cacheSettings($dir, "set http-cache on\nset http-cache-hosts www.example.org\nset http-cache-memory-object 0\n"));
+            $off->keep($c, $key('/o'), 200, $ok, 'o', '/o', $born);
+            truthy($m->get($key('/o'), microtime(true)) === null && $c->get($key('/o'), microtime(true)) !== null, 'memory off: the disk');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'RSF04-03 end to end, memory: under PHP-FPM a hit comes from APCu -- the folder on the disk gone, still a hit; a PURGE of its tag at once; a large answer on the disk' => function (): void {
+        $fpm = fpmBinary();
+        if (!function_exists('proc_open') || $fpm === null) {
+            skip('no PHP-FPM here (TESTS_PHP_FPM)');
+        }
+        if (!extension_loaded('apcu')) {
+            skip('no APCu');
+        }
+        $dir = cacheDir();
+        mkdir("$dir/docroot");
+        file_put_contents("$dir/docroot/index.php", '<?php
+            file_put_contents(__DIR__ . "/../runs", "x", FILE_APPEND);
+            header("Cache-Control: public, max-age=600");
+            header("xkey: page-" . ($_GET["p"] ?? "0"));
+            echo ($_GET["p"] ?? "") === "big" ? str_repeat("b", 300000) : "page " . hrtime(true);');
+        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset http-cache on\ncache-query p\nset http-cache-hosts www.example.org\nset http-cache-purgers 127.0.0.1 ::1\n");
+        $port = freePort();
+        $proc = startFpm($fpm, $dir, $port);
+        try {
+            $send = static function (string $method, string $uri, array $headers = []) use ($port, $dir): array {
+                $params = ['REQUEST_METHOD' => $method, 'REQUEST_URI' => $uri, 'QUERY_STRING' => (string) parse_url($uri, PHP_URL_QUERY),
+                    'SCRIPT_FILENAME' => "$dir/docroot/index.php", 'SCRIPT_NAME' => '/index.php', 'DOCUMENT_ROOT' => "$dir/docroot", 'SERVER_PROTOCOL' => 'HTTP/1.1',
+                    'SERVER_NAME' => 'www.example.org', 'SERVER_PORT' => '80', 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_HOST' => 'www.example.org',
+                    'REQUEST_SHIELD_CONFIG' => "$dir/site.rules", 'PHP_VALUE' => 'auto_prepend_file=' . rsEntry()];
+                foreach ($headers as $k => $v) {
+                    $params['HTTP_' . strtoupper(str_replace('-', '_', $k))] = $v;
+                }
+                return fcgi($port, $params);
+            };
+            $hit = static fn (array $r): bool => strpos($r[1], 'X-RS-Cache: hit') !== false;
+            $send('GET', '/index.php?p=1');
+            truthy($hit($send('GET', '/index.php?p=1')), 'the second request: a hit');
+            exec('rm -rf ' . escapeshellarg("$dir/store/http-cache") . '/[0-9a-f][0-9a-f]');
+            $r = $send('GET', '/index.php?p=1');
+            truthy($hit($r) && strlen((string) @file_get_contents("$dir/runs")) === 1, 'the answers\' folders gone from the disk: still a hit, from memory -- ' . $r[1]);
+            same(200, $send('PURGE', '/', ['key' => 'page-1'])[0], 'PURGE + key');
+            truthy(!$hit($send('GET', '/index.php?p=1')), 'purged by its tag: at once, from memory too');
+            $send('GET', '/index.php?p=big');
+            truthy($hit($send('GET', '/index.php?p=big')) && glob("$dir/store/http-cache/*/*/*.cache") !== [], 'larger than http-cache-memory-object (256K): kept on the disk');
+        } finally {
+            proc_terminate($proc);
+            proc_close($proc);
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'RSF04-03 the disk\'s cap (http-cache-disk): each folder holds a 256th of it -- past it the expired, then the oldest go; with APCu counted as written, without at the sweep' => function (): void {
+        $dir = cacheDir();
+        try {
+            // Keys of one folder ("aa"): the cap is per folder.
+            $keys = [];
+            for ($i = 0; count($keys) < 8; $i++) {
+                if (strncmp(sha1("https://www.example.org/p$i"), 'aa', 2) === 0) {
+                    $keys[] = "https://www.example.org/p$i";
+                }
+            }
+            $held = static function () use ($dir): int {
+                $n = 0;
+                foreach (glob("$dir/c/aa/*/*.cache") ?: [] as $f) {
+                    $n += (int) filesize($f);
+                }
+                return $n;
+            };
+            $files = static fn (string $d): array => glob("$d/aa/*/*.cache") ?: [];
+            foreach ([\CjwNetwork\RequestShield\Capability::apcu(), false] as $apcu) {
+                exec('rm -rf ' . escapeshellarg("$dir/c"));
+                $c = new FileCache("$dir/c", 256 * 1000, $apcu);       // 1000 bytes a folder
+                $now = microtime(true);
+                foreach ($keys as $n => $k) {
+                    truthy($c->put($k, 200, [], str_repeat('x', 300), 60, $now), 'written');
+                    foreach ($files("$dir/c") as $f) {
+                        touch($f, filemtime($f) ?: time());      // keep the older ones older
+                    }
+                    $file = "$dir/c/aa/" . substr(sha1($k), 2, 2) . '/' . sha1($k) . '.cache';
+                    if (is_file($file)) {
+                        touch($file, time() + $n);
+                    }
+                }
+                if (!$apcu) {
+                    $c->trim('aa', microtime(true));        // the sweep's turn (one store in a hundred)
+                }
+                truthy($held() <= 1000, ($apcu ? 'APCu' : 'no APCu') . ': the folder within its share: ' . $held() . ' bytes');
+                truthy($c->get($keys[7], microtime(true)) !== null && $c->get($keys[0], microtime(true)) === null, 'the newest kept, the oldest gone');
+            }
+            // The command line: every folder.
+            $c = new FileCache("$dir/c", 256 * 1000);
+            foreach ($keys as $k) {
+                $c->put($k, 200, [], str_repeat('x', 300), 60, microtime(true));
+            }
+            truthy($c->trimAll(microtime(true)) <= 256 * 1000 && $held() <= 1000, 'trimAll: within the cap');
+            truthy((new FileCache("$dir/c"))->trim('aa', microtime(true)) === $held(), 'no cap: only measured');
+        } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },

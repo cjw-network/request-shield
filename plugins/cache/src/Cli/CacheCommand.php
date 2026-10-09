@@ -12,6 +12,7 @@ namespace CjwNetwork\RequestShield\Cache\Cli;
 
 use CjwNetwork\RequestShield\Cache\CacheExtension;
 use CjwNetwork\RequestShield\Cache\FileCache;
+use CjwNetwork\RequestShield\Cache\MemoryCache;
 use CjwNetwork\RequestShield\Cache\Tags;
 use CjwNetwork\RequestShield\Capability;
 use CjwNetwork\RequestShield\Cli\Command;
@@ -33,7 +34,7 @@ final class CacheCommand implements Command
     public static function run(Context $c): int
     {
         $o = CacheExtension::of($c->settings);
-        $cache = new FileCache($o['dir']);
+        $cache = new FileCache($o['dir'], $o['disk']);
         if ($c->what === 'purge') {
             $period = $c->option('period', []);
             $path = is_array($period) ? ($period['path'] ?? null) : null;
@@ -46,10 +47,21 @@ final class CacheCommand implements Command
                 return $ok ? 0 : 1;
             }
             echo 'removed ' . $cache->purge(is_string($path) && $path !== '' ? $path : null) . " answers\n";
+            // The web server's memory is not this process's: its answers are made out of date by a tag (MemoryCache::TAG).
+            if (!MemoryCache::forget($o['dir'], Capability::apcu(), microtime(true))) {
+                echo "could not write the purge for the answers in memory\n";
+                return 1;
+            }
+            if ($o['memoryObject'] > 0) {
+                echo 'the web server\'s answers in memory: out of date within ' . Tags::MEMORY . " s (a PURGE request or the API: at once)\n";
+            }
             return 0;
         }
         if ($c->what === 'expired') {
             echo 'removed ' . $cache->purge(null, microtime(true)) . " expired answers\n";
+            if ($o['disk'] > 0) {
+                echo 'the folder holds ' . number_format($cache->trimAll(microtime(true)) / 1048576, 1) . ' MB of at most ' . number_format($o['disk'] / 1048576, 1) . " MB\n";
+            }
             return 0;
         }
         if ($c->what !== null) {

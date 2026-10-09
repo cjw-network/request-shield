@@ -76,6 +76,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **The HTTP cache keeps small answers in memory, and its folder within a
+  cap** (0031 step G.4, part 3; proposal 0039): with APCu, answers up to
+  `set http-cache-memory-object` (`256K`) are kept in APCu for at most an
+  hour -- a hit is one `apcu_fetch` (a 20 KB page: about 9 µs instead of
+  16 µs from the disk); longer-lived ones are on the disk too and come back
+  on their next hit. `set http-cache-memory` (`32M`) caps the answers'
+  share of APCu, and a quarter of APCu always stays free (a full APCu is
+  emptied whole, budgets and roles with it). `set http-cache-disk` (`256M`,
+  `0`: none) caps the folder: each of its 256 folders holds a 256th, the
+  oldest going first -- counted as written with APCu, at the sweep without;
+  `cache … expired` trims every folder. The command line's `cache purge`
+  makes the answers in memory out of date (the web server sees it within
+  10 s; a `PURGE` request or the API at once). Settings `FORMAT` 62.
+  ([the HTTP cache](docs/features/RSF04-03-http-cache.md#memory-first-the-disk-when-needed))
 - **The HTTP cache finds the role from FOSHttpCache's user hash** (0031 step
   G.4, part 2b; proposal 0039): `set http-cache-user-context on` (or the
   address to ask) and `set http-cache-user-hash-header X-User-Hash` for
