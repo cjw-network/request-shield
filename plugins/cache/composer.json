@@ -1,0 +1,47 @@
+{
+    "name": "cjw-network/request-shield-cache",
+    "description": "The HTTP cache of request-shield: public answers kept on disk and in APCu and answered before the application starts -- with roles, tags and purges.",
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/cjw-network/request-shield",
+    "authors": [
+        {
+            "name": "JAC Systeme GmbH",
+            "homepage": "https://www.jac-systeme.de",
+            "role": "Author"
+        },
+        {
+            "name": "CJW Network",
+            "homepage": "https://cjw-network.com"
+        }
+    ],
+    "keywords": [
+        "request-shield",
+        "cache",
+        "http cache",
+        "page cache",
+        "purge"
+    ],
+    "support": {
+        "issues": "https://github.com/cjw-network/request-shield/issues",
+        "source": "https://github.com/cjw-network/request-shield/tree/main/plugins/cache",
+        "security": "https://github.com/cjw-network/request-shield/security/policy"
+    },
+    "require": {
+        "php": ">=8.0",
+        "cjw-network/request-shield": "^1.0"
+    },
+    "suggest": {
+        "ext-apcu": "Answers kept in shared memory too, and the role lookup",
+        "cjw-network/request-shield-api": "Purges and the cache's status in the API",
+        "cjw-network/request-shield-stats": "The bar chart per day on the cache's page"
+    },
+    "autoload": {
+        "psr-4": {
+            "CjwNetwork\\RequestShield\\Cache\\": "src/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

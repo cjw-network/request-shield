@@ -1,0 +1,7 @@
+# The mirror's dist archive (composer install): the code and the papers --
+# README, LICENSE, CHANGELOG, SECURITY -- without its tests. In the monorepo
+# these lines apply to this directory alone, so the core's archive is the same.
+/tests              export-ignore
+/.gitattributes     export-ignore
+
+* text=auto eol=lf

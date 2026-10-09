@@ -4,18 +4,7 @@ declare(strict_types=1);
 
 use CjwNetwork\RequestShield\Challenge\ChallengePage;
 
-/** Shared by the tests: running the challenge page's script in Node. */
-
-function nodeBinary(): ?string
-{
-    foreach (['node', 'nodejs'] as $name) {
-        $path = trim((string) shell_exec('command -v ' . $name . ' 2>/dev/null'));
-        if ($path !== '') {
-            return $path;
-        }
-    }
-    return null;
-}
+/** Shared by the tests (the runner and the generic helpers are in testkit/). */
 
 /** Runs the page's script in Node on $challenge; returns [payload, took ms, hashes/s]. */
 function solveInNode(array $challenge): array
@@ -34,21 +23,6 @@ function solveInNode(array $challenge): array
         throw new TestFailure('node: ' . trim((string) $out));
     }
     return [$r['payload'], (int) $r['ms'], (int) $r['n']];
-}
-
-/**
- * A port nobody listens on, from the operating system -- a guessed one can
- * belong to another service on the machine, which then answers the test.
- */
-function freePort(): int
-{
-    $probe = stream_socket_server('tcp://127.0.0.1:0');
-    if ($probe === false) {
-        throw new RuntimeException('no free port');
-    }
-    $name = (string) stream_socket_get_name($probe, false);
-    fclose($probe);
-    return (int) substr($name, strrpos($name, ':') + 1);
 }
 
 /**

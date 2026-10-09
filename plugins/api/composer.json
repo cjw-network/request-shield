@@ -1,0 +1,41 @@
+{
+    "name": "cjw-network/request-shield-api",
+    "description": "The API of request-shield: the shield's data as JSON for a CMS's backend, a script or a language model -- endpoints, OpenAPI, an in-process facade.",
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/cjw-network/request-shield",
+    "authors": [
+        {
+            "name": "JAC Systeme GmbH",
+            "homepage": "https://www.jac-systeme.de",
+            "role": "Author"
+        },
+        {
+            "name": "CJW Network",
+            "homepage": "https://cjw-network.com"
+        }
+    ],
+    "keywords": [
+        "request-shield",
+        "api",
+        "openapi",
+        "json"
+    ],
+    "support": {
+        "issues": "https://github.com/cjw-network/request-shield/issues",
+        "source": "https://github.com/cjw-network/request-shield/tree/main/plugins/api",
+        "security": "https://github.com/cjw-network/request-shield/security/policy"
+    },
+    "require": {
+        "php": ">=8.0",
+        "cjw-network/request-shield": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "CjwNetwork\\RequestShield\\Api\\": "src/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

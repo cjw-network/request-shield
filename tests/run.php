@@ -8,20 +8,8 @@
 
 declare(strict_types=1);
 
+require dirname(__DIR__) . '/testkit/src/testkit.php';   // the runner, same(), truthy(), skip(), freePort() (0031 H.1)
 require __DIR__ . '/helpers.php';
-
-/**
- * In GitHub Actions, a failure also as an annotation (::error::) -- readable on the run's
- * page and through the API without the log, which needs a login.
- */
-function ciAnnotate(string $what, string $label, string $message): void
-{
-    if (getenv('GITHUB_ACTIONS') !== 'true') {
-        return;
-    }
-    $esc = static fn (string $s): string => str_replace(['%', "\r", "\n"], ['%25', '%0D', '%0A'], $s);
-    echo '::error title=' . $esc(str_replace([',', ':'], [';', ' '], "$what: $label")) . ' (PHP ' . PHP_VERSION . ')::' . $esc(substr($message, 0, 2000)) . "\n";
-}
 require rsEntry();                                   // bootstrap.php, or the built single file (REQUEST_SHIELD_ENTRY, 0031 E.3)
 require __DIR__ . '/support/RsTestExtension.php';   // the test extension (0031 B.2); an E2E server loads it from its prepend file
 require __DIR__ . '/support/CountingPlugin.php';    // a plugin with the RuleCounts capability (0031 B.8)
@@ -30,155 +18,9 @@ require __DIR__ . '/support/PagesPlugin.php';       // a plugin with the Pages c
 require __DIR__ . '/support/RulesPlugin.php';       // a plugin with the RuleProvider capability (0031 C.3)
 require __DIR__ . '/support/HandlerPlugin.php';     // a plugin with the Handler capability (0031 C.4)
 
-final class TestFailure extends RuntimeException
-{
-}
-
-final class TestSkipped extends RuntimeException
-{
-}
-
-/** Ends a test that cannot run here (no node, no pcntl); counted, and named. */
-function skip(string $why): void
-{
-    throw new TestSkipped($why);
-}
-
-function same(mixed $expected, mixed $actual, string $what = ''): void
-{
-    if ($expected !== $actual) {
-        throw new TestFailure(($what !== '' ? $what . ': ' : '') . 'expected ' . var_export($expected, true) . ', got ' . var_export($actual, true));
+// Against the core single file a plugin's feature is skipped: the core only (needsPlugins()).
+exit(testkitRun(__FILE__, array_values(array_map('strval', $argv)), glob(__DIR__ . '/*Test.php') ?: [], static function (string $name): void {
+    if (pluginFeature($name)) {
+        needsPlugins();
     }
-}
-
-function truthy(bool $value, string $what): void
-{
-    if (!$value) {
-        throw new TestFailure($what);
-    }
-}
-
-$args = array_slice($argv, 1);
-$only = null;                                   // --file=<path>: one file (a child of an isolated run)
-foreach ($args as $i => $a) {
-    if (strncmp($a, '--file=', 7) === 0) {
-        $only = substr($a, 7);
-        unset($args[$i]);
-    }
-}
-$filter = (string) (array_values($args)[0] ?? '');
-// A feature id is written RSF02-06 (the group: RSF02); another form names the right one.
-if (preg_match('/^RSF\d/', $filter) === 1 && preg_match('/^RSF\d{2}(-\d{2})?$/', $filter) !== 1) {
-    fwrite(STDERR, "tests/run.php: a feature id is written RSF02-06 (two digits each, a dash), the group RSF02 -- not \"$filter\"\n");
-    exit(2);
-}
-$pass = $fail = $skipped = 0;
-$files = $only !== null ? [$only] : (glob(__DIR__ . '/*Test.php') ?: []);
-
-// Isolated (in CI, or TESTS_ISOLATE=1): each file in a process of its own. A
-// crash of PHP itself (exit 139, a segfault) then names the file and the test
-// it was in -- as an annotation GitHub shows -- and the other files still run.
-$isolate = $only === null && (getenv('TESTS_ISOLATE') === '1' || (getenv('GITHUB_ACTIONS') === 'true' && getenv('TESTS_ISOLATE') !== '0'));
-$tests = [];
-if ($isolate) {
-    foreach ($files as $file) {
-        $cmd = [PHP_BINARY, __FILE__, '--file=' . $file];
-        if ($filter !== '') {
-            $cmd[] = $filter;
-        }
-        $proc = proc_open($cmd, [1 => ['pipe', 'w'], 2 => ['redirect', 1]], $pipes);
-        if (!is_resource($proc)) {
-            echo "  FAIL  " . basename($file, '.php') . "\n        cannot start a process for it\n";
-            $fail++;
-            continue;
-        }
-        $out = (string) stream_get_contents($pipes[1]);
-        fclose($pipes[1]);
-        $code = proc_close($proc);
-        $result = null;
-        $last = '';
-        foreach (explode("\n", $out) as $line) {
-            if (strncmp($line, '@@START ', 8) === 0) {
-                $last = substr($line, 8);
-            } elseif (preg_match('/^@@RESULT (\d+) (\d+) (\d+)$/', $line, $m) === 1) {
-                $result = [(int) $m[1], (int) $m[2], (int) $m[3]];
-            } elseif ($line !== '' && strncmp($line, '  PASS -', 8) !== 0 && strncmp($line, '  FAIL -', 8) !== 0) {
-                echo $line, "\n";
-            }
-        }
-        if ($result === null) {
-            $fail++;
-            $where = basename($file, '.php') . ($last !== '' ? ' > ' . $last : '');
-            echo "  FAIL  $where\n        PHP ended " . ($code === 139 ? 'with a crash (exit 139, a segfault)' : "with exit code $code") . " -- during this test, before it could report\n";
-            if (getenv('GITHUB_ACTIONS') === 'true') {
-                echo '::error title=PHP crashed (exit ' . $code . ')::' . str_replace(["\n", '%'], [' ', '%25'], $where . ' on PHP ' . PHP_VERSION) . "\n";
-            }
-            continue;
-        }
-        [$p, $f, $sk] = $result;
-        $pass += $p;
-        $fail += $f;
-        $skipped += $sk;
-    }
-} else {
-    // A child loads every file (they share helper functions, ModesTest uses
-    // ChallengeTest's creq()) and runs only its own.
-    $sets = [];
-    foreach (glob(__DIR__ . '/*Test.php') ?: [] as $f) {
-        $sets[$f] = require $f;
-    }
-    // The loaded tests by file, names as they run (some are made at load time) -- for the feature contract.
-    $GLOBALS['RS_TEST_SETS'] = $sets;
-    foreach ($files as $file) {
-        $tests[$file] = $sets[$file] ?? $sets[realpath($file) ?: $file] ?? [];
-    }
-}
-foreach ($tests as $file => $set) {
-    foreach ($set as $name => $test) {
-        $label = basename($file, '.php') . ' > ' . $name;
-        // A feature id (RSF02-06, or a group: RSF02) runs exactly that feature's tests, by
-        // their names' beginning (0031 F.1); anything else is a part of "File > name".
-        $byId = preg_match('/^RSF\d{2}(-\d{2})?$/', $filter) === 1;
-        if ($filter !== '' && ($byId ? preg_match('/^' . preg_quote($filter, '/') . '[ -]/', (string) $name) !== 1 : stripos($label, $filter) === false)) {
-            continue;
-        }
-        if ($only !== null) {
-            echo "@@START $name\n";                 // for the parent: where a crash happened
-        }
-        try {
-            if (pluginFeature((string) $name)) {
-                needsPlugins();             // against the core single file: the core only
-            }
-            $test();
-            $pass++;
-        } catch (TestSkipped $e) {
-            $skipped++;
-            printf("  SKIP  %s\n        %s\n", $label, $e->getMessage());
-            if (getenv('TESTS_FAIL_ON_SKIP') === '1') {
-                ciAnnotate('skipped (TESTS_FAIL_ON_SKIP)', $label, $e->getMessage());
-            }
-        } catch (Throwable $e) {
-            $fail++;
-            printf("  FAIL  %s\n        %s\n", $label, $e->getMessage());
-            ciAnnotate('failed', $label, $e->getMessage());
-        }
-    }
-}
-if ($only !== null) {
-    echo "@@RESULT $pass $fail $skipped\n";        // the parent adds them up
-    exit(0);
-}
-// A feature id that matched no test proves nothing: a typo (RSF26) or a feature
-// without tests must not pass in silence.
-if (preg_match('/^RSF\d{2}(-\d{2})?$/', $filter) === 1 && $pass + $fail + $skipped === 0) {
-    echo "  FAIL  no test has the id $filter\n";
-    $fail++;
-}
-// In CI a skipped test is a failure unless the job is meant to lack something
-// (TESTS_FAIL_ON_SKIP=1): a test that did not run proves nothing.
-if (getenv('TESTS_FAIL_ON_SKIP') === '1' && $skipped > 0) {
-    $fail += $skipped;
-    echo "  (TESTS_FAIL_ON_SKIP: skipped tests count as failures)\n";
-}
-printf("\n  %s - %d passed, %d failed, %d skipped (PHP %s)\n\n", $fail === 0 ? 'PASS' : 'FAIL', $pass, $fail, $skipped, PHP_VERSION);
-exit($fail === 0 ? 0 : 1);
+}));

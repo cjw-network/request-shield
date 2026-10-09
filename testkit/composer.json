@@ -1,0 +1,38 @@
+{
+    "name": "cjw-network/request-shield-testkit",
+    "description": "The test runner and helpers of request-shield and its plugins: a test file returns name => closure; no framework.",
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/cjw-network/request-shield",
+    "authors": [
+        {
+            "name": "JAC Systeme GmbH",
+            "homepage": "https://www.jac-systeme.de",
+            "role": "Author"
+        },
+        {
+            "name": "CJW Network",
+            "homepage": "https://cjw-network.com"
+        }
+    ],
+    "keywords": [
+        "request-shield",
+        "testing"
+    ],
+    "support": {
+        "issues": "https://github.com/cjw-network/request-shield/issues",
+        "source": "https://github.com/cjw-network/request-shield/tree/main/testkit",
+        "security": "https://github.com/cjw-network/request-shield/security/policy"
+    },
+    "require": {
+        "php": ">=8.0"
+    },
+    "autoload": {
+        "files": [
+            "src/testkit.php"
+        ]
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

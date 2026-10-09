@@ -76,6 +76,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **Every plugin is a Composer package of its own** (0031 step H.1):
+  `plugins/api`, `plugins/waf`, `plugins/stats` and `plugins/cache` each
+  have a `composer.json` (`cjw-network/request-shield-<name>`, the core
+  `^1.0`; the WAF's pages require the API, the statistics and the cache
+  suggest each other), a LICENSE, README, CHANGELOG, SECURITY.md and a
+  `.gitattributes`, ready to be mirrored read-only from H.2 on. Until then
+  the plugins ship inside the core package as before (its archive gains the
+  papers only). `tests/PackagesTest.php` installs each plugin from a path
+  repository next to a core without plugins: it brings what it requires and
+  nothing else, its classes load, its words are known and the others' not.
+- **`testkit/`** (`cjw-network/request-shield-testkit`): the test runner and
+  the checks of `tests/run.php` (`testkitRun()`, `same()`, `truthy()`,
+  `skip()`, `freePort()`, `nodeBinary()`) as a package of their own, for the
+  plugins' tests outside the monorepo; `tests/run.php` calls it. A test file
+  that returns no array of tests now fails instead of stopping the run.
 - **Purges from the application itself** (0031 step G.5, its core part):
   `Shield::active()?->purge(['content-12', 'list'])` -- an adapter in the
   same PHP process makes the HTTP cache's answers with these tags out of

@@ -260,6 +260,26 @@ other sinks, the application runs, the shield's own page goes out -- and
 PHP's error log hears it once a minute. The tests' `tests/support/*Plugin.php`
 are the smallest of each.
 
+## Packages
+
+Every shipped plugin is a Composer package of its own (0031 H.1), developed
+here and mirrored read-only from H.2 on:
+
+| Directory | Package | Needs |
+|---|---|---|
+| `plugins/api` | `cjw-network/request-shield-api` | the core |
+| `plugins/waf` | `cjw-network/request-shield-waf` | the core, the API |
+| `plugins/stats` | `cjw-network/request-shield-stats` | the core; suggests the API and the cache |
+| `plugins/cache` | `cjw-network/request-shield-cache` | the core; suggests the API and the statistics |
+| `testkit` | `cjw-network/request-shield-testkit` | -- (the test runner) |
+
+A plugin uses another one only when it requires it, or when it suggests it
+and asks `class_exists()` first -- `tests/PackagesTest.php` checks both and
+installs each package next to a core without plugins. Until v1.0 the core
+package carries the plugins as well (its `autoload` and `bootstrap.php`
+name their directories); the core knows a plugin's words once its classes
+are there (`REQUEST_SHIELD_EXTENSIONS`).
+
 ## Cost
 
 None without plugins. With plugins, one call to each per request; a

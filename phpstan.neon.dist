@@ -8,4 +8,5 @@ parameters:
         - plugins/cache/src
         - plugins/waf/src
         - tests/support
+        - testkit/src
         - bootstrap.php

@@ -13,6 +13,9 @@ things come first: **it must be right, and it must be fast.**
    unit tests and, where the change touches the request path, an end-to-end
    case (`tests/ProtectTest.php` runs PHP's built-in server with
    `auto_prepend_file`). Check that a new test fails without the change.
+   The runner and the checks (`same()`, `truthy()`, `skip()`, `freePort()`)
+   are in `testkit/`, a package of its own the plugins' tests can use;
+   `tests/helpers.php` has what only this repository's tests need.
 2. **Measure.** `php -d apc.enable_cli=1 -d opcache.enable_cli=1 bench/overhead.php`
    before and after; the passing path must not get slower without a reason
    stated in the pull request. Keep work a feature needs off the passing path.
