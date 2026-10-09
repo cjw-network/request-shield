@@ -12,6 +12,8 @@
   const sum = document.querySelector('.cache-sum');
   const article = document.querySelector('.cache-article');
   const caption = document.querySelector('.flow-caption');
+  const detail = document.querySelector('.flow-detail');
+  const story = document.querySelector('.cache-story');
   const dot = document.querySelector('.flow-dot');
   const stations = [...document.querySelectorAll('.flow-station')];
   const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -29,15 +31,45 @@
     return el;
   };
 
+  // ── Plain or technical (an option for developers; the browser remembers it) ──
+  let tech = false;
+  try {
+    tech = localStorage.getItem('rs-cache-view') === 'tech';
+  } catch (e) {
+    tech = false;
+  }
+  const words = (key) => (tech && w.tech[key] ? w.tech[key] : w[key]);
+  const view = (t) => {
+    tech = t;
+    try {
+      localStorage.setItem('rs-cache-view', t ? 'tech' : 'plain');
+    } catch (e) {
+      // no storage: the choice lasts for this page
+    }
+    document.querySelectorAll('[data-plain]').forEach((el) => {
+      el.textContent = t ? el.dataset.tech : el.dataset.plain;
+    });
+    document.querySelectorAll('.cache-view button').forEach((b) => {
+      const on = (b.dataset.view === 'tech') === t;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.classList.toggle('btn-dark', on);
+      b.classList.toggle('btn-outline-dark', !on);
+    });
+    detail.hidden = !t;
+  };
+  document.querySelectorAll('.cache-view button').forEach((b) => b.addEventListener('click', () => view(b.dataset.view === 'tech')));
+  view(tech);
+
   // ── The picture ──────────────────────────────────────────────────────────
   // Station x offsets from the visitor: doorkeeper +220, shelf +440, kitchen +660.
   const X = [0, 220, 440, 660];
   const ROUTES = {hit: [0, 1, 2, 1, 0], miss: [0, 1, 2, 3, 2, 1, 0], notkept: [0, 1, 2, 3, 2, 1, 0], refused: [0, 1, 0]};
   const STEP = 280;
   let film = Promise.resolve();
-  const play = (kind, words) => {
+  const play = (kind, text1, text2) => {
     film = film.then(() => new Promise((done) => {
-      caption.textContent = words;
+      caption.textContent = text1;
+      detail.textContent = text2 || '';
       if (still || !dot.animate) {
         done();
         return;
@@ -106,7 +138,7 @@
     const asked = seen.filter((s) => s.kind === 'hit' || s.kind === 'miss').length;
     sum.textContent = w.sum.replace('%s', avg('hit')).replace('%s', avg('miss')).replace('%s', asked ? Math.round(100 * hits / asked) + ' %' : '–');
   };
-  const purged = (what) => line([Object.assign(text('td', '↻ ' + what), {colSpan: 4})], 'table-light');
+  const purged = (what) => line([Object.assign(text('td', '↻ ' + what), {colSpan: 4})], 'cache-purge');
 
   // ── The requests: one at a time, so a reader's cookie belongs to its own request ──
   let queue = Promise.resolve();
@@ -131,7 +163,8 @@
       if ((kind === 'hit' || kind === 'miss') && place !== null) {
         fill(roleOf(who), place);
       }
-      play(kind, {hit: w.capHit, miss: w.capMiss, refused: w.capRefused, notkept: w.capNotKept}[kind]);
+      play(kind, words({hit: 'capHit', miss: 'capMiss', refused: 'capRefused', notkept: 'capNotKept'}[kind]),
+        'GET ' + url + ' → ' + r.status + ' · X-RS-Cache: ' + (cache || '—') + ' · ' + fmt(ms) + (who ? ' · rs-demo-member=' + sessions[who] : ''));
     } finally {
       if (who) {
         document.cookie = 'rs-demo-member=; path=/; max-age=0; SameSite=Lax';
@@ -143,7 +176,8 @@
     if (r.ok) {
       after();
       film = film.then(() => {
-        caption.textContent = what === '*' ? w.capClear : w.capPurge;     // after the dot that is still on its way
+        caption.textContent = words(what === '*' ? 'capClear' : 'capPurge');     // after the dot that is still on its way
+        detail.textContent = 'POST ' + path + (body ? ' ' + body : '') + ' → ' + r.status;
       });
     }
     purged(r.ok ? what : what + ' ✕ ' + r.status);
@@ -155,7 +189,6 @@
     '/magazin?page=' + Math.floor(Math.random() * 9000 + 1000),
     '/magazin/' + Math.floor(Math.random() * 90 + 6),
     '/.env',
-    '/magazin?utm_source=bot' + rand(),
     '/magazin?q=' + encodeURIComponent("' UNION SELECT password FROM users--"),
     '/wp-login.php',
   ];
@@ -170,4 +203,120 @@
     post('/__cache/publish', 'n=' + encodeURIComponent(n), '/magazin/' + n + ', /magazin', () => empty(Number(n)));
   });
   document.querySelector('.cache-clear').addEventListener('click', () => post('/__cache/clear', '', '*', () => empty(null)));
+
+  // ── The dock: the log a height of its own (about seven lines), drawn bigger or smaller at the grip ──
+  const dock = document.querySelector('.cache-dock');
+  const log = document.querySelector('.cache-dock-log');
+  const grip = document.querySelector('.cache-dock-grip');
+  const space = document.querySelector('.cache-dock-space');
+  const fit = () => {
+    space.style.height = dock.offsetHeight + 'px';      // the page ends above the dock, whatever its height
+  };
+  const height = (px) => {
+    const h = Math.round(Math.max(60, Math.min(window.innerHeight * 0.7, px)));
+    log.style.height = h + 'px';
+    grip.setAttribute('aria-valuenow', String(h));
+    try {
+      localStorage.setItem('rs-cache-log', String(h));
+    } catch (e) {
+      // no storage: the height lasts for this page
+    }
+    fit();
+  };
+  try {
+    const kept = Number(localStorage.getItem('rs-cache-log'));
+    if (kept > 0) {
+      height(kept);
+    }
+  } catch (e) {
+    // the default height
+  }
+  grip.addEventListener('pointerdown', (ev) => {
+    const y0 = ev.clientY;
+    const h0 = log.offsetHeight;
+    grip.setPointerCapture(ev.pointerId);
+    const move = (e) => height(h0 + (y0 - e.clientY));
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', () => grip.removeEventListener('pointermove', move), {once: true});
+  });
+  grip.addEventListener('keydown', (ev) => {
+    if (ev.key === 'ArrowUp' || ev.key === 'ArrowDown') {
+      ev.preventDefault();
+      height(log.offsetHeight + (ev.key === 'ArrowUp' ? 28 : -28));       // a line more or less
+    }
+  });
+  if (window.ResizeObserver) {
+    new ResizeObserver(fit).observe(dock);
+  }
+  window.addEventListener('resize', fit);
+  fit();
+
+  // ── The dock: its log can be folded away, the actions stay ───────────────
+  const fold = document.querySelector('.cache-dock-toggle');
+  fold.addEventListener('click', () => {
+    const open = fold.getAttribute('aria-expanded') !== 'true';
+    fold.setAttribute('aria-expanded', open ? 'true' : 'false');
+    dock.classList.toggle('closed', !open);
+    fit();
+  });
+
+  // ── Auto: the whole story, one article after the other, until stopped ────
+  const autoButton = document.querySelector('.cache-auto');
+  let auto = false;
+  let round = 0;          // one run at a time: a run stopped and started again is a new round
+  const wait = (ms) => new Promise((go) => setTimeout(go, ms));
+  const tell = (key, n) => {
+    story.textContent = w.story[key].replace('%s', n);
+  };
+  const step = async (id, key, n, job) => {
+    if (!auto || id !== round) {
+      return;
+    }
+    tell(key, n);
+    await job();
+    await queue;
+    await film;
+    await wait(still ? 1600 : 900);
+  };
+  const run = async (id) => {
+    const s2 = (key, n, job) => step(id, key, n, job);
+    for (let n = Number(article.value); auto && id === round; n = n % 5 + 1) {
+      article.value = String(n);
+      const page = '/magazin/' + n;
+      await s2('publish', n, () => post('/__cache/publish', 'n=' + n, page + ', /magazin', () => empty(n)));
+      await s2('visit1', n, () => load(page));
+      await s2('visit2', n, () => load(page));
+      await s2('campaign', n, () => load(page + '?utm_source=newsletter&utm_campaign=auto'));
+      await s2('memberA', n, () => load(page, 'A'));
+      await s2('memberB1', n, () => load('/magazin', 'B'));
+      await s2('memberB2', n, () => load(page, 'B'));
+      await s2('editor1', n, () => load(page, 'E'));
+      await s2('editor2', n, () => load(page, 'E'));
+      await s2('scan', n, () => Promise.all(scan().map((u) => load(u, '', w.bot))));
+      await s2('republish', n, () => post('/__cache/publish', 'n=' + n, page + ', /magazin', () => empty(n)));
+      await s2('visit3', n, () => load(page));
+      await s2('visit4', n, () => load(page));
+    }
+  };
+  const setAuto = (on) => {
+    auto = on;
+    autoButton.setAttribute('aria-pressed', on ? 'true' : 'false');
+    autoButton.querySelector('span').textContent = on ? w.autoStop : w.auto;
+    autoButton.querySelector('i').className = 'bi ' + (on ? 'bi-stop-fill' : 'bi-play-fill');
+    document.querySelectorAll('.cache-manual').forEach((b) => {
+      b.disabled = on;
+    });
+    if (on) {
+      round++;
+      const id = round;
+      run(id).finally(() => {
+        if (id === round && auto) {
+          setAuto(false);
+        }
+      });
+    } else {
+      story.textContent = '';
+    }
+  };
+  autoButton.addEventListener('click', () => setAuto(!auto));
 })();

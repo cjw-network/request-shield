@@ -74,8 +74,15 @@ The parts below describe them; a card behaves the same wherever it stands.
   decides them in one request (one by one they would run into `SHOW-PACE`).
   A second website cannot be opened from this page, so nothing here is a
   real request to it.
-- **Cache** (`/cache`, its own page) -- first a picture for people who never
-  saw a cache: four stations (visitor, doorkeeper, shelf, kitchen) and a dot
+- **Cache** (`/cache`, its own page) -- the actions and the log docked at
+  the bottom, always at hand (the log about six lines high, drawn bigger or
+  smaller at its grip or with the arrow keys, remembered in the browser);
+  *Play it by itself* tells the whole story article after article --
+  publish, a visitor's miss and hit, a campaign link, members, an editor, a
+  bot's scan, publishing again -- until stopped. The picture has a switch,
+  *Plain* (default) or *Technical* (browser, request-shield, HTTP cache, PHP
+  application; each request's method, address, status, `X-RS-Cache` and
+  time). First a picture for people who never saw a cache: four stations (visitor, doorkeeper, shelf, kitchen) and a dot
   that travels them for every click -- green from the shelf, orange when the
   kitchen cooks and shelves the page, red when the doorkeeper refuses -- and
   the shelf, one slot per page and role (visitors, members, editors; as this

@@ -369,3 +369,32 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 @keyframes rs-slot-pop { 0% { transform: scale(1.5); } 100% { transform: scale(1); } }
 /* Nine entries in the menu: one line each (open from 1400 px on, the menu button below). */
 .navbar-nav .nav-link { white-space: nowrap; }
+/* The tab "Cache": the actions and the log docked at the bottom, the picture always in sight above. */
+.cache-hero { padding-top: 5.5rem !important; padding-bottom: 1rem !important; }
+.cache-stage { padding-top: 1rem !important; }
+.cache-flow { max-height: 170px; }
+.cache-shelf .slot { width: 22px; }
+.cache-dock-space { height: 46vh; }      /* until the script measures the dock */
+.cache-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1040; background: #1f2a44; color: #e2e8f0; box-shadow: 0 -6px 24px rgba(15, 23, 42, .25); padding: 10px 0 8px; }
+.cache-dock .form-select { background-color: #f8fafc; }
+.cache-dock .btn:disabled { opacity: .45; }
+.cache-dock-body { margin-top: 8px; }
+.cache-dock.closed .cache-dock-body { display: none; }
+.cache-dock.closed .cache-dock-toggle i { transform: rotate(180deg); }
+.cache-dock-log { height: 200px; overflow-y: auto; border-radius: 8px; }      /* the head and about seven lines; the grip draws it bigger or smaller */
+.cache-dock-log table { font-size: .82rem; }
+.cache-dock .cache-sum { color: #fff; font-weight: 700; font-size: .9rem; }
+.cache-story { font-weight: 800; color: var(--rs-mint-deeper); min-height: 1.5em; }
+.flow-detail { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; color: var(--rs-soft-ink); }
+@media (max-width: 767.98px) {
+  .cache-dock-actions { flex-wrap: nowrap !important; overflow-x: auto; padding-bottom: 4px; }
+  .cache-dock-actions .btn, .cache-dock-actions .form-select { flex: 0 0 auto; }
+  .cache-dock-log { height: 140px; }
+  .cache-hero .learn-lead { display: none; }
+  .cache-dock-space { height: 36vh; }
+}
+.cache-dock-grip { height: 12px; margin-top: -10px; cursor: ns-resize; touch-action: none; display: flex; justify-content: center; align-items: center; }
+.cache-dock-grip::before { content: ""; width: 48px; height: 4px; border-radius: 2px; background: #64748b; }
+.cache-dock-grip:hover::before, .cache-dock-grip:focus-visible::before { background: #e2e8f0; }
+.cache-dock-grip:focus-visible { outline: 2px solid var(--rs-mint); outline-offset: -2px; }
+.cache-dock-log tr.cache-purge td { background: #2b3a5a; color: #cbd5e1; font-style: italic; }

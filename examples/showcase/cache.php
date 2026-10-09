@@ -33,37 +33,53 @@ $rules = "set http-cache on\n"
     . "Shield::active()?->cacheContext('member', shared: true);";
 $client = ['words' => ['visitor' => $c['visitor'], 'member' => $c['member'], 'editor' => $c['editor'], 'bot' => $c['bot'], 'hit' => $c['hit'], 'miss' => $c['miss'], 'none' => $c['none'],
     'refused' => $c['refused'], 'notKept' => $c['notKept'], 'empty' => $c['empty'], 'sum' => $c['sum'], 'lang' => $lang,
-    'capHit' => $c['capHit'], 'capMiss' => $c['capMiss'], 'capRefused' => $c['capRefused'], 'capNotKept' => $c['capNotKept'], 'capPurge' => $c['capPurge'], 'capClear' => $c['capClear']]];
+    'capHit' => $c['capHit'], 'capMiss' => $c['capMiss'], 'capRefused' => $c['capRefused'], 'capNotKept' => $c['capNotKept'], 'capPurge' => $c['capPurge'], 'capClear' => $c['capClear'],
+    'auto' => $c['auto'], 'autoStop' => $c['autoStop'], 'story' => $c['story'], 'tech' => $c['tech']]];
 // The picture: four stations a request passes -- drawn for people who never saw a cache.
-$stations = [[80, '🙂', $c['stVisitor'], ''], [300, '🛡️', $c['stShield'], $c['stShieldSub']], [520, '🗄️', $c['stCache'], $c['stCacheSub']], [740, '🍳', $c['stApp'], $c['stAppSub']]];
+// Each in two words: plain (a doorkeeper, a shelf, a kitchen) and technical (an option, for developers).
+$x = $c['tech'];
+$stations = [[80, '🙂', '🌐', $c['stVisitor'], '', $x['stVisitor'], $x['stVisitorSub']], [300, '🛡️', '🛡️', $c['stShield'], $c['stShieldSub'], $x['stShield'], $x['stShieldSub']],
+    [520, '🗄️', '💾', $c['stCache'], $c['stCacheSub'], $x['stCache'], $x['stCacheSub']], [740, '🍳', '🐘', $c['stApp'], $c['stAppSub'], $x['stApp'], $x['stAppSub']]];
+$both = static fn (string $plain, string $tech): string => ' data-plain="' . $e($plain) . '" data-tech="' . $e($tech) . '"';
 ?>
-<header id="top" class="hero learn-hero">
+<header id="top" class="hero learn-hero cache-hero">
   <div class="container">
-    <p class="eyebrow"><?= $e($c['eyebrow']) ?></p>
-    <h1 class="display-5 fw-bold"><?= $e($c['title']) ?></h1>
-    <p class="lead my-4 learn-lead"><?= $e($c['lead']) ?></p>
+    <h1 class="h3 fw-bold mb-1"><?= $e($c['title']) ?></h1>
+    <p class="mb-0 small learn-lead"><?= $e($c['lead']) ?></p>
   </div>
 </header>
 
-<section id="picture" class="section">
+<section id="picture" class="section cache-stage">
   <div class="container">
-    <div class="section-head"><h2><?= $e($c['graphTitle']) ?></h2><p class="lead"><?= $e($c['graphLead']) ?></p></div>
     <div class="learn-panel cache-picture">
-      <svg class="cache-flow" viewBox="0 0 820 190" role="img" aria-labelledby="flow-title">
+      <div class="d-flex flex-wrap align-items-start gap-2 mb-2">
+        <p class="small text-secondary mb-0 flex-grow-1"><?= $e($c['graphLead']) ?></p>
+        <div class="btn-group btn-group-sm cache-view" role="group" aria-label="<?= $e($c['view']) ?>">
+          <button type="button" class="btn btn-dark" data-view="plain" aria-pressed="true"><?= $e($c['viewPlain']) ?></button>
+          <button type="button" class="btn btn-outline-dark" data-view="tech" aria-pressed="false"><i class="bi bi-code-slash" aria-hidden="true"></i> <?= $e($c['viewTech']) ?></button>
+        </div>
+      </div>
+      <p class="cache-story mb-1" aria-live="polite"></p>
+      <div class="row g-3 align-items-start">
+      <div class="col-xl-8">
+      <svg class="cache-flow" viewBox="0 0 820 150" role="img" aria-labelledby="flow-title">
         <title id="flow-title"><?= $e($c['graphLead']) ?></title>
-        <line x1="80" y1="80" x2="740" y2="80" class="flow-line"/>
-        <?php foreach ($stations as $i => [$x, $icon, $name, $sub]): ?>
+        <line x1="80" y1="56" x2="740" y2="56" class="flow-line"/>
+        <?php foreach ($stations as $i => [$cx, $icon, $iconT, $name, $sub, $nameT, $subT]): ?>
         <g class="flow-station" data-station="<?= $i ?>">
-          <circle cx="<?= $x ?>" cy="80" r="38" class="flow-node"/>
-          <text x="<?= $x ?>" y="92" text-anchor="middle" class="flow-icon" aria-hidden="true"><?= $icon ?></text>
-          <text x="<?= $x ?>" y="144" text-anchor="middle" class="flow-name"><?= $e($name) ?></text>
-          <text x="<?= $x ?>" y="164" text-anchor="middle" class="flow-sub"><?= $e($sub) ?></text>
+          <circle cx="<?= $cx ?>" cy="56" r="34" class="flow-node"/>
+          <text x="<?= $cx ?>" y="67" text-anchor="middle" class="flow-icon" aria-hidden="true"<?= $both($icon, $iconT) ?>><?= $icon ?></text>
+          <text x="<?= $cx ?>" y="118" text-anchor="middle" class="flow-name"<?= $both($name, $nameT) ?>><?= $e($name) ?></text>
+          <text x="<?= $cx ?>" y="138" text-anchor="middle" class="flow-sub"<?= $both($sub, $subT) ?>><?= $e($sub) ?></text>
         </g>
         <?php endforeach ?>
-        <circle class="flow-dot" cx="80" cy="80" r="11"/>
+        <circle class="flow-dot" cx="80" cy="56" r="11"/>
       </svg>
-      <p class="flow-caption mb-3" aria-live="polite"></p>
-      <h3 class="h6 text-uppercase learn-sub"><?= $e($c['shelf']) ?></h3>
+      <p class="flow-caption mb-1" aria-live="polite"></p>
+      <p class="flow-detail mb-0" hidden></p>
+      </div>
+      <div class="col-xl-4">
+      <h3 class="h6 text-uppercase learn-sub"<?= $both($c['shelf'], $x['shelf']) ?>><?= $e($c['shelf']) ?></h3>
       <div class="table-responsive">
         <table class="table table-sm cache-shelf align-middle mb-0">
           <thead><tr><th scope="col"></th><th scope="col"><?= $e($c['overview']) ?></th><?php for ($i = 1; $i <= 5; $i++): ?><th scope="col"><?= $i ?></th><?php endfor ?></tr></thead>
@@ -74,34 +90,7 @@ $stations = [[80, '🙂', $c['stVisitor'], ''], [300, '🛡️', $c['stShield'],
           </tbody>
         </table>
       </div>
-    </div>
-  </div>
-</section>
-
-<section id="live" class="section section-alt">
-  <div class="container">
-    <div class="learn-panel">
-      <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-        <label class="visually-hidden" for="cache-article"><?= $e($c['article']) ?></label>
-        <select id="cache-article" class="form-select w-auto cache-article">
-          <?php for ($i = 1; $i <= 5; $i++): ?><option value="<?= $i ?>"><?= $e($c['article']) ?> <?= $i ?></option><?php endfor ?>
-        </select>
-        <button type="button" class="btn btn-accent cache-load"><i class="bi bi-arrow-down-circle" aria-hidden="true"></i> <?= $e($c['load']) ?></button>
-        <button type="button" class="btn btn-soft cache-member" data-member="A"><i class="bi bi-person" aria-hidden="true"></i> <?= $e(sprintf($c['member'], 'A')) ?></button>
-        <button type="button" class="btn btn-soft cache-member" data-member="B"><i class="bi bi-person" aria-hidden="true"></i> <?= $e(sprintf($c['member'], 'B')) ?></button>
-        <button type="button" class="btn btn-soft cache-member" data-member="E"><i class="bi bi-pencil-square" aria-hidden="true"></i> <?= $e($c['editor']) ?></button>
-        <button type="button" class="btn btn-soft cache-campaign"><i class="bi bi-megaphone" aria-hidden="true"></i> <?= $e($c['campaign']) ?></button>
-        <button type="button" class="btn btn-soft cache-list"><i class="bi bi-house" aria-hidden="true"></i> <?= $e($c['list']) ?></button>
-        <button type="button" class="btn btn-soft cache-scan"><i class="bi bi-bug" aria-hidden="true"></i> <?= $e($c['scan']) ?></button>
-        <button type="button" class="btn btn-dark cache-publish ms-lg-auto"><i class="bi bi-send" aria-hidden="true"></i> <?= $e($c['publish']) ?></button>
-        <button type="button" class="btn btn-outline-dark cache-clear"><i class="bi bi-trash" aria-hidden="true"></i> <?= $e($c['clear']) ?></button>
       </div>
-      <p class="cache-sum fw-bold mb-3" role="status" aria-live="polite"></p>
-      <div class="table-responsive">
-        <table class="table table-sm learn-table align-middle">
-          <thead><tr><?php foreach ($c['cols'] as $col): ?><th scope="col"><?= $e($col) ?></th><?php endforeach ?></tr></thead>
-          <tbody class="cache-rows"><tr class="cache-empty"><td colspan="4"><?= $e($c['empty']) ?></td></tr></tbody>
-        </table>
       </div>
     </div>
   </div>
@@ -130,6 +119,39 @@ $stations = [[80, '🙂', $c['stVisitor'], ''], [300, '🛡️', $c['stShield'],
     <?php endif ?>
   </div>
 </section>
+
+<div class="cache-dock-space" aria-hidden="true"></div>
+<aside class="cache-dock" aria-label="<?= $e($c['dock']) ?>">
+  <div class="cache-dock-grip" role="separator" aria-orientation="horizontal" aria-controls="cache-dock-body" aria-label="<?= $e($c['dockSize']) ?>" title="<?= $e($c['dockSize']) ?>" tabindex="0"></div>
+  <div class="container-fluid">
+    <div class="cache-dock-actions d-flex flex-wrap gap-2 align-items-center">
+      <button type="button" class="btn btn-accent cache-auto" aria-pressed="false"><i class="bi bi-play-fill" aria-hidden="true"></i> <span><?= $e($c['auto']) ?></span></button>
+      <label class="visually-hidden" for="cache-article"><?= $e($c['article']) ?></label>
+      <select id="cache-article" class="form-select form-select-sm w-auto cache-article cache-manual">
+        <?php for ($i = 1; $i <= 5; $i++): ?><option value="<?= $i ?>"><?= $e($c['article']) ?> <?= $i ?></option><?php endfor ?>
+      </select>
+      <button type="button" class="btn btn-sm btn-light cache-load cache-manual"><i class="bi bi-person-walking" aria-hidden="true"></i> <?= $e($c['load']) ?></button>
+      <button type="button" class="btn btn-sm btn-light cache-member cache-manual" data-member="A"><i class="bi bi-person" aria-hidden="true"></i> <?= $e(sprintf($c['member'], 'A')) ?></button>
+      <button type="button" class="btn btn-sm btn-light cache-member cache-manual" data-member="B"><i class="bi bi-person" aria-hidden="true"></i> <?= $e(sprintf($c['member'], 'B')) ?></button>
+      <button type="button" class="btn btn-sm btn-light cache-member cache-manual" data-member="E"><i class="bi bi-pencil-square" aria-hidden="true"></i> <?= $e($c['editor']) ?></button>
+      <button type="button" class="btn btn-sm btn-light cache-campaign cache-manual"><i class="bi bi-megaphone" aria-hidden="true"></i> <?= $e($c['campaign']) ?></button>
+      <button type="button" class="btn btn-sm btn-light cache-list cache-manual"><i class="bi bi-house" aria-hidden="true"></i> <?= $e($c['list']) ?></button>
+      <button type="button" class="btn btn-sm btn-light cache-scan cache-manual"><i class="bi bi-bug" aria-hidden="true"></i> <?= $e($c['scan']) ?></button>
+      <button type="button" class="btn btn-sm btn-warning cache-publish cache-manual"><i class="bi bi-send" aria-hidden="true"></i> <?= $e($c['publish']) ?></button>
+      <button type="button" class="btn btn-sm btn-outline-light cache-clear cache-manual"><i class="bi bi-trash" aria-hidden="true"></i> <?= $e($c['clear']) ?></button>
+      <button type="button" class="btn btn-sm btn-link text-light ms-auto cache-dock-toggle" aria-expanded="true" aria-controls="cache-dock-body" title="<?= $e($c['dockLog']) ?>" aria-label="<?= $e($c['dockLog']) ?>"><i class="bi bi-chevron-down" aria-hidden="true"></i></button>
+    </div>
+    <div class="cache-dock-body" id="cache-dock-body">
+      <p class="cache-sum mb-1" role="status" aria-live="polite"></p>
+      <div class="cache-dock-log">
+        <table class="table table-sm table-dark mb-0">
+          <thead><tr><?php foreach ($c['cols'] as $col): ?><th scope="col"><?= $e($col) ?></th><?php endforeach ?></tr></thead>
+          <tbody class="cache-rows"><tr class="cache-empty"><td colspan="4"><?= $e($c['empty']) ?></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</aside>
 
 <footer class="footer"><div class="container text-center small"><?= $e($t['footer']) ?>
   <p class="ai-note mb-0 mt-2"><i class="bi bi-stars" aria-hidden="true"></i> <?= $e($t['aiNote']) ?></p></div></footer>
