@@ -201,11 +201,7 @@ final class Request
                 continue;
             }
             $kv = explode('=', $pair, 2);
-            $name = urldecode($kv[0]);
-            $nul = strpos($name, "\0");
-            if ($nul !== false) {
-                $name = substr($name, 0, $nul);         // as PHP: the name ends at a NUL byte (page%00x is page), before any "["
-            }
+            $name = urldecode($kv[0]);          // as sent: page%00x is no "page" here (unknown, scanned) -- phpKey() has PHP's key
             $bracket = strpos($name, '[');
             // As PHP: "a[b]" is "a"; a "[" with no "]" after it is no array ("a[b" is the name "a_b", phpName()).
             $array = $bracket !== false && $bracket > 0 && strpos($name, ']', $bracket) !== false;

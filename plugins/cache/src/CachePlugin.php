@@ -849,8 +849,20 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
      */
     private static function plainAddress(Request $request): bool
     {
-        $names = $request->queryNames();
-        return count($names) === count(array_unique($names)) && preg_match('/%(2f|3f|23)/i', $request->path) !== 1;
+        if (preg_match('/%(2f|3f|23)/i', $request->path) === 1) {
+            return false;
+        }
+        // One key in $_GET for every pair, by PHP's own parser: two spellings of one name (page and " page",
+        // page=1&page=2 in either order) or a name PHP drops (one nested too deep can remove another) are no address.
+        $keys = [];
+        foreach ($request->queryPairs() as [, , $raw]) {
+            $key = strpbrk($raw, '[%+. ') === false ? explode('=', $raw, 2)[0] : Request::phpKey($raw);
+            if ($key === '' || isset($keys[$key])) {
+                return false;
+            }
+            $keys[$key] = true;
+        }
+        return true;
     }
 
     /**

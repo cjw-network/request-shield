@@ -107,9 +107,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   goes as a whole, as PHP's own parser reads it (`page%00x` and ` page`
   are `$_GET['page']`, `items[per[page` is `items_per_page`), so the
   application, the query and the cache key never disagree -- `cache-ignore`
-  too, which before matched some of these spellings under another name. A
-  request with more parameters than PHP reads (`max_input_vars`) is never
-  kept by a cache. Settings `FORMAT` 66. The showcase's magazine uses
+  too, which before matched some of these spellings under another name.
+  When something goes, `$_GET` and `$_REQUEST` are PHP's own reading of the
+  query that is left. The HTTP cache keeps no address whose names PHP folds
+  together, reads twice (`page=1&page=2`) or drops; a request with more
+  parameters than PHP reads (`max_input_vars`), or with a separator PHP
+  splits on besides `&` (`arg_separator.input`), is never kept. A name with
+  brackets or encoded bytes is always scanned by the attack rules. Settings `FORMAT` 66. The showcase's magazine uses
   it: a bot's made-up parameters get the kept page.
 - **Every plugin is a Composer package of its own** (0031 step H.1):
   `plugins/api`, `plugins/waf`, `plugins/stats` and `plugins/cache` each

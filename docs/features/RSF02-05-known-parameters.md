@@ -64,7 +64,11 @@ query drop at /shop/**            # the same, written with "at"
 - **A name goes as a whole**, as PHP reads it -- asked of PHP's own
   parser: `page%00x`, ` page` and `page` are all `$_GET['page']`,
   `items[per[page` is `items_per_page` -- when one of them is left out, all
-  go, so the application, the query and the cache key never disagree.
+  go. `$_GET` and `$_REQUEST` are then PHP's own reading of the query that
+  is left, so the application, the query and the cache key never disagree.
+- A name PHP reads otherwise than it is written (`page%00x`) is no known
+  name: unknown, and scanned. A name with brackets or encoded bytes
+  (`page[<x>]`) is always scanned.
 - Under `set mode monitor` nothing is left out: the mode only watches.
 
 ## Use cases

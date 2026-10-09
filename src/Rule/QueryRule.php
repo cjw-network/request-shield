@@ -101,8 +101,8 @@ final class QueryRule implements Rule
                 $scan[] = $raw;             // unknown, or not of its type: scanned, name and all
                 continue;
             }
-            if ($type === 'text') {
-                $scan[] = $raw;
+            if ($type === 'text' || strcspn($raw, '[%=') < strcspn($raw, '=')) {
+                $scan[] = $raw;             // free text, or a name with brackets or encoded bytes (page[<x>]=1): scanned as it stands
             }
         }
         // What the attack patterns get to see of the query: only the pairs that

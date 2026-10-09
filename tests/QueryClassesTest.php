@@ -135,6 +135,19 @@ return [
             same([[], '', '/magazin/2'], [$page['get'] ?? null, $page['qs'] ?? null, $page['uri'] ?? null], '" page": page goes as a whole');
             [, $cache, $page] = $get('/magazin/2?page=2');
             truthy($cache !== 'hit' && ($page['get'] ?? null) === ['page' => '2'], 'page 2 is its own, not what the tricks left (' . $cache . ')');
+            // Whatever the spelling: the application's $_GET is PHP's reading of the query that is left (and of the
+            // cache key), and the plain address a victim asks for is never answered with a page the trick made.
+            $deep = '/magazin/4?page=2&+page' . str_repeat('[a]', 70) . '=1';
+            foreach (['/magazin/4?page=2&%20page=x', '/magazin/4?page=2&page%00x=hello', '/magazin/4?items_per_page=10&items[per[page=9',
+                $deep, '/magazin/4?page=2&page[%00]=1', '/magazin/4?page=1&page=2', '/magazin/4?page=2&page[]=3', '/magazin/4?page=2&x=1&page%2e=7'] as $trick) {
+                [, , $page] = $get($trick);
+                parse_str((string) ($page['qs'] ?? ''), $read);
+                same($read, $page['get'] ?? null, "the application reads the query that is left: $trick");
+            }
+            foreach (['/magazin/4?page=2' => ['page' => '2'], '/magazin/4?items_per_page=10' => ['items_per_page' => '10'], '/magazin/4?page=1' => ['page' => '1']] as $plain => $want) {
+                [, $cache, $page] = $get($plain);
+                same($want, $page['get'] ?? null, "$plain is its own page ($cache)");
+            }
             // A spelling PHP folds further: items[per[page is $_GET['items_per_page'].
             [, , $page] = $get('/magazin/3?items_per_page=10&items[per[page=999');
             same([[], ''], [$page['get'] ?? null, $page['qs'] ?? null], 'items[per[page: items_per_page goes as a whole');

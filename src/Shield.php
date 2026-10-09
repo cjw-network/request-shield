@@ -351,18 +351,20 @@ final class Shield
             $_SERVER['QUERY_STRING'] = $query;
             $_SERVER['REQUEST_URI'] = $path . ($query === '' ? '' : '?' . $query);
             $_SERVER['REQUEST_SHIELD_IGNORED'] = (string) json_encode($gone, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-            // $_REQUEST as PHP would have made it without them: from the sources request_order names, the later winning.
-            $order = strtoupper((string) (ini_get('request_order') ?: ini_get('variables_order')));
-            foreach (array_keys($gone) as $name) {
-                unset($_GET[$name], $_REQUEST[$name]);
-                foreach (str_split($order) as $source) {
-                    if ($source === 'P' && isset($_POST[$name])) {
-                        $_REQUEST[$name] = $_POST[$name];
-                    } elseif ($source === 'C' && isset($_COOKIE[$name])) {
-                        $_REQUEST[$name] = $_COOKIE[$name];
-                    }
+            // $_GET is what PHP's own parser makes of the query that is left -- not the old one with names
+            // taken out: whatever PHP does with a name (folds it, drops it, lets a too deep one remove another),
+            // the application reads exactly the query the cache key is made of.
+            parse_str($query, $get);
+            $_GET = $get;
+            // $_REQUEST as PHP makes it: the sources request_order names, the later winning.
+            $merged = [];
+            foreach (str_split(strtoupper((string) (ini_get('request_order') ?: ini_get('variables_order')))) as $source) {
+                $from = $source === 'G' ? $_GET : ($source === 'P' ? $_POST : ($source === 'C' ? $_COOKIE : []));
+                foreach ($from as $k => $v) {
+                    $merged[$k] = $v;
                 }
             }
+            $_REQUEST = $merged;
             /** @var array<string, mixed> $server */
             $server = $_SERVER;
             $request = Request::fromServer($server, $s->trustedProxies);

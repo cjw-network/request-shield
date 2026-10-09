@@ -183,14 +183,28 @@ return [
                 parse_str($n . '=1', $php);
                 $want = (string) array_key_first($php);
                 $r = Request::fromServer(['REQUEST_URI' => '/x?' . $n . '=1', 'REQUEST_METHOD' => 'GET', 'HTTP_HOST' => 'www.example.org', 'REMOTE_ADDR' => '203.0.113.7']);
-                foreach ($r->queryPairs() as [$name, , $raw]) {
-                    same($want, Request::phpKey($raw), "phpKey of \"$n\"");
-                    if (strpos($n, ']') === false) {        // an array name's brackets are queryPairs()' to cut
+                foreach ($r->queryPairs() as [$name]) {
+                    if (strpos($n, ']') === false && strpos($n, '%00') === false) {        // an array name's brackets are queryPairs()' to cut; a NUL is kept there (unknown, scanned)
                         same($want, Request::phpName($name), "phpName of \"$n\"");
                     }
                 }
             }
         }
+    },
+    'RSF02-05 a name PHP reads otherwise is no known name: page%00x and page[x] are scanned, strict refuses page%00x' => function (): void {
+        $s = querySettings("block query rsmarker\nquery page int\nquery strict\n");
+        same([Decision::REJECT, 404], array_slice(queryDecide($s, '/list?page%00rsmarker=1'), 0, 2), 'page%00…: not "page" -- unknown');
+        same([Decision::REJECT, 403], array_slice(queryDecide($s, '/list?page[rsmarker]=1'), 0, 2), 'page[…]: the brackets are scanned');
+        $d = querySettings("block query rsmarker\nquery page int\nquery drop\n");
+        same([Decision::REJECT, 403], array_slice(queryDecide($d, '/list?page%00rsmarker=1'), 0, 2), 'dropped, and scanned all the same');
+        same(Decision::ALLOW, queryDecide($d, '/list?page[1]=2')[0], 'harmless brackets pass');
+    },
+    'RSF04-01 PHP splitting the query on another separator too (arg_separator.input): never kept' => function (): void {
+        $code = 'require ' . var_export(rsEntry(), true) . ';'
+            . '$r = \\CjwNetwork\\RequestShield\\Request::fromServer(["REQUEST_URI" => "/x?page=2;evil=1", "REQUEST_METHOD" => "GET", "HTTP_HOST" => "www.example.org", "REMOTE_ADDR" => "203.0.113.7"]);'
+            . '$d = (new \\CjwNetwork\\RequestShield\\Rule\\CacheableRule(null, null))->check($r, 1.0); echo $d === null ? "kept" : $d->reason;';
+        same('query separator', trim((string) shell_exec(escapeshellarg(PHP_BINARY) . ' -d ' . escapeshellarg('arg_separator.input=&;') . ' -r ' . escapeshellarg($code) . ' 2>&1')), 'PHP splits on ";" too');
+        same('kept', trim((string) shell_exec(escapeshellarg(PHP_BINARY) . ' -d arg_separator.input=\& -r ' . escapeshellarg($code) . ' 2>&1')), 'only "&": ";" is part of a value');
     },
     'RSF04-01 more parameters than PHP reads (max_input_vars): never kept -- $_GET would hold fewer than the query' => function (): void {
         $code = 'require ' . var_export(rsEntry(), true) . ';'
