@@ -404,6 +404,8 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .cache-dock .cache-sum { color: var(--rs-soft-ink); font-weight: 700; font-size: .85rem; }
 .cache-dock.closed .cache-dock-body { display: none; }
 .cache-dock.closed .cache-dock-toggle i { transform: rotate(180deg); }
+/* Docked at the bottom the dock is for working: no introduction there (embedded, it is read once). */
+.cache-dock.docked .cache-dock-intro { display: none; }
 .cache-dock-log { height: 200px; overflow: auto; border: 1px solid var(--rs-line); border-radius: 12px; background: var(--rs-paper); }
 .cache-dock-log table { font-size: .82rem; margin: 0; }
 .cache-dock-log thead th { position: sticky; top: 0; background: #f5f7fb; color: var(--rs-soft-ink); font-weight: 700; border-bottom: 1px solid var(--rs-line); white-space: nowrap; }

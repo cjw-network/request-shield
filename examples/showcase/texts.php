@@ -118,6 +118,8 @@ return [
                 'capNotKept' => 'Beantwortet, nicht gespeichert: ein Parameter außerhalb von cache-query (hit-only) oder no-store.',
                 'capPurge' => 'Shield::active()?->purge([\'article-N\', \'magazin-list\']): Die Antworten mit diesen Tags sind veraltet.',
                 'capClear' => 'Shield::active()?->purge([\'*\']): alles veraltet.'],
+            'tryTitle' => 'Selbst testen',
+            'tryLead' => 'Hier lässt sich der HTTP-Cache mit echten Anfragen ausprobieren — in verschiedenen Rollen: als Besucher, als Mitglied A oder B, als Redakteur, mit Kampagnen-Link oder als Bot. Jede Rolle hat ihre eigene Reihe im Regal: Mitglieder teilen sich eine Seite, Redakteure bekommen nie die der anderen. „Artikel veröffentlichen“ leert die Fächer eines Artikels; „Automatisch abspielen“ zeigt alles der Reihe nach.',
             'auto' => 'Automatisch abspielen', 'autoStop' => 'Anhalten', 'dock' => 'Aktionen und Protokoll', 'dockLog' => 'Protokoll ein-/ausblenden', 'dockSize' => 'Protokoll größer oder kleiner ziehen (oder Pfeiltasten)', 'dockPin' => 'Unten andocken', 'dockUnpin' => 'Unter der Grafik einbetten',
             'story' => [
                 'publish' => 'Los geht\'s: Artikel %s ist frisch veröffentlicht, sein Fach ist leer.',
@@ -494,6 +496,8 @@ return [
                 'capNotKept' => 'Answered, not kept: a parameter outside cache-query (hit-only), or no-store.',
                 'capPurge' => 'Shield::active()?->purge([\'article-N\', \'magazin-list\']): the answers with these tags are out of date.',
                 'capClear' => 'Shield::active()?->purge([\'*\']): everything out of date.'],
+            'tryTitle' => 'Try it yourself',
+            'tryLead' => 'Test the HTTP cache here with real requests — in different roles: as a visitor, as member A or B, as an editor, with a campaign link or as a bot. Each role has its own row on the shelf: members share one page, editors never get anyone else\'s. “Publish article” empties an article\'s slots; “Play it by itself” shows everything in turn.',
             'auto' => 'Play it by itself', 'autoStop' => 'Stop', 'dock' => 'Actions and log', 'dockLog' => 'Show or hide the log', 'dockSize' => 'Drag the log bigger or smaller (or use the arrow keys)', 'dockPin' => 'Dock at the bottom', 'dockUnpin' => 'Embed below the picture',
             'story' => [
                 'publish' => 'Here we go: article %s was just published, its slot is empty.',

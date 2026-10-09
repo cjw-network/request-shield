@@ -100,6 +100,10 @@ $both = static fn (string $plain, string $tech): string => ' data-plain="' . $e(
   <div class="container">
 <aside class="cache-dock" aria-label="<?= $e($c['dock']) ?>">
   <div class="container-fluid">
+    <div class="cache-dock-intro">
+      <h2 class="h6 fw-bold mb-1"><i class="bi bi-hand-index" aria-hidden="true"></i> <?= $e($c['tryTitle']) ?></h2>
+      <p class="small text-secondary mb-2"><?= $e($c['tryLead']) ?></p>
+    </div>
     <div class="cache-dock-actions d-flex flex-wrap gap-2 align-items-center">
       <button type="button" class="btn btn-accent cache-auto" aria-pressed="false"><i class="bi bi-play-fill" aria-hidden="true"></i> <span><?= $e($c['auto']) ?></span></button>
       <label class="visually-hidden" for="cache-article"><?= $e($c['article']) ?></label>
