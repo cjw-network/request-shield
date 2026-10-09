@@ -118,7 +118,7 @@ return [
                 'capNotKept' => 'Beantwortet, nicht gespeichert: ein Parameter außerhalb von cache-query (hit-only) oder no-store.',
                 'capPurge' => 'Shield::active()?->purge([\'article-N\', \'magazin-list\']): Die Antworten mit diesen Tags sind veraltet.',
                 'capClear' => 'Shield::active()?->purge([\'*\']): alles veraltet.'],
-            'auto' => 'Automatisch abspielen', 'autoStop' => 'Anhalten', 'dock' => 'Aktionen und Protokoll', 'dockLog' => 'Protokoll ein-/ausblenden', 'dockSize' => 'Protokoll größer oder kleiner ziehen (oder Pfeiltasten)',
+            'auto' => 'Automatisch abspielen', 'autoStop' => 'Anhalten', 'dock' => 'Aktionen und Protokoll', 'dockLog' => 'Protokoll ein-/ausblenden', 'dockSize' => 'Protokoll größer oder kleiner ziehen (oder Pfeiltasten)', 'dockPin' => 'Unten andocken', 'dockUnpin' => 'Unter der Grafik einbetten',
             'story' => [
                 'publish' => 'Los geht\'s: Artikel %s ist frisch veröffentlicht, sein Fach ist leer.',
                 'visit1' => 'Ein Besucher öffnet Artikel %s: Die Küche kocht, die Seite kommt ins Regal.',
@@ -494,7 +494,7 @@ return [
                 'capNotKept' => 'Answered, not kept: a parameter outside cache-query (hit-only), or no-store.',
                 'capPurge' => 'Shield::active()?->purge([\'article-N\', \'magazin-list\']): the answers with these tags are out of date.',
                 'capClear' => 'Shield::active()?->purge([\'*\']): everything out of date.'],
-            'auto' => 'Play it by itself', 'autoStop' => 'Stop', 'dock' => 'Actions and log', 'dockLog' => 'Show or hide the log', 'dockSize' => 'Drag the log bigger or smaller (or use the arrow keys)',
+            'auto' => 'Play it by itself', 'autoStop' => 'Stop', 'dock' => 'Actions and log', 'dockLog' => 'Show or hide the log', 'dockSize' => 'Drag the log bigger or smaller (or use the arrow keys)', 'dockPin' => 'Dock at the bottom', 'dockUnpin' => 'Embed below the picture',
             'story' => [
                 'publish' => 'Here we go: article %s was just published, its slot is empty.',
                 'visit1' => 'A visitor opens article %s: the kitchen cooks, the page goes onto the shelf.',

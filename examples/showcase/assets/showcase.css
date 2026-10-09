@@ -371,25 +371,27 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .navbar-nav .nav-link { white-space: nowrap; }
 /* The tab "Cache": the actions and the log docked at the bottom, the picture always in sight above. */
 .cache-hero { padding-top: 5.5rem !important; padding-bottom: 1rem !important; }
-.cache-stage { padding-top: 1rem !important; }
+.cache-stage { padding-top: 1rem !important; padding-bottom: 1rem !important; }
 .cache-flow { max-height: 170px; }
 .cache-shelf .slot { width: 22px; }
-.cache-dock-space { height: 46vh; }      /* until the script measures the dock */
+.cache-dock-space { height: 0; }      /* the docked dock's height, set by the script */
 .cache-story { font-weight: 800; color: var(--rs-mint-deeper); min-height: 1.5em; }
 .flow-detail { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; color: var(--rs-soft-ink); }
 @media (max-width: 767.98px) {
   .cache-dock-actions { flex-wrap: nowrap !important; overflow-x: auto; padding-bottom: 4px; }
   .cache-dock-actions .btn, .cache-dock-actions .form-select { flex: 0 0 auto; }
-  .cache-dock-log { height: 140px; }
   .cache-hero .learn-lead { display: none; }
-  .cache-dock-space { height: 36vh; }
 }
 .cache-dock-grip { height: 12px; margin-top: -10px; cursor: ns-resize; touch-action: none; display: flex; justify-content: center; align-items: center; }
 .cache-dock-grip:focus-visible { outline: 2px solid var(--rs-mint); outline-offset: -2px; }
 
 /* The dock: friendly -- light, rounded, the newest line at the bottom; the technical columns only in the technical view. */
-.cache-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1040; background: #fff; color: var(--rs-ink); border-top: 1px solid var(--rs-line);
-  border-radius: 18px 18px 0 0; box-shadow: 0 -10px 30px rgba(31, 42, 68, .12); padding: 10px 0 10px; }
+.cache-dock-home { padding: 0 0 2rem; }
+.cache-dock { position: relative; background: #fff; color: var(--rs-ink); border: 1px solid var(--rs-line); border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(31, 42, 68, .06); padding: 14px 4px 10px; }
+/* Docked (the visitor's choice): fixed at the bottom, the page scrolls behind it. */
+.cache-dock.docked { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1040; border-width: 1px 0 0; border-radius: 18px 18px 0 0;
+  box-shadow: 0 -10px 30px rgba(31, 42, 68, .12); padding: 10px 0 10px; }
 .cache-dock .btn:disabled { opacity: .45; }
 .cache-dock-body { margin-top: 10px; }
 .cache-dock-head { margin: 0 2px 6px; }
@@ -407,7 +409,7 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .cache-dock-log .when { color: var(--rs-soft-ink); white-space: nowrap; }
 .cache-dock .tech-col { display: none; }
 .cache-dock.tech .tech-col { display: table-cell; white-space: nowrap; }
-.pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-weight: 700; font-size: .75rem; white-space: nowrap; }
+.cache-dock-log .pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-weight: 700; font-size: .75rem; white-space: nowrap; }
 .pill-hit { background: var(--rs-mint-bg); color: var(--rs-mint-deeper); }
 .pill-miss { background: var(--rs-sun-bg); color: #8a5a00; }
 .pill-refused { background: var(--rs-coral-bg); color: #b4322c; }

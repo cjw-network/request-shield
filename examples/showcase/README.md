@@ -74,9 +74,10 @@ The parts below describe them; a card behaves the same wherever it stands.
   decides them in one request (one by one they would run into `SHOW-PACE`).
   A second website cannot be opened from this page, so nothing here is a
   real request to it.
-- **Cache** (`/cache`, its own page) -- the actions and the log docked at
-  the bottom, always at hand (the log about six lines high, drawn bigger or
-  smaller at its grip or with the arrow keys, remembered in the browser);
+- **Cache** (`/cache`, its own page) -- the actions and the log right below
+  the picture, scrolling with the page (*Dock at the bottom* fixes them
+  there, remembered in the browser); the log about six lines high, newest at
+  the bottom, drawn bigger or smaller at its grip or with the arrow keys;
   *Play it by itself* tells the whole story article after article --
   publish, a visitor's miss and hit, a campaign link, members, an editor, a
   bot's scan, publishing again -- until stopped. The picture has a switch,

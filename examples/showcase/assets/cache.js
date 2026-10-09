@@ -223,8 +223,23 @@
   const grip = document.querySelector('.cache-dock-grip');
   const space = document.querySelector('.cache-dock-space');
   const fit = () => {
-    space.style.height = dock.offsetHeight + 'px';      // the page ends above the dock, whatever its height
+    space.style.height = dock.classList.contains('docked') ? dock.offsetHeight + 'px' : '0';      // docked: the page ends above it
   };
+  // Below the picture by default (it scrolls with the page, next to what it is about); docked at the bottom on request.
+  const pin = document.querySelector('.cache-dock-pin');
+  const docked = (on) => {
+    dock.classList.toggle('docked', on);
+    pin.setAttribute('aria-pressed', on ? 'true' : 'false');
+    pin.querySelector('span').textContent = on ? w.dockUnpin : w.dockPin;
+    pin.querySelector('i').className = 'bi ' + (on ? 'bi-arrow-up-square' : 'bi-pin-angle');
+    try {
+      localStorage.setItem('rs-cache-dock', on ? 'docked' : 'embedded');
+    } catch (e) {
+      // no storage: the choice lasts for this page
+    }
+    fit();
+  };
+  pin.addEventListener('click', () => docked(!dock.classList.contains('docked')));
   const limits = () => {
     grip.setAttribute('aria-valuemin', '60');
     grip.setAttribute('aria-valuemax', String(Math.round(window.innerHeight * 0.7)));
@@ -283,7 +298,11 @@
     fit();
   });
   limits();
-  fit();
+  try {
+    docked(localStorage.getItem('rs-cache-dock') === 'docked');
+  } catch (e) {
+    docked(false);
+  }
 
   // ── The dock: its log can be folded away, the actions stay ───────────────
   const fold = document.querySelector('.cache-dock-toggle');
