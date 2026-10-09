@@ -165,8 +165,8 @@ build/showcase.php --out=showcase-site --host=showcase.example.org
 the library and the Exponential example in `lib/`, `var/` for what the
 shield keeps; nothing outside it is read or written.
 
-- **The host:** Apache that reads `.htaccess` (AllowOverride) with
-  mod_rewrite, a (sub)domain whose document root is the directory (not a
+- **The host:** Apache that reads `.htaccess` (AllowOverride; mod_rewrite
+  or, without it, mod_dir's FallbackResource), a (sub)domain whose document root is the directory (not a
   folder below a site), and PHP allowed to write in it (`var/` and the
   compiled settings in `.request-shield/`). `.htaccess` sends every address
   to `index.php`; `lib/`, `var/` and `.request-shield/` are never served.

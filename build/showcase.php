@@ -12,8 +12,8 @@
  * Exponential example it shows (lib/), and var/ for what the shield keeps;
  * nothing outside the directory is read or written. Upload it and point a
  * (sub)domain's document root at it: Apache with .htaccess (AllowOverride)
- * and mod_rewrite sends every address to index.php, lib/, var/ and
- * .request-shield/ are never served.
+ * sends every address to index.php (mod_rewrite, else FallbackResource),
+ * lib/, var/ and .request-shield/ are never served.
  *
  * On a public host "this machine" (127.0.0.1) may be the hoster's proxy in
  * front of every visitor, so the copy trusts no proxy, and what the
@@ -158,5 +158,5 @@ try {
     fwrite(STDERR, 'build/showcase.php: ' . $e->getMessage() . "\n");
     exit(1);
 }
-echo "build/showcase.php: written $out -- upload it, a (sub)domain's document root pointing at it (Apache, .htaccess and mod_rewrite);\n"
+echo "build/showcase.php: written $out -- upload it, a (sub)domain's document root pointing at it (Apache that reads .htaccess);\n"
     . "then check that https://<host>/var/secret is not served (403 or the showcase's 404)\n";
