@@ -34,7 +34,7 @@ const ROOT = __DIR__ . '/..';
 
 require ROOT . '/bootstrap.php';        // the command line: only loads the classes (RuleFile, below)
 
-/** Copies a directory -- not what the shield keeps next to a rule file, not var/, no link. */
+/** Copies a directory -- not what the shield keeps next to a rule file, not var/, not deploy.sh, no link. */
 function showcaseCopy(string $from, string $to): void
 {
     if (!is_dir($to) && !mkdir($to, 0755, true)) {
@@ -42,7 +42,8 @@ function showcaseCopy(string $from, string $to): void
     }
     foreach (scandir($from) ?: [] as $name) {
         $src = "$from/$name";
-        if ($name === '.' || $name === '..' || $name === '.request-shield' || $name === 'var' || is_link($src)) {
+        // deploy.sh is the server's tool for making this copy, not part of it.
+        if ($name === '.' || $name === '..' || $name === '.request-shield' || $name === 'var' || $name === 'deploy.sh' || is_link($src)) {
             continue;
         }
         if (is_dir($src)) {

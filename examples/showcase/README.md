@@ -163,7 +163,22 @@ goes to `var/` next to `showcase.rules` (`REQUEST_SHIELD_SHOWCASE_VAR`).
 build/showcase.php --out=showcase-site --host=showcase.example.org
 --admin=203.0.113.7` makes one directory that runs on its own -- the page,
 the library and the Exponential example in `lib/`, `var/` for what the
-shield keeps; nothing outside it is read or written.
+shield keeps; nothing outside it is read or written. (The repository's
+`examples/showcase/` itself loads the library from two folders up: on such
+a host, use the built copy.)
+
+**With a clone of this repository on the server (SSH):** `git pull && sh
+examples/showcase/deploy.sh <document root> --host=showcase.example.org
+--admin=203.0.113.7` builds the copy next to the document root folder,
+takes the running copy's `var/` over (the secret, statistics, cache, log),
+swaps the folders and keeps the one before as `<folder>.previous`. Later
+runs need no options: they are kept in `var/deploy.conf`. `--admin` takes
+several, comma-separated: for IPv6 the `/64` of your line (the last half of
+an IPv6 address changes now and then), for IPv4 the address --
+`--admin=2001:db8:1234:5600::/64,203.0.113.7`. The folder must
+be empty, missing or a copy the script made -- it never replaces another
+one, nor a link. A CLI PHP below 8.0: `PHP=/opt/plesk/php/8.3/bin/php sh
+examples/showcase/deploy.sh …`.
 
 - **The host:** Apache that reads `.htaccess` (AllowOverride; mod_rewrite
   or, without it, mod_dir's FallbackResource), a (sub)domain whose document root is the directory (not a

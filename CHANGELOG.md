@@ -98,6 +98,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **`examples/showcase/deploy.sh`: the showcase on a server in one
+  command** -- from a clone of the repository, after `git pull`: builds
+  the standalone copy, takes the running copy's `var/` over (secret,
+  statistics, cache), swaps the document root folder and keeps the one
+  before as `.previous`; `--host` and `--admin` are remembered. It never
+  replaces another folder or a link.
 - **The showcase as one directory for a public host** (`php
   build/showcase.php --out=<dir> [--host=…] [--admin=…]`): the page, the
   library and the Exponential example in `lib/`, and `var/` -- it runs with

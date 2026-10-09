@@ -78,6 +78,39 @@ function showcaseTriesForTest(): array
 }
 
 return [
+    'RSF05-04 the showcase on a server: deploy.sh builds, takes var/ over, swaps the folders, keeps --host and --admin and the copy before -- and never replaces another folder or a link' => function (): void {
+        needsPlugins();
+        if (!function_exists('exec') || trim((string) shell_exec('command -v sh')) === '' || rsSingle() !== null) {
+            skip('no sh, or the suite runs against the single file');
+        }
+        $dir = sys_get_temp_dir() . '/rs-deploy-' . getmypid() . '-' . mt_rand();
+        mkdir("$dir/site", 0777, true);
+        $run = static function (string $args) use ($dir): array {
+            exec('PHP=' . escapeshellarg(PHP_BINARY) . ' sh ' . escapeshellarg(dirname(__DIR__) . '/examples/showcase/deploy.sh') . " $args 2>&1", $out, $code);
+            return [$code, implode("\n", $out)];
+        };
+        try {
+            file_put_contents("$dir/site/index.html", 'the hoster\'s page');
+            [$code, $said] = $run(escapeshellarg("$dir/site") . ' --host=demo.example.org');
+            truthy($code === 1 && is_file("$dir/site/index.html"), 'another folder is never replaced: ' . $said);
+            unlink("$dir/site/index.html");
+            [$code, $said] = $run(escapeshellarg("$dir/site") . ' --host=demo.example.org --admin=203.0.113.7');
+            same(0, $code, $said);
+            truthy(is_file("$dir/site/lib/public.php") && !is_file("$dir/site/deploy.sh"), 'the copy, without the tool');
+            file_put_contents("$dir/site/var/secret", 'kept');
+            [$code, $said] = $run(escapeshellarg("$dir/site"));
+            same(0, $code, $said);
+            same('kept', (string) @file_get_contents("$dir/site/var/secret"), 'var/ taken over: passes stay valid');
+            truthy(strpos((string) file_get_contents("$dir/site/showcase.rules"), 'restrict /rs/** to 203.0.113.7') !== false, '--admin remembered');
+            truthy(is_file("$dir/site.previous/lib/public.php"), 'the copy before is kept');
+            rename("$dir/site", "$dir/real");
+            symlink("$dir/real", "$dir/site");
+            [$code] = $run(escapeshellarg("$dir/site"));
+            same(1, $code, 'a link is refused (open_basedir names the folder)');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'RSF05-04 the showcase standalone (build/showcase.php): one directory -- the page, the library, var/ -- runs under open_basedir set to it, nothing read or written elsewhere' => function (): void {
         needsPlugins();                 // the bundle copies the source tree's plugins
         if (!function_exists('proc_open') || rsSingle() !== null) {
