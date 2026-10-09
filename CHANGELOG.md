@@ -125,8 +125,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   together, reads twice (`page=1&page=2`) or drops; a request with more
   parameters than PHP reads (`max_input_vars`), or with a separator PHP
   splits on besides `&` (`arg_separator.input`), is never kept. A name with
-  brackets or encoded bytes is always scanned by the attack rules. Settings `FORMAT` 66. The showcase's magazine uses
-  it: a bot's made-up parameters get the kept page.
+  brackets or encoded bytes is always scanned by the attack rules.
+  Settings `FORMAT` 67. The showcase's magazine uses it: a bot's made-up
+  parameters get the kept page.
 - **Every plugin is a Composer package of its own** (0031 step H.1):
   `plugins/api`, `plugins/waf`, `plugins/stats` and `plugins/cache` each
   have a `composer.json` (`cjw-network/request-shield-<name>`, the core
