@@ -76,6 +76,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **Purges from the application itself** (0031 step G.5, its core part):
+  `Shield::active()?->purge(['content-12', 'list'])` -- an adapter in the
+  same PHP process makes the HTTP cache's answers with these tags out of
+  date (`*`: everything), with no `PURGE` request; a plugin capability,
+  `Purger` (the cache has it); nothing happens without one.
+  `Shield::active()?->hasWidget()` says whether the check in forms is on,
+  without sending its script. Settings `FORMAT` 63.
+  ([the HTTP cache](docs/features/RSF04-03-http-cache.md#tags-and-purges-what-the-cms-already-sends))
 - **The HTTP cache keeps small answers in memory, and its folder within a
   cap** (0031 step G.4, part 3; proposal 0039): with APCu, answers up to
   `set http-cache-memory-object` (`256K`) are kept in APCu for at most an

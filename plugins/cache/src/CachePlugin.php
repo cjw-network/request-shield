@@ -19,6 +19,7 @@ use CjwNetwork\RequestShield\Http;
 use CjwNetwork\RequestShield\IpAddress;
 use CjwNetwork\RequestShield\MethodHandler;
 use CjwNetwork\RequestShield\Plugin;
+use CjwNetwork\RequestShield\Purger;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Response;
 use CjwNetwork\RequestShield\Seen;
@@ -52,7 +53,7 @@ use CjwNetwork\RequestShield\Settings;
  * hash kept with its tags (a purge of ez-user-context-hash asks again) and
  * given to the application as the header a Varnish would send.
  */
-final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandler
+final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandler, Purger
 {
     /** The headers FOSHttpCache varies a page by role on (Ibexa, Exponential Platform): one page per role, not per visitor. */
     private const HASH_VARY = ['x-user-hash', 'x-user-context-hash'];
@@ -392,6 +393,28 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
             return array_map(static fn (string $id): string => "location-$id", explode('|', $m[1]));
         }
         return [self::ADDRESS . self::address($request->cacheKey())];
+    }
+
+    /**
+     * The application changed content (Purger, an adapter's
+     * Shield::active()?->purge()): these tags out of date, "*" everything.
+     *
+     * @param list<string> $tags
+     */
+    public function purge(array $tags): void
+    {
+        if (!$this->o['enabled']) {
+            return;
+        }
+        $names = [];
+        foreach ($tags as $tag) {
+            foreach (Tags::split($tag) as $t) {
+                $names[] = $t;        // "*" is Tags::ALL
+            }
+        }
+        if ($names !== []) {
+            $this->tags()->purge($names, microtime(true));
+        }
     }
 
     /**

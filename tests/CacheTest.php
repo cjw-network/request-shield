@@ -586,6 +586,23 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF04-03 Purger (0031 G.5): the application purges tags in the same process -- the cache makes their answers out of date, "*" everything, odd tags left out; Shield::purge() asks only a plugin that has it' => function (): void {
+        $dir = cacheDir();
+        try {
+            $s = cacheSettings($dir, "set http-cache on\nset http-cache-hosts www.example.org\n");
+            same([CachePlugin::class], $s->hooks['purger'] ?? null, 'the cache has the capability');
+            same([], cacheSettings($dir, '')->hooks['purger'] ?? [], 'without the cache: no purger');
+            $p = new CachePlugin($s);
+            $tags = new Tags("$dir/store/http-cache", \CjwNetwork\RequestShield\Capability::apcu());
+            $before = microtime(true) - 1;
+            $p->purge(['wp-post-5', "bad\ntag"]);
+            truthy($tags->purgedSince(['wp-post-5'], $before) && !$tags->purgedSince(['wp-post-6'], $before), 'its tag purged, another not');
+            $p->purge(['*']);
+            truthy($tags->purgedSince(['wp-post-6'], $before), '"*": everything');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'RSF04-03 http-cache-user-context: on, off, or an address -- its scheme and host in small letters, its path as given' => function (): void {
         $dir = cacheDir();
         try {

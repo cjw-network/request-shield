@@ -311,7 +311,10 @@ return [
         $shield = new \CjwNetwork\RequestShield\Shield([], new \CjwNetwork\RequestShield\Store\MemoryStore());
         same('', $shield->widget(), 'off: no placeholder');
         $on = new \CjwNetwork\RequestShield\Shield(['challenge' => ['widgetPath' => '/rs']], new \CjwNetwork\RequestShield\Store\MemoryStore());
-        $first = $on->widget();
+        same([false, true, false], [$shield->hasWidget(), $on->hasWidget(),
+            (new \CjwNetwork\RequestShield\Shield(['challenge' => ['widgetPath' => '/rs'], 'mode' => 'off'], new \CjwNetwork\RequestShield\Store\MemoryStore()))->hasWidget()],
+            'hasWidget(): off, on, on but the shield off');
+        $first = $on->widget();       // after hasWidget(): the script still comes with the first placeholder
         $second = $on->widget('load');
         truthy(substr_count($first . $second, '<script') === 1, 'the script once per page');
         truthy(strpos($second, 'data-start="load"') !== false, 'the start option');

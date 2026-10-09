@@ -309,6 +309,34 @@ final class Shield
         });
     }
 
+    /**
+     * The application changed content (0031 G.5, proposal 0039):
+     * Shield::active()?->purge(['content-12', 'list']) from an adapter when
+     * a page is published -- the plugins with the Purger capability (the
+     * HTTP cache) make the answers with these tags out of date ("*":
+     * everything), with no PURGE request. Nothing happens without such a
+     * plugin; one that throws is noted once a minute -- the application goes
+     * on.
+     *
+     * @param list<string> $tags
+     */
+    public function purge(array $tags): void
+    {
+        if ($tags === [] || ($this->settings->hooks['purger'] ?? []) === []) {
+            return;
+        }
+        foreach ($this->plugins() as $plugin) {
+            if (!$plugin instanceof Purger) {
+                continue;
+            }
+            try {
+                $plugin->purge($tags);
+            } catch (\Throwable $e) {
+                self::failed('handler', get_class($plugin) . ' failed to purge, the application goes on: ' . $e->getMessage());
+            }
+        }
+    }
+
     /** @param \Closure(ContextHandler, Request): void $call */
     private function toContext(\Closure $call): void
     {
@@ -1158,6 +1186,12 @@ final class Shield
             self::failed('widget', 'widget() failed, the form has no check: ' . $e->getMessage());
             return '';                              // fail safe: the form works without the check
         }
+    }
+
+    /** Whether widget() gives a check (set widget-path, mode not off) -- asking it costs nothing and sends no script. */
+    public function hasWidget(): bool
+    {
+        return $this->settings->challenge->widgetPath !== null && $this->settings->mode !== 'off';
     }
 
     /** <widgetPath>/challenge (a task as JSON) and <widgetPath>/widget.js. */

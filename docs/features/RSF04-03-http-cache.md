@@ -77,6 +77,13 @@ application.
 - **Purges in the answer** (LiteSpeed's way, any method, a POST's too):
   `X-LiteSpeed-Purge: tag=c52, /news/, *` purges tags, addresses or
   everything before the answer leaves, and is taken out.
+- **Purges from the application itself** (an adapter, in the same PHP
+  process): `Shield::active()?->purge(['content-12', 'list'])` -- tags, `*`
+  for everything; no `PURGE` request. A plugin with the `Purger` capability
+  (the cache) makes the answers with those tags out of date; without one
+  the call does nothing. `Shield::active()?->hasWidget()` tells an adapter
+  whether the check in forms is on, without sending its script (as
+  `widget()` does, once per page).
 - **How a purge works:** no list of pages is searched. Each tag remembers
   when it was purged last; a kept answer remembers when its request began.
   A hit whose tag -- or everything -- was purged since is a miss, and the
