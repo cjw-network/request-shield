@@ -90,7 +90,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   the checks of `tests/run.php` (`testkitRun()`, `same()`, `truthy()`,
   `skip()`, `freePort()`, `nodeBinary()`) as a package of their own, for the
   plugins' tests outside the monorepo; `tests/run.php` calls it. A test file
-  that returns no array of tests now fails instead of stopping the run.
+  that returns no array of tests now fails; before, its tests were missing
+  without a word (a warning, and the run passed).
 - **Purges from the application itself** (0031 step G.5, its core part):
   `Shield::active()?->purge(['content-12', 'list'])` -- an adapter in the
   same PHP process makes the HTTP cache's answers with these tags out of

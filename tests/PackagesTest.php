@@ -13,7 +13,8 @@ declare(strict_types=1);
  * Composer package of its own, mirrored read-only from H.2 on. Checked here:
  * its papers, its autoload against the core's, the plugins it uses against
  * what it requires -- and an install from path repositories against a core
- * without the plugins, as a mirror would be installed.
+ * without the plugins (a path repository links the directory: what its archive
+ * leaves out is checked by the .gitattributes test above it).
  */
 
 /** The subpackages: directory => [package, namespace below CjwNetwork\RequestShield\, or null]. */
@@ -121,8 +122,14 @@ return [
             $json = rsPackageJson($dir);
             foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$root/$dir/src", FilesystemIterator::SKIP_DOTS)) as $file) {
                 $code = (string) file_get_contents((string) $file);
-                preg_match_all('/CjwNetwork\\\\RequestShield\\\\(' . implode('|', array_keys($byNs)) . ')\\\\/', $code, $m);
-                foreach (array_unique($m[1]) as $other) {
+                // A name as code writes it (one backslash), in a string ('\\\\') or in a grouped use (RequestShield\{Api\X}).
+                $sep = '(?:\\\\\\\\|\\\\)';
+                preg_match_all('/CjwNetwork' . $sep . 'RequestShield' . $sep . '\\{?\\s*(' . implode('|', array_keys($byNs)) . ')' . $sep . '/', $code, $m, PREG_OFFSET_CAPTURE);
+                $uses = [];
+                foreach ($m[1] as [$other, $at]) {
+                    $uses[$other][] = $at;
+                }
+                foreach ($uses as $other => $offsets) {
                     if ($other === $ns) {
                         continue;
                     }
@@ -132,7 +139,13 @@ return [
                         continue;
                     }
                     truthy(isset($json['suggest'][$pkg]), "$where uses $other\\ -- $name neither requires nor suggests $pkg");
-                    truthy(preg_match('/class_exists\(\\\\?CjwNetwork\\\\RequestShield\\\\' . $other . '\\\\/', $code) === 1, "$where uses $other\\ (suggested only) without class_exists()");
+                    // Every use after a class_exists() of that plugin, on its line or at most 20 lines above (in the same method, as written now).
+                    foreach ($offsets as $at) {
+                        $end = strpos($code, "\n", $at);
+                        $above = implode("\n", array_slice(explode("\n", substr($code, 0, $end === false ? null : $end)), -21));
+                        truthy(preg_match('/class_exists\(\\\\?CjwNetwork' . $sep . 'RequestShield' . $sep . $other . $sep . '/', $above) === 1,
+                            "$where:" . (substr_count($code, "\n", 0, $at) + 1) . " uses $other\\ (suggested only) without a class_exists() of it just before");
+                    }
                 }
             }
         }
@@ -144,6 +157,7 @@ return [
             skip('no Composer 2');
         }
         foreach (array_keys(rsPackages()) as $dir) {
+            $out = [];
             exec(escapeshellarg($composer) . ' validate --strict --no-check-publish --no-interaction -d ' . escapeshellarg(dirname(__DIR__) . "/$dir") . ' 2>&1', $out, $code);
             same(0, $code, "$dir: " . implode("\n", $out));
         }
@@ -156,28 +170,28 @@ return [
         }
         $root = dirname(__DIR__);
         $tmp = sys_get_temp_dir() . '/rs-pkg-' . getmypid() . '-' . mt_rand();
-        // The core as a mirror of the root will be once the plugins are packages (0031 H.2): its code, no plugin directories.
-        mkdir("$tmp/core/plugins", 0777, true);
-        foreach (['src', 'bin', 'rules', 'bootstrap.php'] as $part) {
-            symlink("$root/$part", "$tmp/core/$part");
-        }
-        symlink("$root/plugins/shipped.php", "$tmp/core/plugins/shipped.php");
-        $core = rsPackageJson('.');
-        unset($core['require-dev'], $core['scripts']);
-        $core['autoload']['psr-4'] = ['CjwNetwork\\RequestShield\\' => 'src/'];
-        file_put_contents("$tmp/core/composer.json", json_encode($core, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-        $versions = ['cjw-network/request-shield' => '1.0.0'];
-        foreach (rsPackages() as [$name]) {
-            $versions[$name] = '1.0.0';
-        }
-        $repos = [['type' => 'path', 'url' => "$tmp/core", 'options' => ['versions' => $versions]]];
-        foreach (array_keys(rsPackages()) as $dir) {
-            $repos[] = ['type' => 'path', 'url' => "$root/$dir", 'options' => ['versions' => $versions]];
-        }
-        $repos[] = ['packagist.org' => false];
-        $words = ['Api' => "set api-write on\n", 'Stats' => "set stats on\n", 'Cache' => "set http-cache on\nset http-cache-hosts www.example.org\n", 'Waf' => ''];
-        $expect = ['Api' => [], 'Waf' => ['Api'], 'Stats' => [], 'Cache' => []];
         try {
+            // The core as a mirror of the root will be once the plugins are packages (0031 H.2): its code, no plugin directories.
+            mkdir("$tmp/core/plugins", 0777, true);
+            foreach (['src', 'bin', 'rules', 'bootstrap.php'] as $part) {
+                symlink("$root/$part", "$tmp/core/$part");
+            }
+            symlink("$root/plugins/shipped.php", "$tmp/core/plugins/shipped.php");
+            $core = rsPackageJson('.');
+            unset($core['require-dev'], $core['scripts']);
+            $core['autoload']['psr-4'] = ['CjwNetwork\\RequestShield\\' => 'src/'];
+            file_put_contents("$tmp/core/composer.json", json_encode($core, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            $versions = ['cjw-network/request-shield' => '1.0.0'];
+            foreach (rsPackages() as [$name]) {
+                $versions[$name] = '1.0.0';
+            }
+            $repos = [['type' => 'path', 'url' => "$tmp/core", 'options' => ['versions' => $versions]]];
+            foreach (array_keys(rsPackages()) as $dir) {
+                $repos[] = ['type' => 'path', 'url' => "$root/$dir", 'options' => ['versions' => $versions]];
+            }
+            $repos[] = ['packagist.org' => false];
+            $words = ['Api' => "set api-write on\n", 'Stats' => "set stats on\n", 'Cache' => "set http-cache on\nset http-cache-hosts www.example.org\n", 'Waf' => ''];
+            $expect = ['Api' => [], 'Waf' => ['Api'], 'Stats' => [], 'Cache' => []];
             foreach (rsPackages() as $dir => [$name, $ns]) {
                 if ($ns === null) {
                     continue;
@@ -185,6 +199,7 @@ return [
                 $project = "$tmp/p-$ns";
                 mkdir($project);
                 file_put_contents("$project/composer.json", json_encode(['repositories' => $repos, 'require' => [$name => '^1.0']], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+                $out = [];
                 exec('COMPOSER_HOME=' . escapeshellarg("$tmp/home") . ' ' . escapeshellarg($composer) . ' install --no-dev --no-interaction --no-progress --no-plugins -d ' . escapeshellarg($project) . ' 2>&1', $out, $code);
                 same(0, $code, "$name installs: " . implode("\n", array_slice($out, -15)));
                 $installed = json_decode((string) file_get_contents("$project/vendor/composer/installed.json"), true);
