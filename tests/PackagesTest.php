@@ -122,6 +122,9 @@ return [
             $json = rsPackageJson($dir);
             foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$root/$dir/src", FilesystemIterator::SKIP_DOTS)) as $file) {
                 $code = (string) file_get_contents((string) $file);
+                // A grouped use (use CjwNetwork\RequestShield\{Api\A, Stats\B};) written out: each name in full.
+                $code = (string) preg_replace_callback('/(CjwNetwork\\\\RequestShield\\\\)\{([^}]*)\}/', static fn (array $g): string
+                    => implode(', ', array_map(static fn (string $n): string => $g[1] . trim($n), explode(',', $g[2]))), $code);
                 // A name as code writes it (one backslash), in a string ('\\\\') or in a grouped use (RequestShield\{Api\X}).
                 $sep = '(?:\\\\\\\\|\\\\)';
                 preg_match_all('/CjwNetwork' . $sep . 'RequestShield' . $sep . '\\{?\\s*(' . implode('|', array_keys($byNs)) . ')' . $sep . '/', $code, $m, PREG_OFFSET_CAPTURE);
