@@ -68,6 +68,20 @@ function decideFor(Settings $s, string $path, array $server = []): string
 }
 
 return [
+    'RSF02-03 an address range: a prefix no longer than its address -- 1.2.3.4/99 is a mistake, not a range that matches nobody' => function (): void {
+        foreach (['restrict /x/** to 1.2.3.4/99', 'restrict /x/** to 2001:db8::/129', 'trust 10.0.0.0/33'] as $line) {
+            $dir = ruleDir(['site.rules' => "$line\n"]);
+            try {
+                RuleFile::read(["$dir/site.rules"]);
+                throw new TestFailure("accepted: $line");
+            } catch (RuleFileException $e) {
+                truthy(strpos($e->getMessage(), 'is not an address or a range') !== false, $e->getMessage());
+            } finally {
+                exec('rm -rf ' . escapeshellarg($dir));
+            }
+        }
+        same(['10.0.0.0/32'], rulesFrom("trust 10.0.0.0/32\n")->trustedProxies, 'the longest prefix is fine');
+    },
     'RSF05-01 patterns: * within a segment, ** across, ? one character; no leading /: anywhere' => function (): void {
         $cases = [
             ['/wp-admin/**', '/wp-admin', true], ['/wp-admin/**', '/wp-admin/x/y.php', true], ['/wp-admin/**', '/wp-adminx', false],

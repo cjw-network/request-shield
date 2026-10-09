@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   50 -> 36 µs; short values are matched as before (one call).
 
 ### Fixed
+- **An address range with a prefix longer than its address** (`1.2.3.4/99`,
+  `2001:db8::/129`) is refused naming its line; before it was taken and
+  matched nobody.
 - **A ban kept in store-dir was written in the umask's mode** -- under the
   usual umask 022 readable for everyone on the machine, and its file holds
   the address. It is written in `file-mode` now (so is the crawler check's

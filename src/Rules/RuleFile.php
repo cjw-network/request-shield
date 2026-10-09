@@ -2259,7 +2259,9 @@ final class RuleFile
     private static function address(string $ip, string $at): string
     {
         $addr = explode('/', $ip, 2);
-        if (@inet_pton($addr[0]) === false || (isset($addr[1]) && !ctype_digit($addr[1]))) {
+        $bin = @inet_pton($addr[0]);
+        // A prefix no longer than the address: /99 on an IPv4 address matches nothing -- a typo, said here.
+        if ($bin === false || (isset($addr[1]) && (!ctype_digit($addr[1]) || (int) $addr[1] > strlen($bin) * 8))) {
             throw new RuleFileException("$at: \"$ip\" is not an address or a range (192.0.2.0/24, 2001:db8::/32)");
         }
         return $ip;
