@@ -288,7 +288,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   picture shows each request's result (hit, miss, refused, not kept) above
   the station that decided it, and who sent it: the visitor 🙂, member A 🧑,
   member B 👩 (a blue ring), the editor 🧑‍💻 (a violet one), a bot 🤖 (red,
-  dashed) -- the people's faces also in the log's "Who". On a host name not
+  dashed), a search crawler 🔎 (green, dashed: *A search crawler reads*
+  fetches the front page and every article anonymously, as a visitor; a
+  step of the automatic play too) -- the faces also in the log's "Who". On a host name not
   in `http-cache-hosts` the page says the cache is off there and how to
   start the showcase for that name, and the picture says "cache off"
   instead of telling of hits that never come.

@@ -43,7 +43,7 @@ $cacheOff = $cacheHosts === null || !$cacheHosts['enabled'] || !in_array($sentHo
 $client = ['words' => ['visitor' => $c['visitor'], 'member' => $c['member'], 'editor' => $c['editor'], 'bot' => $c['bot'], 'hit' => $c['hit'], 'miss' => $c['miss'], 'none' => $c['none'],
     'refused' => $c['refused'], 'notKept' => $c['notKept'], 'empty' => $c['empty'], 'sum' => $c['sum'], 'lang' => $lang,
     'capHit' => $c['capHit'], 'capMiss' => $c['capMiss'], 'capRefused' => $c['capRefused'], 'capNotKept' => $c['capNotKept'], 'capOff' => $c['capOff'], 'capPurge' => $c['capPurge'], 'capClear' => $c['capClear'],
-    'auto' => $c['auto'], 'autoStop' => $c['autoStop'], 'story' => $c['story'], 'next' => $c['next'], 'now' => $c['now'], 'off' => $c['off'], 'people' => $c['people'], 'cacheOff' => $cacheOff, 'tech' => $c['tech'], 'anonymous' => $c['anonymous'], 'dockPin' => $c['dockPin'], 'dockUnpin' => $c['dockUnpin']]];
+    'auto' => $c['auto'], 'autoStop' => $c['autoStop'], 'story' => $c['story'], 'next' => $c['next'], 'now' => $c['now'], 'off' => $c['off'], 'people' => $c['people'], 'crawlerName' => $c['crawlerName'], 'cacheOff' => $cacheOff, 'tech' => $c['tech'], 'anonymous' => $c['anonymous'], 'dockPin' => $c['dockPin'], 'dockUnpin' => $c['dockUnpin']]];
 // The picture: four stations a request passes -- drawn for people who never saw a cache.
 // Each in two words: plain (a doorkeeper, a shelf, a newsroom) and technical (an option, for developers).
 $x = $c['tech'];
@@ -137,6 +137,7 @@ $both = static fn (string $plain, string $tech): string => ' data-plain="' . $e(
       <button type="button" class="btn btn-sm btn-soft cache-campaign cache-manual"><i class="bi bi-megaphone" aria-hidden="true"></i> <?= $e($c['campaign']) ?></button>
       <button type="button" class="btn btn-sm btn-soft cache-list cache-manual"><i class="bi bi-house" aria-hidden="true"></i> <?= $e($c['list']) ?></button>
       <button type="button" class="btn btn-sm btn-soft cache-scan cache-manual"><i class="bi bi-bug" aria-hidden="true"></i> <?= $e($c['scan']) ?></button>
+      <button type="button" class="btn btn-sm btn-soft cache-crawler cache-manual"><i class="bi bi-search" aria-hidden="true"></i> <?= $e($c['crawler']) ?></button>
       <button type="button" class="btn btn-sm btn-warning cache-publish cache-manual"><i class="bi bi-send" aria-hidden="true"></i> <?= $e($c['publish']) ?></button>
       <button type="button" class="btn btn-sm btn-outline-secondary cache-clear cache-manual"><i class="bi bi-trash" aria-hidden="true"></i> <?= $e($c['clear']) ?></button>
       <button type="button" class="btn btn-sm btn-outline-secondary ms-auto cache-dock-pin" aria-pressed="false"><i class="bi bi-pin-angle" aria-hidden="true"></i> <span><?= $e($c['dockPin']) ?></span></button>

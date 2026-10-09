@@ -359,6 +359,8 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .cache-flow .flow-station.as-E .flow-node { stroke: #8b5cf6; }
 .cache-flow .flow-station.as-bot .flow-node { stroke: var(--rs-coral); stroke-dasharray: 6 4; }
 .cache-flow .flow-station.as-bot .flow-name { fill: #b4322c; }
+.cache-flow .flow-station.as-crawler .flow-node { stroke: var(--rs-mint-dark); stroke-dasharray: 6 4; }
+.cache-flow .flow-station.as-crawler .flow-name { fill: var(--rs-mint-deeper); }
 .cache-flow .flow-icon { font-size: 30px; }
 .cache-flow .flow-name { font-weight: 700; fill: var(--rs-ink); font-size: 17px; }
 .cache-flow .flow-sub { fill: var(--rs-soft-ink); font-size: 13px; }

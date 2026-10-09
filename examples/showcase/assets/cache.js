@@ -99,7 +99,7 @@
   const decides = (kind) => (kind === 'refused' ? 1 : 2);
   const badge = (kind, label) => {
     if (!label) {
-      result.setAttribute('class', 'flow-result');
+      result.classList.remove('show');      // fades out as it was: colour and words stay until it is gone
       return;
     }
     resultText.textContent = label;
@@ -121,13 +121,13 @@
   // Who sends it, in both views: a person each (alike, each their own), a bot as a robot; the visitor as drawn.
   const visitorIcon = stations[0].querySelector('.flow-icon');
   const visitorName = stations[0].querySelector('.flow-name');
-  const FACES = {A: '🧑', B: '👩', E: '🧑‍💻', bot: '🤖'};
+  const FACES = {A: '🧑', B: '👩', E: '🧑‍💻', bot: '🤖', crawler: '🔎'};
   const face = (who) => FACES[who] || '🙂';
   const actor = (who) => {
     sender = who;
-    ['A', 'B', 'E', 'bot'].forEach((k) => stations[0].classList.toggle('as-' + k, k === who));
+    ['A', 'B', 'E', 'bot', 'crawler'].forEach((k) => stations[0].classList.toggle('as-' + k, k === who));
     visitorIcon.textContent = FACES[who] || (tech ? visitorIcon.dataset.tech : visitorIcon.dataset.plain);
-    visitorName.textContent = who === 'bot' ? w.bot : (w.people[who] || (tech ? visitorName.dataset.tech : visitorName.dataset.plain));
+    visitorName.textContent = who === 'bot' ? w.bot : (who === 'crawler' ? w.crawlerName : w.people[who] || (tech ? visitorName.dataset.tech : visitorName.dataset.plain));
   };
   redraw = actor;
   const play = (kind, text1, text2, label, who) => {
@@ -228,7 +228,8 @@
     queue = queue.then(job).catch(() => purged('✕'));
     return queue;
   };
-  const load = (url, who, by) => one(async () => {
+  // by: a bot's name for the log (who is then ''); good: a crawler that may read the pages, not the bad bot.
+  const load = (url, who, by, good) => one(async () => {
     if (who) {
       document.cookie = 'rs-demo-member=' + sessions[who] + '; path=/; SameSite=Lax';
     }
@@ -244,14 +245,15 @@
       const kind = !r.ok ? 'refused' : (cache === '' && w.cacheOff ? 'off' : (cache.startsWith('hit') ? 'hit' : (cache.startsWith('miss') && place !== null ? 'miss' : 'notkept')));
       const label = {hit: w.hit, miss: w.miss, refused: w.refused + ' (' + r.status + ')', notkept: w.notKept, off: w.off}[kind];
       // The role the cache keys by, and for a member the session (the cookie rs-demo-member's value, the detail line names it).
-      const role = by ? 'bot · ' + w.anonymous : (who ? roleOf(who) + ' · ' + sessions[who] : w.anonymous);
-      show(url, face(by ? 'bot' : who) + ' ' + (by || (who === 'E' ? w.editor : (who ? w.member.replace('%s', who) : w.visitor))), kind, label, ms,
+      const role = by ? (good ? 'crawler' : 'bot') + ' · ' + w.anonymous : (who ? roleOf(who) + ' · ' + sessions[who] : w.anonymous);
+      const from = by ? (good ? 'crawler' : 'bot') : who;
+      show(url, face(from) + ' ' + (by || (who === 'E' ? w.editor : (who ? w.member.replace('%s', who) : w.visitor))), kind, label, ms,
         {status: String(r.status), xrs: r.headers.get('X-RS'), cache: r.headers.get('X-RS-Cache'), cc: r.headers.get('Cache-Control'), age: r.headers.get('Age'), role});
       if ((kind === 'hit' || kind === 'miss') && place !== null) {
         fill(roleOf(who), place);
       }
       play(kind, words({hit: 'capHit', miss: 'capMiss', refused: 'capRefused', notkept: 'capNotKept', off: 'capOff'}[kind]),
-        'GET ' + url + ' → ' + r.status + ' · X-RS-Cache: ' + (cache || '—') + ' · ' + fmt(ms) + (who ? ' · rs-demo-member=' + sessions[who] : ''), label, by ? 'bot' : who);
+        'GET ' + url + ' → ' + r.status + ' · X-RS-Cache: ' + (cache || '—') + ' · ' + fmt(ms) + (who ? ' · rs-demo-member=' + sessions[who] : ''), label, from);
     } finally {
       if (who) {
         document.cookie = 'rs-demo-member=; path=/; max-age=0; SameSite=Lax';
@@ -286,6 +288,9 @@
   document.querySelector('.cache-campaign').addEventListener('click', () => load('/magazin/' + article.value + '?utm_source=newsletter&utm_campaign=c' + Math.floor(Math.random() * 1000)));
   document.querySelector('.cache-list').addEventListener('click', () => load('/magazin'));
   document.querySelector('.cache-scan').addEventListener('click', () => scan().forEach((u) => load(u, '', w.bot)));
+  // A search or AI-search crawler reads like a visitor: anonymous, the visitors' pages -- from the shelf when they are there.
+  const crawl = () => ['/magazin', '/magazin/1', '/magazin/2', '/magazin/3', '/magazin/4', '/magazin/5'].map((u) => load(u, '', w.crawlerName, true));
+  document.querySelector('.cache-crawler').addEventListener('click', crawl);
   document.querySelector('.cache-publish').addEventListener('click', () => {
     const n = article.value;
     post('/__cache/publish', 'n=' + encodeURIComponent(n), '/magazin/' + n + ', /magazin', () => empty(Number(n)));
@@ -438,6 +443,7 @@
       ['editor1', () => load(page, 'E')],
       ['editor2', () => load(page, 'E')],
       ['scan', () => Promise.all(scan().map((u) => load(u, '', w.bot)))],
+      ['crawler', () => Promise.all(crawl())],
       ['republish', () => post('/__cache/publish', 'n=' + n, page + ', /magazin', () => empty(n))],
       ['visit3', () => load(page)],
       ['visit4', () => load(page)],
