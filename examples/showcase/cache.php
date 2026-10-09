@@ -33,14 +33,17 @@ $rules = "set http-cache on\n"
     . "Shield::active()?->cacheContext('member', shared: true);";
 // The cache keeps pages only for the host names in http-cache-hosts: on another one the picture would tell of
 // hits that never come -- the page says so, and how to start the showcase for this name.
-$sentHost = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
 $active = \CjwNetwork\RequestShield\Shield::active();
+// As the cache plugin reads it (CachePlugin::sentHost()): X-Forwarded-Host from a trusted proxy, else Host; with its port, in small letters.
+$sentRequest = \CjwNetwork\RequestShield\Request::fromServer($_SERVER, $active !== null ? $active->settings->trustedProxies : []);
+$sentHost = strtolower(trim($sentRequest->viaTrustedProxy && $sentRequest->header('x-forwarded-host') !== null
+    ? explode(',', (string) $sentRequest->header('x-forwarded-host'))[0] : (string) $sentRequest->header('host')));
 $cacheHosts = $active !== null && class_exists(\CjwNetwork\RequestShield\Cache\CacheExtension::class) ? \CjwNetwork\RequestShield\Cache\CacheExtension::of($active->settings) : null;
 $cacheOff = $cacheHosts === null || !$cacheHosts['enabled'] || !in_array($sentHost, array_map('strtolower', $cacheHosts['hosts']), true);
 $client = ['words' => ['visitor' => $c['visitor'], 'member' => $c['member'], 'editor' => $c['editor'], 'bot' => $c['bot'], 'hit' => $c['hit'], 'miss' => $c['miss'], 'none' => $c['none'],
     'refused' => $c['refused'], 'notKept' => $c['notKept'], 'empty' => $c['empty'], 'sum' => $c['sum'], 'lang' => $lang,
     'capHit' => $c['capHit'], 'capMiss' => $c['capMiss'], 'capRefused' => $c['capRefused'], 'capNotKept' => $c['capNotKept'], 'capOff' => $c['capOff'], 'capPurge' => $c['capPurge'], 'capClear' => $c['capClear'],
-    'auto' => $c['auto'], 'autoStop' => $c['autoStop'], 'story' => $c['story'], 'next' => $c['next'], 'now' => $c['now'], 'off' => $c['off'], 'people' => $c['people'], 'tech' => $c['tech'], 'anonymous' => $c['anonymous'], 'dockPin' => $c['dockPin'], 'dockUnpin' => $c['dockUnpin']]];
+    'auto' => $c['auto'], 'autoStop' => $c['autoStop'], 'story' => $c['story'], 'next' => $c['next'], 'now' => $c['now'], 'off' => $c['off'], 'people' => $c['people'], 'cacheOff' => $cacheOff, 'tech' => $c['tech'], 'anonymous' => $c['anonymous'], 'dockPin' => $c['dockPin'], 'dockUnpin' => $c['dockUnpin']]];
 // The picture: four stations a request passes -- drawn for people who never saw a cache.
 // Each in two words: plain (a doorkeeper, a shelf, a newsroom) and technical (an option, for developers).
 $x = $c['tech'];

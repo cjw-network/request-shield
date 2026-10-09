@@ -61,6 +61,8 @@
     tech = false;
   }
   const words = (key) => (tech && w.tech[key] ? w.tech[key] : w[key]);
+  let sender = '';            // who sent the last request (the picture's first station); actor() draws it, set below
+  let redraw = null;
   const view = (t) => {
     tech = t;
     try {
@@ -79,6 +81,9 @@
     });
     detail.hidden = !t;
     document.querySelector('.cache-dock').classList.toggle('tech', t);     // the log's technical columns
+    if (redraw) {
+      redraw(sender);       // the view's words above rewrote the first station: the sender again
+    }
   };
   document.querySelectorAll('.cache-view button').forEach((b) => b.addEventListener('click', () => view(b.dataset.view === 'tech')));
   view(tech);
@@ -119,10 +124,12 @@
   const FACES = {A: '🧑', B: '👩', E: '🧑‍💻', bot: '🤖'};
   const face = (who) => FACES[who] || '🙂';
   const actor = (who) => {
+    sender = who;
     ['A', 'B', 'E', 'bot'].forEach((k) => stations[0].classList.toggle('as-' + k, k === who));
     visitorIcon.textContent = FACES[who] || (tech ? visitorIcon.dataset.tech : visitorIcon.dataset.plain);
     visitorName.textContent = who === 'bot' ? w.bot : (w.people[who] || (tech ? visitorName.dataset.tech : visitorName.dataset.plain));
   };
+  redraw = actor;
   const play = (kind, text1, text2, label, who) => {
     film = film.then(() => new Promise((done) => {
       actor(who || '');
@@ -232,8 +239,9 @@
       const ms = performance.now() - t0;
       const cache = (r.headers.get('X-RS-Cache') || '').toLowerCase();
       const place = shelfOf(url);
-      // No X-RS-Cache at all: the cache did not look (off for this host name) -- said so, not a made-up hit.
-      const kind = !r.ok ? 'refused' : (cache === '' ? 'off' : (cache.startsWith('hit') ? 'hit' : (cache.startsWith('miss') && place !== null ? 'miss' : 'notkept')));
+      // No X-RS-Cache at all: the cache did not look. "Off" only when the page knows it is off for this host
+      // name; else not kept (a cookie of another site, no APCu for a member, a hit-only lookup that missed).
+      const kind = !r.ok ? 'refused' : (cache === '' && w.cacheOff ? 'off' : (cache.startsWith('hit') ? 'hit' : (cache.startsWith('miss') && place !== null ? 'miss' : 'notkept')));
       const label = {hit: w.hit, miss: w.miss, refused: w.refused + ' (' + r.status + ')', notkept: w.notKept, off: w.off}[kind];
       // The role the cache keys by, and for a member the session (the cookie rs-demo-member's value, the detail line names it).
       const role = by ? 'bot · ' + w.anonymous : (who ? roleOf(who) + ' · ' + sessions[who] : w.anonymous);
