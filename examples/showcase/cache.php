@@ -36,10 +36,10 @@ $client = ['words' => ['visitor' => $c['visitor'], 'member' => $c['member'], 'ed
     'capHit' => $c['capHit'], 'capMiss' => $c['capMiss'], 'capRefused' => $c['capRefused'], 'capNotKept' => $c['capNotKept'], 'capPurge' => $c['capPurge'], 'capClear' => $c['capClear'],
     'auto' => $c['auto'], 'autoStop' => $c['autoStop'], 'story' => $c['story'], 'tech' => $c['tech'], 'anonymous' => $c['anonymous'], 'dockPin' => $c['dockPin'], 'dockUnpin' => $c['dockUnpin']]];
 // The picture: four stations a request passes -- drawn for people who never saw a cache.
-// Each in two words: plain (a doorkeeper, a shelf, a kitchen) and technical (an option, for developers).
+// Each in two words: plain (a doorkeeper, a shelf, a newsroom) and technical (an option, for developers).
 $x = $c['tech'];
 $stations = [[80, '🙂', '🌐', $c['stVisitor'], '', $x['stVisitor'], $x['stVisitorSub']], [300, '🛡️', '🛡️', $c['stShield'], $c['stShieldSub'], $x['stShield'], $x['stShieldSub']],
-    [520, '🗄️', '💾', $c['stCache'], $c['stCacheSub'], $x['stCache'], $x['stCacheSub']], [740, '🍳', '🐘', $c['stApp'], $c['stAppSub'], $x['stApp'], $x['stAppSub']]];
+    [520, '🗄️', '💾', $c['stCache'], $c['stCacheSub'], $x['stCache'], $x['stCacheSub']], [740, '📰', '🐘', $c['stApp'], $c['stAppSub'], $x['stApp'], $x['stAppSub']]];
 $both = static fn (string $plain, string $tech): string => ' data-plain="' . $e($plain) . '" data-tech="' . $e($tech) . '"';
 ?>
 <header id="top" class="hero learn-hero cache-hero">

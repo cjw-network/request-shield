@@ -2,7 +2,7 @@
 // magazine, timed here; the cache's answer from X-RS-Cache. A member or an
 // editor is a cookie set for the one request (rs-demo-member), publishing and
 // emptying are POSTs the page answers with Shield::purge(). The picture: a dot
-// travels the stations a request passes (visitor, doorkeeper, shelf, kitchen),
+// travels the stations a request passes (visitor, doorkeeper, shelf, newsroom),
 // the shelf shows which page is kept for which role.
 (() => {
   'use strict';
@@ -62,7 +62,7 @@
   view(tech);
 
   // ── The picture ──────────────────────────────────────────────────────────
-  // Station x offsets from the visitor: doorkeeper +220, shelf +440, kitchen +660.
+  // Station x offsets from the visitor: doorkeeper +220, shelf +440, newsroom +660.
   const X = [0, 220, 440, 660];
   const ROUTES = {hit: [0, 1, 2, 1, 0], miss: [0, 1, 2, 3, 2, 1, 0], notkept: [0, 1, 2, 3, 2, 1, 0], refused: [0, 1, 0]};
   const STEP = 280;

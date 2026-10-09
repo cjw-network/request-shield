@@ -83,9 +83,9 @@ The parts below describe them; a card behaves the same wherever it stands.
   bot's scan, publishing again -- until stopped. The picture has a switch,
   *Plain* (default) or *Technical* (browser, request-shield, HTTP cache, PHP
   application; each request's method, address, status, `X-RS-Cache` and
-  time). First a picture for people who never saw a cache: four stations (visitor, doorkeeper, shelf, kitchen) and a dot
+  time). First a picture for people who never saw a cache: four stations (visitor, doorkeeper, shelf, newsroom) and a dot
   that travels them for every click -- green from the shelf, orange when the
-  kitchen cooks and shelves the page, red when the doorkeeper refuses -- and
+  newsroom puts the page together and it is shelved, red when the doorkeeper refuses -- and
   the shelf, one slot per page and role (visitors, members, editors; as this
   page saw it). *A bot scans the front page* sends what scanners try
   (made-up parameters and articles, `/.env`, an SQL injection): refused, or
