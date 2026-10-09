@@ -142,6 +142,23 @@ role, editors get the editors' page from the cache, members the members'
 - **Needs APCu:** without it a session cookie means the site answers, as
   before.
 
+### Exponential 6: its own HTTP cache
+
+Exponential 6 has its own role-aware page cache since 6.0.15
+(`exphttpcache`: pages before the kernel starts, anonymous, role and private
+contexts, purge on publish). Two caches in a row are worse than one, so
+there the shield's cache stays off (proposal 0048, 0031 step G.6):
+
+- **The shield keeps no page that carries `X-Exp-Cache`** (`appcache` in the
+  statistics), and PHP's error log says once a minute that `http-cache` should
+  be off for that site.
+- **The statistics read `X-Exp-Cache`** as they read `X-RS-Cache`: the
+  response times by hit and miss for Exponential's cache
+  ([statistics](RSF06-03-statistics.md#how-fast-the-site-answered)).
+- **Fewer keys for it too:** with `cache-ignore` the shield takes tracking
+  parameters out before Exponential's early exit looks up the page
+  ([the cacheable definition](RSF04-01-cacheable-definition.md#query-parameters-in-the-key-ignored-unknown)).
+
 ### The role from FOSHttpCache's user hash: Ibexa, Exponential Platform
 
 An application built on FOSHttpCache computes the role itself -- the

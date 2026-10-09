@@ -94,7 +94,7 @@ does not have. On a development machine, add your address:
 |---|---|---|
 | `EXP-SEARCH-Q` | the fields of `content/search` and `content/advancedsearch` with their types: `SearchText` text, `SubTreeArray` number, **`SearchDate` −1 or 1–5** (all, a day, a week, a month, three months, a year), `SearchTimestamp` number, `SearchPageLimit` number … | The search is the page bots probe most. With the types, `SearchDate=9` or `SubTreeArray=x` is refused (404, once `query strict` is on), and only `SearchText` goes to the attack patterns. The time filter can only take values the search knows. |
 | `EXP-SEARCHES` | 10 searches a minute per visitor (searching, paging through results), then the browser check; solved, the counter starts again | A search is the most expensive page: no cache, a full-text query against the database. A person rarely searches ten times a minute; a bot that does pays with a check. Written inside the search's `match` block, the budget counts only requests to the search ([an area's budget](../features/RSF03-01-budgets.md#a-budget-for-one-area)); reading pages does not use it up. |
-| `EXP-CACHE-Q` | a cache keeps addresses without a query only | Search results and links with tracking tags (`?utm_source=…`) are answered but marked uncacheable. View parameters are part of the path, so lists stay cacheable. |
+| `EXP-CACHE-Q` | a cache keeps addresses without a query only | Search results and links with tracking tags (`?utm_source=…`) are answered but marked uncacheable. View parameters are part of the path, so lists stay cacheable. With `cache-ignore @tracking` the shield takes the tracking tags out before Exponential's HTTP cache looks up the page: a campaign link gets the kept page instead of a render ([fewer keys](../features/RSF04-01-cacheable-definition.md#query-parameters-in-the-key-ignored-unknown)). |
 | `EXP-SEARCH-CHECK` (commented out) | every searcher checked once an hour | For an attack from thousands of addresses, which no per-visitor budget catches. Take the `#` away while it lasts. |
 
 ## 4. The admin
@@ -145,7 +145,10 @@ Measured on PHP 8.4 with OPcache, a page by alias (best of three runs over
 | a refused system URL (`EXP-SYSVIEW`) | ~28 µs, and the kernel never starts |
 
 A rendered Exponential page takes 20–150 ms, so the rules add about 0.03 %.
-A hit in Exponential's HTTP cache takes 0.4–1 ms; there the rules add about 3–5 %.
+A hit in Exponential's HTTP cache takes 0.4–1 ms; there the rules add about 3–5 %. Exponential 6's own cache (`exphttpcache`) is the
+page cache here; the shield's `http-cache` stays off, and the shield's
+statistics show its hits and misses from `X-Exp-Cache`
+([the HTTP cache](../features/RSF04-03-http-cache.md#exponential-6-its-own-http-cache)).
 
 ## Limits
 

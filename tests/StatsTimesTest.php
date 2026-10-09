@@ -86,6 +86,13 @@ return [
         same(['nostore', 'status'], StatsPlugin::cacheKind(404, [$html, 'X-RS-Cache: miss']), 'a page not found');
         same(['nostore', 'vary'], StatsPlugin::cacheKind(200, [$html, 'X-RS-Cache: miss', 'Vary: Accept-Language']), 'varies by language');
         same(['past', null], StatsPlugin::cacheKind(200, [$html]), 'no cache asked');
+        // Exponential 6's own HTTP cache (exphttpcache, 0048): its header counts as the shield's.
+        same([['hit', null], ['hit', null], ['miss', null], ['nostore', 'app-bypass']],
+            [StatsPlugin::cacheKind(200, [$html, 'X-Exp-Cache: HIT']), StatsPlugin::cacheKind(200, [$html, 'X-Exp-Cache: STALE']),
+                StatsPlugin::cacheKind(200, [$html, 'X-Exp-Cache: MISS (stored)']), StatsPlugin::cacheKind(200, [$html, 'X-Exp-Cache: BYPASS (siteaccess not cached)'])],
+            'X-Exp-Cache: a hit, a stale page (from the cache too), a miss, a bypass');
+        same(['nostore', 'appcache'], StatsPlugin::cacheKind(200, [$html, 'X-RS-Cache: miss', 'X-Exp-Cache: MISS (stored)']),
+            'both caches: the shield\'s header first -- and it keeps nothing the site\'s own cache keeps');
         $dir = timesDir();
         try {
             file_put_contents("$dir/site.rules", "set store-dir $dir/store\nset http-cache on\nset http-cache-ttl 0\n");

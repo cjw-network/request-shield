@@ -293,7 +293,12 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
     public function keep(FileCache $cache, string $key, int $status, array $headers, string $body, string $path = '', ?float $born = null, bool $role = false): bool
     {
         $byRole = $role && $this->shared;
-        if (strlen($body) > $this->o['maxObject'] || self::refusal($status, $headers, $this->o['ttl'], $byRole) !== null) {
+        $why = strlen($body) > $this->o['maxObject'] ? 'size' : self::refusal($status, $headers, $this->o['ttl'], $byRole);
+        if ($why === 'appcache') {
+            \CjwNetwork\RequestShield\Failure::note('cache', 'http-cache on, and the site\'s own HTTP cache answers too (X-Exp-Cache: Exponential 6\'s exphttpcache) -- '
+                . 'the shield keeps none of its pages; switch the shield\'s cache off for this site (set http-cache off)', $this->settings->storeDir);
+        }
+        if ($why !== null) {
             return false;
         }
         $vary = array_filter(array_map('trim', explode(',', strtolower((string) self::header($headers, 'vary')))));
@@ -777,7 +782,8 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
      * it may (keep() then checks its size): "status" (not 200, 301, 308),
      * "cookie" (it sets one), "encoded" (the application compressed it),
      * "private" (private, no-store, no-cache, Pragma: no-cache), "expired" (an
-     * Expires gone by), "vary" (on more than the encoding), "ttl" (max-age=0,
+     * Expires gone by), "vary" (on more than the encoding), "appcache" (the
+     * application's own HTTP cache answered or keeps it: X-Exp-Cache, Exponential 6), "ttl" (max-age=0,
      * or no ttl at all). The statistics ask it too, for a miss (0046): why the
      * page did not go into the cache. A Vary on the role's hash (X-User-Hash,
      * X-User-Context-Hash) is the shield's to follow. $byRole: the application
@@ -791,6 +797,9 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
     {
         if (!in_array($status, [200, 301, 308], true)) {
             return 'status';
+        }
+        if (self::header($headers, 'x-exp-cache') !== null) {
+            return 'appcache';          // Exponential 6's own HTTP cache (exphttpcache) keeps it: never two caches in a row (0048)
         }
         if (self::header($headers, 'set-cookie') !== null) {
             return 'cookie';

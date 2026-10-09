@@ -244,6 +244,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   log (path without query, peak memory, no address). Off by default; with it
   about +2 µs a request with APCu. `CachePlugin::refusal()` says why an answer
   is not kept (keep() uses it too). Settings FORMAT 57.
+- **Working with Exponential 6's own HTTP cache** (0031 step G.6, part 1;
+  proposal 0048): the statistics read its `X-Exp-Cache` as they read
+  `X-RS-Cache` -- `HIT` and `STALE` hits, `MISS` a miss, `BYPASS` a page it
+  passes by (`app-bypass`) -- so the response times by hit and miss show its
+  cache too; the shield's HTTP cache never keeps a page that carries
+  `X-Exp-Cache` (`appcache`), and says once a minute in PHP's error log to
+  switch it off there.
 - **Fewer cache keys: ignored and unknown query parameters** (proposal
   0048, part 3 of step G.6): `cache-ignore utm_* gclid` (or `cache-ignore
   @tracking`, the shipped set's names) -- such parameters never make a page

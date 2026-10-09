@@ -365,7 +365,11 @@ final class StatsPlugin implements Plugin, RuleCounts
      */
     public static function cacheKind(int $status, array $headers, ?Settings $s = null): array
     {
+        $app = null;
         foreach ($headers as $h) {
+            if (strncasecmp($h, 'x-exp-cache:', 12) === 0) {
+                $app = strtoupper(trim(substr($h, 12)));      // Exponential 6's own HTTP cache (exphttpcache, 0048)
+            }
             if (strncasecmp($h, 'x-rs-cache:', 11) !== 0) {
                 continue;
             }
@@ -383,6 +387,19 @@ final class StatsPlugin implements Plugin, RuleCounts
                 // checked when it was kept; only what refuses any page counts here.
                 $why = \CjwNetwork\RequestShield\Cache\CachePlugin::refusal($status, $headers, $ttl, $v === 'miss; role');
                 return $why === null ? ['miss', null] : ['nostore', $why];
+            }
+        }
+        if ($app !== null) {
+            // The application's cache (X-Exp-Cache: HIT | STALE | MISS (reason) | BYPASS (reason)): its hits and misses
+            // count as the shield's would -- a stale page came from the cache too; a bypass is a page it may not keep.
+            if (strncmp($app, 'HIT', 3) === 0 || strncmp($app, 'STALE', 5) === 0) {
+                return ['hit', null];
+            }
+            if (strncmp($app, 'MISS', 4) === 0) {
+                return ['miss', null];
+            }
+            if (strncmp($app, 'BYPASS', 6) === 0) {
+                return ['nostore', 'app-bypass'];
             }
         }
         return ['past', null];

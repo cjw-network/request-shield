@@ -66,7 +66,8 @@ return [
                 [200, [...$ok, 'Cache-Control: max-age=0'], 'B', 'max-age=0'], [200, [...$ok, 'Vary: Accept-Encoding', 'Vary: Cookie'], 'B', 'a second Vary line'],
                 [200, [...$ok, 'Cache-Control: public', 'Cache-Control: private'], 'B', 'a second Cache-Control line'], [200, [...$ok, 'Content-Encoding: gzip'], 'B', 'gzip the application made'],
                 [200, [...$ok, 'Pragma: no-cache'], 'B', 'Pragma: no-cache'], [200, [...$ok, 'Expires: Thu, 01 Jan 1970 00:00:00 GMT'], 'B', 'an Expires gone by'],
-                [200, [...$ok, "Content-Disposition: attachment; filename=\"\xe4.txt\""], 'B', 'a header that is no UTF-8']] as [$status, $h, $body, $why]) {
+                [200, [...$ok, "Content-Disposition: attachment; filename=\"\xe4.txt\""], 'B', 'a header that is no UTF-8'],
+                [200, [...$ok, 'X-Exp-Cache: MISS (stored)'], 'B', 'the site\'s own HTTP cache keeps it (Exponential 6): never two caches in a row']] as [$status, $h, $body, $why]) {
                 truthy(!$p->keep($c, 'https://www.example.org/b', $status, $h, $body), "not kept: $why");
             }
             truthy($p->keep($c, 'https://www.example.org/v', 200, [...$ok, 'Vary: Accept-Encoding', 'Cache-Control: public, s-maxage=10, max-age=99'], 'V'), 'Vary on encoding only');

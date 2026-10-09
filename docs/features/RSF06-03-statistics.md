@@ -469,8 +469,14 @@ header it sets:
 |---|---|
 | **hit** | answered from the cache (the site did not run) |
 | **miss** | the cache asked the site, and the answer may be kept |
-| **nostore** | the cache asked the site, but the answer may not be kept -- and why: `status` (not 200, 301, 308), `cookie`, `private` (also no-store, no-cache), `encoded`, `expired`, `vary`, `ttl` |
+| **nostore** | the cache asked the site, but the answer may not be kept -- and why: `status` (not 200, 301, 308), `cookie`, `private` (also no-store, no-cache), `encoded`, `expired`, `vary`, `ttl`, `appcache` (the site's own cache keeps it), `app-bypass` (the site's own cache passed it by) |
 | **past** | the cache was not asked: off, a POST, a visitor who is not anonymous, a page that is not cacheable |
+
+**The site's own cache** counts the same way when the shield's is off:
+Exponential 6's `exphttpcache` sends `X-Exp-Cache` -- `HIT` and `STALE` are
+hits, `MISS` a miss, `BYPASS (…)` a page it may not keep (`app-bypass`). With
+both headers the shield's wins. Pages Velocity answers in its own process
+never reach PHP, so the shield does not see them.
 
 The share of hits is hits ÷ (hits + misses): of the pages the cache could
 answer, how many it did. What the hits saved: each counted as long as the
