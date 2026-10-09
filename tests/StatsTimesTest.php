@@ -291,7 +291,10 @@ return [
             $daily = \CjwNetwork\RequestShield\Cache\CachePage::daily($s, 3, $now);
             same(['20260908' => ['hit' => 0, 'miss' => 0, 'nostore' => 0, 'past' => 0], '20260909' => ['hit' => 3, 'miss' => 1, 'nostore' => 0, 'past' => 0],
                 '20260910' => ['hit' => 0, 'miss' => 0, 'nostore' => 1, 'past' => 1]], $daily, 'per day, every kind of visitor added up');
+            $zone = date_default_timezone_get();
+            date_default_timezone_set('America/New_York');     // west of UTC: the labels are still the UTC days
             $html = \CjwNetwork\RequestShield\Cache\CachePage::render($s, ['lang' => 'en', 'now' => $now]);
+            date_default_timezone_set($zone);
             truthy(strpos($html, '<svg class="days"') !== false && strpos($html, '75%') !== false && strpos($html, 'Sep 9 · from the cache: 3') !== false, 'the bars, the share of hits, a tooltip');
             same(null, \CjwNetwork\RequestShield\Cache\CachePage::daily(Settings::from(['storeDir' => $dir, 'store' => 'file', 'ext' => ['stats' => ['enabled' => true, 'parts' => ['requests']]]]), 3, $now),
                 'the statistics without times: no bars');

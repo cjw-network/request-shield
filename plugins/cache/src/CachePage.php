@@ -256,12 +256,15 @@ final class CachePage implements RoutePage
         foreach ($daily as $day => $c) {
             $x = $i * $slot + ($slot - $bar) / 2;
             $y = $top + $plot;
-            $label = date($lang === 'de' ? 'd.m.' : 'M j', (int) strtotime($day . ' UTC'));
+            $label = gmdate($lang === 'de' ? 'd.m.' : 'M j', (int) strtotime($day . ' UTC'));      // the days are UTC days
+            // Each part at least 1.5 px, so the room for that comes off the scale: the bar stays within the plot.
+            $parts = count(array_filter($c, static fn (int $v): bool => $v > 0));
+            $scale = ($plot - 1.5 * $parts) / $max;
             foreach (self::KINDS as $k) {
                 if ($c[$k] <= 0) {
                     continue;
                 }
-                $height = max(1.5, $plot * $c[$k] / $max);
+                $height = 1.5 + $scale * $c[$k];
                 $y -= $height;
                 $svg .= '<rect class="k-' . $k . '" x="' . round($x, 1) . '" y="' . round($y, 1) . '" width="' . round($bar, 1) . '" height="' . round(max(0.5, $height - 2), 1) . '" rx="3">'
                     . '<title>' . $e($label . ' · ' . $t['k.' . $k] . ': ' . $n($c[$k])) . '</title></rect>';
@@ -282,7 +285,7 @@ final class CachePage implements RoutePage
         $rows = '';
         foreach ($daily as $day => $c) {
             $asked = $c['hit'] + $c['miss'];
-            $rows .= '<tr><td>' . $e(date($lang === 'de' ? 'd.m.Y' : 'Y-m-d', (int) strtotime($day . ' UTC'))) . '</td>';
+            $rows .= '<tr><td>' . $e(gmdate($lang === 'de' ? 'd.m.Y' : 'Y-m-d', (int) strtotime($day . ' UTC'))) . '</td>';
             foreach (self::KINDS as $k) {
                 $rows .= '<td class="num">' . $e($n($c[$k])) . '</td>';
             }
