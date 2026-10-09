@@ -44,8 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `/news/./item` were decoded to the same key as `/news/item` -- a CMS's
   redirect to its one spelling, kept, answered the plain path with a
   redirect to itself, for everyone. The key holds the path as it was sent
-  now (as Varnish's `req.url`): another spelling is another key. A purge
-  by address names the spelling it means; tag purges reach every one.
+  now: another spelling is another key; a redirect to another spelling of
+  its own address (`/news/?` to `/news/`) is never kept; a purge by address
+  still reaches every spelling. Nor kept: a target sent with a `#` or as a
+  whole URL, a request with `X-Original-URL` or `X-Rewrite-URL`.
 - **A ban kept in store-dir was written in the umask's mode** -- under the
   usual umask 022 readable for everyone on the machine, and its file holds
   the address. It is written in `file-mode` now (so is the crawler check's

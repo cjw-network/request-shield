@@ -335,12 +335,17 @@ literally: `--path=/news` takes `/newsletter` too.
 - **Memory is per server:** each PHP pool has its own APCu, and the command
   line reaches it only through the purge times (10 seconds).
 - **One key per spelling of a path:** the key holds the path as it was
-  sent (as Varnish's `req.url`): `/news//item`, `/n%65ws/item` and
-  `/news/item` are three keys, so an application's redirect from one
-  spelling to another is never kept as the other's answer. The parameters
-  are sorted and decoded; an address with a name PHP reads twice or folds
-  (`page=1&page=2`, ` page`) is not kept. A purge by address reaches the
-  spelling it names; a purge by tag reaches every one.
+  sent (as Varnish's `req.url` does for the path): `/news//item`,
+  `/n%65ws/item` and `/news/item` are three keys. The parameters are
+  decoded and sorted; an address with a name PHP reads twice or folds
+  (`page=1&page=2`, ` page`) is not kept, nor one sent with a `#` or a
+  whole URL as its target, nor a request with `X-Original-URL` or
+  `X-Rewrite-URL` (some frameworks route by them). A redirect to another
+  spelling of its own address (`/news/?` to `/news/`, `//` to `/`) is never
+  kept: it would be a loop for everyone. A purge by address reaches every
+  spelling (it names the decoded path); so does a purge by tag.
+- **Every spelling is its own entry:** made-up spellings of a page fill
+  the cache like made-up addresses do -- `http-cache-disk` caps them.
 - **Redirects are kept for everyone:** a 301 or 308 that sends visitors to
   different places by language or device without saying `Vary` is kept as
   the first visitor got it -- send such redirects with `Cache-Control:

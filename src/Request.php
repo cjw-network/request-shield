@@ -124,6 +124,16 @@ final class Request
 
     private ?string $matchPath = null;
 
+    /**
+     * Whether the request's target held a "#" (no browser sends one; PHP
+     * passes it on in REQUEST_URI, the shield's path and query end before it).
+     */
+    public function sentFragment(): bool
+    {
+        $uri = $this->server['REQUEST_URI'] ?? '';
+        return is_string($uri) && strpos($uri, '#') !== false;
+    }
+
     /** @var array<string, string> */
     private array $content = [];
 

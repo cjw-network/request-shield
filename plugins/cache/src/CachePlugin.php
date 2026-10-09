@@ -317,7 +317,12 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
         if ($tags === null) {
             return false;
         }
-        $tags[] = self::ADDRESS . self::address((string) strstr($key . "\n", "\n", true));     // the address, not the role's suffix
+        $address = self::address((string) strstr($key . "\n", "\n", true));        // the address, not the role's suffix
+        $location = self::header($headers, 'location');
+        if ($status >= 300 && $status < 400 && $location !== null && self::address($location) === $address) {
+            return false;           // a redirect to another spelling of this very address (//, %65, ?, a host's case): kept, a loop for everyone
+        }
+        $tags[] = self::ADDRESS . $address;
         if ($role) {
             $tags[] = self::CONTEXT;
         }
@@ -713,6 +718,9 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
         if ($request->header('authorization') !== null || $request->header('x-user-hash') !== null || $request->header('x-user-context-hash') !== null) {
             return 'own';       // a role's hash sent by the client: an application that believes it would make a role's page
         }
+        if ($request->header('x-original-url') !== null || $request->header('x-rewrite-url') !== null) {
+            return 'own';       // another address than the key's: some frameworks route by it (Zend 1, Magento 1, old Symfony)
+        }
         $who = 'anonymous';
         foreach (explode(';', (string) $request->header('cookie')) as $pair) {
             $name = trim((string) strstr($pair . '=', '=', true));
@@ -761,15 +769,18 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
     }
 
     /**
-     * The address part of a key or of an address as a purge names it --
-     * path and sorted query, as Request::cacheKey() makes them; no scheme,
-     * no host (a purge from 127.0.0.1 names no host the visitors use).
+     * The address part of a key or of an address as a purge names it -- the
+     * path decoded and collapsed (/n%65ws//item is /news/item) and the query
+     * sorted, as Request::cacheKey() makes it; no scheme, no host (a purge
+     * from 127.0.0.1 names no host the visitors use). The key keeps the path
+     * as sent; the address is what all its spellings share, so one purge
+     * reaches them all.
      */
     public static function address(string $keyOrUri): string
     {
         $uri = preg_replace('#^[a-z][a-z0-9+.-]*://[^/?]*#i', '', $keyOrUri) ?? $keyOrUri;
-        $key = Request::fromServer(['REQUEST_URI' => $uri === '' ? '/' : $uri, 'REQUEST_METHOD' => 'GET', 'HTTP_HOST' => 'h'])->cacheKey();
-        return substr($key, strlen('http://h'));
+        $r = Request::fromServer(['REQUEST_URI' => $uri === '' ? '/' : $uri, 'REQUEST_METHOD' => 'GET', 'HTTP_HOST' => 'h']);
+        return $r->matchPath() . substr($r->cacheKey(), strlen('http://h' . $r->path));
     }
 
     private function tags(): Tags
@@ -843,13 +854,16 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
     }
 
     /**
-     * An address with one key for one answer: no parameter twice (PHP takes
-     * the last, the key sorts them) and no encoded "/", "?" or "#" in the
-     * path. (The key holds the path as sent: other spellings are other keys.)
+     * An address with one key for one answer: a path from "/" (not a whole
+     * URL as the request's target), no "#" in what was sent (PHP passes it
+     * on, the key ends before it), no encoded "/", "?" or "#", and no
+     * parameter PHP reads twice or folds. (The key holds the path as sent:
+     * other spellings are other keys.)
      */
     private static function plainAddress(Request $request): bool
     {
-        if (preg_match('/%(2f|3f|23)/i', $request->path) === 1) {
+        if (strncmp($request->path, '/', 1) !== 0 || $request->sentFragment()
+            || preg_match('/%(2f|3f|23)/i', $request->path) === 1) {
             return false;
         }
         // One key in $_GET for every pair, by PHP's own parser: two spellings of one name (page and " page",

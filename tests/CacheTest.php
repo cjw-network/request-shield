@@ -42,6 +42,30 @@ function cacheReq(string $uri, array $headers = [], string $method = 'GET'): Req
 }
 
 return [
+    'RSF04-03 one answer, one spelling: a redirect to another spelling of its own address is never kept; a purge by address reaches every spelling; a # sent, a whole URL as target or X-Original-URL is never kept' => function (): void {
+        $dir = cacheDir();
+        try {
+            $s = cacheSettings($dir, "set http-cache on\nset http-cache-hosts www.example.org\nset http-cache-memory-object 0\n");
+            $p = new CachePlugin($s);
+            $c = new FileCache("$dir/store/http-cache");
+            $h = ['Content-Type: text/html', 'Cache-Control: public, max-age=600'];
+            foreach (['/hello/?' => '/hello/', '/hello//' => '/hello/', '/h%65llo/' => '/hello/', '/hello/?b=1&a=2' => 'https://www.example.org/hello/?a=2&b=1'] as $from => $to) {
+                truthy(!$p->keep($c, cacheReq($from)->cacheKey(), 301, [...$h, "Location: $to"], ''), "$from -> $to: a redirect to itself, not kept");
+            }
+            truthy($p->keep($c, cacheReq('/old')->cacheKey(), 301, [...$h, 'Location: /new'], ''), 'a redirect to another address is kept');
+            same(CachePlugin::address('/news/item?a=1&b=2'), CachePlugin::address('/n%65ws//item?b=2&a=1'), 'one address for every spelling of a path');
+            same(CachePlugin::address('/caf%C3%A9'), CachePlugin::address('/caf%c3%a9'), 'hex in either case');
+            foreach (['/hello/#x' => [], '/x' => ['X-Original-URL' => '/admin'], '/y' => ['X-Rewrite-URL' => '/admin']] as $uri => $headers) {
+                $r = cacheReq($uri, $headers);
+                truthy($p->keep($c, $r->cacheKey(), 200, $h, 'page') && $p->handle($r, Decision::allow()) === null, "$uri " . json_encode($headers) . ': never answered from the cache');
+            }
+            $abs = Request::fromServer(['REQUEST_URI' => 'http://evil.example/x', 'REQUEST_METHOD' => 'GET', 'HTTP_HOST' => 'www.example.org', 'REMOTE_ADDR' => '198.51.100.7', 'HTTPS' => 'on']);
+            $c->put($abs->cacheKey(), 200, $h, 'abs', 60, microtime(true));
+            same(null, $p->handle($abs, Decision::allow()), 'a whole URL as the target: not answered from the cache');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'RSF04-03 without set http-cache on there is no cache: no plugin, no handler -- a request pays nothing' => function (): void {
         $dir = cacheDir();
         try {
