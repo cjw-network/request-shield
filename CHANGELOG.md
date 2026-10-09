@@ -39,6 +39,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **An address range with a prefix longer than its address** (`1.2.3.4/99`,
   `2001:db8::/129`) is refused naming its line; before it was taken and
   matched nobody.
+- **The HTTP cache kept an answer for one spelling of a path under the
+  plain path's key** (RSF04-03): `/news//item`, `/n%65ws/item`,
+  `/news/./item` or a lower-case `%c3%a9` decode to the same key as the
+  plain path -- a CMS's redirect to its one spelling, kept, answered the
+  plain path with a redirect to itself, for everyone. The cache now keeps
+  an address only as a browser spells its path (no `//`, no `.`
+  segment, a `%XX` only for a byte that must be encoded, capital hex).
 - **A ban kept in store-dir was written in the umask's mode** -- under the
   usual umask 022 readable for everyone on the machine, and its file holds
   the address. It is written in `file-mode` now (so is the crawler check's

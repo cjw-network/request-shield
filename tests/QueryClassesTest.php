@@ -99,6 +99,11 @@ return [
         file_put_contents("$dir/docroot/index.php", '<?php
             file_put_contents(__DIR__ . "/../runs", "x", FILE_APPEND);
             header("Cache-Control: public, max-age=600");
+            $path = (string) strtok($_SERVER["REQUEST_URI"] ?? "", "?");
+            if (strpos($path, "//") !== false) {                // as a CMS sends a path to its one spelling
+                header("Location: " . preg_replace("#/+#", "/", $path), true, 301);
+                exit;
+            }
             echo json_encode(["get" => $_GET, "qs" => $_SERVER["QUERY_STRING"] ?? "", "uri" => $_SERVER["REQUEST_URI"] ?? "", "ignored" => $_SERVER["REQUEST_SHIELD_IGNORED"] ?? null]);');
         $port = freePort();
         file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset http-cache on\nset http-cache-hosts 127.0.0.1:$port\n"
@@ -111,7 +116,7 @@ return [
         }
         try {
             $get = static function (string $uri) use ($port): array {
-                $r = Http::get("http://127.0.0.1:$port$uri", [], 5);
+                $r = Http::get("http://127.0.0.1:$port$uri", [], 5, 0, 'request-shield', false);      // a redirect is the answer
                 $page = json_decode((string) ($r['body'] ?? ''), true);
                 return [(int) ($r['status'] ?? 0), strtolower((string) ($r['headers']['x-rs-cache'] ?? '')), is_array($page) ? $page : []];
             };
@@ -148,6 +153,11 @@ return [
                 [, $cache, $page] = $get($plain);
                 same($want, $page['get'] ?? null, "$plain is its own page ($cache)");
             }
+            // Another spelling of a path: never the plain path's answer -- not a redirect to itself, kept for everyone.
+            [$status] = $get('/magazin/6//x');
+            same(301, $status, 'the application sends //x to its one spelling');
+            [$status, $cache] = $get('/magazin/6/x');
+            same(200, $status, 'the plain path answers itself, not the kept redirect (' . $cache . ')');
             // A spelling PHP folds further: items[per[page is $_GET['items_per_page'].
             [, , $page] = $get('/magazin/3?items_per_page=10&items[per[page=999');
             same([[], ''], [$page['get'] ?? null, $page['qs'] ?? null], 'items[per[page: items_per_page goes as a whole');
