@@ -113,17 +113,19 @@
     el.title = s2;
   };
   const pace = () => (auto ? AUTO_STEP : STEP);
-  // Who sends it: a bot turns the visitor into a robot (in both views), anyone else is the visitor again.
+  // Who sends it, in both views: a person each (alike, each their own), a bot as a robot; the visitor as drawn.
   const visitorIcon = stations[0].querySelector('.flow-icon');
   const visitorName = stations[0].querySelector('.flow-name');
-  const actor = (bot) => {
-    stations[0].classList.toggle('bot', bot);
-    visitorIcon.textContent = bot ? '🤖' : (tech ? visitorIcon.dataset.tech : visitorIcon.dataset.plain);
-    visitorName.textContent = bot ? w.bot : (tech ? visitorName.dataset.tech : visitorName.dataset.plain);
+  const FACES = {A: '🧑', B: '👩', E: '🧑‍💻', bot: '🤖'};
+  const face = (who) => FACES[who] || '🙂';
+  const actor = (who) => {
+    ['A', 'B', 'E', 'bot'].forEach((k) => stations[0].classList.toggle('as-' + k, k === who));
+    visitorIcon.textContent = FACES[who] || (tech ? visitorIcon.dataset.tech : visitorIcon.dataset.plain);
+    visitorName.textContent = who === 'bot' ? w.bot : (w.people[who] || (tech ? visitorName.dataset.tech : visitorName.dataset.plain));
   };
-  const play = (kind, text1, text2, label, bot) => {
+  const play = (kind, text1, text2, label, who) => {
     film = film.then(() => new Promise((done) => {
-      actor(Boolean(bot));
+      actor(who || '');
       say(caption, text1);
       say(detail, text2 || '');
       badge(kind, '');
@@ -235,13 +237,13 @@
       const label = {hit: w.hit, miss: w.miss, refused: w.refused + ' (' + r.status + ')', notkept: w.notKept, off: w.off}[kind];
       // The role the cache keys by, and for a member the session (the cookie rs-demo-member's value, the detail line names it).
       const role = by ? 'bot · ' + w.anonymous : (who ? roleOf(who) + ' · ' + sessions[who] : w.anonymous);
-      show(url, by || (who === 'E' ? w.editor : (who ? w.member.replace('%s', who) : w.visitor)), kind, label, ms,
+      show(url, face(by ? 'bot' : who) + ' ' + (by || (who === 'E' ? w.editor : (who ? w.member.replace('%s', who) : w.visitor))), kind, label, ms,
         {status: String(r.status), xrs: r.headers.get('X-RS'), cache: r.headers.get('X-RS-Cache'), cc: r.headers.get('Cache-Control'), age: r.headers.get('Age'), role});
       if ((kind === 'hit' || kind === 'miss') && place !== null) {
         fill(roleOf(who), place);
       }
       play(kind, words({hit: 'capHit', miss: 'capMiss', refused: 'capRefused', notkept: 'capNotKept', off: 'capOff'}[kind]),
-        'GET ' + url + ' → ' + r.status + ' · X-RS-Cache: ' + (cache || '—') + ' · ' + fmt(ms) + (who ? ' · rs-demo-member=' + sessions[who] : ''), label, Boolean(by));
+        'GET ' + url + ' → ' + r.status + ' · X-RS-Cache: ' + (cache || '—') + ' · ' + fmt(ms) + (who ? ' · rs-demo-member=' + sessions[who] : ''), label, by ? 'bot' : who);
     } finally {
       if (who) {
         document.cookie = 'rs-demo-member=; path=/; max-age=0; SameSite=Lax';

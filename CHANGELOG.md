@@ -286,9 +286,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   row of its own above the buttons: while it plays, a bar and "In 5 s: …"
   next to it say what comes next, "Running …" while that step runs. The
   picture shows each request's result (hit, miss, refused, not kept) above
-  the station that decided it, and a bot as a robot instead of the
-  visitor. On a host name not in `http-cache-hosts` the page says the cache
-  is off there and how to start the showcase for that name, and the picture
+  the station that decided it, and who sent it: the visitor 🙂, member A 🧑,
+  member B 👩 (a blue ring), the editor 🧑‍💻 (a violet one), a bot 🤖 (red,
+  dashed) -- the same faces in the log's "Who". On a host name not in
+  `http-cache-hosts` the page says the cache is off there and how to start the showcase for that name, and the picture
   says "cache off" instead of telling of hits that never come.
 - **Working with Exponential 6's own HTTP cache** (0031 step G.6, part 1;
   proposal 0048): the statistics read its `X-Exp-Cache` as they read

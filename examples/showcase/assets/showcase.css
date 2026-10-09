@@ -354,8 +354,11 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .cache-flow .flow-node { fill: #fff; stroke: var(--rs-line); stroke-width: 3; transition: stroke .2s, fill .2s; }
 .cache-flow .flow-station.on .flow-node { stroke: var(--rs-ink); fill: var(--rs-sky-bg); }
 .cache-flow .flow-station.no .flow-node { stroke: var(--rs-coral); fill: var(--rs-coral-bg); }
-.cache-flow .flow-station.bot .flow-node { stroke: var(--rs-coral); stroke-dasharray: 6 4; }
-.cache-flow .flow-station.bot .flow-name { fill: #b4322c; }
+/* Who sends the request: members and the editor a ring of their own colour, a bot a red dashed one. */
+.cache-flow .flow-station.as-A .flow-node, .cache-flow .flow-station.as-B .flow-node { stroke: #2f62c9; }
+.cache-flow .flow-station.as-E .flow-node { stroke: #8b5cf6; }
+.cache-flow .flow-station.as-bot .flow-node { stroke: var(--rs-coral); stroke-dasharray: 6 4; }
+.cache-flow .flow-station.as-bot .flow-name { fill: #b4322c; }
 .cache-flow .flow-icon { font-size: 30px; }
 .cache-flow .flow-name { font-weight: 700; fill: var(--rs-ink); font-size: 17px; }
 .cache-flow .flow-sub { fill: var(--rs-soft-ink); font-size: 13px; }
