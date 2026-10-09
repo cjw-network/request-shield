@@ -111,6 +111,7 @@
   };
   const STEP = 280;       // ms from one station to the next; slower while Auto plays (AUTO_STEP)
   const AUTO_STEP = 480;
+  const LEAD = 1500;      // ms between a step's story and its request while Auto plays
   let film = Promise.resolve();
   // The lines below the picture keep their height: a long one ends in "…", whole on hover.
   const say = (el, s2) => {
@@ -455,17 +456,22 @@
       const list = steps(n);
       for (let i = 0; i < list.length && auto && id === round; i++) {
         const [key, job] = list[i];
+        // First the words, then -- a moment later -- the request and its dot: a reader knows what to watch.
         tell(key, n);
+        await wait(LEAD);
+        if (!auto || id !== round) {
+          break;
+        }
         await job();
         await queue;
         await film;
         if (!auto || id !== round) {
           break;
         }
-        // Time to read what the step says -- the story and the caption, about 25 characters a second, 3 to 7 s --
+        // Time to read the caption (the story was read before): about 40 characters a second, 2 to 4.5 s --
         // counted down with what comes next (after the last step: the next article's first).
         const [nextKey, nextN] = i + 1 < list.length ? [list[i + 1][0], n] : [list[0][0], n % 5 + 1];
-        await countdown(id, Math.min(7000, Math.max(3000, 40 * (story.textContent.length + caption.textContent.length))),
+        await countdown(id, Math.min(4500, Math.max(2000, 25 * caption.textContent.length)),
           w.story[nextKey].replace('%s', nextN));
       }
     }

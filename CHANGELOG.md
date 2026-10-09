@@ -278,8 +278,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   misses (this machine only). The picture keeps its height whatever a
   request's headers say (its lines end in "…", whole on hover), and the
   log's columns are as wide as their content -- the address takes the rest.
-  *Play automatically* goes at reading pace: each step waits for its story
-  and caption to be read (3 to 7 s) and the dot moves slower.
+  *Play automatically* goes at reading pace: each step shows its story
+  first and sends its request 1.5 s later, then waits for the caption to be
+  read (2 to 4.5 s); the dot moves slower.
   A short introduction above the buttons says what can be tried there (the
   HTTP cache in different roles), folded behind a "?" (the browser remembers
   it open); docked at the bottom it is left out. *Play automatically* has a
