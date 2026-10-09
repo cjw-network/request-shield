@@ -244,6 +244,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   log (path without query, peak memory, no address). Off by default; with it
   about +2 µs a request with APCu. `CachePlugin::refusal()` says why an answer
   is not kept (keep() uses it too). Settings FORMAT 57.
+- **Proposal 0048 query parameters and the PHP caches** (draft): three
+  kinds of parameters -- in the key (`cache-query`), ignored (`cache-ignore
+  utm_* …`: taken out before the cache and the application run, the page
+  kept without them) and unknown (`set cache-unknown-query hit-only`: the
+  page without them answers, nothing is kept) -- handed on as
+  `REQUEST_SHIELD` and `REQUEST_SHIELD_CACHE_LOOKUP`, so the PHP caches
+  (the shield's, Exponential's `exphttpcache`) keep fewer keys; and step G.6
+  re-dedicated: Exponential 6's own HTTP cache works with the shield (its
+  `X-Exp-Cache` in the statistics), an upstream pull request for Ibexa's tag
+  pattern.
 - **Proposal 0047 the admin pages: an area per plugin, and a login by
   default** (draft): two rows of tabs -- Start, Protection, Statistics,
   Cache, API, System, each with its pages, an area only where its plugin is
