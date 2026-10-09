@@ -21,6 +21,7 @@ use CjwNetwork\RequestShield\Settings;
  *   query page int   sort word                 everywhere
  *   query SearchText text at /content/search   one path (or inside match)
  *   query strict                               anything else: 404
+ *   query drop [at <paths>]                    anything else: dropped, the request goes on
  *
  * Every parameter is looked up (the path's own rules first, then those for
  * every path) and its value checked against its type. With "strict", an
@@ -43,8 +44,9 @@ final class QueryRule implements Rule
     /**
      * @param array{exact: array<string, string>, globs: array<string, string>, local: list<array{paths: list<string>, exact: array<string, string>, globs: array<string, string>}>} $index from index()
      * @param ?string $own the shield's own addresses (widget-path and "/"): widget.js?v=…, its task -- answered by the shield, never by the site
+     * @param list<string> $drop path patterns where an unknown parameter, or one not of its type, is dropped instead of refused
      */
-    public function __construct(array $index, private bool $strict = false, private ?string $own = null)
+    public function __construct(array $index, private bool $strict = false, private ?string $own = null, private array $drop = [])
     {
         ['exact' => $this->exact, 'globs' => $this->globs, 'local' => $this->local] = $index;
     }
@@ -80,7 +82,8 @@ final class QueryRule implements Rule
         if ($this->own !== null && strncmp($request->path, $this->own, strlen($this->own)) === 0) {
             return null;
         }
-        $path = $this->local === [] ? '' : $request->matchPath();
+        $path = $this->local === [] && $this->drop === [] ? '' : $request->matchPath();
+        $drop = $this->drop !== [] && self::onPath($this->drop, $path);
         $scan = [];
         foreach ($request->queryPairs() as [$name, $value, $raw]) {
             $type = $this->type($name, $path);
@@ -88,7 +91,10 @@ final class QueryRule implements Rule
                 continue;
             }
             if ($type === null || !self::fits($type, $value)) {
-                if ($this->strict) {
+                if ($drop) {
+                    // Left out once decided (Shield::queryForCaches()) -- scanned all the same: an attack in it is refused.
+                    $request->drop($name);
+                } elseif ($this->strict) {
                     return Decision::reject(404, 'unknown parameter');
                 }
                 $scan[] = $raw;             // unknown, or not of its type: scanned, name and all

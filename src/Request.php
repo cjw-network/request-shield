@@ -130,6 +130,25 @@ final class Request
     /** What the attack patterns see of the query, when the known parameters said (QueryRule). */
     private ?string $scanQuery = null;
 
+    /** @var array<string, true> the parameters query drop leaves out, as they stand in the query (QueryRule) */
+    private array $dropped = [];
+
+    /** A parameter query drop leaves out once the request is decided (Shield::queryForCaches()). */
+    public function drop(string $name): void
+    {
+        $this->dropped[$name] = true;
+    }
+
+    /**
+     * The parameters query drop leaves out (names as in the query).
+     *
+     * @return array<string, true>
+     */
+    public function dropped(): array
+    {
+        return $this->dropped;
+    }
+
     /**
      * Only these pairs of the query ("a=1&b=2", raw) go to the attack
      * patterns (typed values cannot hold an attack). Set before they look.

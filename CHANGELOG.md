@@ -95,6 +95,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   shield's own pages, the log and the learning run are for `--admin`'s
   addresses only (none: nobody); its rules are compiled once at the build,
   so a wrong `--admin` or `--host` is refused there.
+- **`query drop`: leave out what a page does not take, instead of a 404**
+  (RSF02-05): `query drop` (the whole site), `query drop at <paths>` or
+  inside a `match` block -- an unknown parameter, or a value not of its
+  type, leaves `$_GET`, `$_REQUEST`, `QUERY_STRING` and `REQUEST_URI` once
+  the request is decided (a copy in `REQUEST_SHIELD_IGNORED`) and is no
+  cache key: `/magazin/1?id=xyz` or `?cb=123` is answered as `/magazin/1`,
+  from the HTTP cache when kept. Still scanned: an attack in it is refused.
+  Next to `query strict` it wins where both apply. Settings `FORMAT` 66. The
+  showcase's magazine uses it: a bot's made-up parameters get the kept page.
 - **Every plugin is a Composer package of its own** (0031 step H.1):
   `plugins/api`, `plugins/waf`, `plugins/stats` and `plugins/cache` each
   have a `composer.json` (`cjw-network/request-shield-<name>`, the core

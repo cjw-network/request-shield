@@ -63,7 +63,7 @@ final class CacheableRule implements Rule
         }
         if ($this->query !== null) {
             foreach ($request->queryNames() as $name) {
-                if (!in_array($name, $this->query, true) && !self::ignored($name, $this->ignore)) {
+                if (!in_array($name, $this->query, true) && !self::ignored($name, $this->ignore) && !isset($request->dropped()[$name])) {
                     return Decision::allowUncached('query parameter');
                 }
             }

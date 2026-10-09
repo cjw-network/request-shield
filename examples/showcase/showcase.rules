@@ -91,6 +91,11 @@ set         cache-unknown-query hit-only              # ... but is answered from
 [SHOW-CACHE]   allow POST /__cache/publish /__cache/clear   # the tab's buttons: publish an article, empty the cache
 [SHOW-CACHE-PACE] limit cachedemo 20/min at /__cache/**      # per visitor: 20 purges a minute -- on a public demo nobody empties it for everyone all the time
 expect GET  /magazin/1              from 198.51.100.31 answered              # (the magazine: not a card)
+match /magazin/** {
+  [SHOW-DROP] query drop                              # the magazine: a made-up parameter or a typo is left out -- the page answers (from the shelf), no 404
+}
+expect GET  /magazin/1?id=xyz       from 198.51.100.32 answered              # A made-up parameter in the magazine: left out, the page answers
+expect GET  /magazin?q=1%27%20UNION%20SELECT%20password%20FROM%20users-- from 198.51.100.33 403 by ATK-SQL-UNION   # ... an attack in it is refused all the same
 set         stats requests pages times                # the statistics, with response times: hits and misses side by side (/rs/stats, this machine)
 
 # The showcase's own settings (a real site keeps the defaults).

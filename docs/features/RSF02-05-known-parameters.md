@@ -34,6 +34,33 @@ Without `strict` nothing is refused for being unknown: the request is answered
 as before, and a cache must not keep it (that is `cache-query`, see
 [the cacheable definition](RSF04-01-cacheable-definition.md)).
 
+## Drop instead of refuse: `query drop`
+
+Where a 404 is too hard -- a typo in a hand-written link, a cache buster an
+app appends (`?cb=123`), a scanner's made-up `?id=1` on a page a cache keeps
+-- `query drop` leaves out what the list does not take, and the request goes
+on without it:
+
+```text
+query  page int   q text
+query  strict                     # the site: anything else 404
+match /magazin/** {
+  query drop                      # the magazine: anything else left out
+}
+query drop at /shop/**            # the same, written with "at"
+```
+
+- An **unknown parameter, or a value not of its type** (`page=2x`), leaves
+  `$_GET`, `$_REQUEST`, `QUERY_STRING` and `REQUEST_URI` once the request is
+  decided (GET and HEAD); a copy is in `REQUEST_SHIELD_IGNORED`, as for
+  `cache-ignore` ([the cacheable definition](RSF04-01-cacheable-definition.md)).
+- It is **no cache key**: `/magazin/1?id=xyz` is answered as `/magazin/1` --
+  from the HTTP cache when the page is kept.
+- It is **still scanned**: an attack in it is refused (403), as without
+  `drop`. The log shows the query as it came.
+- Where `drop` and `strict` both apply, `drop` wins; `query drop` without
+  `at` is for the whole site.
+
 ## Use cases
 
 - A site with few parameters (a CMS whose views are in the path, a shop's
@@ -83,7 +110,8 @@ links keep working. They stay uncacheable unless `cache-query` names them.
 Rule file: as above. The line `query strict` has an ID like any rule
 (`[SITE-Q] query strict`); a refusal names it (`X-RS: reject
 unknown parameter; rule=SITE-Q`, the log, the [rules page](RSF06-01-active-rules-page.md)).
-`strict` is for the whole site: not inside a `match` block.
+`strict` is for the whole site: not inside a `match` block. `query drop`
+may be in one (the block's paths), or take `at <paths>`.
 
 PHP array:
 
@@ -93,6 +121,7 @@ PHP array:
     ['paths' => ['#^/content/search$#'], 'exact' => ['SearchText' => 'text'], 'globs' => []],
 ],
 'queryStrict' => true,
+'queryDrop' => ['#^/magazin(?:/.*)?$#'],     // path patterns where anything else is dropped instead
 ```
 
 A regex type is written as a PHP pattern that matches the whole value
@@ -121,6 +150,7 @@ other, µs per request; the shipped `@attacks` included where it says so):
 - The gain is in the refusals: an unknown parameter under `strict` costs 6.7
   instead of 17.7 µs, and never reaches the attack rules or the site.
 - On its own, about 1.5 µs for three parameters. No query string: nothing.
+- `query drop` costs the same lookup; without it, nothing more than before.
 
 The rules are merged into one lookup when the settings are read (compiled with
 them): a name is one hash lookup, plus one short expression per name with `*`

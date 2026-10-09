@@ -165,6 +165,12 @@ final class ApiExtension implements Extension, ApiProvider
                 $out[] = "allow POST … does not name the API: its POST endpoints (trace, test …) get 405 -- add \"allow POST $base/**\"";
             }
         }
+        foreach ($s->queryDrop as $p) {
+            if (@preg_match($p, $base . '/status') === 1) {
+                $out[] = "query drop at the API ($base/**): its parameters (cursor, days, q …) are left out unless named with query -- name them, or narrow query drop";
+                break;
+            }
+        }
         if ($s->queryStrict) {
             $out[] = "query strict: the API's parameters (cursor, days, q …) are unknown parameters -- add a match block for $base/** without query strict, or name them with query";
         }

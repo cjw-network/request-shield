@@ -155,8 +155,8 @@ final class Shield
         }
         // Known parameters before the attack patterns: cheaper, and they say
         // which values the patterns need to look at.
-        if ($s->queryParams !== [] || $s->queryStrict) {
-            $this->rules[] = new QueryRule($s->queryIndex, $s->queryStrict, $s->challenge->widgetPath !== null ? $s->challenge->widgetPath . '/' : null);
+        if ($s->queryParams !== [] || $s->queryStrict || $s->queryDrop !== []) {
+            $this->rules[] = new QueryRule($s->queryIndex, $s->queryStrict, $s->challenge->widgetPath !== null ? $s->challenge->widgetPath . '/' : null, $s->queryDrop);
         }
         if ($s->contentIndex !== []) {
             $this->rules[] = new ContentRule($s->contentIndex, $s->contentRules, $s->blockExceptions, $s->contentHints);
@@ -322,9 +322,11 @@ final class Shield
     {
         $kept = [];
         $gone = [];
+        $dropped = $request->dropped();
         foreach ($request->queryPairs() as [$name, $value, $raw]) {
-            // A name cache-query names stays in the key, whatever a glob of cache-ignore matches (p* and page).
-            if (!in_array($name, (array) $s->cacheableQuery, true) && \CjwNetwork\RequestShield\Rule\CacheableRule::ignored($name, $s->cacheableIgnore)) {
+            // A name cache-query names stays in the key, whatever a glob of cache-ignore matches (p* and page);
+            // one query drop left out goes whatever cache-query says (page=2' is no page).
+            if (isset($dropped[$name]) || (!in_array($name, (array) $s->cacheableQuery, true) && \CjwNetwork\RequestShield\Rule\CacheableRule::ignored($name, $s->cacheableIgnore))) {
                 $gone[Request::phpName($name)] = $value;
             } else {
                 $kept[] = [$name, $raw];
@@ -625,7 +627,7 @@ final class Shield
         }
         // The query for the caches (0048): decided, logged and counted on the whole query above;
         // the parameters no cache key holds leave it now, before a cache and the application run.
-        if (($s->cacheableIgnore !== [] || $s->cacheableUnknown !== 'uncached') && ($request->method === 'GET' || $request->method === 'HEAD')) {
+        if (($s->cacheableIgnore !== [] || $s->cacheableUnknown !== 'uncached' || ($s->queryDrop !== [] && $request->dropped() !== [])) && ($request->method === 'GET' || $request->method === 'HEAD')) {
             $request = self::queryForCaches($s, $request, $decision);
         }
         // A plugin that answers passing requests itself (Handler, 0031 C.4): an HTTP

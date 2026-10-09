@@ -138,8 +138,11 @@ final class Config
             // [['paths' => [regex, ...] or null (every path), 'exact' => [name => type],
             //   'globs' => [regex => type]], ...]; types: int, number, word, id, list,
             // text, any, or a regex. queryStrict: anything else is refused (404).
+            // queryDrop: path patterns where anything else is dropped instead -- the
+            // request goes on without it (GET and HEAD; attacks in it are still refused).
             'queryParams' => [],
             'queryStrict' => false,
+            'queryDrop' => [],
             // Methods allowed only on some paths: ['POST' => [regex, ...]]; other
             // paths answer 405 for that method. Methods not listed: see 'methods'.
             'methodPaths' => [],

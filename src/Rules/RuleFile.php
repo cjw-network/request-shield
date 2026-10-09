@@ -1584,9 +1584,9 @@ final class RuleFile
                     throw new RuleFileException("$at: query strict is for the whole site -- put it outside the block");
                 }
                 if (in_array('at', $args, true)) {
-                    throw new RuleFileException("$at: inside match: query <name> <type> ... -- the block is where");
+                    throw new RuleFileException("$at: inside match: query <name> <type> ... (or query drop) -- the block is where");
                 }
-                return array_merge($args, ['at'], $path);
+                return array_merge($args, ['at'], $path);     // query drop at the block's paths too
             case 'post-origin':
                 throw new RuleFileException("$at: post-origin is for the whole website -- put it outside the block (except <paths> leaves areas out)");
             case 'limit':
@@ -2130,6 +2130,7 @@ final class RuleFile
     /**
      * query <name> <type> [<name> <type> ...] [at <paths>]  -- known parameters
      * query strict                                          -- anything else: 404
+     * query drop [at <paths>]                               -- anything else: dropped, the request goes on
      * Types: int, number, word, id, list, text, any, or /regex/. A name may use
      * * (utm_*).
      *
@@ -2142,7 +2143,24 @@ final class RuleFile
             $this->origins['query']['strict'] = $this->rid;
             return;
         }
-        $usage = 'query <name> <type> ... [at <paths>]  (types: int, number, word, id, list, text, any, /regex/) -- or query strict';
+        if (($args[0] ?? '') === 'drop' && (count($args) === 1 || ($args[1] ?? '') === 'at')) {
+            // query drop [at <paths>]: what the list does not take is left out, not refused (where both apply, drop).
+            $paths = count($args) === 1 ? [Pattern::fromGlob('/**') => $this->rid] : $this->compile(array_slice($args, 2), $at, false);
+            if ($paths === []) {
+                throw new RuleFileException("$at: query drop at <paths> -- or query drop for the whole site");
+            }
+            $drop = [];
+            foreach ((array) $this->get('queryDrop') as $p) {
+                $drop[] = is_string($p) ? $p : '';
+            }
+            foreach ($paths as $p => $_) {
+                $drop[] = (string) $p;
+            }
+            $this->put('queryDrop', array_values(array_unique($drop)));
+            $this->origins['query']['drop'] = $this->rid;
+            return;
+        }
+        $usage = 'query <name> <type> ... [at <paths>]  (types: int, number, word, id, list, text, any, /regex/) -- or query strict, query drop [at <paths>]';
         $where = array_search('at', $args, true);
         $pairs = $where === false ? $args : array_slice($args, 0, (int) $where);
         if ($pairs === [] || count($pairs) % 2 !== 0) {

@@ -147,11 +147,12 @@ final class Advise
         $watched = $s->monitor instanceof Settings ? $s->monitor : null;
         $known = $params !== [] || $atLines !== [] || $s->queryParams !== [];
         $strict = $s->queryStrict || ($watched !== null && $watched->queryStrict);
-        if (($known || $strict) && QueryRule::typeOf($s->queryParams, 'utm_source', '/') === null) {
+        $dropping = $s->queryDrop !== [];
+        if (($known || $strict || $dropping) && QueryRule::typeOf($s->queryParams, 'utm_source', '/') === null) {
             $out[] = ['id' => 'ADV-TRACKING', 'count' => 0, 'rule' => 'include @tracking',
-                'text' => 'The marketing tags (utm_*, gclid, fbclid …) as known parameters, so links from newsletters and ads keep working with query strict.'];
+                'text' => 'The marketing tags (utm_*, gclid, fbclid …) as known parameters, so links from newsletters and ads keep working with query strict (and reach the site with query drop).'];
         }
-        if ($known && !$strict) {
+        if ($known && !$strict && !$dropping) {
             $out[] = ['id' => 'ADV-STRICT', 'count' => 0, 'rule' => 'monitor query strict',
                 'text' => 'Anything else in the query answered 404 -- watched first (monitor): the log shows what it would refuse; take "monitor" off when that is only scanners.'];
         }

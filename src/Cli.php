@@ -879,6 +879,7 @@ final class Cli
             echo $line('query ' . implode('  ', $pairs) . ($q['paths'] !== null ? ' at regex ' . implode(' ', array_map($regex, $q['paths'])) : ''), $o('query', $first));
         }
         echo $settings->queryStrict ? $line('query strict', $o('query', 'strict')) : '';
+        echo $settings->queryDrop !== [] ? $line('query drop at regex ' . implode(' ', array_map($regex, $settings->queryDrop)), $o('query', 'drop')) : '';
         echo $line('cache-query ' . ($settings->cacheableQuery === null ? 'any' : ($settings->cacheableQuery === [] ? 'none' : implode(' ', $settings->cacheableQuery))), $o('cacheable.query', '*'));
         echo $settings->cacheableIgnore !== [] ? $line('cache-ignore ' . implode(' ', $settings->cacheableIgnore), $o('cacheable.ignore', '*')) : '';
         echo $settings->cacheableUnknown !== 'uncached' ? $line('set cache-unknown-query ' . $settings->cacheableUnknown) : '';

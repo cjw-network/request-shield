@@ -337,15 +337,20 @@ final class Inspector
     private function queryPass(Request $request): string
     {
         $s = $this->settings;
-        if ($s->queryParams === [] && !$s->queryStrict) {
+        if ($s->queryParams === [] && !$s->queryStrict && $s->queryDrop === []) {
             return $this->w('no known parameters configured');
         }
         if ($request->query === '') {
             return $this->w('no parameters');
         }
         $problem = $this->queryProblem($request);
+        $drop = false;
+        foreach ($s->queryDrop as $p) {
+            $drop = $drop || @preg_match($p, $request->matchPath()) === 1;
+        }
         return $problem === null ? $this->w('every parameter known and of its type')
-            : $this->w('%s — answered, not cached, scanned by the attack patterns', $problem);
+            : ($drop ? $this->w('%s — left out (query drop): the request goes on without it, scanned by the attack patterns', $problem)
+                : $this->w('%s — answered, not cached, scanned by the attack patterns', $problem));
     }
 
     private function queryProblem(Request $request): ?string

@@ -106,6 +106,12 @@ final class Settings
         /** @readonly anything but a known parameter of its type: 404 */
         public bool $queryStrict = false,
         /**
+         * @readonly where an unknown parameter, or one not of its type, is dropped instead (query drop):
+         *   path patterns; the request goes on without it (QueryRule, Shield::queryForCaches())
+         * @var list<string>
+         */
+        public array $queryDrop = [],
+        /**
          * @readonly queryParams as one lookup (QueryRule::index()), built once
          * @var array{exact: array<string, string>, globs: array<string, string>, local: list<array{paths: list<string>, exact: array<string, string>, globs: array<string, string>}>}
          */
@@ -323,6 +329,7 @@ final class Settings
             self::hints($contentRules),
             $query = self::queryParams(self::map($c, 'queryParams')),
             self::bool($c, 'queryStrict'),
+            self::patternList($c['queryDrop'] ?? [], 'queryDrop'),
             \CjwNetwork\RequestShield\Rule\QueryRule::index($query),
             $mode,
             $strict ? 2 : 1,
@@ -1401,7 +1408,7 @@ final class Settings
     /** The capabilities a Plugin may have: hook name => its interface (recorded by compiledExt()). */
     private const HOOKS = ['ruleCounts' => RuleCounts::class, 'sink' => Sink::class, 'pages' => Pages::class, 'ruleProvider' => RuleProvider::class, 'handler' => Handler::class, 'methodHandler' => MethodHandler::class, 'contextHandler' => ContextHandler::class, 'purger' => Purger::class];
 
-    private const FORMAT = 66;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats; 43: routes compiled, stats path in ext.stats; 44: dashboardAccess, dashboardSession (stats-group in ext.stats); 45: hooks recorded; 46: the sink hook; 47: the pages hook; 48: the ruleProvider hook; 49: the handler hook; 50: pluginFiles; 51: routeBases; 52: docsUrl; 53: errorPages; 54: the WAF's pages are a plugin (routes with ext waf); 55: challenge.alwaysMethods; 56: learn; 57: ext.stats.slow (0046); 58: fileMode, dirMode; 59: the methodHandler hook, the cache's purge settings; 60: the contextHandler hook, the cache's role settings; 61: the cache's user hash lookup; 62: the cache's memory and disk cap; 63: the purger hook; 64: cacheableIgnore, cacheableUnknown (0048); 65: ext.cache.page; 66: store-dir, lists-dir relative to the rule file
+    private const FORMAT = 67;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats; 43: routes compiled, stats path in ext.stats; 44: dashboardAccess, dashboardSession (stats-group in ext.stats); 45: hooks recorded; 46: the sink hook; 47: the pages hook; 48: the ruleProvider hook; 49: the handler hook; 50: pluginFiles; 51: routeBases; 52: docsUrl; 53: errorPages; 54: the WAF's pages are a plugin (routes with ext waf); 55: challenge.alwaysMethods; 56: learn; 57: ext.stats.slow (0046); 58: fileMode, dirMode; 59: the methodHandler hook, the cache's purge settings; 60: the contextHandler hook, the cache's role settings; 61: the cache's user hash lookup; 62: the cache's memory and disk cap; 63: the purger hook; 64: cacheableIgnore, cacheableUnknown (0048); 65: ext.cache.page; 66: store-dir, lists-dir relative to the rule file; 67: queryDrop
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

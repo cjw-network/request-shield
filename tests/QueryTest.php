@@ -125,6 +125,26 @@ return [
         same(Decision::ALLOW, queryDecide($s, '/list?&')[0], 'empty pairs are nothing');
         same(Decision::ALLOW, queryDecide($s, '/list?page=&sort=&code=')[0], 'empty fields of a form pass');
     },
+    'RSF02-05 drop: an unknown parameter or a value not of its type is left out, not refused -- still scanned; the request may be cached without it' => function (): void {
+        $s = querySettings(QUERY_RULES . "cache-query page\nquery drop\n");
+        $shield = new Shield($s, new MemoryStore());
+        $r = queryReq('/list?page=2&other=1&sort=x%20y&rsx=abc');
+        $d = $shield->decide($r, 1000.0);
+        same(Decision::ALLOW, $d->action, 'nothing refused, and the answer may be kept: the dropped ones are no cache key');
+        same(['other' => true, 'sort' => true, 'rsx' => true], $r->dropped(), 'the unknown one and the value not of its type, by their names in the query');
+        same([Decision::REJECT, 403], array_slice(queryDecide($s, '/list?other=rsmarker'), 0, 2), 'an attack in a dropped parameter is refused all the same');
+        same([], (function (): array { $r = queryReq('/list?page=2&sort=a'); (new Shield(querySettings(QUERY_RULES . "query drop\n"), new MemoryStore()))->decide($r, 1000.0); return $r->dropped(); })(), 'all known and of their type: nothing dropped');
+    },
+    'RSF02-05 drop in an area: query drop at <paths> or in a match block; strict everywhere else; the rule file and show say so' => function (): void {
+        $s = querySettings("query page int\nquery strict\nmatch /magazin/** {\n  query drop\n}\nquery drop at /shop/**\n");
+        same(Decision::ALLOW, queryDecide($s, '/magazin/1?id=xyz')[0], 'the block: dropped');
+        same(Decision::ALLOW, queryDecide($s, '/magazin?page=x')[0], 'the block\'s own path too, a wrong type dropped');
+        same(Decision::ALLOW, queryDecide($s, '/shop/a?cb=1')[0], 'at <paths>');
+        same([Decision::REJECT, 404], array_slice(queryDecide($s, '/news?id=xyz'), 0, 2), 'elsewhere: strict');
+        same(2, count($s->queryDrop), 'two areas');
+        queryFails("query drop at\n", 'site.rules:1', 'query drop at <paths>');
+        queryFails("match /x/** {\n  query drop at /y\n}\n", 'site.rules:2', 'the block is where');
+    },
     'RSF02-05 without strict: nothing is refused for being unknown -- answered, not cached' => function (): void {
         $s = querySettings("cache-query page\nquery page int\n");
         same(Decision::ALLOW, queryDecide($s, '/list?page=2')[0], 'known and cacheable');
