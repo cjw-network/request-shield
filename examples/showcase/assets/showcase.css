@@ -375,15 +375,6 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .cache-flow { max-height: 170px; }
 .cache-shelf .slot { width: 22px; }
 .cache-dock-space { height: 46vh; }      /* until the script measures the dock */
-.cache-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1040; background: #1f2a44; color: #e2e8f0; box-shadow: 0 -6px 24px rgba(15, 23, 42, .25); padding: 10px 0 8px; }
-.cache-dock .form-select { background-color: #f8fafc; }
-.cache-dock .btn:disabled { opacity: .45; }
-.cache-dock-body { margin-top: 8px; }
-.cache-dock.closed .cache-dock-body { display: none; }
-.cache-dock.closed .cache-dock-toggle i { transform: rotate(180deg); }
-.cache-dock-log { height: 200px; overflow-y: auto; border-radius: 8px; }      /* the head and about seven lines; the grip draws it bigger or smaller */
-.cache-dock-log table { font-size: .82rem; }
-.cache-dock .cache-sum { color: #fff; font-weight: 700; font-size: .9rem; }
 .cache-story { font-weight: 800; color: var(--rs-mint-deeper); min-height: 1.5em; }
 .flow-detail { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; color: var(--rs-soft-ink); }
 @media (max-width: 767.98px) {
@@ -394,7 +385,33 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
   .cache-dock-space { height: 36vh; }
 }
 .cache-dock-grip { height: 12px; margin-top: -10px; cursor: ns-resize; touch-action: none; display: flex; justify-content: center; align-items: center; }
-.cache-dock-grip::before { content: ""; width: 48px; height: 4px; border-radius: 2px; background: #64748b; }
-.cache-dock-grip:hover::before, .cache-dock-grip:focus-visible::before { background: #e2e8f0; }
 .cache-dock-grip:focus-visible { outline: 2px solid var(--rs-mint); outline-offset: -2px; }
-.cache-dock-log tr.cache-purge td { background: #2b3a5a; color: #cbd5e1; font-style: italic; }
+
+/* The dock: friendly -- light, rounded, the newest line at the bottom; the technical columns only in the technical view. */
+.cache-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1040; background: #fff; color: var(--rs-ink); border-top: 1px solid var(--rs-line);
+  border-radius: 18px 18px 0 0; box-shadow: 0 -10px 30px rgba(31, 42, 68, .12); padding: 10px 0 10px; }
+.cache-dock .btn:disabled { opacity: .45; }
+.cache-dock-body { margin-top: 10px; }
+.cache-dock-head { margin: 0 2px 6px; }
+.cache-dock-head h2 { color: var(--rs-ink); font-weight: 800; }
+.cache-dock .cache-sum { color: var(--rs-soft-ink); font-weight: 700; font-size: .85rem; }
+.cache-dock.closed .cache-dock-body { display: none; }
+.cache-dock.closed .cache-dock-toggle i { transform: rotate(180deg); }
+.cache-dock-log { height: 200px; overflow: auto; border: 1px solid var(--rs-line); border-radius: 12px; background: var(--rs-paper); }
+.cache-dock-log table { font-size: .82rem; margin: 0; }
+.cache-dock-log thead th { position: sticky; top: 0; background: #f5f7fb; color: var(--rs-soft-ink); font-weight: 700; border-bottom: 1px solid var(--rs-line); white-space: nowrap; }
+.cache-dock-log td { background: transparent; border-color: var(--rs-line); vertical-align: middle; }
+.cache-dock-log tbody tr:nth-child(even) td { background: rgba(31, 42, 68, .025); }
+.cache-dock-log tr.cache-purge td { background: var(--rs-sky-bg) !important; color: var(--rs-ink); font-weight: 600; }
+.cache-dock-log .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem; }
+.cache-dock-log .when { color: var(--rs-soft-ink); white-space: nowrap; }
+.cache-dock .tech-col { display: none; }
+.cache-dock.tech .tech-col { display: table-cell; white-space: nowrap; }
+.pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-weight: 700; font-size: .75rem; white-space: nowrap; }
+.pill-hit { background: var(--rs-mint-bg); color: var(--rs-mint-deeper); }
+.pill-miss { background: var(--rs-sun-bg); color: #8a5a00; }
+.pill-refused { background: var(--rs-coral-bg); color: #b4322c; }
+.pill-notkept { background: #eef2f7; color: #475569; }
+.cache-dock-grip::before { content: ""; width: 48px; height: 5px; border-radius: 3px; background: #cbd5e1; }
+.cache-dock-grip:hover::before, .cache-dock-grip:focus-visible::before { background: var(--rs-soft-ink); }
+@media (max-width: 767.98px) { .cache-dock-log { height: 140px; } }

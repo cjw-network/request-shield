@@ -56,6 +56,7 @@
       b.classList.toggle('btn-outline-dark', !on);
     });
     detail.hidden = !t;
+    document.querySelector('.cache-dock').classList.toggle('tech', t);     // the log's technical columns
   };
   document.querySelectorAll('.cache-view button').forEach((b) => b.addEventListener('click', () => view(b.dataset.view === 'tech')));
   view(tech);
@@ -114,7 +115,9 @@
     return query.length ? null : (m[1] ? Number(m[1]) : 0);
   };
 
-  // ── The table and the sum ────────────────────────────────────────────────
+  // ── The table and the sum: the newest line at the bottom, scrolled to ────
+  const scroller = document.querySelector('.cache-dock-log');
+  const clock = () => new Date().toLocaleTimeString(w.lang === 'de' ? 'de-DE' : 'en-GB');
   function line(cells, cls) {
     const none = rows.querySelector('.cache-empty');
     if (none) {
@@ -125,10 +128,18 @@
       tr.className = cls;
     }
     tr.append(...cells);
-    rows.prepend(tr);
+    rows.append(tr);
+    scroller.scrollTop = scroller.scrollHeight;
   }
-  const show = (url, who, kind, label, ms) => {
-    line([text('td', url), text('td', who), text('td', label, kind === 'hit' ? 'text-success fw-bold' : (kind === 'refused' ? 'text-danger' : '')), text('td', fmt(ms))]);
+  const pill = (kind, label) => {
+    const td = document.createElement('td');
+    td.append(text('span', label, 'pill pill-' + kind));
+    return td;
+  };
+  const techCell = (s2) => text('td', s2 || '—', 'tech-col mono');
+  const show = (url, who, kind, label, ms, t) => {
+    line([text('td', clock(), 'mono when'), text('td', url, 'mono'), text('td', who), pill(kind, label), text('td', fmt(ms), 'mono'),
+      techCell(t.status), techCell(t.xrs), techCell(t.cache), techCell(t.cc), techCell(t.age), techCell(t.role)]);
     seen.push({kind, ms});
     const avg = (k) => {
       const list = seen.filter((s) => s.kind === k).map((s) => s.ms);
@@ -138,7 +149,7 @@
     const asked = seen.filter((s) => s.kind === 'hit' || s.kind === 'miss').length;
     sum.textContent = w.sum.replace('%s', avg('hit')).replace('%s', avg('miss')).replace('%s', asked ? Math.round(100 * hits / asked) + ' %' : '–');
   };
-  const purged = (what) => line([Object.assign(text('td', '↻ ' + what), {colSpan: 4})], 'cache-purge');
+  const purged = (what) => line([text('td', clock(), 'mono when'), Object.assign(text('td', '↻ ' + what), {colSpan: 10})], 'cache-purge');
 
   // ── The requests: one at a time, so a reader's cookie belongs to its own request ──
   let queue = Promise.resolve();
@@ -159,7 +170,9 @@
       const place = shelfOf(url);
       const kind = !r.ok ? 'refused' : (cache.startsWith('hit') ? 'hit' : (cache.startsWith('miss') && place !== null ? 'miss' : 'notkept'));
       const label = {hit: w.hit, miss: w.miss, refused: w.refused + ' (' + r.status + ')', notkept: w.notKept}[kind];
-      show(url, by || (who === 'E' ? w.editor : (who ? w.member.replace('%s', who) : w.visitor)), kind, label, ms);
+      const role = by ? 'bot · ' + w.anonymous : (who ? roleOf(who) + ' · rs-demo-member=' + sessions[who] : w.anonymous);
+      show(url, by || (who === 'E' ? w.editor : (who ? w.member.replace('%s', who) : w.visitor)), kind, label, ms,
+        {status: String(r.status), xrs: r.headers.get('X-RS'), cache: r.headers.get('X-RS-Cache'), cc: r.headers.get('Cache-Control'), age: r.headers.get('Age'), role});
       if ((kind === 'hit' || kind === 'miss') && place !== null) {
         fill(roleOf(who), place);
       }
@@ -215,7 +228,7 @@
   const limits = () => {
     grip.setAttribute('aria-valuemin', '60');
     grip.setAttribute('aria-valuemax', String(Math.round(window.innerHeight * 0.7)));
-    grip.setAttribute('aria-valuenow', String(log.offsetHeight));
+    grip.setAttribute('aria-valuenow', String(Math.max(60, log.offsetHeight || parseInt(log.style.height, 10) || 200)));     // folded: the height it opens with
   };
   const height = (px) => {
     const h = Math.round(Math.max(60, Math.min(window.innerHeight * 0.7, px)));
@@ -239,8 +252,8 @@
   // One drag at a time; it ends however the pointer goes (up, cancelled, capture lost). Folded: no drag.
   let drag = null;
   grip.addEventListener('pointerdown', (ev) => {
-    if (dock.classList.contains('closed')) {
-      return;
+    if (drag !== null || ev.button !== 0 || dock.classList.contains('closed')) {
+      return;       // one drag at a time, the main button only, not while folded
     }
     drag = {y0: ev.clientY, h0: log.offsetHeight};
     grip.setPointerCapture(ev.pointerId);

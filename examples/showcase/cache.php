@@ -34,7 +34,7 @@ $rules = "set http-cache on\n"
 $client = ['words' => ['visitor' => $c['visitor'], 'member' => $c['member'], 'editor' => $c['editor'], 'bot' => $c['bot'], 'hit' => $c['hit'], 'miss' => $c['miss'], 'none' => $c['none'],
     'refused' => $c['refused'], 'notKept' => $c['notKept'], 'empty' => $c['empty'], 'sum' => $c['sum'], 'lang' => $lang,
     'capHit' => $c['capHit'], 'capMiss' => $c['capMiss'], 'capRefused' => $c['capRefused'], 'capNotKept' => $c['capNotKept'], 'capPurge' => $c['capPurge'], 'capClear' => $c['capClear'],
-    'auto' => $c['auto'], 'autoStop' => $c['autoStop'], 'story' => $c['story'], 'tech' => $c['tech']]];
+    'auto' => $c['auto'], 'autoStop' => $c['autoStop'], 'story' => $c['story'], 'tech' => $c['tech'], 'anonymous' => $c['anonymous']]];
 // The picture: four stations a request passes -- drawn for people who never saw a cache.
 // Each in two words: plain (a doorkeeper, a shelf, a kitchen) and technical (an option, for developers).
 $x = $c['tech'];
@@ -130,23 +130,26 @@ $both = static fn (string $plain, string $tech): string => ' data-plain="' . $e(
       <select id="cache-article" class="form-select form-select-sm w-auto cache-article cache-manual">
         <?php for ($i = 1; $i <= 5; $i++): ?><option value="<?= $i ?>"><?= $e($c['article']) ?> <?= $i ?></option><?php endfor ?>
       </select>
-      <button type="button" class="btn btn-sm btn-light cache-load cache-manual"><i class="bi bi-person-walking" aria-hidden="true"></i> <?= $e($c['load']) ?></button>
-      <button type="button" class="btn btn-sm btn-light cache-member cache-manual" data-member="A"><i class="bi bi-person" aria-hidden="true"></i> <?= $e(sprintf($c['member'], 'A')) ?></button>
-      <button type="button" class="btn btn-sm btn-light cache-member cache-manual" data-member="B"><i class="bi bi-person" aria-hidden="true"></i> <?= $e(sprintf($c['member'], 'B')) ?></button>
-      <button type="button" class="btn btn-sm btn-light cache-member cache-manual" data-member="E"><i class="bi bi-pencil-square" aria-hidden="true"></i> <?= $e($c['editor']) ?></button>
-      <button type="button" class="btn btn-sm btn-light cache-campaign cache-manual"><i class="bi bi-megaphone" aria-hidden="true"></i> <?= $e($c['campaign']) ?></button>
-      <button type="button" class="btn btn-sm btn-light cache-list cache-manual"><i class="bi bi-house" aria-hidden="true"></i> <?= $e($c['list']) ?></button>
-      <button type="button" class="btn btn-sm btn-light cache-scan cache-manual"><i class="bi bi-bug" aria-hidden="true"></i> <?= $e($c['scan']) ?></button>
+      <button type="button" class="btn btn-sm btn-soft cache-load cache-manual"><i class="bi bi-person-walking" aria-hidden="true"></i> <?= $e($c['load']) ?></button>
+      <button type="button" class="btn btn-sm btn-soft cache-member cache-manual" data-member="A"><i class="bi bi-person" aria-hidden="true"></i> <?= $e(sprintf($c['member'], 'A')) ?></button>
+      <button type="button" class="btn btn-sm btn-soft cache-member cache-manual" data-member="B"><i class="bi bi-person" aria-hidden="true"></i> <?= $e(sprintf($c['member'], 'B')) ?></button>
+      <button type="button" class="btn btn-sm btn-soft cache-member cache-manual" data-member="E"><i class="bi bi-pencil-square" aria-hidden="true"></i> <?= $e($c['editor']) ?></button>
+      <button type="button" class="btn btn-sm btn-soft cache-campaign cache-manual"><i class="bi bi-megaphone" aria-hidden="true"></i> <?= $e($c['campaign']) ?></button>
+      <button type="button" class="btn btn-sm btn-soft cache-list cache-manual"><i class="bi bi-house" aria-hidden="true"></i> <?= $e($c['list']) ?></button>
+      <button type="button" class="btn btn-sm btn-soft cache-scan cache-manual"><i class="bi bi-bug" aria-hidden="true"></i> <?= $e($c['scan']) ?></button>
       <button type="button" class="btn btn-sm btn-warning cache-publish cache-manual"><i class="bi bi-send" aria-hidden="true"></i> <?= $e($c['publish']) ?></button>
-      <button type="button" class="btn btn-sm btn-outline-light cache-clear cache-manual"><i class="bi bi-trash" aria-hidden="true"></i> <?= $e($c['clear']) ?></button>
-      <button type="button" class="btn btn-sm btn-link text-light ms-auto cache-dock-toggle" aria-expanded="true" aria-controls="cache-dock-body" title="<?= $e($c['dockLog']) ?>" aria-label="<?= $e($c['dockLog']) ?>"><i class="bi bi-chevron-down" aria-hidden="true"></i></button>
+      <button type="button" class="btn btn-sm btn-outline-secondary cache-clear cache-manual"><i class="bi bi-trash" aria-hidden="true"></i> <?= $e($c['clear']) ?></button>
+      <button type="button" class="btn btn-sm btn-link text-secondary ms-auto cache-dock-toggle" aria-expanded="true" aria-controls="cache-dock-body" title="<?= $e($c['dockLog']) ?>" aria-label="<?= $e($c['dockLog']) ?>"><i class="bi bi-chevron-down" aria-hidden="true"></i></button>
     </div>
     <div class="cache-dock-body" id="cache-dock-body">
-      <p class="cache-sum mb-1" role="status" aria-live="polite"></p>
+      <div class="cache-dock-head d-flex flex-wrap align-items-baseline gap-2">
+        <h2 class="h6 mb-0"><i class="bi bi-journal-text" aria-hidden="true"></i> <?= $e($c['logTitle']) ?></h2>
+        <p class="cache-sum mb-0" role="status" aria-live="polite"></p>
+      </div>
       <div class="cache-dock-log">
-        <table class="table table-sm table-dark mb-0">
-          <thead><tr><?php foreach ($c['cols'] as $col): ?><th scope="col"><?= $e($col) ?></th><?php endforeach ?></tr></thead>
-          <tbody class="cache-rows"><tr class="cache-empty"><td colspan="4"><?= $e($c['empty']) ?></td></tr></tbody>
+        <table class="table table-sm mb-0">
+          <thead><tr><?php foreach ($c['cols'] as $col): ?><th scope="col"><?= $e($col) ?></th><?php endforeach ?><?php foreach ($c['colsTech'] as $col): ?><th scope="col" class="tech-col"><?= $e($col) ?></th><?php endforeach ?></tr></thead>
+          <tbody class="cache-rows"><tr class="cache-empty"><td colspan="11"><?= $e($c['empty']) ?></td></tr></tbody>
         </table>
       </div>
     </div>
