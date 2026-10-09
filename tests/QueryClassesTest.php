@@ -127,6 +127,14 @@ return [
             same(404, $status, 'outside the area: query strict');
             [$status] = $get('/magazin/1?q=' . rawurlencode("' UNION SELECT password FROM users--"));
             same(403, $status, 'an attack in a dropped parameter: refused');
+            // Names PHP puts under a declared one ("page%00x", " page" are $_GET['page']): the whole name goes --
+            // the application, the query and the cache key agree, nobody fills /magazin/2?page=2 with another page.
+            [, , $page] = $get('/magazin/2?page=2&page%00x=hello');
+            same([[], '', '/magazin/2'], [$page['get'] ?? null, $page['qs'] ?? null, $page['uri'] ?? null], 'page%00x: page goes as a whole');
+            [, , $page] = $get('/magazin/2?page=3&%20page=x');
+            same([[], '', '/magazin/2'], [$page['get'] ?? null, $page['qs'] ?? null, $page['uri'] ?? null], '" page": page goes as a whole');
+            [, $cache, $page] = $get('/magazin/2?page=2');
+            truthy($cache !== 'hit' && ($page['get'] ?? null) === ['page' => '2'], 'page 2 is its own, not what the tricks left (' . $cache . ')');
         } finally {
             proc_terminate($web);
             proc_close($web);

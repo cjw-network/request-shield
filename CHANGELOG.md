@@ -102,8 +102,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   the request is decided (a copy in `REQUEST_SHIELD_IGNORED`) and is no
   cache key: `/magazin/1?id=xyz` or `?cb=123` is answered as `/magazin/1`,
   from the HTTP cache when kept. Still scanned: an attack in it is refused.
-  Next to `query strict` it wins where both apply. Settings `FORMAT` 66. The
-  showcase's magazine uses it: a bot's made-up parameters get the kept page.
+  Next to `query strict` it wins where both apply (GET and HEAD; another
+  method keeps `strict`); `set mode monitor` leaves nothing out. A name
+  goes as a whole, as PHP reads it (`page%00x` and ` page` are
+  `$_GET['page']`), so the application, the query and the cache key never
+  disagree -- `cache-ignore` too: a name cut at a NUL byte by PHP is now
+  matched as PHP has it. Settings `FORMAT` 66. The showcase's magazine uses
+  it: a bot's made-up parameters get the kept page.
 - **Every plugin is a Composer package of its own** (0031 step H.1):
   `plugins/api`, `plugins/waf`, `plugins/stats` and `plugins/cache` each
   have a `composer.json` (`cjw-network/request-shield-<name>`, the core

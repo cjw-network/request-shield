@@ -58,8 +58,13 @@ query drop at /shop/**            # the same, written with "at"
   from the HTTP cache when the page is kept.
 - It is **still scanned**: an attack in it is refused (403), as without
   `drop`. The log shows the query as it came.
-- Where `drop` and `strict` both apply, `drop` wins; `query drop` without
-  `at` is for the whole site.
+- Where `drop` and `strict` both apply, `drop` wins for GET and HEAD; a
+  POST (or another method) is not changed, so `strict` refuses it there as
+  before. `query drop` without `at` is for the whole site.
+- **A name goes as a whole**, as PHP reads it: `page%00x`, ` page` and
+  `page` are all `$_GET['page']` -- when one of them is left out, all go, so
+  the application, the query and the cache key never disagree.
+- Under `set mode monitor` nothing is left out: the mode only watches.
 
 ## Use cases
 

@@ -329,7 +329,7 @@ final class Settings
             self::hints($contentRules),
             $query = self::queryParams(self::map($c, 'queryParams')),
             self::bool($c, 'queryStrict'),
-            self::patternList($c['queryDrop'] ?? [], 'queryDrop'),
+            self::patternList(self::listOf($c, 'queryDrop'), 'queryDrop'),
             \CjwNetwork\RequestShield\Rule\QueryRule::index($query),
             $mode,
             $strict ? 2 : 1,
@@ -761,6 +761,22 @@ final class Settings
             throw self::wrong('postOrigin.missing', 'check (the browser check, the default), allow or refuse');
         }
         return ['missing' => $missing, 'except' => self::patternList($p['except'] ?? [], 'postOrigin.except')];
+    }
+
+    /**
+     * A setting that must be a list: missing is empty, anything else but an array a mistake (said, not ignored).
+     *
+     * @param array<mixed> $c
+     */
+    private static function listOf(array $c, string $key): mixed
+    {
+        if (!isset($c[$key])) {
+            return [];
+        }
+        if (!is_array($c[$key])) {
+            throw self::wrong($key, 'a list of path patterns');
+        }
+        return $c[$key];
     }
 
     /**

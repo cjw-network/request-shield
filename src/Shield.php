@@ -156,7 +156,9 @@ final class Shield
         // Known parameters before the attack patterns: cheaper, and they say
         // which values the patterns need to look at.
         if ($s->queryParams !== [] || $s->queryStrict || $s->queryDrop !== []) {
-            $this->rules[] = new QueryRule($s->queryIndex, $s->queryStrict, $s->challenge->widgetPath !== null ? $s->challenge->widgetPath . '/' : null, $s->queryDrop);
+            // set mode monitor watches: nothing is left out of a request then (query drop changes what the application gets).
+            $this->rules[] = new QueryRule($s->queryIndex, $s->queryStrict, $s->challenge->widgetPath !== null ? $s->challenge->widgetPath . '/' : null,
+                $s->mode === 'monitor' ? [] : $s->queryDrop);
         }
         if ($s->contentIndex !== []) {
             $this->rules[] = new ContentRule($s->contentIndex, $s->contentRules, $s->blockExceptions, $s->contentHints);
@@ -323,10 +325,19 @@ final class Shield
         $kept = [];
         $gone = [];
         $dropped = $request->dropped();
-        foreach ($request->queryPairs() as [$name, $value, $raw]) {
-            // A name cache-query names stays in the key, whatever a glob of cache-ignore matches (p* and page);
-            // one query drop left out goes whatever cache-query says (page=2' is no page).
+        // What leaves, by the name PHP gives it in $_GET: a name cache-query names stays in the key, whatever a
+        // glob of cache-ignore matches (p* and page); one query drop left out goes whatever cache-query says
+        // (page=2' is no page).
+        $goes = [];
+        foreach ($request->queryPairs() as [$name]) {
             if (isset($dropped[$name]) || (!in_array($name, (array) $s->cacheableQuery, true) && \CjwNetwork\RequestShield\Rule\CacheableRule::ignored($name, $s->cacheableIgnore))) {
+                $goes[Request::phpName($name)] = true;
+            }
+        }
+        // ... and every pair PHP puts under that name goes with it (" page", "page%00x" are $_GET['page']):
+        // what the application reads, the query and the cache key stay one and the same.
+        foreach ($request->queryPairs() as [$name, $value, $raw]) {
+            if (isset($goes[Request::phpName($name)])) {
                 $gone[Request::phpName($name)] = $value;
             } else {
                 $kept[] = [$name, $raw];

@@ -145,6 +145,32 @@ return [
         queryFails("query drop at\n", 'site.rules:1', 'query drop at <paths>');
         queryFails("match /x/** {\n  query drop at /y\n}\n", 'site.rules:2', 'the block is where');
     },
+    'RSF02-05 drop leaves strict as it is for other methods and in monitor mode; a PHP array\'s queryDrop must be a list; show names each area\'s line' => function (): void {
+        $s = querySettings("query page int\nquery strict\nmatch /magazin/** {\n  [MAG-DROP] query drop\n}\n[SHOP-DROP] query drop at /shop/**\n");
+        $post = Request::fromServer(['REQUEST_URI' => '/magazin/1?zz=1', 'REQUEST_METHOD' => 'POST', 'HTTP_HOST' => 'www.example.org', 'REMOTE_ADDR' => '203.0.113.7']);
+        $d = (new Shield($s, new MemoryStore()))->decide($post, 1000.0);
+        same([Decision::REJECT, 404], [$d->action, $d->status], 'a POST: nothing is taken out of it, so strict refuses as before');
+        $watch = querySettings("set mode monitor\nquery page int\nquery drop\n");
+        $r = queryReq('/list?zz=1');
+        (new Shield($watch, new MemoryStore()))->decide($r, 1000.0);
+        same([], $r->dropped(), 'set mode monitor: nothing left out of the request');
+        try {
+            Settings::from(['queryDrop' => '#^/x#']);
+            throw new TestFailure('a string for queryDrop was taken');
+        } catch (InvalidArgumentException $e) {
+            truthy(strpos($e->getMessage(), 'queryDrop') !== false, 'the mistake names the setting: ' . $e->getMessage());
+        }
+        $dir = queryDir("query page int\nmatch /magazin/** {\n  [MAG-DROP] query drop\n}\n[SHOP-DROP] query drop at /shop/**\n");
+        exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' show ' . escapeshellarg("$dir/site.rules") . ' 2>&1', $out);
+        exec('rm -rf ' . escapeshellarg($dir));
+        $lines = array_values(array_filter($out, static fn (string $l): bool => strpos($l, 'query drop at') !== false));
+        truthy(count($lines) === 2 && strpos($lines[0], 'MAG-DROP') !== false && strpos($lines[1], 'SHOP-DROP') !== false, 'each area with its own line: ' . implode(' / ', $lines));
+    },
+    'RSF02-05 the name PHP gives a parameter: cut at a NUL byte, leading spaces off, "." and " " as "_"' => function (): void {
+        same(['page', 'page', 'a_b', 'q', 'utm_source'], array_map([Request::class, 'phpName'], ["page\0x", ' page', 'a.b', 'q', 'utm source']));
+        parse_str('page%00x=1&%20page=2&a.b=3', $php);
+        same(['page', 'a_b'], array_keys($php), 'as PHP itself reads them');
+    },
     'RSF02-05 without strict: nothing is refused for being unknown -- answered, not cached' => function (): void {
         $s = querySettings("cache-query page\nquery page int\n");
         same(Decision::ALLOW, queryDecide($s, '/list?page=2')[0], 'known and cacheable');

@@ -83,7 +83,8 @@ final class QueryRule implements Rule
             return null;
         }
         $path = $this->local === [] && $this->drop === [] ? '' : $request->matchPath();
-        $drop = $this->drop !== [] && self::onPath($this->drop, $path);
+        // Left out only where the shield takes it out of the request (GET and HEAD); another method gets strict, as before.
+        $drop = $this->drop !== [] && ($request->method === 'GET' || $request->method === 'HEAD') && self::onPath($this->drop, $path);
         $scan = [];
         foreach ($request->queryPairs() as [$name, $value, $raw]) {
             $type = $this->type($name, $path);

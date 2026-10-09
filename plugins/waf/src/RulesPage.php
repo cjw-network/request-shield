@@ -278,8 +278,8 @@ final class RulesPage
             $rows[] = $row(implode(', ', $names) . ($q['paths'] !== null ? $w(' — at %s', implode(', ', array_map($pattern, $q['paths']))) : ''),
                 $o('queryParams', '#' . $n) ?? $o('query', $first), "queryParams[$n]");
         }
-        if ($s->queryDrop !== []) {
-            $rows[] = $row($w('Any other parameter, or a value not of its type, is left out — %s', implode(', ', array_map($pattern, $s->queryDrop))), $o('query', 'drop'), 'queryDrop');
+        foreach ($s->queryDrop as $n => $p) {
+            $rows[] = $row($w('Any other parameter, or a value not of its type, is left out — %s', $pattern($p)), $o('queryDrop', $p) ?? $o('query', 'drop'), "queryDrop[$n]");
         }
         if ($rows !== [] || $s->queryStrict) {
             $g[] = [$w('Known parameters'), $s->queryStrict ? $w('Any other parameter, or a value not of its type, gets "not found" (404):')

@@ -148,11 +148,15 @@ final class Advise
         $known = $params !== [] || $atLines !== [] || $s->queryParams !== [];
         $strict = $s->queryStrict || ($watched !== null && $watched->queryStrict);
         $dropping = $s->queryDrop !== [];
+        $dropsAll = false;            // query drop for the whole site: no strict to advise
+        foreach ($s->queryDrop as $p) {
+            $dropsAll = $dropsAll || (@preg_match($p, '/') === 1 && @preg_match($p, '/any/path') === 1);
+        }
         if (($known || $strict || $dropping) && QueryRule::typeOf($s->queryParams, 'utm_source', '/') === null) {
             $out[] = ['id' => 'ADV-TRACKING', 'count' => 0, 'rule' => 'include @tracking',
                 'text' => 'The marketing tags (utm_*, gclid, fbclid …) as known parameters, so links from newsletters and ads keep working with query strict (and reach the site with query drop).'];
         }
-        if ($known && !$strict && !$dropping) {
+        if ($known && !$strict && !$dropsAll) {
             $out[] = ['id' => 'ADV-STRICT', 'count' => 0, 'rule' => 'monitor query strict',
                 'text' => 'Anything else in the query answered 404 -- watched first (monitor): the log shows what it would refuse; take "monitor" off when that is only scanners.'];
         }

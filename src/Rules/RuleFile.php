@@ -2155,6 +2155,7 @@ final class RuleFile
             }
             foreach ($paths as $p => $_) {
                 $drop[] = (string) $p;
+                $this->origins['queryDrop'][(string) $p] = $this->rid;      // each area its line's ID
             }
             $this->put('queryDrop', array_values(array_unique($drop)));
             $this->origins['query']['drop'] = $this->rid;

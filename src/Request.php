@@ -211,13 +211,18 @@ final class Request
     }
 
     /**
-     * The name PHP gives a parameter in $_GET (0048): leading spaces left
-     * out, "." and " " as "_" -- utm.source is $_GET['utm_source'] -- and a
-     * "[" with no "]" after it as "_" (the first; queryPairs() keeps such a
-     * name whole) -- of the name as queryPairs() has it.
+     * The name PHP gives a parameter in $_GET (0048): cut at a NUL byte
+     * (page%00x is $_GET['page']), leading spaces left out, "." and " " as
+     * "_" -- utm.source is $_GET['utm_source'] -- and a "[" with no "]" after
+     * it as "_" (the first; queryPairs() keeps such a name whole) -- of the
+     * name as queryPairs() has it.
      */
     public static function phpName(string $name): string
     {
+        $nul = strpos($name, "\0");
+        if ($nul !== false) {
+            $name = substr($name, 0, $nul);
+        }
         $name = strtr(ltrim($name, ' '), ['.' => '_', ' ' => '_']);
         $bracket = strpos($name, '[');
         return $bracket === false ? $name : substr_replace($name, '_', $bracket, 1);
