@@ -36,9 +36,9 @@ function withHttpServer(callable $body): void
 }
 
 /** Http::get() in a PHP with the given ini settings; returns what it printed (json). */
-function httpIn(string $ini, string $url): mixed
+function httpIn(string $ini, string $url, bool $follow = true): mixed
 {
-    $code = 'require ' . var_export(rsEntry(), true) . '; echo json_encode(["get" => \CjwNetwork\RequestShield\Http::get(' . var_export($url, true) . ', ["If-None-Match" => "\"v1\""], 5, 1000, "rs-test"), "offline" => \CjwNetwork\RequestShield\Http::offline()]);';
+    $code = 'require ' . var_export(rsEntry(), true) . '; echo json_encode(["get" => \CjwNetwork\RequestShield\Http::get(' . var_export($url, true) . ', ["If-None-Match" => "\"v1\""], 5, 1000, "rs-test", ' . var_export($follow, true) . '), "offline" => \CjwNetwork\RequestShield\Http::offline()]);';
     exec(escapeshellarg(PHP_BINARY) . " $ini -r " . escapeshellarg($code) . ' 2>&1', $out, $exit);
     return json_decode(implode('', $out), true) ?? ['raw' => implode("\n", $out), 'exit' => $exit];
 }
@@ -55,6 +55,8 @@ return [
             same(['"v1"', 'rs-test', '"v1"'], [$r['headers']['etag'] ?? null, $r['headers']['x-got-agent'] ?? null, $r['headers']['x-got-match'] ?? null], 'headers out and in');
             $r = Http::get("$base/moved", [], 5);
             same([200, '"v1"'], [$r['status'] ?? null, $r['headers']['etag'] ?? null], 'the redirect followed, the last answer\'s headers');
+            $r = Http::get("$base/moved", [], 5, 0, 'rs-test', false);
+            same([302, null], [$r['status'] ?? null, $r['headers']['etag'] ?? null], 'not followed when asked so: the redirect is the answer');
             same(1000, strlen((string) (Http::get("$base/big", [], 5, 1000)['body'] ?? '')), 'cut at the limit');
             same(500, Http::get("$base/nope", [], 5)['status'] ?? null, 'an error is an answer');
             same(null, Http::get('http://127.0.0.1:1/x', [], 1), 'no server: no answer');
@@ -72,6 +74,7 @@ return [
                     'curl: the redirect, the body, the headers, not offline: ' . json_encode($viaCurl));
                 $big = httpIn('-d allow_url_fopen=0', "$base/big");
                 same([200, 1000], [$big['get']['status'] ?? null, strlen((string) ($big['get']['body'] ?? ''))], 'curl: cut at the limit, the answer kept -- not an empty 200: ' . substr(json_encode($big) ?: '', 0, 200));
+                same(302, httpIn('-d allow_url_fopen=0', "$base/moved", false)['get']['status'] ?? null, 'curl: not followed when asked so');
             }
             $neither = httpIn('-d allow_url_fopen=0 -d disable_functions=curl_init', "$base/list.txt");
             truthy(array_key_exists('get', $neither) && $neither['get'] === null, 'nothing fetched: ' . json_encode($neither));

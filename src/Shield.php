@@ -262,6 +262,73 @@ final class Shield
     }
 
     /**
+     * The first plugin with the MethodHandler capability that answers a
+     * request with a method the site does not take (0031 G.4), or null: the
+     * rules decide. One that throws is noted once a minute and skipped.
+     */
+    public function handleMethod(Request $request): ?Response
+    {
+        foreach ($this->plugins() as $plugin) {
+            if (!$plugin instanceof MethodHandler) {
+                continue;
+            }
+            try {
+                $response = $plugin->handleMethod($request);
+            } catch (\Throwable $e) {
+                self::failed('handler', get_class($plugin) . ' failed to answer ' . $request->method . ', the rules decide: ' . $e->getMessage());
+                continue;
+            }
+            if ($response !== null) {
+                return $response;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The application says who the visitor is (0031 G.4, proposal 0039):
+     * Shield::active()?->cacheContext($roleKey) from an adapter while the
+     * application runs. The plugins with the ContextHandler capability (the
+     * HTTP cache) remember it for the session the request carries and, with
+     * $shared, may keep this answer for everyone with the role. Nothing
+     * happens without such a plugin, or before protect() ran; one that throws
+     * is noted once a minute -- the application goes on.
+     */
+    public function cacheContext(string $context, bool $shared = false): void
+    {
+        $this->toContext(static function (ContextHandler $p, Request $r) use ($context, $shared): void {
+            $p->cacheContext($r, $context, $shared);
+        });
+    }
+
+    /** The visitor signed out: their session's role is forgotten (the logout hook of an adapter). */
+    public function forgetContext(): void
+    {
+        $this->toContext(static function (ContextHandler $p, Request $r): void {
+            $p->forgetContext($r);
+        });
+    }
+
+    /** @param \Closure(ContextHandler, Request): void $call */
+    private function toContext(\Closure $call): void
+    {
+        $request = $this->request;
+        if ($request === null || ($this->settings->hooks['contextHandler'] ?? []) === []) {
+            return;
+        }
+        foreach ($this->plugins() as $plugin) {
+            if (!$plugin instanceof ContextHandler) {
+                continue;
+            }
+            try {
+                $call($plugin, $request);
+            } catch (\Throwable $e) {
+                self::failed('handler', get_class($plugin) . ' failed to take the visitor\'s role, the application goes on: ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
      * The rule chain (0031 C.1): every step in the order the shield checks,
      * the stages' steps without a rule where their settings are not in use.
      * Derived from the rules when first asked (a trace, the rules page) --
@@ -371,6 +438,15 @@ final class Shield
             self::$rule = null;
             $_SERVER['REQUEST_SHIELD'] = Decision::ALLOW;
             return self::$current;
+        }
+        // A method the site does not take, answered by a plugin before the rules (MethodHandler,
+        // 0031 G.4): an HTTP cache's PURGE from its purgers -- for a GET, one array access.
+        if (($s->hooks['methodHandler'] ?? []) !== [] && !in_array($request->method, $s->methods, true)) {
+            $response = $shield->handleMethod($request);
+            if ($response !== null) {
+                $response->send();
+                exit;
+            }
         }
         $now = microtime(true);
         $decided = $shield->decide($request, $now);

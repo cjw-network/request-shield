@@ -76,6 +76,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **The HTTP cache keeps small answers in memory, and its folder within a
+  cap** (0031 step G.4, part 3; proposal 0039): with APCu, answers up to
+  `set http-cache-memory-object` (`256K`) are kept in APCu for at most an
+  hour -- a hit is one `apcu_fetch` (a 20 KB page: about 9 µs instead of
+  16 µs from the disk); longer-lived ones are on the disk too and come back
+  on their next hit. `set http-cache-memory` (`32M`) caps the answers'
+  share of APCu, and a quarter of APCu always stays free (a full APCu is
+  emptied whole, budgets and roles with it). `set http-cache-disk` (`256M`,
+  at least `1M`; `0`: none) caps the folder: each of its 256 folders holds a 256th, the
+  oldest going first -- counted as written with APCu, at the sweep without;
+  `cache … expired` trims every folder. The command line's `cache purge`
+  makes the answers in memory out of date (the web server sees it within
+  10 s; a `PURGE` request or the API at once). Settings `FORMAT` 62.
+  ([the HTTP cache](docs/features/RSF04-03-http-cache.md#memory-first-the-disk-when-needed))
+- **The HTTP cache finds the role from FOSHttpCache's user hash** (0031 step
+  G.4, part 2b; proposal 0039): `set http-cache-user-context on` (or the
+  address to ask) and `set http-cache-user-hash-header X-User-Hash` for
+  Exponential Platform -- for a visitor with a session the shield asks
+  `/_fos_user_context_hash` as a Varnish does (only the session cookie,
+  `X-RS-Lookup`: a MAC the shield knows its own request by), once per
+  session for the hash's `max-age`, kept in APCu with its tags (a purge of
+  `ez-user-context-hash` asks again); the application gets the hash as from
+  a Varnish, and every session of a role shares its pages. No adapter
+  needed. A visitor that asks for a hash or sends one gets 400. No hash --
+  the cache is skipped for the request; the application not answering
+  (no answer, a timeout, 502, 503, 504) pauses every question for 60 s, an answer
+  without a hash only that session's. No redirect is followed; a session
+  cookie a browser could not send, or a host not on `http-cache-hosts`, is
+  never asked with; at most 30 questions a minute for new sessions from one
+  address and 2 at a time. `on` asks at the host and port the visitor used.
+  Settings `FORMAT` 61. ([the HTTP cache](docs/features/RSF04-03-http-cache.md#the-role-from-foshttpcaches-user-hash-ibexa-exponential-platform))
+- **The HTTP cache keeps one page per role** (0031 step G.4, part 2;
+  proposal 0039): the application names the visitor's role with
+  `Shield::active()?->cacheContext($role, shared: true)` (a new plugin
+  capability, `ContextHandler`); the cache remembers `MAC(secret, session
+  cookie) -> role` in APCu (`http-cache-session-cookie`,
+  `http-cache-context-ttl`), and the next request with that cookie gets the
+  role's page before the application starts -- only pages called shared or
+  sent with `Vary: X-User-Hash` / `X-User-Context-Hash`, leaving as
+  `private, no-cache`; `forgetContext()` on logout, a purge of `rs-context`
+  when roles change. A forged cookie finds nothing.
+- **The HTTP cache speaks the CMSes' dialects: tags and purges** (0031 step
+  G.4, part 1; proposal 0039): an answer's tags (`xkey`, `X-Cache-Tags`,
+  `X-LiteSpeed-Tag`, `Surrogate-Key`, `Cache-Tag`, `Edge-Cache-Tag`,
+  `X-Magento-Tags`, `X-Location-Id`, `http-cache-tag-headers`) are kept with
+  it and taken out of what the visitor gets; `PURGE` (an address, or tags in
+  `key` / `X-Cache-Tags`, or `X-Location-Id`) and `PURGEKEYS` (`xkey-purge`)
+  from `http-cache-purgers` or with `X-Invalidate-Token`
+  (`http-cache-purge-token`) make the answers out of date -- Exponential
+  Platform's and Ibexa's purge settings work unchanged; `X-LiteSpeed-Purge`
+  in any answer purges too; `cache … purge --tag=` and the API's
+  `tags`. A plugin may answer a method the site does not take before the
+  rules (`MethodHandler`); anyone else gets the 405 as before. Nobody may
+  purge by request until `http-cache-purgers` or the token is set.
+
 - **`set file-mode` and `set dir-mode`: the modes of what the shield
   writes**, for servers with rules for new folders and files: `0600` and
   `0700` by default; a group (`0640`, `0750`), an inherited group (`02770`).

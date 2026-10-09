@@ -354,7 +354,9 @@ final class StatsPlugin implements Plugin, RuleCounts
      * What the HTTP cache did with a request (0046), from the header it sets:
      * "hit" (answered from it), "miss" (asked the site, the answer may be
      * kept), "nostore" (asked the site, the answer may not be kept -- and why,
-     * CachePlugin::refusal()), "past" (no cache asked: off, not cacheable, not
+     * CachePlugin::refusal(); "miss; role": a role's page -- its Cache-Control is
+     * the shield's then, so only what refuses any page counts: a role's page
+     * the site sent private, with only a Vary on the hash, counts as a miss), "past" (no cache asked: off, not cacheable, not
      * anonymous, a POST).
      *
      * @param list<string> $headers headers_list()
@@ -371,13 +373,15 @@ final class StatsPlugin implements Plugin, RuleCounts
             if ($v === 'hit') {
                 return ['hit', null];
             }
-            if ($v === 'miss') {
+            if ($v === 'miss' || $v === 'miss; role') {
                 // The header comes from the cache plugin: its rule says whether the answer may be kept.
                 if (!class_exists(\CjwNetwork\RequestShield\Cache\CachePlugin::class)) {
                     return ['miss', null];
                 }
                 $ttl = $s !== null ? \CjwNetwork\RequestShield\Cache\CacheExtension::of($s)['ttl'] : 1;
-                $why = \CjwNetwork\RequestShield\Cache\CachePlugin::refusal($status, $headers, $ttl);
+                // A role's page (miss; role): its private, no-cache is the cache's own -- what the site sent was
+                // checked when it was kept; only what refuses any page counts here.
+                $why = \CjwNetwork\RequestShield\Cache\CachePlugin::refusal($status, $headers, $ttl, $v === 'miss; role');
                 return $why === null ? ['miss', null] : ['nostore', $why];
             }
         }

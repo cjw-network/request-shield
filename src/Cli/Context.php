@@ -23,7 +23,7 @@ final class Context
      * @param array<string, mixed> $read what RuleFile::read() returned (config, seen, env, recheck, examples)
      * @param list<string> $sources the --source globs
      * @param array<string, mixed> $options the common options: days (int), json (bool), force (bool), ip, ua,
-     *   period (from, to, by, site, crawler, path, sort), feed (format, write), test (only, asWritten, junit),
+     *   period (from, to, by, site, crawler, path, tag, sort), feed (format, write), test (only, asWritten, junit),
      *   list (for, until, reason)
      * @param list<string> $args every argument as given
      */
