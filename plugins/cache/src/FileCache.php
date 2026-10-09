@@ -78,10 +78,11 @@ final class FileCache
     {
         if (mt_rand(1, 100) === 1) {
             $folder = sprintf('%02x', mt_rand(0, 255));
-            $this->sweep($folder, $now);
             (new Tags($this->dir, false))->sweep($folder, $now);
             if ($this->cap > 0 && !$this->apcu) {
-                $this->trim($folder, $now);
+                $this->trim($folder, $now);         // sweeps, then the oldest past the folder's share
+            } else {
+                $this->sweep($folder, $now);
             }
         }
         $file = $this->path($key);
@@ -90,11 +91,12 @@ final class FileCache
         if ($meta === false) {
             return false;           // a header that is no UTF-8: not kept, rather than a file that never reads
         }
+        $before = $this->cap > 0 && $this->apcu ? (int) @filesize($file) : 0;     // replaced: only the difference counts
         if (!\CjwNetwork\RequestShield\Files::write($file, $meta . "\n" . $body, '.tmp')) {
             return false;
         }
         if ($this->cap > 0 && $this->apcu) {
-            $this->count(substr(sha1($key), 0, 2), strlen($meta) + 1 + strlen($body), $now);
+            $this->count(substr(sha1($key), 0, 2), strlen($meta) + 1 + strlen($body) - $before, $now);
         }
         return true;
     }
@@ -108,7 +110,7 @@ final class FileCache
     {
         $key = 'rshield:hc:' . substr(md5($this->dir), 0, 12) . ":d:$folder";
         $held = apcu_fetch($key);
-        $held = is_int($held) ? apcu_inc($key, $bytes) : false;
+        $held = is_int($held) ? ($bytes >= 0 ? apcu_inc($key, $bytes) : apcu_dec($key, -$bytes)) : false;
         if (is_int($held) && $held <= intdiv($this->cap, self::FOLDERS)) {
             return;
         }

@@ -41,6 +41,9 @@ final class MemoryCache
     /** What APCu keeps free at least: a quarter. */
     private const RESERVE = 4;
 
+    /** After APCu was short of room: no answer into memory for this long (a disk hit does not ask APCu's free memory every time). */
+    private const FULL_PAUSE = 10;
+
     private string $prefix;
 
     public function __construct(string $dir, private int $maxObject, private int $share)
@@ -84,8 +87,12 @@ final class MemoryCache
             return false;           // a header that is no UTF-8: as the disk, not kept
         }
         $hour = intdiv((int) $now, 3600);
-        $counted = apcu_fetch([$this->prefix . "m:$hour", $this->prefix . 'm:' . ($hour - 1)]);
-        $used = is_array($counted) ? array_sum(array_filter($counted, 'is_int')) : 0;
+        $counted = apcu_fetch([$this->prefix . "m:$hour", $this->prefix . 'm:' . ($hour - 1), $this->prefix . 'm:full']);
+        $counted = is_array($counted) ? $counted : [];
+        if (isset($counted[$this->prefix . 'm:full'])) {
+            return false;           // APCu was short of room a moment ago: not asked again for FULL_PAUSE seconds
+        }
+        $used = array_sum(array_filter($counted, 'is_int'));
         if ($used + $size > $this->share) {
             return false;
         }
@@ -95,6 +102,7 @@ final class MemoryCache
         $total = $num('num_seg') * $num('seg_size');
         $avail = $num('avail_mem');
         if ($total <= 0 || $avail - $size < intdiv($total, self::RESERVE)) {
+            apcu_store($this->prefix . 'm:full', true, self::FULL_PAUSE);
             return false;
         }
         // Counted first: an answer that is here is always counted (the counter lives two hours).

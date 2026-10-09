@@ -83,7 +83,7 @@ final class CacheExtension implements Extension, ApiProvider
         $v->set('http-cache-max-object', 'words', 'the largest answer kept: 1M, 500K (default 1M)', self::size('http-cache-max-object'), 'maxObject');
         $v->set('http-cache-memory-object', 'words', 'the largest answer kept in memory, with APCu (default 256K; 0: none in memory)', self::size('http-cache-memory-object'), 'memoryObject');
         $v->set('http-cache-memory', 'words', 'the most of APCu the cache\'s answers may take (default 32M)', self::size('http-cache-memory'), 'memory');
-        $v->set('http-cache-disk', 'words', 'the most the cache\'s folder may hold -- above it the oldest answers go (default 256M; 0: no cap)', self::size('http-cache-disk'), 'disk');
+        $v->set('http-cache-disk', 'words', 'the most the cache\'s folder may hold -- above it the oldest answers go (default 256M, at least 1M; 0: no cap)', self::size('http-cache-disk'), 'disk');
         $v->set('http-cache-hosts', 'words', 'the site\'s host names as visitors send them, a port written out (www.example.org example.org:8080) -- only these are kept', null, 'hosts');
         $v->set('http-cache-dir', 'path', 'where the answers are kept (default <store-dir>/http-cache)', null, 'dir');
         $v->set('http-cache-purgers', 'words', 'the addresses that may purge with a request -- PURGE, PURGEKEYS (default: nobody; 127.0.0.1 ::1 for a CMS on this machine, when no proxy runs on it)', null, 'purgers');
@@ -116,7 +116,7 @@ final class CacheExtension implements Extension, ApiProvider
         return static function ($value, string $at) use ($name): int {
             $first = is_array($value) ? ($value[0] ?? '') : '';
             $s = is_scalar($first) ? (string) $first : '';
-            if (preg_match('/^(\d{1,12})([kmg])?$/i', $s, $m) !== 1) {
+            if (preg_match('/^(\d{1,9})([kmg])?$/i', $s, $m) !== 1) {     // at most 999999999G: an integer
                 throw new RuleFileException("$at: $name is a size (1M, 500K), not \"$s\"");
             }
             return (int) $m[1] * ['' => 1, 'k' => 1024, 'm' => 1048576, 'g' => 1073741824][strtolower($m[2] ?? '')];
@@ -145,8 +145,8 @@ final class CacheExtension implements Extension, ApiProvider
         $memoryObject = $raw['memoryObject'] ?? 262144;
         $memory = $raw['memory'] ?? 33554432;
         $disk = $raw['disk'] ?? 268435456;
-        if (!is_int($memoryObject) || $memoryObject < 0 || !is_int($memory) || $memory < 0 || !is_int($disk) || $disk < 0) {
-            throw Settings::wrong('ext.cache.memory', 'memoryObject, memory and disk sizes in bytes (0 or more)');
+        if (!is_int($memoryObject) || $memoryObject < 0 || !is_int($memory) || $memory < 0 || !is_int($disk) || $disk < 0 || ($disk > 0 && $disk < 1048576)) {
+            throw Settings::wrong('ext.cache.memory', 'memoryObject and memory sizes in bytes (0 or more), disk 0 (no cap) or 1M or more');
         }
         if (!is_string($userContext) || ($userContext !== '' && $userContext !== 'on' && preg_match('~^https?://[a-z0-9.:\[\]-]+(/[^\s?#]*)?$~D', $userContext) !== 1)
             || !in_array($hashHeader, ['x-user-context-hash', 'x-user-hash'], true)) {

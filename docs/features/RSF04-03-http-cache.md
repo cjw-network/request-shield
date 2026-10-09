@@ -250,7 +250,7 @@ set http-cache-cookies _ga* _pk_* rsp       # cookies that do not make a page so
 set http-cache-max-object 1M                # the largest answer kept
 set http-cache-memory-object 256K           # with APCu: the largest kept in memory (0: none in memory)
 set http-cache-memory 32M                   # the most of APCu the answers may take
-set http-cache-disk 256M                    # the most the folder holds -- the oldest go first (0: no cap)
+set http-cache-disk 256M                    # the most the folder holds -- the oldest go first (1M or more; 0: no cap)
 set http-cache-dir /var/cache/request-shield   # default: <store-dir>/http-cache
 set http-cache-purgers 127.0.0.1 ::1        # who may send PURGE / PURGEKEYS (default: nobody; not behind a local proxy)
 set http-cache-purge-token …                # or anyone with this X-Invalidate-Token (16 characters or more)

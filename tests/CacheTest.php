@@ -450,6 +450,33 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF04-03 the cache\'s sizes: a size too large for an integer, or a cap under 1M, is a mistake in the rule file; a rewritten answer counts once' => function (): void {
+        $dir = cacheDir();
+        try {
+            $error = static function (string $line) use ($dir): string {
+                try {
+                    cacheSettings($dir, "set http-cache on\n$line\n");
+                } catch (\Throwable $e) {
+                    return get_class($e) . ': ' . $e->getMessage();
+                }
+                return 'accepted';
+            };
+            $huge = $error('set http-cache-memory 999999999999G');
+            truthy(strpos($huge, 'RuleFileException') !== false && strpos($huge, 'http-cache-memory is a size') !== false, 'too large: ' . $huge);
+            truthy($error('set http-cache-disk 100K') !== 'accepted', 'a cap under 1M: refused');
+            same('accepted', $error('set http-cache-disk 0'), 'no cap');
+            if (\CjwNetwork\RequestShield\Capability::apcu()) {
+                $c = new FileCache("$dir/c", 1048576 * 256, true);
+                for ($i = 0; $i < 20; $i++) {
+                    $c->put('https://www.example.org/same', 200, [], str_repeat('x', 1000), 60, microtime(true));
+                }
+                $count = apcu_fetch('rshield:hc:' . substr(md5("$dir/c"), 0, 12) . ':d:' . substr(sha1('https://www.example.org/same'), 0, 2));
+                truthy(is_int($count) && $count < 2000, 'one answer written twenty times: counted once (' . var_export($count, true) . ')');
+            }
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'RSF04-03 end to end, memory: under PHP-FPM a hit comes from APCu -- the folder on the disk gone, still a hit; a PURGE of its tag at once; a large answer on the disk' => function (): void {
         $fpm = fpmBinary();
         if (!function_exists('proc_open') || $fpm === null) {
