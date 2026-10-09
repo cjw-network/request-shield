@@ -18,6 +18,7 @@ use CjwNetwork\RequestShield\Http;
 
 return [
     'RSF04-01 end to end (0048): an ignored parameter is taken out before the cache and the application, the page kept without it; an unknown one is answered from the page without it and never kept; an attack in an ignored parameter is still refused' => function (): void {
+        needsPlugins();                 // the HTTP cache is a plugin
         if (!function_exists('proc_open')) {
             skip('no proc_open');
         }

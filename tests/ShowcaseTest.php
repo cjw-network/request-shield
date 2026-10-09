@@ -120,6 +120,7 @@ return [
         });
     },
     'RSF05-04 the showcase: request-shield test decides every try its page shows, and they all hold' => function (): void {
+        needsPlugins();                 // the showcase's rules switch the HTTP cache on
         exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' test ' . escapeshellarg(dirname(__DIR__) . '/examples/showcase/showcase.rules') . ' 2>&1', $out, $code);
         same(0, $code, implode("\n", array_slice($out, -5)));
         // The budgets the pages count themselves (on-demand) cannot be decided by test: their own test below sends real requests.
