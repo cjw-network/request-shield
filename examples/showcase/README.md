@@ -179,7 +179,9 @@ several, comma-separated: for IPv6 the `/64` of your line (the last half of
 an IPv6 address changes now and then), for IPv4 the address --
 `--admin=2001:db8:1234:5600::/64,203.0.113.7`. The folder and
 `<folder>.previous` must be empty, missing or copies the script made -- it
-never replaces or removes another one, nor a link. A CLI PHP below 8.0: `PHP=/opt/plesk/php/8.3/bin/php sh
+never replaces or removes another one, nor a link. A copy you built by
+hand with `build/showcase.php` is taken over after `touch
+<folder>/var/deploy.conf` (its `var/` stays). A CLI PHP below 8.0: `PHP=/opt/plesk/php/8.3/bin/php sh
 examples/showcase/deploy.sh …`.
 
 - **The host:** Apache that reads `.htaccess` (AllowOverride; mod_rewrite

@@ -113,6 +113,14 @@ return [
             [$code, $said] = $run(escapeshellarg("$dir/site//") . ' --admin=none');
             same(0, $code, 'site// is site: ' . $said);
             truthy(strpos((string) file_get_contents("$dir/site/showcase.rules"), 'restrict /rs/** to 192.0.2.1') !== false, '--admin=none forgets the addresses');
+            // A copy build/showcase.php made by hand: refused with the one step that keeps its var/.
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/build/showcase.php') . ' ' . escapeshellarg("--out=$dir/hand") . ' --host=demo.example.org');
+            file_put_contents("$dir/hand/var/secret", 'kept by hand');
+            [$code, $said] = $run(escapeshellarg("$dir/hand"));
+            truthy($code === 1 && strpos($said, 'deploy.conf') !== false, 'a hand-built copy: told to touch var/deploy.conf -- ' . $said);
+            touch("$dir/hand/var/deploy.conf");
+            [$code, $said] = $run(escapeshellarg("$dir/hand") . ' --host=demo.example.org');
+            same([0, 'kept by hand'], [$code, (string) @file_get_contents("$dir/hand/var/secret")], 'then deployed, its var/ kept: ' . $said);
             rename("$dir/site", "$dir/real");
             symlink("$dir/real", "$dir/site");
             [$code] = $run(escapeshellarg("$dir/site"));

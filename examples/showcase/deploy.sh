@@ -56,22 +56,31 @@ while [ "${target%/}" != "$target" ]; do        # every trailing slash: site// i
     target=${target%/}
 done
 [ -n "$target" ] || fail "the target is a folder below /, not / itself"
+case "$(basename -- "$target")" in
+    .|..) fail "name the folder itself, not \"$target\"" ;;
+esac
 parent=$(dirname -- "$target")
 [ -d "$parent" ] || fail "$parent does not exist"
-target=$(CDPATH= cd -P -- "$parent" && pwd)/$(basename -- "$target")
+parent=$(CDPATH= cd -P -- "$parent" && pwd)
+[ "$parent" != / ] || parent=""
+target=$parent/$(basename -- "$target")
 old="$target.previous"
 
 [ ! -L "$target" ] || fail "$target is a link -- make it a real folder (open_basedir names the folder, PHP would follow the link elsewhere)"
 [ ! -L "$old" ] || fail "$old is a link -- not this script's"
 # Never another folder: missing, empty, or a copy made here -- and never this clone or a folder holding it.
 case "$repo/" in
-    "$target/"*) fail "$target holds this clone itself -- name the document root folder, not the clone's" ;;
+    "$target/"*|"$old/"*) fail "$target holds this clone itself -- name the document root folder, not the clone's" ;;
 esac
 for dir in "$target" "$old"; do
     if [ -e "$dir" ]; then
         [ -d "$dir" ] || fail "$dir is no folder"
         [ -r "$dir" ] || fail "$dir cannot be read here"
         if [ -n "$(ls -A -- "$dir")" ] && ! made_here "$dir"; then
+            if [ -f "$dir/lib/public.php" ]; then
+                # A copy build/showcase.php made by hand: its var/ (the secret, statistics) is worth keeping.
+                fail "$dir is a copy built by hand -- once: touch \"$dir/var/deploy.conf\" and run again with --host and --admin (its var/ is kept)"
+            fi
             fail "$dir holds something else than a copy this script made -- empty it (the hoster's default page), or name another folder"
         fi
     fi
@@ -105,21 +114,33 @@ if [ -d "$target/var" ]; then
 fi
 printf 'host=%s\nadmin=%s\n' "$host" "$admin" > "$new/var/deploy.conf"
 chmod 600 "$new/var/deploy.conf"
-# The folder as the web server could read the one before (a Plesk document root: its mode and group).
+# The folder as the web server could read the one before (a Plesk document root: user:psaserv 750).
+# Its mode only with its group: 750 under a group the web server is not in would lock it out.
 if [ -d "$target" ]; then
-    chmod "$(stat -c %a "$target" 2>/dev/null || echo 755)" "$new" 2>/dev/null || true
-    chgrp "$(stat -c %g "$target" 2>/dev/null || id -g)" "$new" 2>/dev/null || true
+    group=$(stat -c %g "$target" 2>/dev/null || echo "")
+    mode=$(stat -c %a "$target" 2>/dev/null || echo "")
+    if [ -n "$group" ] && { [ "$(stat -c %g "$new")" = "$group" ] || chgrp "$group" "$new" 2>/dev/null; }; then
+        [ -z "$mode" ] || chmod "$mode" "$new"
+    else
+        chmod 755 "$new"
+        echo "deploy.sh: could not give the new folder the group of the one before ($group) -- it is 755; check that the site answers" >&2
+    fi
 fi
 
 # The swap: renames in the same parent folder, a moment without a page at most; the copy before stays.
-[ ! -e "$old" ] || rm -rf -- "$old"     # empty, or made here (checked above)
+# No signal in between: it would leave no <target>. The older .previous goes only once the new copy is in.
+trap '' HUP INT TERM
+gone="$old.gone-$$"
+[ ! -e "$old" ] || mv -- "$old" "$gone"       # empty, or made here (checked above)
 if [ -d "$target" ]; then
     mv -- "$target" "$old"
 fi
 if ! mv -- "$new" "$target"; then
     [ ! -d "$old" ] || mv -- "$old" "$target" || true
+    [ ! -e "$gone" ] || mv -- "$gone" "$old" || true
     fail "could not put the new copy in place -- $target is as before"
 fi
+rm -rf -- "$gone"
 trap - EXIT HUP INT TERM
 [ -n "$admin" ] || echo "deploy.sh: no --admin: the shield's own pages, the log and learning are closed for everyone" >&2
 echo "deploy.sh: $target is the new showcase (host $host${admin:+, admin $admin}) -- check that https://$host/var/secret is not served"
