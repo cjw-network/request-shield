@@ -279,6 +279,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   never kept (`REQUEST_SHIELD_CACHE_LOOKUP` names that page for a PHP cache);
   `check` warns about it without `cache-query`. `show` prints both. Settings
   `FORMAT` 64. ([the cacheable definition](docs/features/RSF04-01-cacheable-definition.md#query-parameters-in-the-key-ignored-unknown))
+- **Proposal 0049 a reverse proxy plugin** (draft): fixed pairs of a site
+  address and an address elsewhere (`proxy GET /stats/m.js to https://…`),
+  answered after the shield's checks -- e.g. Matomo's tracking through the
+  site's own host: the visitor's address masked, no cookies passed on, the
+  script kept by the HTTP cache, bots kept out of the statistics; the risks
+  (open proxy, held workers, leaked cookies, consent) and what the design
+  does about each.
 - **Proposal 0048 query parameters and the PHP caches** (draft): three
   kinds of parameters -- in the key (`cache-query`), ignored (`cache-ignore
   utm_* …`: taken out before the cache and the application run, the page

@@ -111,7 +111,8 @@
   [0045 the shield's own files out of a browser's reach](proposals/0045-own-files-out-of-reach.md) (draft) ·
   [0046 response times in the statistics](proposals/0046-response-times.md) (draft; steps 1 to 3 built) ·
   [0047 the admin pages: an area per plugin, and a login by default](proposals/0047-admin-areas-and-login.md) (draft) ·
-  [0048 query parameters and the PHP caches: fewer keys, more hits](proposals/0048-query-parameters-and-php-caches.md) (draft)
+  [0048 query parameters and the PHP caches: fewer keys, more hits](proposals/0048-query-parameters-and-php-caches.md) (draft) ·
+  [0049 a reverse proxy plugin: first-party addresses for other services](proposals/0049-reverse-proxy-plugin.md) (draft)
   (0007 is unused)
 - **Roadmap for 0012–0016** (the reasons in [0012](proposals/0012-dashboard.md#roadmap-for-00120016)):
   counters and crawler statistics first (they answer "did GPTBot crawl the
