@@ -182,8 +182,9 @@ sequenceDiagram
   configurations answer.
 - **Fail safe:** no hash -- the cache is skipped for this request, the
   application answers. The application not answering (no answer, a
-  timeout, 5xx): nobody is asked for 60 seconds. An answer without a hash
-  (4xx, a redirect, no header): that session is not asked for 60 seconds.
+  timeout, 502, 503, 504): nobody is asked for 60 seconds. Any other answer
+  without a hash (a 500, a 4xx, a redirect, no header): that session is not
+  asked for 60 seconds.
 - **Never a cost a visitor can multiply:** a session cookie a browser could
   not send (a space, a quote, a comma, over 512 bytes) is not asked with;
   new sessions from one address get at most 30 questions a minute; at most

@@ -436,7 +436,7 @@ return [
                 if (($_SERVER["HTTP_ACCEPT"] ?? "") !== "application/vnd.fos.user-context-hash") { http_response_code(406); return; }
                 file_put_contents(__DIR__ . "/../lookups", "x", FILE_APPEND);
                 $kind = substr($login, 0, 2);
-                if ($kind === "er") { http_response_code(500); return; }
+                if ($kind === "er" || $kind === "e5") { http_response_code($kind === "er" ? 503 : 500); return; }
                 if ($kind === "rd" && !isset($_GET["to"])) { header("Location: /_fos_user_context_hash?to=1", true, 302); return; }
                 if ($kind !== "nh") {
                     header("X-User-Hash: " . ($kind === "rd" ? "hash-redirected" : ($kind === "m0" ? "hash-m0" : ($kind === "ed" ? "hash-editors" : "hash-authors"))));
@@ -531,12 +531,16 @@ return [
             }
             same(30, $count('lookups') - $before, 'one address, 32 new sessions: 30 asked');
             truthy($hit($as('au-other', [], '198.51.100.10')) && $count('lookups') === $before + 31, 'another address: still asked');
-            // The application fails (5xx): nobody is asked for a while, the site answers without the cache.
+            // A 500 may be what one made-up cookie causes: only that session waits.
+            $before = $count('lookups');
+            $as('e5-1');
+            truthy($hit($as('ed-5')) && $count('lookups') === $before + 2, 'a 500: the next session is still asked');
+            // The application does not answer (503): nobody is asked for a while, the site answers without the cache.
             $before = $count('lookups');
             $r = $as('er-1');
-            truthy(!$hit($r) && strpos($r[2], 'page for nobody') === 0 && $count('lookups') === $before + 1, 'a 5xx: no hash');
+            truthy(!$hit($r) && strpos($r[2], 'page for nobody') === 0 && $count('lookups') === $before + 1, 'a 503: no hash');
             $r = $as('ed-4');
-            truthy(!$hit($r) && strpos($r[2], 'page for nobody') === 0 && $count('lookups') === $before + 1, 'after a 5xx: a new session is not asked (the pause), the application answers');
+            truthy(!$hit($r) && strpos($r[2], 'page for nobody') === 0 && $count('lookups') === $before + 1, 'after a 503: a new session is not asked (the pause), the application answers');
         } finally {
             proc_terminate($web);
             proc_close($web);

@@ -74,7 +74,7 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
 
     /**
      * After a lookup that failed: no lookup for this long -- for every session when the application
-     * did not answer (no answer, a timeout, 5xx), for that session when it answered without a hash.
+     * did not answer (no answer, a timeout, 502, 503, 504), for that session when it answered without a hash.
      */
     private const LOOKUP_PAUSE = 60;
 
@@ -508,7 +508,8 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
      * hour) with the tags of its answer, from the time before it was asked
      * (a purge while it is asked is not missed). No hash: null -- and no
      * lookup for LOOKUP_PAUSE seconds, for every session when the application
-     * did not answer (no answer, a timeout, 5xx), else for this session. Not
+     * did not answer (no answer, a timeout, 502, 503, 504), else for this
+     * session (a 500 may be what one made-up cookie causes). Not
      * asked at all for a cookie or host a request could not carry, past the
      * address's LOOKUP_BUDGET, or while LOOKUP_PARALLEL others wait.
      *
@@ -540,9 +541,11 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
             $got = Http::get($base . self::LOOKUP_PATH, ['Accept' => self::LOOKUP_ACCEPT, 'Host' => $host, 'Cookie' => $cookie,
                 'X-RS-Lookup' => $this->lookupMac($session)], 2, 4096, 'request-shield', false);
         } finally {
-            apcu_dec("$prefix-running");
+            if (apcu_dec("$prefix-running") < 0) {
+                apcu_store("$prefix-running", 0, 10);     // the key ran out while this one asked: not below 0
+            }
         }
-        if ($got === null || $got['status'] >= 500) {
+        if ($got === null || in_array($got['status'], [502, 503, 504], true)) {
             apcu_store("$prefix-pause", 1, self::LOOKUP_PAUSE);
             return null;
         }

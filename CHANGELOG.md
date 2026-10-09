@@ -87,7 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   a Varnish, and every session of a role shares its pages. No adapter
   needed. A visitor that asks for a hash or sends one gets 400. No hash --
   the cache is skipped for the request; the application not answering
-  (no answer, a timeout, 5xx) pauses every question for 60 s, an answer
+  (no answer, a timeout, 502, 503, 504) pauses every question for 60 s, an answer
   without a hash only that session's. No redirect is followed; a session
   cookie a browser could not send, or a host not on `http-cache-hosts`, is
   never asked with; at most 30 questions a minute for new sessions from one
