@@ -22,8 +22,10 @@ interface Purger
 {
     /**
      * These tags are out of date ("*": everything). Tags are what the
-     * answers carried (xkey, X-Cache-Tags …): visible characters, at most
-     * 200 bytes each -- others are left out.
+     * answers carried (xkey, X-Cache-Tags …): each value is split at spaces
+     * and commas, as those headers are; a piece over 200 bytes or with
+     * other than visible characters is no tag an answer can carry, and is
+     * left out.
      *
      * @param list<string> $tags
      */
