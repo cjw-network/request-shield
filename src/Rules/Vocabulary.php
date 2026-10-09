@@ -40,7 +40,7 @@ final class Vocabulary
     public const FEATURES = [
         // the words
         'host' => 'RSF02-01', 'trust' => 'RSF01-01', 'exempt' => 'RSF01-02', 'method' => 'RSF02-01', 'allow' => 'RSF02-03', 'restrict' => 'RSF02-03',
-        'block' => 'RSF02-02', 'unblock' => 'RSF02-02', 'query' => 'RSF02-05', 'cache-path' => 'RSF04-01', 'cache-query' => 'RSF04-01',
+        'block' => 'RSF02-02', 'unblock' => 'RSF02-02', 'query' => 'RSF02-05', 'cache-path' => 'RSF04-01', 'cache-query' => 'RSF04-01', 'cache-ignore' => 'RSF04-01',
         'challenge' => 'RSF03-02', 'challenge-exempt' => 'RSF03-02', 'dashboard-access' => 'RSF06-01', 'api-path' => 'RSF03-02', 'post-origin' => 'RSF02-04',
         'backend' => 'RSF06-03', 'limit' => 'RSF03-01', 'no-limit' => 'RSF03-01', 'crawler' => 'RSF01-04', 'crawlers' => 'RSF01-04', 'plugin' => 'RSF06-04',
         'site' => 'RSF05-01', 'deny' => 'RSF01-02', 'ban' => 'RSF01-02', 'feed' => 'RSF01-03', 'set' => 'RSF05-02', 'include' => 'RSF05-01', 'match' => 'RSF05-01',
@@ -54,7 +54,7 @@ final class Vocabulary
         'language' => 'RSF03-02', 'home' => 'RSF03-02', 'widget-path' => 'RSF03-03', 'widget-difficulty' => 'RSF03-03', 'challenge-logo' => 'RSF03-02',
         'mode' => 'RSF05-03', 'crawler-verify' => 'RSF01-04', 'log' => 'RSF05-05', 'dashboard-path' => 'RSF06-01', 'docs-url' => 'RSF06-01', 'error-page' => 'RSF05-06', 'dashboard-session' => 'RSF06-01',
         'log-level' => 'RSF05-05', 'live' => 'RSF06-02', 'live-keep' => 'RSF06-02', 'ban-keep' => 'RSF01-02', 'feeds-max-age' => 'RSF01-03',
-        'log-ip' => 'RSF05-05', 'log-max-size' => 'RSF05-05', 'file-mode' => 'RSF05-02', 'dir-mode' => 'RSF05-02',
+        'log-ip' => 'RSF05-05', 'log-max-size' => 'RSF05-05', 'file-mode' => 'RSF05-02', 'dir-mode' => 'RSF05-02', 'cache-unknown-query' => 'RSF04-01',
     ];
 
     /**

@@ -22,6 +22,8 @@ no cache stores it. So random paths and parameters can never fill a cache.
 
 - `?utm_source=…`, `?x=<random>` or invented paths on a site with a page cache
   (Varnish, LSCache, Exponential's HTTP cache): answered, never stored.
+- The same campaign link with every `utm_` value a new one: with
+  `cache-ignore`, one kept page answers them all.
 - An application reads the decision and skips its own cache write.
 
 ## Configuration
@@ -40,9 +42,55 @@ if (!\CjwNetwork\RequestShield\Shield::current()?->cacheable()) {
 
 or `$_SERVER['REQUEST_SHIELD'] === 'allow-uncached'`.
 
+## Query parameters: in the key, ignored, unknown
+
+[Proposal 0048](../proposals/0048-query-parameters-and-php-caches.md): fewer
+keys, more hits -- for the shield's HTTP cache and every cache that runs in
+PHP after it (Exponential's `exphttpcache`, Symfony's `HttpCache`, a
+WordPress page cache).
+
+```text
+cache-query page sort                 # in the key
+cache-ignore @tracking                # ignored: utm_*, gclid, fbclid … (the shipped set's names); or name them: cache-ignore utm_* ref
+set cache-unknown-query hit-only      # unknown: answered from the page without it, never kept (default: uncached)
+```
+
+| Kind | In the key | The application sees it | A hit | Kept |
+|---|---|---|---|---|
+| in `cache-query` | yes | yes | yes | yes |
+| `cache-ignore` | no | no -- taken out before | yes: the page without it | yes, as the page without it |
+| unknown, `hit-only` | no | yes | yes, when the page without it is kept | no |
+| unknown, `uncached` (default) | -- | yes | no | no |
+
+- **In this order:** the rules decide on the whole query (an attack in
+  `utm_source` is still refused), the log and the statistics see it; then
+  the ignored parameters leave `$_GET`, `$_REQUEST`, `QUERY_STRING` and
+  `REQUEST_URI` -- a copy goes to `$_SERVER['REQUEST_SHIELD_IGNORED']` (JSON,
+  name => value) for tracking on the server. A page made for a campaign link
+  therefore never carries `utm_source` in its links. The check page's resend
+  keeps the whole address.
+- **Names as PHP names them:** `utm.source` and `%75tm_source` are
+  `utm_source`.
+- **Unknown, `hit-only`:** `$_SERVER['REQUEST_SHIELD']` stays
+  `allow-uncached` (keep nothing), and
+  `$_SERVER['REQUEST_SHIELD_CACHE_LOOKUP']` names the address a cache may
+  answer from (the path and the `cache-query` parameters, sorted). **The
+  caveat:** a parameter that does change the page (`?lang=en`) gets the plain
+  page on a hit -- a wrong answer for that visitor, never a poisoned cache.
+  Name such parameters in `cache-query`. `check` warns about `hit-only`
+  without `cache-query`.
+- `include @tracking` alone ignores nothing: `query strict` lets its
+  parameters through, `cache-ignore @tracking` leaves them out of the keys
+  (some carry a visitor's identity for the application -- `mkt_tok`,
+  `_hsenc`: name only what the site does not read).
+- **Only PHP caches:** a Varnish or CDN in front sees the request before the
+  shield runs.
+
 ## Cost
 
-About 0.5 µs.
+About 0.5 µs. With `cache-ignore` or `hit-only`: the query's pairs compared
+once more, and `$_SERVER` rewritten only for a request that has an ignored
+parameter.
 
 ## Limits
 

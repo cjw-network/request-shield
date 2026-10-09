@@ -145,12 +145,19 @@ final class Request
      * in lower case, the path as the application routes it, the parameters
      * sorted by name (a[b]=1&a=2 and a=2&a[b]=1 are one key), nothing of the
      * client. For GET and HEAD; the cache decides whether the answer may be
-     * kept (Decision::cacheable()).
+     * kept (Decision::cacheable()). $only: the parameters with these names
+     * only (cache-query: the key a request with other parameters may be
+     * answered from, 0048); null: every one.
+     *
+     * @param list<string>|null $only
      */
-    public function cacheKey(): string
+    public function cacheKey(?array $only = null): string
     {
         $pairs = [];
         foreach ($this->queryPairs() as [$name, $value, $raw]) {
+            if ($only !== null && !in_array($name, $only, true)) {
+                continue;
+            }
             $pairs[] = rawurlencode(urldecode(explode('=', $raw, 2)[0])) . '=' . rawurlencode($value);
         }
         sort($pairs, SORT_STRING);
@@ -180,6 +187,16 @@ final class Request
             $out[] = [$bracket === false ? $name : substr($name, 0, $bracket), urldecode($kv[1] ?? ''), $pair];
         }
         return $this->pairs = $out;
+    }
+
+    /**
+     * The name PHP gives a parameter in $_GET (0048): leading spaces left
+     * out, "." and " " as "_" -- utm.source is $_GET['utm_source'] -- of the
+     * name as queryPairs() has it (the part before "[").
+     */
+    public static function phpName(string $name): string
+    {
+        return strtr(ltrim($name, ' '), ['.' => '_', ' ' => '_']);
     }
 
     /** @var list<array{0: string, 1: string, 2: string}>|null parsed once, for every rule that asks */

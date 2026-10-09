@@ -26,12 +26,34 @@ final class CacheableRule implements Rule
      * @param list<string>|null $paths regular expressions a cacheable path matches; null: any path
      * @param list<string>|null $query query parameter names a cacheable URL may carry; null: any
      * @param (callable(Request): ?bool)|null $known an adapter's own answer (null: no opinion)
+     * @param list<string> $ignore names no cache key holds (cache-ignore, 0048): they never make a request uncacheable
      */
     public function __construct(
         private ?array $paths,
         private ?array $query,
         private $known = null,
+        private array $ignore = [],
     ) {
+    }
+
+    /**
+     * Whether a parameter is one no cache key holds (cache-ignore, 0048): its
+     * name as PHP names it matches one of the globs.
+     *
+     * @param list<string> $ignore
+     */
+    public static function ignored(string $name, array $ignore): bool
+    {
+        if ($ignore === []) {
+            return false;
+        }
+        $php = Request::phpName($name);
+        foreach ($ignore as $glob) {
+            if ($glob === $php || (strpos($glob, '*') !== false && preg_match('/^' . str_replace('\\*', '.*', preg_quote($glob, '/')) . '$/', $php) === 1)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public function check(Request $request, float $now): ?Decision
@@ -41,7 +63,7 @@ final class CacheableRule implements Rule
         }
         if ($this->query !== null) {
             foreach ($request->queryNames() as $name) {
-                if (!in_array($name, $this->query, true)) {
+                if (!in_array($name, $this->query, true) && !self::ignored($name, $this->ignore)) {
                     return Decision::allowUncached('query parameter');
                 }
             }

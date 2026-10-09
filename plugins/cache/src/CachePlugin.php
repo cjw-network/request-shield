@@ -156,12 +156,16 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
             }
         }
         $visitor = $this->visitor($request);
-        if (!$decision->cacheable() || ($request->method !== 'GET' && $request->method !== 'HEAD') || $visitor === 'own'
+        // cache-unknown-query hit-only (0048): a parameter cache-query does not name -- the page kept
+        // without it may answer; nothing made for such a request is kept.
+        $s = $this->settings;
+        $lookupOnly = !$decision->cacheable() && $decision->reason === 'query parameter' && $s->cacheableUnknown === 'hit-only' && $s->cacheableQuery !== null;
+        if ((!$decision->cacheable() && !$lookupOnly) || ($request->method !== 'GET' && $request->method !== 'HEAD') || $visitor === 'own'
             || !$this->ownHost($request) || !self::plainAddress($request)) {
             $this->watchHeaders();      // not for the cache, but its tags go and its purges count
             return null;
         }
-        $key = $request->cacheKey();
+        $key = $lookupOnly ? $request->cacheKey($s->cacheableQuery) : $request->cacheKey();
         $cache = new FileCache($this->o['dir'], $this->o['disk'], Capability::apcu());
         $now = microtime(true);
         if ($visitor === 'session') {
@@ -197,7 +201,7 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
             return new Response($hit['status'], $headers, $request->method === 'HEAD' ? '' : $hit['body']);
         }
         $this->watchHeaders();
-        if (headers_sent() || $request->method !== 'GET') {
+        if (headers_sent() || $request->method !== 'GET' || $lookupOnly) {
             return null;
         }
         header('X-RS-Cache: miss');

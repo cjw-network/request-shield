@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Draft** -- part 3 of G.6 built (the three kinds in the shield, its HTTP cache) |
 | Proposed | 2026-10-09 |
 | Affects | the cacheable definition (`cache-query`, `Request::cacheKey()`), a new `cache-ignore` and `set cache-unknown-query`, `@tracking`, the request the application sees (`$_GET`, `QUERY_STRING`, `REQUEST_URI`), `$_SERVER['REQUEST_SHIELD…']`, the HTTP cache plugin, the statistics, `check`; upstream: Exponential 6's `exphttpcache` |
 | Relates to | [RSF04-01 the cacheable definition](../features/RSF04-01-cacheable-definition.md) · [RSF04-03 the HTTP cache](../features/RSF04-03-http-cache.md) · [0039 a page cache that speaks the known dialects](0039-cache-compatible.md) · [0016 rule advisor](0016-rule-advisor.md) (`learn`, `advise`) · [0031 step G.6](0031-steps.md) |
@@ -165,6 +165,16 @@ becomes (owner, 2026-10-09):
 - End to end with a pseudo-`exphttpcache` early exit: ignored parameters are
   hits without any change to it.
 - Bench: a request without parameters unchanged.
+
+## Built (2026-10-09)
+
+The three kinds in the shield and its HTTP cache, with the proposed answers
+to the open questions below, which the owner may still change: `@tracking`
+only with `cache-ignore @tracking` (1), the copy in `REQUEST_SHIELD_IGNORED`
+(2), the name `set cache-unknown-query hit-only` (3). Not yet: the
+statistics' count of hits through ignored and hit-only parameters (5), the
+list of parameters the learning runs saw used but `cache-query` does not
+name, the upstream parts (G.6 1 and 2).
 
 ## Open questions for the owner
 

@@ -161,7 +161,7 @@ final class Shield
         if ($s->contentIndex !== []) {
             $this->rules[] = new ContentRule($s->contentIndex, $s->contentRules, $s->blockExceptions, $s->contentHints);
         }
-        $this->rules[] = new CacheableRule($s->cacheablePaths, $s->cacheableQuery, $known);
+        $this->rules[] = new CacheableRule($s->cacheablePaths, $s->cacheableQuery, $known, $s->cacheableIgnore);
         foreach ($s->budgets as $budget) {
             if (!$budget->onDemand) {
                 $this->rules[] = $this->budgetRule($budget);
@@ -307,6 +307,52 @@ final class Shield
         $this->toContext(static function (ContextHandler $p, Request $r): void {
             $p->forgetContext($r);
         });
+    }
+
+    /**
+     * The query as the caches and the application get it (0048): the
+     * parameters cache-ignore names leave $_GET, $_REQUEST, QUERY_STRING and
+     * REQUEST_URI (a copy as JSON in REQUEST_SHIELD_IGNORED: name => value);
+     * with cache-unknown-query hit-only and a parameter cache-query does not
+     * name, REQUEST_SHIELD_CACHE_LOOKUP is the address (path and the
+     * cache-query parameters, sorted) a cache may answer from. Returns the
+     * request as it is now.
+     */
+    private static function queryForCaches(Settings $s, Request $request, Decision $decision): Request
+    {
+        $kept = [];
+        $gone = [];
+        foreach ($request->queryPairs() as [$name, $value, $raw]) {
+            if (\CjwNetwork\RequestShield\Rule\CacheableRule::ignored($name, $s->cacheableIgnore)) {
+                $gone[Request::phpName($name)] = $value;
+            } else {
+                $kept[] = [$name, $raw];
+            }
+        }
+        $uri = is_string($_SERVER['REQUEST_URI'] ?? null) ? $_SERVER['REQUEST_URI'] : $request->rawUri;
+        $path = (string) strtok($uri, '?');
+        if ($gone !== []) {
+            $query = implode('&', array_column($kept, 1));
+            $_SERVER['QUERY_STRING'] = $query;
+            $_SERVER['REQUEST_URI'] = $path . ($query === '' ? '' : '?' . $query);
+            $_SERVER['REQUEST_SHIELD_IGNORED'] = (string) json_encode($gone, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+            foreach (array_keys($gone) as $name) {
+                unset($_GET[$name]);
+                if (!isset($_POST[$name]) && !isset($_COOKIE[$name])) {
+                    unset($_REQUEST[$name]);
+                }
+            }
+            /** @var array<string, mixed> $server */
+            $server = $_SERVER;
+            $request = Request::fromServer($server, $s->trustedProxies);
+        }
+        if ($s->cacheableUnknown === 'hit-only' && $s->cacheableQuery !== null && !$decision->cacheable() && $decision->reason === 'query parameter') {
+            $key = array_values(array_filter($kept, static fn (array $p): bool => in_array($p[0], (array) $s->cacheableQuery, true)));
+            $pairs = array_column($key, 1);
+            sort($pairs, SORT_STRING);
+            $_SERVER['REQUEST_SHIELD_CACHE_LOOKUP'] = $path . ($pairs === [] ? '' : '?' . implode('&', $pairs));
+        }
+        return $request;
     }
 
     /**
@@ -569,6 +615,11 @@ final class Shield
             $post = $_POST;
             Dashboard::serve($s, $request, $route, $get, $post, self::$ruleFile)->send();
             exit;
+        }
+        // The query for the caches (0048): decided, logged and counted on the whole query above;
+        // the parameters no cache key holds leave it now, before a cache and the application run.
+        if (($s->cacheableIgnore !== [] || $s->cacheableUnknown !== 'uncached') && ($request->method === 'GET' || $request->method === 'HEAD')) {
+            $request = self::queryForCaches($s, $request, $decision);
         }
         // A plugin that answers passing requests itself (Handler, 0031 C.4): an HTTP
         // cache hit, a page of its own -- one array access when none has it.

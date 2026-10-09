@@ -89,6 +89,7 @@ final class RuleFile
         'log-max-size' => ['log.maxSize', 'bytes'],
         'file-mode' => ['fileMode', 'octal'],
         'dir-mode' => ['dirMode', 'octal'],
+        'cache-unknown-query' => ['cacheable.unknown', 'cacheunknown'],
     ];
 
     /** @var array<string, mixed> */
@@ -449,6 +450,27 @@ final class RuleFile
         $name = Shipped::label($real)
             ?? ($this->base !== '' && strncmp($real, $this->base, strlen($this->base)) === 0 ? substr($real, strlen($this->base)) : $real);
         $this->text($text, $name, $file, $real);
+    }
+
+    /**
+     * The parameter names the shipped set @tracking takes (its "query <name>
+     * any" lines): cache-ignore @tracking leaves them out of every cache key.
+     *
+     * @return list<string>
+     */
+    public static function trackingNames(): array
+    {
+        $names = [];
+        foreach (explode("\n", (string) Shipped::rules('tracking')) as $line) {
+            if (preg_match('/^\[TRACK-[A-Z0-9-]+@\d+\]\s+query\s+(.*?)(?:#.*)?$/', $line, $m) === 1) {
+                foreach (preg_split('/\s+/', trim($m[1])) ?: [] as $i => $word) {
+                    if ($i % 2 === 0 && $word !== '') {
+                        $names[] = $word;       // name any name any …
+                    }
+                }
+            }
+        }
+        return $names;
     }
 
     /**
@@ -914,6 +936,23 @@ final class RuleFile
                 $this->list('cacheable.query', $args, $at, static fn (string $q): string => $q);
                 $this->origins['cacheable.query']['*'] = $this->rid;
                 return;
+            case 'cache-ignore':
+                // cache-ignore utm_* gclid | @tracking (the names the shipped set takes): no cache key holds them (0048).
+                $names = [];
+                foreach ($args as $a) {
+                    foreach ($a === '@tracking' ? self::trackingNames() : [$a] as $n) {
+                        if (preg_match('/^[A-Za-z0-9_*\[\]-]{1,128}$/', $n) !== 1) {
+                            throw new RuleFileException("$at: cache-ignore takes parameter names as PHP names them, * for any characters (utm_* gclid), or @tracking -- not \"$n\"");
+                        }
+                        $names[] = $n;
+                    }
+                }
+                if ($names === []) {
+                    throw new RuleFileException("$at: cache-ignore of what? (utm_* gclid, or @tracking)");
+                }
+                $this->list('cacheable.ignore', $names, $at, static fn (string $q): string => $q);
+                $this->origins['cacheable.ignore']['*'] = $this->rid;
+                return;
             case 'challenge':
                 // challenge [<METHODS>] <paths>: the methods first, as with allow -- challenge POST **
                 // checks every form and every endpoint sent to, not the pages that show them.
@@ -1040,7 +1079,7 @@ final class RuleFile
      */
     public static function coreWords(): array
     {
-        return ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'challenge', 'challenge-exempt', 'dashboard-access', 'api-path', 'post-origin', 'backend', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include',
+        return ['host', 'trust', 'exempt', 'method', 'allow', 'restrict', 'block', 'unblock', 'query', 'cache-path', 'cache-query', 'cache-ignore', 'challenge', 'challenge-exempt', 'dashboard-access', 'api-path', 'post-origin', 'backend', 'limit', 'no-limit', 'crawler', 'crawlers', 'plugin', 'site', 'deny', 'ban', 'feed', 'set', 'include',
             'match', 'monitor', 'expect', 'ids', 'version', 'replace'];
     }
 
@@ -1556,7 +1595,8 @@ final class RuleFile
                 }
                 return array_merge($args, ['at'], $path);   // counted in the area only
             case 'cache-query':
-                throw new RuleFileException("$at: cache-query per area is not there yet (proposal 0008) -- put it outside the block");
+            case 'cache-ignore':
+                throw new RuleFileException("$at: $keyword per area is not there yet (proposal 0008) -- put it outside the block");
         }
         // An extension's word that takes paths (Vocabulary::word(paths: true)): the block's, like the core's.
         if (Vocabulary::wordFor($keyword)['paths'] ?? false) {
@@ -2379,6 +2419,12 @@ final class RuleFile
                 if ($v !== 'auto' && !preg_match('/^[a-z]{2,3}(-[a-z0-9]{2,8})?$/', $v)) {
                     throw new RuleFileException("$at: language is auto or a code (de, en, fr, de-at), not \"$value\"");
                 }
+                break;
+            case 'cacheunknown':
+                if ($value !== 'uncached' && $value !== 'hit-only') {
+                    throw new RuleFileException("$at: cache-unknown-query is uncached (a parameter cache-query does not name: never kept) or hit-only (answered from the key without it, never kept), not \"$value\"");
+                }
+                $v = $value;
                 break;
             case 'loglevel':
                 if (!in_array($value, \CjwNetwork\RequestShield\Log::LEVELS, true)) {

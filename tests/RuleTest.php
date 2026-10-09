@@ -65,6 +65,39 @@ return [
         same('query parameter', decide($c, req('/news/x?utm_source=1'))->reason);
         same(Decision::ALLOW_UNCACHED, decide($c, req('/random-' . mt_rand()))->action, 'unknown path: answered, not cached');
     },
+    'RSF04-01 query parameters (0048): an ignored one never makes a page uncacheable, as PHP names it; an unknown one does; the key without them' => function (): void {
+        $c = ['cacheable' => ['query' => ['page'], 'ignore' => ['utm_*', 'gclid'], 'unknown' => 'hit-only']];
+        same(Decision::ALLOW, decide($c, req('/news?page=2&utm_source=nl&gclid=x'))->action, 'ignored parameters: still cacheable');
+        same(Decision::ALLOW, decide($c, req('/news?utm.source=nl&%75tm_medium=m'))->action, 'as PHP names them: utm.source is utm_source, %75 is u');
+        same('query parameter', decide($c, req('/news?x=7&utm_source=nl'))->reason, 'an unknown one: answered, not kept');
+        same('query parameter', decide(['cacheable' => ['query' => ['page']]], req('/news?utm_source=1'))->reason, 'without cache-ignore: as before');
+        same('https://www.example.org/news?page=2', req('/news?x=7&page=2&utm_source=nl', 'GET', ['HTTPS' => 'on', 'HTTP_HOST' => 'www.example.org'])->cacheKey(['page']), 'the key of cache-query\'s names only');
+        same(['utm_source', 'utm_source', '_x', 'a_b'], array_map([Request::class, 'phpName'], ['utm.source', 'utm source', '  .x', 'a.b']), 'PHP\'s names');
+    },
+    'RSF04-01 cache-ignore and cache-unknown-query in a rule file: names, @tracking, mistakes' => function (): void {
+        $dir = sys_get_temp_dir() . '/rs-ci-' . getmypid() . '-' . mt_rand();
+        mkdir($dir);
+        $read = static function (string $rules) use ($dir): array {
+            file_put_contents("$dir/site.rules", "set store memory\n$rules");
+            try {
+                $s = \CjwNetwork\RequestShield\Settings::from(\CjwNetwork\RequestShield\Rules\RuleFile::read(["$dir/site.rules"])['config']);
+                return [$s->cacheableIgnore, $s->cacheableUnknown];
+            } catch (\Throwable $e) {
+                return [$e->getMessage(), ''];
+            }
+        };
+        try {
+            same([['utm_*', 'gclid'], 'hit-only'], $read("cache-ignore utm_* gclid\nset cache-unknown-query hit-only\n"));
+            same([[], 'uncached'], $read(''), 'the defaults');
+            $t = $read("cache-ignore @tracking\n")[0];
+            truthy(is_array($t) && in_array('utm_*', $t, true) && in_array('fbclid', $t, true) && in_array('mkt_tok', $t, true), '@tracking: the shipped set\'s names -- ' . json_encode($t));
+            same([[], 'uncached'], $read("include @tracking\n"), 'include @tracking alone ignores nothing');
+            truthy(strpos((string) $read("cache-ignore a/b\n")[0], 'cache-ignore takes parameter names') !== false, 'a name PHP cannot have: refused');
+            truthy(strpos((string) $read("set cache-unknown-query maybe\n")[0], 'cache-unknown-query is uncached') !== false, 'a wrong value: refused');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'RSF04-01 cacheable definition: an adapter index decides first' => function (): void {
         $known = fn (Request $r) => $r->path === '/known' ? true : ($r->path === '/gone' ? false : null);
         $shield = new Shield(['cacheable' => ['paths' => ['#^/fallback$#']]], new MemoryStore(), $known);

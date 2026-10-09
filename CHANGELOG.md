@@ -244,6 +244,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   log (path without query, peak memory, no address). Off by default; with it
   about +2 µs a request with APCu. `CachePlugin::refusal()` says why an answer
   is not kept (keep() uses it too). Settings FORMAT 57.
+- **Fewer cache keys: ignored and unknown query parameters** (proposal
+  0048, part 3 of step G.6): `cache-ignore utm_* gclid` (or `cache-ignore
+  @tracking`, the shipped set's names) -- such parameters never make a page
+  uncacheable; after the rules decided on the whole query they leave
+  `$_GET`, `$_REQUEST`, `QUERY_STRING` and `REQUEST_URI` (a copy in
+  `REQUEST_SHIELD_IGNORED`), so the HTTP cache and any PHP cache after the
+  shield keep one page for every campaign link; names as PHP names them
+  (`utm.source`). `set cache-unknown-query hit-only`: a parameter
+  `cache-query` does not name is answered from the kept page without it and
+  never kept (`REQUEST_SHIELD_CACHE_LOOKUP` names that page for a PHP cache);
+  `check` warns about it without `cache-query`. `show` prints both. Settings
+  `FORMAT` 64. ([the cacheable definition](docs/features/RSF04-01-cacheable-definition.md#query-parameters-in-the-key-ignored-unknown))
 - **Proposal 0048 query parameters and the PHP caches** (draft): three
   kinds of parameters -- in the key (`cache-query`), ignored (`cache-ignore
   utm_* …`: taken out before the cache and the application run, the page

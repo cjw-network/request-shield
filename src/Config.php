@@ -33,8 +33,10 @@ final class Config
             'limits' => ['uri' => 4096, 'queryParameters' => 64, 'headerBytes' => 16384],
             'blockedPaths' => self::scannerPaths(),
             // What may be cached. paths: regular expressions (null: every path);
-            // query: parameter names (null: any, []: none).
-            'cacheable' => ['paths' => null, 'query' => null],
+            // query: parameter names (null: any, []: none); ignore: names no key holds,
+            // taken out before a cache runs (0048); unknown: a parameter query does not
+            // name -- "uncached" (never kept) or "hit-only" (answered from the key without it).
+            'cacheable' => ['paths' => null, 'query' => null, 'ignore' => [], 'unknown' => 'uncached'],
             // Requests per client (IPv4 address, IPv6 /64) and window. Above
             // challengeAt: prove to be a browser (null: never); above limit: 429.
             'budgets' => [

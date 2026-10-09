@@ -880,6 +880,8 @@ final class Cli
         }
         echo $settings->queryStrict ? $line('query strict', $o('query', 'strict')) : '';
         echo $line('cache-query ' . ($settings->cacheableQuery === null ? 'any' : ($settings->cacheableQuery === [] ? 'none' : implode(' ', $settings->cacheableQuery))), $o('cacheable.query', '*'));
+        echo $settings->cacheableIgnore !== [] ? $line('cache-ignore ' . implode(' ', $settings->cacheableIgnore), $o('cacheable.ignore', '*')) : '';
+        echo $settings->cacheableUnknown !== 'uncached' ? $line('set cache-unknown-query ' . $settings->cacheableUnknown) : '';
         foreach ($settings->budgets as $b) {
             echo $line("limit $b->name $b->limit/{$b->window}s" . ($b->challengeAt !== null ? " challenge-at $b->challengeAt" : '') . ($b->onDemand ? ' on-demand' : '') . ($b->earnBack ? ' on-exceeded challenge' : ''), $o('budgets', $b->name));
         }
@@ -1173,6 +1175,9 @@ final class Cli
             if (!class_exists($class) || !is_subclass_of($class, \CjwNetwork\RequestShield\Plugin::class)) {
                 $out[] = ($settings->origin('plugins', $class) ?? 'plugins') . ": plugin $class is not there, or is no " . \CjwNetwork\RequestShield\Plugin::class . " -- it is left out";
             }
+        }
+        if ($settings->cacheableUnknown === 'hit-only' && $settings->cacheableQuery === null) {
+            $out[] = 'set cache-unknown-query hit-only, but no cache-query: every parameter is in the key, none is unknown -- name the parameters the pages use (cache-query page sort)';
         }
         if ($settings->sites !== [] && $settings->siteFrom === 'host' && $settings->hosts === []) {
             $out[] = "site blocks picked by the Host header (set site-from host), and no host rule -- a visitor names the website; list the names (host …), or use set site-from server-name";

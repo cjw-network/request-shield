@@ -205,7 +205,7 @@ final class Inspector
                     break;
                 case 'cache':
                     // The inspector's own cache check: without the application's $known callback.
-                    $cache = (new CacheableRule($s->cacheablePaths, $s->cacheableQuery))->check($request, $now);
+                    $cache = (new CacheableRule($s->cacheablePaths, $s->cacheableQuery, null, $s->cacheableIgnore))->check($request, $now);
                     $step($st->describe, $st->key, $cache, $w('yes: a known address with known parameters'),
                         static fn (Decision $d): string => $w('answered, but not kept: %s', Describe::reason($d->reason, $l)));
                     break;
