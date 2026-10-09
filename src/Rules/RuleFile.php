@@ -45,7 +45,7 @@ final class RuleFile
     /** "set" keys => [setting path, type]. */
     private const SET = [
         'store' => ['store', 'store'],
-        'store-dir' => ['storeDir', 'string'],
+        'store-dir' => ['storeDir', 'path'],
         'ipv6-prefix' => ['ipv6Prefix', 'int'],
         'debug-header' => ['debugHeader', 'bool'],
         'app-challenge' => ['appChallenge', 'bool'],
@@ -65,7 +65,7 @@ final class RuleFile
         'dns-lookups' => ['challenge.dnsLookups', 'int'],
         'recheck' => ['recheck', 'seconds'],
         'site-from' => ['siteFrom', 'sitefrom'],
-        'lists-dir' => ['listsDir', 'string'],
+        'lists-dir' => ['listsDir', 'path'],
         'ban-growth' => ['banGrowth', 'int'],
         'ban-max' => ['banMax', 'seconds'],
         'language' => ['challenge.language', 'language'],

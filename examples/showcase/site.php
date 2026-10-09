@@ -287,6 +287,12 @@ function showcaseAnswer(int $status, string $title, string $text): void
 
 $path = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
 $method = (string) ($_SERVER['REQUEST_METHOD'] ?? 'GET');
+/** The Exponential example: next to this file in a standalone copy (build/showcase.php), the repository's otherwise. */
+function showcaseExponential(): string
+{
+    return is_dir(__DIR__ . '/exponential') ? __DIR__ . '/exponential' : dirname(__DIR__) . '/exponential';
+}
+
 $tries = showcaseTries(__DIR__ . '/showcase.rules');
 
 // The page on building rules (0016): a learning run started here, for this browser -- only from
@@ -410,7 +416,7 @@ if ($path === '/__exp') {
     // them all in one request ("check all": one request each would run into SHOW-PACE).
     $want = (int) ($_GET['n'] ?? -1);
     $found = [];
-    foreach (exponentialGroups(dirname(__DIR__) . '/exponential') as $g) {
+    foreach (exponentialGroups(showcaseExponential()) as $g) {
         foreach ($g['tries'] as $x) {
             if ($want === 0 || $x['n'] === $want) {
                 $found[] = $x;
@@ -423,9 +429,9 @@ if ($path === '/__exp') {
     }
     // Switched on as request-shield test has it (EXP-BAN ships watched), with a secret of its own,
     // no log and no live view -- an example never touches the Exponential demo's files.
-    $c = \CjwNetwork\RequestShield\Rules\RuleFile::switchedOn([dirname(__DIR__) . '/exponential/demo.rules']);
+    $c = \CjwNetwork\RequestShield\Rules\RuleFile::switchedOn([showcaseExponential() . '/demo.rules']);
     unset($c['monitorRules']);
-    $c['storeDir'] = (getenv('REQUEST_SHIELD_SHOWCASE_VAR') ?: '/tmp/request-shield-showcase') . '/exponential';
+    $c['storeDir'] = (getenv('REQUEST_SHIELD_SHOWCASE_VAR') ?: __DIR__ . '/var') . '/exponential';
     $c['store'] = 'memory';
     $c['challenge'] = (is_array($c['challenge'] ?? null) ? $c['challenge'] : []);
     $c['challenge']['secret'] = bin2hex(random_bytes(32));

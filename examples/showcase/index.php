@@ -14,7 +14,8 @@ declare(strict_types=1);
 
 // ── The integration: these two lines, first in the front controller ─────────
 define('REQUEST_SHIELD_CONFIG', __DIR__ . '/showcase.rules');
-require __DIR__ . '/../../bootstrap.php';
+// lib/ next to this file in a standalone copy (build/showcase.php), the repository's otherwise.
+require is_file(__DIR__ . '/lib/bootstrap.php') ? __DIR__ . '/lib/bootstrap.php' : __DIR__ . '/../../bootstrap.php';
 // ─────────────────────────────────────────────────────────────────────────────
 // Below runs only for requests the shield lets through.
 

@@ -108,7 +108,7 @@ expect GET  /__try?n=1              from 198.51.100.28 answered              # (
 expect POST /__learn/start header Origin:https://www.example.org from 198.51.100.29 answered   # (the page's own address: not a card)
 [SHOW-RS]      restrict /rs/** to 127.0.0.1 ::1        # the shield's own pages: only this machine
 expect GET  /rs/dashboard           from 198.51.100.27 403 by SHOW-RS        # The shield's own pages, from outside
-set         store-dir ${REQUEST_SHIELD_SHOWCASE_VAR:-/tmp/request-shield-showcase}
-set         log ${REQUEST_SHIELD_SHOWCASE_VAR:-/tmp/request-shield-showcase}/shield.log   # what the shield stopped, checked or slowed down; the page shows its end (/__log)
+set         store-dir ${REQUEST_SHIELD_SHOWCASE_VAR:-var}     # var/ next to this file (a shared host's open_basedir allows nothing else)
+set         log ${REQUEST_SHIELD_SHOWCASE_VAR:-var}/shield.log   # what the shield stopped, checked or slowed down; the page shows its end (/__log)
 set         recheck 0
 set         log-ip ${REQUEST_SHIELD_SHOWCASE_LOG_IP:-masked}   # the page shows only networks either way; the tests try full

@@ -49,6 +49,11 @@ active in it:
 
 A feature that lacks its tier switches off and `check` says so; nothing fails.
 
+A relative `store-dir`, `lists-dir` or `log` is the rule file's own
+directory and below (`set store-dir var` next to `site.rules`): on a shared
+host whose `open_basedir` allows only the site's folder, nothing has to be
+written anywhere else.
+
 ## When the rules cannot be compiled
 
 A rule file with a mistake in it — a typo after a deploy, a file the server

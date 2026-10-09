@@ -1,0 +1,17 @@
+# Apache (also shared hosting): every address goes to index.php -- the shield
+# decides it first, /.env and the like included; only assets/ is files.
+# lib/ and var/ carry their own "Require all denied" (build/showcase.php).
+Options -Indexes
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^assets/ - [L]
+    RewriteRule ^index\.php$ - [L]
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Should a rewrite be off: the rules, the notes and the log are never served.
+<FilesMatch "\.(rules|md|log|json)$">
+    Require all denied
+</FilesMatch>

@@ -157,7 +157,18 @@ says so in both languages.
 
 Bootstrap 5.3.8 and Bootstrap Icons 1.13.1 are in `assets/vendor/` (MIT, their
 licences beside them): the page loads nothing from another host. The store
-goes to `/tmp/request-shield-showcase` (`REQUEST_SHIELD_SHOWCASE_VAR`).
+goes to `var/` next to `showcase.rules` (`REQUEST_SHIELD_SHOWCASE_VAR`).
+
+**On a shared host (open_basedir):** `php build/showcase.php
+--out=showcase-site --host=showcase.example.org --admin=203.0.113.7` makes
+one directory that runs on its own -- the page, the Exponential example,
+the library in `lib/`, and `var/` for what the shield keeps; nothing outside
+it is read or written. Upload it, point a (sub)domain's document root at it
+(Apache with mod_rewrite: `.htaccess` sends every address to `index.php`;
+`lib/` and `var/` are never served). `--host` is the address visitors use
+(the HTTP cache keeps pages only for it); the shield's own pages (`/rs/**`)
+are for `--admin`'s addresses only -- without it, for nobody: on a public
+host, "this machine" may be the hoster's proxy in front of every visitor.
 
 **For your own machine only:** the rules trust `127.0.0.1` as a proxy so the
 page can play visitors; on a public server anyone could then name their own

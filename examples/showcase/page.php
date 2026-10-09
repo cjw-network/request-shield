@@ -66,7 +66,7 @@ foreach (file(__DIR__ . '/showcase.rules', FILE_IGNORE_NEW_LINES) ?: [] as $line
 $outcomeLabel = static fn (string $o): string => $t['outcome'][$o] ?? $o;
 $view = $view ?? 'main';         // site.php: main (/), try (/try), exponential (/exponential)
 $x = $t['exp'];
-$expGroups = $view === 'exponential' ? exponentialGroups(dirname(__DIR__) . '/exponential') : [];
+$expGroups = $view === 'exponential' ? exponentialGroups(showcaseExponential()) : [];
 // A taste on the front page: a scanner, an attack, a parameter -- one card each; everything on /try.
 $tasteTries = [];
 foreach (['SCAN-HIDDEN', 'ATK-SQL-UNION', 'SHOW-STRICT'] as $by) {

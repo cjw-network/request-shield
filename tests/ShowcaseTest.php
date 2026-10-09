@@ -78,6 +78,46 @@ function showcaseTriesForTest(): array
 }
 
 return [
+    'RSF05-04 the showcase standalone (build/showcase.php): one directory -- the page, the library, var/ -- runs under open_basedir set to it, nothing read or written elsewhere' => function (): void {
+        needsPlugins();                 // the bundle copies the source tree's plugins
+        if (!function_exists('proc_open') || rsSingle() !== null) {
+            skip('no proc_open, or the suite runs against the single file');
+        }
+        $out = sys_get_temp_dir() . '/rs-showcase-' . getmypid() . '-' . mt_rand();
+        $port = freePort();
+        exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/build/showcase.php') . ' ' . escapeshellarg("--out=$out") . ' ' . escapeshellarg("--host=127.0.0.1:$port") . ' 2>&1', $said, $code);
+        same(0, $code, implode("\n", $said));
+        try {
+            foreach (['index.php', 'lib/bootstrap.php', 'lib/src/Shield.php', 'lib/rules/attacks.rules', 'exponential/demo.rules', '.htaccess', 'lib/.htaccess', 'var/.htaccess'] as $f) {
+                truthy(is_file("$out/$f"), "the bundle holds $f");
+            }
+            truthy(strpos((string) file_get_contents("$out/showcase.rules"), "127.0.0.1:$port") !== false, '--host is in http-cache-hosts');
+            $web = proc_open(sprintf('cd %s && exec %s -d open_basedir=%s -d error_reporting=-1 -d display_errors=0 -d log_errors=1 -S 127.0.0.1:%d router.php > %s 2>&1',
+                escapeshellarg($out), escapeshellarg(PHP_BINARY), escapeshellarg($out), $port, escapeshellarg("$out.log")), [], $pipes);
+            for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
+                usleep(100000);
+            }
+            try {
+                $get = static fn (string $uri): array => \CjwNetwork\RequestShield\Http::get("http://127.0.0.1:$port$uri", [], 10, 0, 'request-shield', false) ?? [];
+                same(403, (int) ($get('/rs/stats')['status'] ?? 0), 'the shield\'s own pages: closed without --admin');
+                foreach (['/', '/cache', '/exponential', '/learn'] as $page) {
+                    same(200, (int) ($get($page)['status'] ?? 0), "$page answers");
+                }
+                $get('/magazin/2');
+                same('hit', strtolower((string) ($get('/magazin/2')['headers']['x-rs-cache'] ?? '')), 'the HTTP cache keeps in var/');
+                same(true, json_decode((string) ($get('/__exp?n=1')['body'] ?? ''), true)['ok'] ?? null, 'the Exponential example decides');
+                same(404, (int) ($get('/.env')['status'] ?? 0), 'the shield guards it');
+                truthy(is_file("$out/var/shield.log"), 'the log is in var/');
+            } finally {
+                proc_terminate($web);
+                proc_close($web);
+            }
+            $log = (string) @file_get_contents("$out.log");
+            truthy(stripos($log, 'open_basedir') === false && stripos($log, 'warning') === false, 'no file outside the directory, no warning: ' . substr($log, 0, 500));
+        } finally {
+            exec('rm -rf ' . escapeshellarg($out) . ' ' . escapeshellarg("$out.log"));
+        }
+    },
     'RSF04-03 showcase, the tab "Cache": the magazine kept and given out before the application; a campaign link the same page; members share theirs; publishing purges one article; the showcase\'s own pages are never kept' => function (): void {
         withShowcase(static function (callable $req): void {
             $host = ['Host' => '127.0.0.1:8090'];       // a name on http-cache-hosts, as a visitor of the showcase sends it

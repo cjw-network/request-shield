@@ -14,8 +14,8 @@ replace     [EXP-STRICT] query strict                         # unknown paramete
 set         pass-ttl 10m                                       # a passed check lasts 10 minutes here: /reset forgets it sooner
 set         crawler-verify ranges                              # no DNS lookups from a demo
 
-set         store-dir ${EXP_DEMO_VAR:-/tmp/request-shield-exponential-demo}
-set         log ${EXP_DEMO_VAR:-/tmp/request-shield-exponential-demo}/shield.log
+set         store-dir ${EXP_DEMO_VAR:-var}                    # var/ next to this file (a shared host's open_basedir allows nothing else)
+set         log ${EXP_DEMO_VAR:-var}/shield.log
 set         log-level flag
 set         recheck 0
 set         debug-header on                                    # X-RS: <decision>; rule=<ID> on every answer

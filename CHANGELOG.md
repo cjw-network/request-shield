@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- **A relative `store-dir` or `lists-dir` is the rule file's directory**
+  (RSF05-02), as `log` already was -- before, it depended on the directory
+  PHP happened to run in. The showcase and the Exponential demo keep their
+  files in `var/` next to their rules now, not in `/tmp`.
 - **Only the user PHP runs as reads what the shield writes, by default**:
   the log, the lists, the feeds, the crawler lists and the statistics were
   `0640` in `0750` folders, now `0600` in `0700`. A log reader in PHP's
@@ -76,6 +80,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page and missing on it. They are the page's own now.
 
 ### Added
+- **The showcase as one directory for a shared host** (`php
+  build/showcase.php --out=<dir> [--host=…] [--admin=…]`): the page, the
+  Exponential example, the library in `lib/` and `var/` -- it runs with
+  `open_basedir` set to that directory alone (tested). Apache's
+  `.htaccess` sends every address to `index.php`; `lib/` and `var/` are
+  never served; the shield's own pages are closed unless `--admin` names
+  addresses.
 - **Every plugin is a Composer package of its own** (0031 step H.1):
   `plugins/api`, `plugins/waf`, `plugins/stats` and `plugins/cache` each
   have a `composer.json` (`cjw-network/request-shield-<name>`, the core

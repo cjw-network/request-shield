@@ -29,7 +29,7 @@ with rewrite rules that send every path to its `index.php` (nginx: the
 location block in [the other demo's README](../demo/README.md#in-a-subdirectory-of-a-web-server),
 with this directory), or `…/examples/exponential/index.php/` without them.
 Every link is relative to the demo's own address, so it works wherever it lies. Counters and the log go to
-`/tmp/request-shield-exponential-demo/` (`EXP_DEMO_VAR` puts them elsewhere).
+`var/` next to `demo.rules` (`EXP_DEMO_VAR` puts them elsewhere).
 `tests/ExponentialDemoTest.php` fetches every row and checks it answers what it says.
 
 The files ship in monitor mode: everything is logged as it would be decided,
