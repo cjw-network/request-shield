@@ -74,6 +74,13 @@ return [
         same('https://www.example.org/news?page=2', req('/news?x=7&page=2&utm_source=nl', 'GET', ['HTTPS' => 'on', 'HTTP_HOST' => 'www.example.org'])->cacheKey(['page']), 'the key of cache-query\'s names only');
         same(['utm_source', 'utm_source', '_x', 'a_b'], array_map([Request::class, 'phpName'], ['utm.source', 'utm source', '  .x', 'a.b']), 'PHP\'s names');
     },
+    'RSF04-01 parameter names as PHP makes them (0048): queryPairs() and phpName() agree with parse_str()' => function (): void {
+        foreach (['utm_source', 'utm.source', 'utm source', '  utm.x', 'a[b]', 'a[b][c', 'a[b', 'a]b', 'a]b[c', 'a[b.c d', '%75tm_x'] as $raw) {
+            parse_str($raw . '=1', $php);
+            $ours = Request::phpName(req('/?' . $raw . '=1')->queryNames()[0] ?? '');
+            same(array_keys($php), [$ours], "$raw: the name PHP gives it");
+        }
+    },
     'RSF04-01 cache-ignore and cache-unknown-query in a rule file: names, @tracking, mistakes' => function (): void {
         $dir = sys_get_temp_dir() . '/rs-ci-' . getmypid() . '-' . mt_rand();
         mkdir($dir);
