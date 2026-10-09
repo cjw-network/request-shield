@@ -101,7 +101,7 @@ fi
 new="$target.new-$$"
 gone="$old.gone-$$"
 for dir in "$new" "$gone"; do
-    [ ! -e "$dir" ] || fail "$dir is there already -- not this run's; remove it first"
+    [ ! -e "$dir" ] && [ ! -L "$dir" ] || fail "$dir is there already -- not this run's; remove it first"
 done
 trap 'rm -rf "$new"' EXIT              # a run that stops leaves no half-made copy (it holds the secret)
 trap 'exit 1' HUP INT TERM             # dash runs the EXIT trap on exit only
