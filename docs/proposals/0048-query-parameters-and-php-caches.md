@@ -31,7 +31,7 @@ the very same page is in the cache.
 | Kind | Rule | In the key | The application sees it | A hit | Kept |
 |---|---|---|---|---|---|
 | **key** | `cache-query page sort` (as today) | yes | yes | yes | yes |
-| **ignored** (tracking) | `cache-ignore utm_* gclid fbclid …` -- `include @tracking` marks its parameters so | **no** | **no** -- taken out before the cache and the application run | yes: the page without it | yes: as the page without it |
+| **ignored** (tracking) | `cache-ignore utm_* gclid fbclid …` -- `cache-ignore @tracking` adds the well-known tracking names | **no** | **no** -- taken out before the cache and the application run | yes: the page without it | yes: as the page without it |
 | **unknown** | `set cache-unknown-query hit-only` (new; the default stays `uncached`) | **no** | yes | yes, when the page without it is kept already | **no** |
 
 ```
@@ -49,8 +49,9 @@ GET /news?utm_source=nl&x=7
   `REQUEST_URI` before any PHP cache and the application run. A page rendered
   for such a link therefore never carries `utm_source` in its links or forms,
   and it can be kept for everyone. Analytics in the browser still reads them
-  from the address bar; tracking on the server no longer sees them
-  (documented; that is the choice the site makes with `cache-ignore`).
+  from the address bar; tracking on the server no longer sees them -- unless
+  open question 2 is answered with the copy (documented; that is the choice
+  the site makes with `cache-ignore`).
 - **Unknown** (`?lajljdlsd`): the page without the parameter answers when it
   is kept; on a miss the application renders with the parameter and nothing
   is kept. No page that may depend on a parameter ever lands in the cache;
@@ -150,6 +151,14 @@ becomes (owner, 2026-10-09):
   `REQUEST_SHIELD` = `allow-uncached`.
 - The default (`uncached`) unchanged; `query strict` unchanged; a `cache-query`
   parameter stays in the key next to an ignored and an unknown one.
+- An attack in an ignored parameter (`?utm_source=<script>…`) is still found
+  by the scans and refused; the log and the statistics see the parameter.
+- The check page's resend keeps the whole address, ignored parameters too.
+- `utm.source` and `utm source` are matched as `utm_source`.
+- `include @tracking` alone ignores nothing; `cache-ignore @tracking` ignores
+  its names.
+- `hit-only` with `?lang=en` gets the plain kept page; on a miss nothing is
+  kept.
 - `check`: `hit-only` without `cache-query` warns; parameters the learning
   runs saw the application use but that `cache-query` does not name are
   listed.
