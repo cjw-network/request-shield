@@ -34,8 +34,8 @@ proxy GET POST /stats/t to https://matomo.example.org/matomo.php  ip masked  tim
 
 - **Fixed pairs only:** an address of the site to one address elsewhere,
   written in the rules -- never a target taken from the request (no open
-  proxy, no SSRF). A path below (`/stats/*` to `https://…/`) only with a
-  strict normalisation (no `..`, no encoded `/`, no other host).
+  proxy, no SSRF). (A whole path below another, `/stats/*` to `https://…/`,
+  is an open question below: it takes part of the target from the request.)
 - **The shield's checks first:** rules, budgets, the attack sets, crawler
   verification -- the proxied endpoint is a path like any other. A bot that
   hammers the tracking endpoint is slowed or refused before it reaches
@@ -45,7 +45,8 @@ proxy GET POST /stats/t to https://matomo.example.org/matomo.php  ip masked  tim
   (the tracker needs them), the visitor's address as configured -- `ip
   full`, `ip masked` (the network, as the shield's log masks it) or `ip none`.
   **Never** the site's cookies, `Authorization`, or its session, unless a
-  cookie is named (`pass-cookie _pk_*`).
+  cookie is named (`pass-cookie <name>` -- Matomo needs none: its tracker
+  sends the visitor id in the query).
 - **What comes back:** status, body, and an allowlist of headers
   (`Content-Type`, `Cache-Control`, `ETag`, `Last-Modified`, `Content-Encoding`);
   no `Set-Cookie` from elsewhere unless named; hop-by-hop headers never.
@@ -84,7 +85,8 @@ shield's rule file:
 - **Shared hosting:** no `proxy_pass` in an nginx or Apache configuration
   the customer cannot touch -- a rule line.
 - **Cleaner statistics:** bots the shield knows never become visits.
-- **Fewer third parties in the CSP:** `connect-src 'self'` suffices.
+- **Fewer hosts in the CSP:** the tracker's host leaves `script-src`,
+  `connect-src` and `img-src` (Matomo's image fallback) -- `'self'` covers them.
 - Other services the same way: a font or script host kept first-party, a
   map tile server behind a cache, an API key kept on the server
   (`header X-Api-Key ${KEY}` added to the request, never in the page).
@@ -93,7 +95,7 @@ shield's rule file:
 
 | Risk | What the design does about it |
 |---|---|
-| An open proxy / SSRF | fixed pairs from the rules; no target from the request; `check` refuses a private or link-local target address unless named (`allow-private`) |
+| An open proxy / SSRF | fixed pairs from the rules; no target from the request; no redirect followed (one to an internal host would be SSRF); the target's address checked **when the request is made**, after DNS: a private, loopback or link-local result is refused unless named (`allow-private`) -- a name that resolves elsewhere later (DNS rebinding) is caught there, and the connection uses the address that was checked |
 | PHP workers held while the other server answers | a short `timeout` (default 2 s), a size cap, a pause after failures; the docs say: for heavy traffic, `proxy_pass` in the web server is better |
 | A cache poisoned through the proxy | only answers the other server marks cacheable, under the site's address; `Vary` and cookies as the HTTP cache already handles them |
 | Leaking the site's cookies or credentials | never forwarded unless a name is listed; `Set-Cookie` from elsewhere dropped unless listed |
@@ -125,6 +127,8 @@ shield's rule file:
 
 - A fixed pair answers through a local test server; another path, another
   host, `..`, an encoded `/` -- never proxied.
+- A target name that resolves to a private address, and a redirect from the
+  target to one: refused.
 - Cookies and `Authorization` never reach the target; a named cookie does;
   `Set-Cookie` from the target dropped unless named.
 - `ip full|masked|none` in `X-Forwarded-For`; `cip`/`token_auth` added, the
@@ -147,6 +151,9 @@ shield's rule file:
 4. **Matomo's `cip` with `token_auth`** (a powerful token in the rule
    file), or only `X-Forwarded-For` with Matomo's trusted proxies? *Proposed:
    `X-Forwarded-For` by default, `cip` as an option with a write-only token.*
-5. **Other services in the first version** (fonts, maps, an API key kept on
+5. **A whole path below another** (`/stats/*` to `https://…/`): leave out,
+   or allow with a strict normalisation (`..`, `%2f`, `//`, another host
+   refused)? *Proposed: leave out -- fixed pairs cover Matomo.*
+6. **Other services in the first version** (fonts, maps, an API key kept on
    the server), or later? *Proposed: later -- the general word allows them,
    the docs show Matomo first.*
