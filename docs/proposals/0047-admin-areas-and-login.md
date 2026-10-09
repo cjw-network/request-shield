@@ -26,9 +26,11 @@ Every page with a tab sits in **one flat row**, ordered by the routes'
 `order` (`Routes::tabs()`):
 
 ```
-All websites | Dashboard | Visitors & pages | Protection | Rules & setup | Live | Lists
+All websites | Dashboard* | Visitors & pages | Protection | Rules & setup | Live | Lists
 └──────────────────── stats ──────────────────────────┘ └─────────── waf ───────────┘
 ```
+
+(* the statistics' overview, `/rs/stats/overview`, for the admin only)
 
 - Nobody sees which page belongs to which plugin; "Dashboard" is the
   statistics' overview, not a start page of the whole.
@@ -106,8 +108,8 @@ network, a shared proxy, another customer on the same server -- is the admin.
 ```
 request for /rs/…
       │
-  restrict covers it? ── no ──▶ (as the site's rules say: 403)
-      │ yes, or no restrict
+  a restrict rule over it, and the address outside? ── yes ──▶ 403 (the address layer)
+      │ no (the address inside, or no restrict at all)
   signed in (rsd cookie, Bearer token, signed link)? ── yes ──▶ the page
       │ no
   a login set up? ── no ──▶ "set up": the CLI line, or the setup code (below)
@@ -140,7 +142,11 @@ request for /rs/…
    - at least 12 characters; checked only at sign-in -- the slow hash costs
      nothing on any other request;
    - wrong tries count per address (as today) **and per account** (a budget
-     of its own, so a botnet spread over many addresses is slowed too);
+     of its own, so a botnet spread over many addresses is slowed too); the
+     account's budget only **slows** the form (a growing delay, ending on its
+     own after minutes) and never locks the admin out: a valid `rsd` session,
+     a token and a signed link still pass, and a right password from an
+     address without wrong tries is checked after the delay;
    - tokens stay for the API and scripts, signed links for a customer's panel
      (0023).
 4. **The session** stays the signed `rsd` cookie: HttpOnly, Secure on HTTPS,
@@ -185,8 +191,9 @@ request for /rs/…
   hour; a wrong code counts against the budget; two parallel first visits
   write one code.
 - Part 2: a password -- right, wrong, rehash on a weaker stored hash; the
-  account's budget after N wrong tries from N addresses; *sign out
-  everywhere* ends a second browser's session.
+  account's budget after N wrong tries from N addresses slows the form, ends
+  on its own, and never stops a valid session, token or signed link; *sign
+  out everywhere* ends a second browser's session.
 - End to end under PHP-FPM: an unset dashboard → setup code → password →
   signed in → sign out everywhere.
 - Bench: the passing request unchanged; a dashboard page within noise.
