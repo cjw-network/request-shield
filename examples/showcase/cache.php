@@ -34,7 +34,7 @@ $rules = "set http-cache on\n"
 $client = ['words' => ['visitor' => $c['visitor'], 'member' => $c['member'], 'editor' => $c['editor'], 'bot' => $c['bot'], 'hit' => $c['hit'], 'miss' => $c['miss'], 'none' => $c['none'],
     'refused' => $c['refused'], 'notKept' => $c['notKept'], 'empty' => $c['empty'], 'sum' => $c['sum'], 'lang' => $lang,
     'capHit' => $c['capHit'], 'capMiss' => $c['capMiss'], 'capRefused' => $c['capRefused'], 'capNotKept' => $c['capNotKept'], 'capPurge' => $c['capPurge'], 'capClear' => $c['capClear'],
-    'auto' => $c['auto'], 'autoStop' => $c['autoStop'], 'story' => $c['story'], 'tech' => $c['tech'], 'anonymous' => $c['anonymous'], 'dockPin' => $c['dockPin'], 'dockUnpin' => $c['dockUnpin']]];
+    'auto' => $c['auto'], 'autoStop' => $c['autoStop'], 'story' => $c['story'], 'next' => $c['next'], 'now' => $c['now'], 'tech' => $c['tech'], 'anonymous' => $c['anonymous'], 'dockPin' => $c['dockPin'], 'dockUnpin' => $c['dockUnpin']]];
 // The picture: four stations a request passes -- drawn for people who never saw a cache.
 // Each in two words: plain (a doorkeeper, a shelf, a newsroom) and technical (an option, for developers).
 $x = $c['tech'];
@@ -101,11 +101,16 @@ $both = static fn (string $plain, string $tech): string => ' data-plain="' . $e(
 <aside class="cache-dock" aria-label="<?= $e($c['dock']) ?>">
   <div class="container-fluid">
     <div class="cache-dock-intro">
-      <h2 class="h6 fw-bold mb-1"><i class="bi bi-hand-index" aria-hidden="true"></i> <?= $e($c['tryTitle']) ?></h2>
-      <p class="small text-secondary mb-2"><?= $e($c['tryLead']) ?></p>
+      <h2 class="h6 fw-bold mb-1"><i class="bi bi-hand-index" aria-hidden="true"></i> <?= $e($c['tryTitle']) ?>
+        <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline cache-intro-toggle" aria-expanded="false" aria-controls="cache-intro-text" title="<?= $e($c['tryHelp']) ?>" aria-label="<?= $e($c['tryHelp']) ?>"><i class="bi bi-question-circle" aria-hidden="true"></i></button>
+      </h2>
+      <p class="small text-secondary mb-2" id="cache-intro-text" hidden><?= $e($c['tryLead']) ?></p>
+    </div>
+    <div class="cache-dock-auto d-flex align-items-center gap-3 mb-2">
+      <button type="button" class="btn btn-accent cache-auto" aria-pressed="false"><i class="bi bi-play-fill" aria-hidden="true"></i> <span><?= $e($c['auto']) ?></span></button>
+      <div class="cache-next small" hidden aria-live="off"><span class="cache-next-bar" aria-hidden="true"><span></span></span><span class="cache-next-text"></span></div>
     </div>
     <div class="cache-dock-actions d-flex flex-wrap gap-2 align-items-center">
-      <button type="button" class="btn btn-accent cache-auto" aria-pressed="false"><i class="bi bi-play-fill" aria-hidden="true"></i> <span><?= $e($c['auto']) ?></span></button>
       <label class="visually-hidden" for="cache-article"><?= $e($c['article']) ?></label>
       <select id="cache-article" class="form-select form-select-sm w-auto cache-article cache-manual">
         <?php for ($i = 1; $i <= 5; $i++): ?><option value="<?= $i ?>"><?= $e($c['article']) ?> <?= $i ?></option><?php endfor ?>

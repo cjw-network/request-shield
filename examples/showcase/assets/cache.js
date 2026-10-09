@@ -31,6 +31,28 @@
     return el;
   };
 
+  // ── The introduction above the buttons: behind its "?", open once asked for (the browser remembers it) ──
+  const introToggle = document.querySelector('.cache-intro-toggle');
+  const introText = document.getElementById('cache-intro-text');
+  const intro = (open) => {
+    introToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    introText.hidden = !open;
+  };
+  try {
+    intro(localStorage.getItem('rs-cache-intro') === 'open');
+  } catch (e) {
+    intro(false);
+  }
+  introToggle.addEventListener('click', () => {
+    const open = introToggle.getAttribute('aria-expanded') !== 'true';
+    intro(open);
+    try {
+      localStorage.setItem('rs-cache-intro', open ? 'open' : 'closed');
+    } catch (e) {
+      // no storage: the choice lasts for this page
+    }
+  });
+
   // ── Plain or technical (an option for developers; the browser remembers it) ──
   let tech = false;
   try {
@@ -333,35 +355,67 @@
   const tell = (key, n) => {
     say(story, w.story[key].replace('%s', n));
   };
-  const step = async (id, key, n, job) => {
-    if (!auto || id !== round) {
-      return;
+  // What comes next, and when: a countdown with the next step's story, so a reader is not surprised.
+  const next = document.querySelector('.cache-next');
+  const nextText = next.querySelector('.cache-next-text');
+  const nextBar = next.querySelector('.cache-next-bar span');
+  const countdown = async (id, ms, upcoming) => {
+    const end = performance.now() + ms;
+    nextBar.style.transition = 'none';
+    nextBar.style.width = '100%';
+    void nextBar.offsetWidth;                       // the bar starts full, then empties over ms
+    nextBar.style.transition = 'width ' + ms + 'ms linear';
+    nextBar.style.width = '0%';
+    next.hidden = false;
+    while (auto && id === round) {
+      const left = end - performance.now();
+      if (left <= 0) {
+        break;
+      }
+      nextText.textContent = w.next.replace('%s', String(Math.ceil(left / 1000))).replace('%s', upcoming);
+      nextText.title = upcoming;
+      await wait(Math.min(250, left));
     }
-    tell(key, n);
-    await job();
-    await queue;
-    await film;
-    // Time to read what the step says -- the story and the caption, about 25 characters a second, 3 to 7 s.
-    await wait(Math.min(7000, Math.max(3000, 40 * (story.textContent.length + caption.textContent.length))));
+    nextText.textContent = w.now.replace('%s', upcoming);       // while the step runs: what it is
+  };
+  // One article's steps: the story's key and the request it makes.
+  const steps = (n) => {
+    const page = '/magazin/' + n;
+    return [
+      ['publish', () => post('/__cache/publish', 'n=' + n, page + ', /magazin', () => empty(n))],
+      ['visit1', () => load(page)],
+      ['visit2', () => load(page)],
+      ['campaign', () => load(page + '?utm_source=newsletter&utm_campaign=auto')],
+      ['memberA', () => load(page, 'A')],
+      ['memberB1', () => load('/magazin', 'B')],
+      ['memberB2', () => load(page, 'B')],
+      ['editor1', () => load(page, 'E')],
+      ['editor2', () => load(page, 'E')],
+      ['scan', () => Promise.all(scan().map((u) => load(u, '', w.bot)))],
+      ['republish', () => post('/__cache/publish', 'n=' + n, page + ', /magazin', () => empty(n))],
+      ['visit3', () => load(page)],
+      ['visit4', () => load(page)],
+    ];
   };
   const run = async (id) => {
-    const s2 = (key, n, job) => step(id, key, n, job);
     for (let n = Number(article.value); auto && id === round; n = n % 5 + 1) {
       article.value = String(n);
-      const page = '/magazin/' + n;
-      await s2('publish', n, () => post('/__cache/publish', 'n=' + n, page + ', /magazin', () => empty(n)));
-      await s2('visit1', n, () => load(page));
-      await s2('visit2', n, () => load(page));
-      await s2('campaign', n, () => load(page + '?utm_source=newsletter&utm_campaign=auto'));
-      await s2('memberA', n, () => load(page, 'A'));
-      await s2('memberB1', n, () => load('/magazin', 'B'));
-      await s2('memberB2', n, () => load(page, 'B'));
-      await s2('editor1', n, () => load(page, 'E'));
-      await s2('editor2', n, () => load(page, 'E'));
-      await s2('scan', n, () => Promise.all(scan().map((u) => load(u, '', w.bot))));
-      await s2('republish', n, () => post('/__cache/publish', 'n=' + n, page + ', /magazin', () => empty(n)));
-      await s2('visit3', n, () => load(page));
-      await s2('visit4', n, () => load(page));
+      const list = steps(n);
+      for (let i = 0; i < list.length && auto && id === round; i++) {
+        const [key, job] = list[i];
+        tell(key, n);
+        await job();
+        await queue;
+        await film;
+        if (!auto || id !== round) {
+          break;
+        }
+        // Time to read what the step says -- the story and the caption, about 25 characters a second, 3 to 7 s --
+        // counted down with what comes next (after the last step: the next article's first).
+        const [nextKey, nextN] = i + 1 < list.length ? [list[i + 1][0], n] : [list[0][0], n % 5 + 1];
+        await countdown(id, Math.min(7000, Math.max(3000, 40 * (story.textContent.length + caption.textContent.length))),
+          w.story[nextKey].replace('%s', nextN));
+      }
     }
   };
   const setAuto = (on) => {
@@ -384,6 +438,7 @@
       });
     } else {
       say(story, '');
+      next.hidden = true;
     }
   };
   autoButton.addEventListener('click', () => setAuto(!auto));

@@ -120,6 +120,7 @@ return [
                 'capClear' => 'Shield::active()?->purge([\'*\']): alles veraltet.'],
             'tryTitle' => 'Selbst testen',
             'tryLead' => 'Hier lässt sich der HTTP-Cache mit echten Anfragen ausprobieren — in verschiedenen Rollen: als Besucher, als Mitglied A oder B, als Redakteur, mit Kampagnen-Link oder als Bot. Besucher, Mitglieder und Redakteure haben je eine eigene Reihe im Regal: Mitglieder A und B teilen sich eine Seite, ein Kampagnen-Link bekommt die der Besucher, ein Bot keine. „Artikel veröffentlichen“ leert die Fächer eines Artikels; „Automatisch abspielen“ zeigt alles der Reihe nach.',
+            'tryHelp' => 'Was kann ich hier testen?', 'next' => 'In %s s: %s', 'now' => 'Jetzt: %s',
             'auto' => 'Automatisch abspielen', 'autoStop' => 'Anhalten', 'dock' => 'Aktionen und Protokoll', 'dockLog' => 'Protokoll ein-/ausblenden', 'dockSize' => 'Protokoll größer oder kleiner ziehen (oder Pfeiltasten)', 'dockPin' => 'Unten andocken', 'dockUnpin' => 'Unter der Grafik einbetten',
             'story' => [
                 'publish' => 'Los geht\'s: Artikel %s ist frisch veröffentlicht, sein Fach ist leer.',
@@ -498,6 +499,7 @@ return [
                 'capClear' => 'Shield::active()?->purge([\'*\']): everything out of date.'],
             'tryTitle' => 'Try it yourself',
             'tryLead' => 'Test the HTTP cache here with real requests — in different roles: as a visitor, as member A or B, as an editor, with a campaign link or as a bot. Visitors, members and editors each have their own row on the shelf: members A and B share one page, a campaign link gets the visitors\', a bot none. “Publish article” empties an article\'s slots; “Play it by itself” shows everything in turn.',
+            'tryHelp' => 'What can I test here?', 'next' => 'In %s s: %s', 'now' => 'Now: %s',
             'auto' => 'Play it by itself', 'autoStop' => 'Stop', 'dock' => 'Actions and log', 'dockLog' => 'Show or hide the log', 'dockSize' => 'Drag the log bigger or smaller (or use the arrow keys)', 'dockPin' => 'Dock at the bottom', 'dockUnpin' => 'Embed below the picture',
             'story' => [
                 'publish' => 'Here we go: article %s was just published, its slot is empty.',

@@ -281,7 +281,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   *Play automatically* goes at reading pace: each step waits for its story
   and caption to be read (3 to 7 s) and the dot moves slower.
   A short introduction above the buttons says what can be tried there (the
-  HTTP cache in different roles); docked at the bottom it is left out.
+  HTTP cache in different roles), folded behind a "?" (the browser remembers
+  it open); docked at the bottom it is left out. *Play automatically* has a
+  row of its own above the buttons: while it plays, a bar and "In 5 s: …"
+  next to it say what comes next, "Now: …" while that step runs.
 - **Working with Exponential 6's own HTTP cache** (0031 step G.6, part 1;
   proposal 0048): the statistics read its `X-Exp-Cache` as they read
   `X-RS-Cache` -- `HIT` and `STALE` hits, `MISS` a miss, `BYPASS` a page it
