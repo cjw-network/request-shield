@@ -416,6 +416,7 @@
     setInterval(tick, 1000);
     var poll = function () {
       fetch('/__log', { credentials: 'omit', cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+        if (!j || !Array.isArray(j.lines)) { return; }      // not this visitor's (a public copy): nothing to show
         var fresh = 0;
         // The longest end of the last poll that starts this one: the lines after it are new -- so
         // the same request twice in a second (the same line) is shown twice.

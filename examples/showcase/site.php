@@ -357,7 +357,7 @@ if (($path === '/__cache/publish' || $path === '/__cache/clear') && $method === 
 }
 if ((strncmp($path, '/__learn/', 9) === 0 && $method === 'POST') || $path === '/__learned' || $path === '/__replay') {
     if (!$learnHere || $learnStore === null) {
-        showcaseJson(403, ['error' => 'only on this machine']);        // a run, and what it recorded, is this machine's
+        showcaseJson(403, ['error' => $public === null ? 'only on this machine' : 'for the showcase\'s admin addresses (build/showcase.php --admin)']);        // a run, and what it recorded, is this machine's
         return;
     }
 }

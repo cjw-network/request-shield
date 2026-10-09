@@ -105,6 +105,7 @@ return [
                 $get = static fn (string $uri): array => \CjwNetwork\RequestShield\Http::get("http://127.0.0.1:$port$uri", [], 10, 0, 'request-shield', false) ?? [];
                 same(403, (int) ($get('/rs/stats')['status'] ?? 0), 'the shield\'s own pages: closed without --admin');
                 same(403, (int) ($get('/__log')['status'] ?? 0), 'the log: closed without --admin');
+                truthy(strpos((string) ($get('/')['body'] ?? ''), 'id="log-dock"') === false, 'and the page shows no log panel then');
                 foreach (['/', '/cache', '/exponential', '/learn'] as $page) {
                     same(200, (int) ($get($page)['status'] ?? 0), "$page answers");
                 }

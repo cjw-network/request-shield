@@ -444,6 +444,7 @@ Shield::protectFile(__DIR__ . '/settings/request-shield/exponential-admin-uri.ru
 
 <?php endif ?>
 
+<?php if ($public === null || $learnHere): /* the log names other visitors' requests: on a public copy for --admin only */ ?>
 <aside class="log-dock" id="log-dock" aria-label="<?= $e($t['liveLogTitle']) ?>" data-empty="<?= $e($t['liveLogEmpty']) ?>">
   <div class="log-dock-top">
     <button type="button" class="log-dock-head" aria-expanded="true" aria-controls="log-dock-body">
@@ -483,6 +484,7 @@ Shield::protectFile(__DIR__ . '/settings/request-shield/exponential-admin-uri.ru
     </div>
   </div>
 </aside>
+<?php endif ?>
 
 <footer class="footer"><div class="container text-center small"><?= $e($t['footer']) ?>
   <p class="ai-note mb-0 mt-2"><i class="bi bi-stars" aria-hidden="true"></i> <?= $e($t['aiNote']) ?></p></div></footer>

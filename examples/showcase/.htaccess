@@ -3,6 +3,8 @@
 # lib/ and var/ carry their own "Require all denied" (build/showcase.php).
 Options -Indexes
 DirectoryIndex index.php
+# Without mod_rewrite too: an address that is no file goes to index.php (mod_dir).
+FallbackResource /index.php
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
@@ -11,7 +13,11 @@ DirectoryIndex index.php
     RewriteRule ^ index.php [L]
 </IfModule>
 
-# Should a rewrite be off: the rules, the notes and the log are never served.
+# Should a rewrite be off: the rules, the notes and the log are never served, and
+# the page's own PHP files never run on their own (only index.php runs them).
 <FilesMatch "\.(rules|md|log|json)$">
+    Require all denied
+</FilesMatch>
+<FilesMatch "^(site|page|texts|cache|learn|nav|router)\.php$">
     Require all denied
 </FilesMatch>

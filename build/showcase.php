@@ -96,6 +96,11 @@ foreach ($admin as $a) {
         exit(1);
     }
 }
+foreach ($admin as $a) {
+    if (preg_match('#^(127\.|::1$|::1/)#', $a) === 1) {
+        fwrite(STDERR, "build/showcase.php: warning: --admin $a is this machine -- behind a hoster's proxy that may be every visitor\n");
+    }
+}
 $tmp = $out . '.part-' . getmypid();
 try {
     showcaseCopy(ROOT . '/examples/showcase', $tmp);
@@ -124,7 +129,8 @@ try {
         // No proxy trusted: on a public host 127.0.0.1 may be the hoster's proxy, and any visitor could name an address.
         '#^trust\s+127\.0\.0\.1 ::1\b.*$#m' => '# trust: none in a copy for a public host (build/showcase.php) -- name your proxy here if you have one',
         // The shield's own pages: --admin's addresses, else nobody (192.0.2.1: a documentation address, never a visitor).
-        '#restrict /rs/\*\* to 127\.0\.0\.1 ::1#' => 'restrict /rs/** to ' . ($admin === [] ? '192.0.2.1' : implode(' ', $admin)),
+        '#restrict /rs/\*\* to 127\.0\.0\.1 ::1.*$#m' => 'restrict /rs/** to ' . ($admin === [] ? '192.0.2.1' : implode(' ', $admin))
+            . '   # the shield\'s own pages: the --admin addresses (build/showcase.php)' . ($admin === [] ? ' -- none: 192.0.2.1 is nobody' : ''),
     ];
     if ($host !== null) {
         $change['#\$\{REQUEST_SHIELD_SHOWCASE_HOST:-127\.0\.0\.1:8090\}#'] = '${REQUEST_SHIELD_SHOWCASE_HOST:-' . $host . '}';
