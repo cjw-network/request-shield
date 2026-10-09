@@ -80,7 +80,9 @@ The parts below describe them; a card behaves the same wherever it stands.
   the bottom, drawn bigger or smaller at its grip or with the arrow keys;
   *Play it by itself* tells the whole story article after article --
   publish, a visitor's miss and hit, a campaign link, members, an editor, a
-  bot's scan, publishing again -- until stopped. The picture has a switch,
+  bot's scan, a search crawler, publishing again -- until stopped, at
+  reading pace, with a countdown naming the next step. A "?" next to *Try
+  it yourself* unfolds what can be tried there. The picture has a switch,
   *Plain* (default) or *Technical* (browser, request-shield, HTTP cache, PHP
   application; each request's method, address, status, `X-RS-Cache` and
   time). First a picture for people who never saw a cache: four stations (visitor, doorkeeper, shelf, newsroom) and a dot
@@ -89,7 +91,13 @@ The parts below describe them; a card behaves the same wherever it stands.
   the shelf, one slot per page and role (visitors, members, editors; as this
   page saw it). *A bot scans the front page* sends what scanners try
   (made-up parameters and articles, `/.env`, an SQL injection): refused, or
-  answered and never shelved. Then: the shield's HTTP cache
+  answered and never shelved; *A search crawler reads* fetches the front
+  page and every article anonymously, as a visitor, and fills the visitors'
+  shelf. The picture names who sent a request (a face each for the
+  visitor, member A and B, the editor, the bot 🤖 and the crawler 🔎) and
+  shows its result above the station that decided it. Opened under a host
+  name not in `http-cache-hosts`, the page says the cache is off there and
+  how to start it (`REQUEST_SHIELD_SHOWCASE_HOST`). Then: the shield's HTTP cache
   ([RSF04-03](../../docs/features/RSF04-03-http-cache.md)) in front of
   `/magazin/…`, a small CMS that takes half a second a page. Each button is a
   real request, timed in the browser, with the cache's answer (`X-RS-Cache`):

@@ -290,10 +290,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   member B 👩 (a blue ring), the editor 🧑‍💻 (a violet one), a bot 🤖 (red,
   dashed), a search crawler 🔎 (green, dashed: *A search crawler reads*
   fetches the front page and every article anonymously, as a visitor; a
-  step of the automatic play too) -- the faces also in the log's "Who". On a host name not
-  in `http-cache-hosts` the page says the cache is off there and how to
-  start the showcase for that name, and the picture says "cache off"
-  instead of telling of hits that never come.
+  step of the automatic play too) -- the faces also in the log's "Who".
+  On a host name not in `http-cache-hosts` the page says the cache is off
+  there and how to start the showcase for that name, and the picture says
+  "cache off" instead of telling of hits that never come.
 - **Working with Exponential 6's own HTTP cache** (0031 step G.6, part 1;
   proposal 0048): the statistics read its `X-Exp-Cache` as they read
   `X-RS-Cache` -- `HIT` and `STALE` hits, `MISS` a miss, `BYPASS` a page it
