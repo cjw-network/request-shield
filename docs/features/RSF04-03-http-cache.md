@@ -295,6 +295,14 @@ php bin/request-shield cache site.rules purge --tag=c52,l2   # the answers with 
 php bin/request-shield cache site.rules expired            # cron: remove what has run out, keep the folder within http-cache-disk
 ```
 
+**In the dashboard:** the tab *HTTP cache* (`/rs/cache`, below
+`dashboard-path`; the administrator only, while `http-cache` is on) shows
+what the cache holds against its caps -- memory (an upper bound, APCu's free
+memory beside it) and disk -- leads to the response times by hit and miss in
+the statistics, and purges by tag, below a path or everything (forms with
+the page's token, an HMAC of the viewer's address and the hour, as the lists'
+page has).
+
 The same in the [API](RSF06-05-api.md): `GET /rs/api/v1/cache`, `POST
 /rs/api/v1/cache/purge` with `path` or `tags` (a write: `set api-write on`).
 A purge by tag from the command line reaches the web server's copy in APCu

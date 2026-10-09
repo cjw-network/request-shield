@@ -91,7 +91,7 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
     /** The tag every answer has for its address (path and query, any host): PURGE <address> purges it. */
     private const ADDRESS = 'rs-url:';
 
-    /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string, memoryObject: int, memory: int, disk: int} */
+    /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string, memoryObject: int, memory: int, disk: int, page: string} */
     private array $o;
 
     private string $body = '';

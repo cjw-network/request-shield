@@ -244,6 +244,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   log (path without query, peak memory, no address). Off by default; with it
   about +2 µs a request with APCu. `CachePlugin::refusal()` says why an answer
   is not kept (keep() uses it too). Settings FORMAT 57.
+- **The HTTP cache's page in the dashboard** (`/rs/cache`, proposal 0047's
+  area "Cache"): memory and disk against their caps (`http-cache-memory`,
+  `http-cache-disk`), the way to the response times by hit and miss, purges
+  by tag, below a path or everything (forms with the page's token); a tab
+  only while `http-cache` is on, for the administrator. Settings `FORMAT` 65.
 - **The showcase's tab "Cache"** (`/cache`): the HTTP cache at work in front
   of a magazine that takes half a second a page -- every button a real
   request, timed in the browser: hits and misses, members sharing their

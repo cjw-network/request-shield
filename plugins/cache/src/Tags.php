@@ -150,6 +150,7 @@ final class Tags
      * visible characters -- others are left out.
      *
      * @return list<string>
+     * @psalm-taint-specialize (what a caller passes in comes back to that caller only: the dashboard's form is not the command line's)
      */
     public static function split(string $value): array
     {

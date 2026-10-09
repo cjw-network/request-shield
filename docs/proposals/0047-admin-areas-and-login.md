@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft** |
+| Status | **Draft** -- the cache's page built (a tab today, `/rs/cache`; the area when part 1 is built) |
 | Proposed | 2026-10-09 |
 | Affects | `Routes` (a group per route), `Frame::tabs()` (two rows), `Dashboard::serve()` and `Access::gate()` (a login always asked), the extensions' `routes()`, `Cli` (`check`, `init`, `access-token`), new core pages *Start* and *System* |
 | Relates to | [RSF06-01 rules page](../features/RSF06-01-active-rules-page.md) · [RSF06-02 live and lists](../features/RSF06-02-live-and-lists.md) · [RSF06-03 statistics: who sees what](../features/RSF06-03-statistics.md#who-sees-what-tokens-a-login-signed-links) · [RSF06-04 plugins](../features/RSF06-04-plugins.md) · [RSF06-05 API](../features/RSF06-05-api.md) · [0012 dashboard](0012-dashboard.md) · [0023 plugins, hosts, customers](0023-plugins-hosts-customers.md) · [0031 robust core, plugins](0031-robust-core-plugins.md) · [0045 own files out of reach](0045-own-files-out-of-reach.md) |

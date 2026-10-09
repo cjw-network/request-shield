@@ -606,6 +606,33 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF04-03 the cache\'s page in the dashboard (0047\'s area "Cache"): a tab only while the cache is on, memory and disk against their caps, purges by tag, below a path, everything -- with the page\'s token only' => function (): void {
+        $dir = cacheDir();
+        try {
+            $s = cacheSettings($dir, "set http-cache on\nset http-cache-hosts www.example.org\nset http-cache-memory-object 0\nset http-cache-disk 10M\n");
+            $pages = static fn (\CjwNetwork\RequestShield\Settings $x): array => array_keys(array_filter($x->routes, static fn ($r): bool => is_array($r) && ($r['key'] ?? null) === 'cache'));
+            same(['/rs/cache'], $pages($s), 'the route below dashboard-path');
+            same([], $pages(cacheSettings($dir, '')), 'the cache off: no page');
+            $p = new CachePlugin($s);
+            $c = new FileCache("$dir/store/http-cache");
+            $p->keep($c, 'https://www.example.org/news/a', 200, ['Cache-Control: max-age=60', 'xkey: c52'], 'A', '/news/a');
+            $p->keep($c, 'https://www.example.org/about', 200, ['Cache-Control: max-age=60'], 'B', '/about');
+            $html = \CjwNetwork\RequestShield\Cache\CachePage::render($s, ['action' => '/rs/cache', 'lang' => 'en', 'ip' => '203.0.113.5']);
+            truthy(strpos($html, '2 answers') !== false && strpos($html, 'of 10.0 MB (http-cache-disk)') !== false && strpos($html, 'No answers in memory') !== false, 'what it holds: ' . strip_tags($html));
+            $token = \CjwNetwork\RequestShield\Cache\CachePage::token($s, '203.0.113.5');
+            $handle = static fn (array $post, string $ip = '203.0.113.5'): array => \CjwNetwork\RequestShield\Cache\CachePage::handle($s, $post, $ip, 'en');
+            same(false, $handle(['do' => 'all', 'token' => 'x'])['ok'], 'a wrong token: nothing');
+            same(false, $handle(['do' => 'all', 'token' => $token], '198.51.100.9')['ok'], 'another address\'s token: nothing');
+            $before = microtime(true) - 1;
+            truthy($handle(['do' => 'tags', 'token' => $token, 'tags' => 'c52'])['ok'] && (new Tags("$dir/store/http-cache", \CjwNetwork\RequestShield\Capability::apcu()))->purgedSince(['c52'], $before), 'purge a tag');
+            $r = $handle(['do' => 'path', 'token' => $token, 'path' => '/news/']);
+            truthy($r['ok'] && $c->get('https://www.example.org/news/a', microtime(true)) === null && $c->get('https://www.example.org/about', microtime(true)) !== null, 'below a path: ' . $r['message']);
+            same(false, $handle(['do' => 'path', 'token' => $token, 'path' => 'news'])['ok'], 'a path starts with /');
+            truthy($handle(['do' => 'all', 'token' => $token])['ok'] && $c->stats()['entries'] === 0, 'everything');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'RSF04-03 http-cache-user-context: on, off, or an address -- its scheme and host in small letters, its path as given' => function (): void {
         $dir = cacheDir();
         try {

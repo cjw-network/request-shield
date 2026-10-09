@@ -61,14 +61,14 @@ final class CacheExtension implements Extension, ApiProvider
         return 'cache';
     }
 
-    /** @return array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string, memoryObject: int, memory: int, disk: int} */
+    /** @return array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string, memoryObject: int, memory: int, disk: int, page: string} */
     public static function of(Settings $s): array
     {
         $o = $s->ext['cache'] ?? null;
-        /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string, memoryObject: int, memory: int, disk: int} $o */
+        /** @var array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string, memoryObject: int, memory: int, disk: int, page: string} $o */
         $o = is_array($o) && isset($o['dir']) ? $o : ['enabled' => false, 'ttl' => 300, 'cookies' => self::COOKIES, 'maxObject' => 1048576, 'dir' => '', 'hosts' => [],
             'purgers' => self::PURGERS, 'token' => '', 'tagHeaders' => self::TAG_HEADERS, 'sessionCookies' => [], 'contextTtl' => 600, 'userContext' => '', 'hashHeader' => 'x-user-context-hash',
-            'memoryObject' => 262144, 'memory' => 33554432, 'disk' => 268435456];
+            'memoryObject' => 262144, 'memory' => 33554432, 'disk' => 268435456, 'page' => '/rs/cache'];
         // The folder: the one set, else below the store directory -- resolved here, so the compiled
         // settings do not depend on where they were compiled.
         $o['dir'] = $o['dir'] !== '' ? $o['dir'] : $s->storeDir . '/http-cache';
@@ -125,7 +125,7 @@ final class CacheExtension implements Extension, ApiProvider
 
     /**
      * @param array<string, mixed> $raw
-     * @return array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string, memoryObject: int, memory: int, disk: int}
+     * @return array{enabled: bool, ttl: int, cookies: list<string>, maxObject: int, dir: string, hosts: list<string>, purgers: list<string>, token: string, tagHeaders: list<string>, sessionCookies: list<string>, contextTtl: int, userContext: string, hashHeader: string, memoryObject: int, memory: int, disk: int, page: string}
      */
     public static function compile(array $raw, Settings $base): array
     {
@@ -196,7 +196,8 @@ final class CacheExtension implements Extension, ApiProvider
         }
         return ['enabled' => $enabled, 'ttl' => $ttl, 'cookies' => $names, 'maxObject' => $max, 'dir' => $dir, 'hosts' => $names2,
             'purgers' => $ranges, 'token' => $token, 'tagHeaders' => array_values(array_unique($headers)), 'sessionCookies' => $sessions, 'contextTtl' => $contextTtl,
-            'userContext' => $userContext, 'hashHeader' => $hashHeader, 'memoryObject' => min($memoryObject, $max), 'memory' => $memory, 'disk' => $disk];
+            'userContext' => $userContext, 'hashHeader' => $hashHeader, 'memoryObject' => min($memoryObject, $max), 'memory' => $memory, 'disk' => $disk,
+            'page' => $base->dashboardPath . '/cache'];
     }
 
     /** An address, or a range of them (10.0.0.0/8). */
@@ -212,9 +213,13 @@ final class CacheExtension implements Extension, ApiProvider
         return ($compiled['enabled'] ?? false) === true ? [CachePlugin::class] : [];
     }
 
+    /** The cache's page in the dashboard (0047's area "Cache"): only when the cache is on. */
     public static function routes(array $compiled): array
     {
-        return [];
+        if (($compiled['enabled'] ?? false) !== true || !is_string($compiled['page'] ?? null)) {
+            return [];
+        }
+        return [$compiled['page'] => ['key' => 'cache', 'tab' => ['HTTP cache', 'HTTP-Cache'], 'role' => 'admin', 'order' => 80, 'page' => CachePage::class]];
     }
 
     public static function commands(): array
