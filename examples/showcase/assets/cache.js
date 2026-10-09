@@ -212,6 +212,11 @@
   const fit = () => {
     space.style.height = dock.offsetHeight + 'px';      // the page ends above the dock, whatever its height
   };
+  const limits = () => {
+    grip.setAttribute('aria-valuemin', '60');
+    grip.setAttribute('aria-valuemax', String(Math.round(window.innerHeight * 0.7)));
+    grip.setAttribute('aria-valuenow', String(log.offsetHeight));
+  };
   const height = (px) => {
     const h = Math.round(Math.max(60, Math.min(window.innerHeight * 0.7, px)));
     log.style.height = h + 'px';
@@ -231,15 +236,27 @@
   } catch (e) {
     // the default height
   }
+  // One drag at a time; it ends however the pointer goes (up, cancelled, capture lost). Folded: no drag.
+  let drag = null;
   grip.addEventListener('pointerdown', (ev) => {
-    const y0 = ev.clientY;
-    const h0 = log.offsetHeight;
+    if (dock.classList.contains('closed')) {
+      return;
+    }
+    drag = {y0: ev.clientY, h0: log.offsetHeight};
     grip.setPointerCapture(ev.pointerId);
-    const move = (e) => height(h0 + (y0 - e.clientY));
-    grip.addEventListener('pointermove', move);
-    grip.addEventListener('pointerup', () => grip.removeEventListener('pointermove', move), {once: true});
   });
+  grip.addEventListener('pointermove', (ev) => {
+    if (drag !== null) {
+      height(drag.h0 + (drag.y0 - ev.clientY));
+    }
+  });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((t) => grip.addEventListener(t, () => {
+    drag = null;
+  }));
   grip.addEventListener('keydown', (ev) => {
+    if (dock.classList.contains('closed')) {
+      return;
+    }
     if (ev.key === 'ArrowUp' || ev.key === 'ArrowDown') {
       ev.preventDefault();
       height(log.offsetHeight + (ev.key === 'ArrowUp' ? 28 : -28));       // a line more or less
@@ -248,7 +265,11 @@
   if (window.ResizeObserver) {
     new ResizeObserver(fit).observe(dock);
   }
-  window.addEventListener('resize', fit);
+  window.addEventListener('resize', () => {
+    limits();
+    fit();
+  });
+  limits();
   fit();
 
   // ── The dock: its log can be folded away, the actions stay ───────────────
@@ -306,6 +327,8 @@
     document.querySelectorAll('.cache-manual').forEach((b) => {
       b.disabled = on;
     });
+    // While it plays, the story alone speaks to a screen reader: a caption and a sum each second would be noise.
+    [caption, sum].forEach((el) => el.setAttribute('aria-live', on ? 'off' : 'polite'));
     if (on) {
       round++;
       const id = round;
