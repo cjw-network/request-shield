@@ -319,11 +319,14 @@ if ($path === '/magazin' || preg_match('#^/magazin/([1-5])$#', $path, $article) 
         // The adapter's one call: this visitor is a member, and this page is the same for every member.
         Shield::active()?->cacheContext('member', true);
     }
-    if ($_GET === []) {
-        usleep(random_int(350000, 650000));     // only the pages a cache may keep take their time: no stall from made-up parameters
+    // The magazine takes no parameter: only its plain pages take their time and may be kept -- a made-up
+    // ?page=<n> or ?lang=<x> (names cache-query lets through) neither stalls the server nor fills the cache.
+    $plain = $_GET === [];
+    if ($plain) {
+        usleep(random_int(350000, 650000));
     }
     header('Content-Type: text/html; charset=utf-8');
-    header('Cache-Control: public, max-age=300');
+    header('Cache-Control: ' . ($plain ? 'public, max-age=300' : 'no-store'));
     header('xkey: ' . ($n > 0 ? "article-$n magazin" : 'magazin-list magazin'));     // the tags a publish purges
     $title = $n > 0 ? "Artikel $n / Article $n" : 'Magazin / Magazine';
     echo '<!doctype html><html lang="de"><head><meta charset="utf-8"><title>' . htmlspecialchars($title) . '</title></head><body><h1>'

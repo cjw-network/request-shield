@@ -88,10 +88,11 @@ return [
             truthy($cache($first) === 'miss' && $cache($second) === 'hit' && $second[2] === $first[2], 'the second load: from the cache, the same page');
             truthy($cache($req('GET', '/magazin/2?utm_source=nl&utm_campaign=c7', $host)) === 'hit', 'a campaign link: the same kept page (cache-ignore @tracking)');
             truthy($cache($req('GET', '/magazin/2?q=x7', $host)) === 'hit', 'a parameter cache-query does not name: answered from the kept page (hit-only)');
+            $made = '/magazin/1?page=' . mt_rand(2, 999999);
             $t0 = microtime(true);
-            $req('GET', '/magazin/1?q=r' . mt_rand(), $host);
-            truthy(microtime(true) - $t0 < 0.3, 'a made-up parameter on a page not kept: answered at once, no stall');
-            truthy($cache($req('GET', '/magazin/1', $host)) !== 'hit', '... and nothing was kept for it');
+            $once = $req('GET', $made, $host);
+            truthy($once[0] === 200 && microtime(true) - $t0 < 0.3, 'a made-up value on a page not kept: answered at once, no stall');
+            truthy($cache($once) !== 'hit' && $cache($req('GET', $made, $host)) !== 'hit', '... and nothing was kept for it: the same address again is no hit');
             $a = ['Cookie' => 'rs-demo-member=a1'] + $host;
             $b = ['Cookie' => 'rs-demo-member=b1'] + $host;
             $req('GET', '/magazin/3', $a);
