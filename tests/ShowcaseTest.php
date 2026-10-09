@@ -88,6 +88,9 @@ return [
             truthy($cache($first) === 'miss' && $cache($second) === 'hit' && $second[2] === $first[2], 'the second load: from the cache, the same page');
             truthy($cache($req('GET', '/magazin/2?utm_source=nl&utm_campaign=c7', $host)) === 'hit', 'a campaign link: the same kept page (cache-ignore @tracking)');
             truthy($cache($req('GET', '/magazin/2?q=x7', $host)) === 'hit', 'a parameter cache-query does not name: answered from the kept page (hit-only)');
+            $cold = $req('GET', '/magazin?utm_source=nl&utm_campaign=c8', $host);
+            truthy($cache($cold) === 'miss' && $cache($req('GET', '/magazin', $host)) === 'hit',
+                'a campaign link to a page not kept yet: the page without the tracking parameters made and kept -- the plain address is a hit');
             $made = '/magazin/1?page=' . mt_rand(2, 999999);
             $t0 = microtime(true);
             $once = $req('GET', $made, $host);
