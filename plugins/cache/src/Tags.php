@@ -145,7 +145,7 @@ final class Tags
     }
 
     /**
-     * The tags of a header's value: split at spaces and commas (as Ibexa's
+     * The tags of a header's value: split at whitespace and commas (as Ibexa's
      * handler does for xkey and X-Cache-Tags), each at most 200 bytes of
      * visible characters -- others are left out.
      *

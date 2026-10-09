@@ -22,7 +22,7 @@ interface Purger
 {
     /**
      * These tags are out of date ("*": everything). Tags are what the
-     * answers carried (xkey, X-Cache-Tags …): each value is split at spaces
+     * answers carried (xkey, X-Cache-Tags …): each value is split at whitespace
      * and commas, as those headers are; a piece over 200 bytes or with
      * other than visible characters is no tag an answer can carry, and is
      * left out.
