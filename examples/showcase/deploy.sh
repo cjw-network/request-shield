@@ -70,7 +70,8 @@ old="$target.previous"
 [ ! -L "$old" ] || fail "$old is a link -- not this script's"
 # Never another folder: missing, empty, or a copy made here -- and never this clone or a folder holding it.
 case "$repo/" in
-    "$target/"*|"$old/"*) fail "$target holds this clone itself -- name the document root folder, not the clone's" ;;
+    "$target/"*) fail "$target holds this clone itself -- name the document root folder, not the clone's" ;;
+    "$old/"*) fail "$old holds this clone itself -- move the clone elsewhere first" ;;
 esac
 for dir in "$target" "$old"; do
     if [ -e "$dir" ]; then
@@ -98,6 +99,10 @@ fi
 [ -n "$host" ] || fail "name the address visitors use once: --host=example.org"
 
 new="$target.new-$$"
+gone="$old.gone-$$"
+for dir in "$new" "$gone"; do
+    [ ! -e "$dir" ] || fail "$dir is there already -- not this run's; remove it first"
+done
 trap 'rm -rf "$new"' EXIT              # a run that stops leaves no half-made copy (it holds the secret)
 trap 'exit 1' HUP INT TERM             # dash runs the EXIT trap on exit only
 set -- "--out=$new" "--host=$host"
@@ -130,10 +135,10 @@ fi
 # The swap: renames in the same parent folder, a moment without a page at most; the copy before stays.
 # No signal in between: it would leave no <target>. The older .previous goes only once the new copy is in.
 trap '' HUP INT TERM
-gone="$old.gone-$$"
 [ ! -e "$old" ] || mv -- "$old" "$gone"       # empty, or made here (checked above)
-if [ -d "$target" ]; then
-    mv -- "$target" "$old"
+if [ -d "$target" ] && ! mv -- "$target" "$old"; then
+    [ ! -e "$gone" ] || mv -- "$gone" "$old" || true
+    fail "could not move $target aside -- nothing changed"
 fi
 if ! mv -- "$new" "$target"; then
     [ ! -d "$old" ] || mv -- "$old" "$target" || true
