@@ -417,7 +417,7 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .cache-dock-log td.url { max-width: 30ch; }
 .cache-dock-log td.tech-col { max-width: 18ch; }
 .cache-dock-log td.num { text-align: right; }
-.cache-dock-log tr.cache-purge td { white-space: normal; }
+.cache-dock-log tr.cache-purge td, .cache-dock-log tr.cache-empty td { white-space: normal; }
 .cache-dock-log tbody tr:nth-child(even) td { background: rgba(31, 42, 68, .025); }
 .cache-dock-log tr.cache-purge td { background: var(--rs-sky-bg) !important; color: var(--rs-ink); font-weight: 600; }
 .cache-dock-log .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem; }
