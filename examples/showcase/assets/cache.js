@@ -65,13 +65,15 @@
   // Station x offsets from the visitor: doorkeeper +220, shelf +440, newsroom +660.
   const X = [0, 220, 440, 660];
   const ROUTES = {hit: [0, 1, 2, 1, 0], miss: [0, 1, 2, 3, 2, 1, 0], notkept: [0, 1, 2, 3, 2, 1, 0], refused: [0, 1, 0]};
-  const STEP = 280;
+  const STEP = 280;       // ms from one station to the next; slower while Auto plays (AUTO_STEP)
+  const AUTO_STEP = 480;
   let film = Promise.resolve();
   // The lines below the picture keep their height: a long one ends in "…", whole on hover.
   const say = (el, s2) => {
     el.textContent = s2;
     el.title = s2;
   };
+  const pace = () => (auto ? AUTO_STEP : STEP);
   const play = (kind, text1, text2) => {
     film = film.then(() => new Promise((done) => {
       say(caption, text1);
@@ -82,12 +84,12 @@
       }
       const path = ROUTES[kind] || ROUTES.hit;
       dot.setAttribute('class', 'flow-dot ' + kind);
-      const anim = dot.animate(path.map((st) => ({transform: `translate(${X[st]}px, 0)`, opacity: 1})), {duration: STEP * (path.length - 1), easing: 'ease-in-out'});
+      const anim = dot.animate(path.map((st) => ({transform: `translate(${X[st]}px, 0)`, opacity: 1})), {duration: pace() * (path.length - 1), easing: 'ease-in-out'});
       // The station the dot is at lights up; the last stop is the end, which clears them all.
       const timers = path.slice(0, -1).map((st, k) => setTimeout(() => stations.forEach((s, n) => {
         s.classList.toggle('on', n === st);
         s.classList.toggle('no', kind === 'refused' && n === 1 && st === 1);
-      }), STEP * k));
+      }), pace() * k));
       anim.onfinish = () => {
         timers.forEach(clearTimeout);
         stations.forEach((s) => s.classList.remove('on', 'no'));
@@ -339,7 +341,8 @@
     await job();
     await queue;
     await film;
-    await wait(still ? 1600 : 900);
+    // Time to read what the step says -- the story and the caption, about 25 characters a second, 3 to 7 s.
+    await wait(Math.min(7000, Math.max(3000, 40 * (story.textContent.length + caption.textContent.length))));
   };
   const run = async (id) => {
     const s2 = (key, n, job) => step(id, key, n, job);
