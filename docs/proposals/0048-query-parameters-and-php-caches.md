@@ -17,8 +17,10 @@ Das geht dann aber nur mit den PHP-HTTP-Caches."* (owner, 2026-10-09)
 
 ## Today
 
-`cache-query page sort` names the parameters a cacheable address may carry.
-Any other parameter makes the request `allow-uncached`
+Without `cache-query` every parameter is cacheable (`cacheable.query` is
+`null`: any) -- `?utm_source=…` is then part of the key, and each value is a
+page of its own. Once `cache-query page sort` names the parameters a
+cacheable address may carry, any other parameter makes the request `allow-uncached`
 (`$_SERVER['REQUEST_SHIELD']`): the application renders it, no cache keeps
 it. That is safe -- made-up parameters never fill a cache -- but every link
 from a newsletter or an ad (`?utm_source=…`, `?fbclid=…`) is a miss, although
@@ -53,9 +55,31 @@ GET /news?utm_source=nl&x=7
   is kept; on a miss the application renders with the parameter and nothing
   is kept. No page that may depend on a parameter ever lands in the cache;
   the number of keys stays as small as `cache-query` makes it, and random
-  parameters cannot fill the cache.
+  parameters cannot fill the cache. **The caveat:** an unknown parameter that
+  does change the page (`?lang=en`, `?preview=1`) gets the plain page on a
+  hit -- a wrong answer for that visitor, never a poisoned cache (nothing is
+  kept). That is why it is opt-in, and why `check` names the parameters the
+  learning runs (0016) saw the application use that `cache-query` does not.
+- **Names as PHP sees them:** a parameter is matched by the name the
+  application gets -- decoded, and with `.` and spaces as `_` (PHP's
+  `utm.source` is `$_GET['utm_source']`), so no spelling slips past
+  `cache-ignore`.
 - `query strict` is unchanged: a site that refuses unknown parameters has
   no unknown ones to cache.
+
+### In which order
+
+1. **Decide and record on the original request:** the rules, the scans of
+   the query (an attack in a tracking parameter is still found), the log, the
+   statistics and the learning runs see every parameter.
+2. **Then clean:** ignored parameters are taken out of `$_GET`, `$_REQUEST`,
+   `QUERY_STRING` and `REQUEST_URI`; the cache key (`Request::cacheKey()`
+   today takes every parameter -- the cache's caller gets a key without the
+   ignored and unknown ones) and `REQUEST_SHIELD_CACHE_LOOKUP` are made from
+   the cleaned request.
+3. **The check page's resend** keeps the address the visitor asked for, with
+   every parameter: a visitor who solves the check lands where the link
+   pointed.
 
 ### What the shield hands on
 
@@ -136,8 +160,10 @@ becomes (owner, 2026-10-09):
 ## Open questions for the owner
 
 1. **`@tracking`:** marks its parameters as ignored by default, or only with
-   `cache-ignore @tracking`? *Proposed: by default when `http-cache` or a
-   PHP cache is in use -- they are tracking parameters by definition.*
+   `cache-ignore @tracking`? Some of them carry a visitor's identity for the
+   application (`mkt_tok`, `_hsenc`, `mc_eid`, `li_fat_id`: a mail tool's
+   personal link). *Proposed: only with `cache-ignore @tracking`, and `check`
+   lists any of them the learning runs saw the application read.*
 2. **Ignored parameters on the server:** take them out for the application
    too (proposed: yes, else a rendered page may carry them), or keep them in
    a `$_SERVER['REQUEST_SHIELD_IGNORED']` copy for server-side tracking?
