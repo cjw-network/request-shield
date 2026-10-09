@@ -347,3 +347,25 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .stair b { font-size: .85rem; margin-top: 4px; }
 .stair small { color: #64748b; }
 .guard-card .card-try.counter { box-shadow: none; border-color: #e2e8f0; }
+
+/* The tab "Cache": the picture -- four stations a request passes, a dot that travels, the shelf. */
+.cache-flow { width: 100%; height: auto; max-height: 220px; display: block; }
+.cache-flow .flow-line { stroke: var(--rs-line); stroke-width: 6; stroke-linecap: round; }
+.cache-flow .flow-node { fill: #fff; stroke: var(--rs-line); stroke-width: 3; transition: stroke .2s, fill .2s; }
+.cache-flow .flow-station.on .flow-node { stroke: var(--rs-ink); fill: var(--rs-sky-bg); }
+.cache-flow .flow-station.no .flow-node { stroke: var(--rs-coral); fill: var(--rs-coral-bg); }
+.cache-flow .flow-icon { font-size: 30px; }
+.cache-flow .flow-name { font-weight: 700; fill: var(--rs-ink); font-size: 17px; }
+.cache-flow .flow-sub { fill: var(--rs-soft-ink); font-size: 13px; }
+.cache-flow .flow-dot { fill: var(--rs-soft-ink); opacity: 0; transform-box: fill-box; }
+.cache-flow .flow-dot.hit { fill: var(--rs-mint); }
+.cache-flow .flow-dot.miss { fill: var(--rs-sun); }
+.cache-flow .flow-dot.refused { fill: var(--rs-coral); }
+.cache-flow .flow-dot.notkept { fill: #6c8ebf; }
+.flow-caption { min-height: 1.5em; font-weight: 600; color: var(--rs-ink); }
+.cache-shelf .slot { display: inline-block; width: 28px; height: 18px; border-radius: 5px; border: 2px dashed var(--rs-line); vertical-align: middle; transition: background .3s, border-color .3s; }
+.cache-shelf .slot.full { background: var(--rs-mint); border: 2px solid var(--rs-mint-dark); }
+.cache-shelf .slot.pop { animation: rs-slot-pop .5s ease-out; }
+@keyframes rs-slot-pop { 0% { transform: scale(1.5); } 100% { transform: scale(1); } }
+/* Nine entries in the menu: one line each (open from 1400 px on, the menu button below). */
+.navbar-nav .nav-link { white-space: nowrap; }

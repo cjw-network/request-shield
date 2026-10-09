@@ -1,7 +1,9 @@
 // The showcase's tab "Cache" (cache.php): every button a real request to the
-// magazine, timed here; the cache's answer from X-RS-Cache. Members are a
-// cookie set for the one request (rs-demo-member), publishing and emptying
-// are POSTs the page answers with Shield::purge().
+// magazine, timed here; the cache's answer from X-RS-Cache. A member or an
+// editor is a cookie set for the one request (rs-demo-member), publishing and
+// emptying are POSTs the page answers with Shield::purge(). The picture: a dot
+// travels the stations a request passes (visitor, doorkeeper, shelf, kitchen),
+// the shelf shows which page is kept for which role.
 (() => {
   'use strict';
   const data = JSON.parse(document.getElementById('cache-data').textContent);
@@ -9,7 +11,13 @@
   const rows = document.querySelector('.cache-rows');
   const sum = document.querySelector('.cache-sum');
   const article = document.querySelector('.cache-article');
-  const members = {A: 'a-' + Math.random().toString(36).slice(2, 10), B: 'b-' + Math.random().toString(36).slice(2, 10)};
+  const caption = document.querySelector('.flow-caption');
+  const dot = document.querySelector('.flow-dot');
+  const stations = [...document.querySelectorAll('.flow-station')];
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const rand = () => Math.random().toString(36).slice(2, 8);
+  const sessions = {A: 'a-' + rand(), B: 'b-' + rand(), E: 'editor-' + rand()};
+  const roleOf = (who) => (who === 'E' ? 'editor' : (who ? 'member' : 'visitor'));
   const seen = [];
   const fmt = (ms) => (ms < 10 ? ms.toFixed(1) : Math.round(ms)) + ' ms';
   const text = (tag, s, cls) => {
@@ -21,68 +29,141 @@
     return el;
   };
 
-  const show = (url, who, kind, ms) => {
-    const empty = rows.querySelector('.cache-empty');
-    if (empty) {
-      empty.remove();
-    }
-    const tr = document.createElement('tr');
-    const label = kind.startsWith('hit') ? w.hit : (kind.startsWith('miss') ? w.miss : w.none);
-    tr.append(text('td', url), text('td', who), text('td', label + (kind.includes('role') ? ' (role)' : ''), 'badge-cell ' + (kind.startsWith('hit') ? 'text-success fw-bold' : '')), text('td', fmt(ms)));
-    rows.prepend(tr);
-    seen.push({kind, ms});
-    const avg = (k) => {
-      const list = seen.filter((s) => s.kind.startsWith(k)).map((s) => s.ms);
-      return list.length ? fmt(list.reduce((a, b) => a + b, 0) / list.length) : '–';
-    };
-    const hits = seen.filter((s) => s.kind.startsWith('hit')).length;
-    const asked = seen.filter((s) => s.kind.startsWith('hit') || s.kind.startsWith('miss')).length;
-    sum.textContent = w.sum.replace('%s', avg('hit')).replace('%s', avg('miss')).replace('%s', asked ? Math.round(100 * hits / asked) + ' %' : '–');
+  // ── The picture ──────────────────────────────────────────────────────────
+  // Station x offsets from the visitor: doorkeeper +220, shelf +440, kitchen +660.
+  const X = [0, 220, 440, 660];
+  const ROUTES = {hit: [0, 1, 2, 1, 0], miss: [0, 1, 2, 3, 2, 1, 0], notkept: [0, 1, 2, 3, 2, 1, 0], refused: [0, 1, 0]};
+  const STEP = 280;
+  let film = Promise.resolve();
+  const play = (kind, words) => {
+    film = film.then(() => new Promise((done) => {
+      caption.textContent = words;
+      if (still || !dot.animate) {
+        done();
+        return;
+      }
+      const path = ROUTES[kind] || ROUTES.hit;
+      dot.setAttribute('class', 'flow-dot ' + kind);
+      const anim = dot.animate(path.map((st) => ({transform: `translate(${X[st]}px, 0)`, opacity: 1})), {duration: STEP * (path.length - 1), easing: 'ease-in-out'});
+      path.forEach((st, k) => setTimeout(() => stations.forEach((s, n) => {
+        s.classList.toggle('on', n === st);
+        s.classList.toggle('no', kind === 'refused' && n === 1 && st === 1);
+      }), STEP * k));
+      anim.onfinish = () => {
+        stations.forEach((s) => s.classList.remove('on', 'no'));
+        done();
+      };
+    }));
+    return film;
   };
 
-  // One request at a time: a member's cookie belongs to that one request only.
+  // ── The shelf ────────────────────────────────────────────────────────────
+  const fill = (role, n) => {
+    const s = document.querySelector(`.cache-shelf tr[data-role="${role}"] .slot[data-slot="${n}"]`);
+    if (s && !s.classList.contains('full')) {
+      s.classList.add('full', 'pop');
+      setTimeout(() => s.classList.remove('pop'), 600);
+    }
+  };
+  const empty = (n) => document.querySelectorAll('.cache-shelf .slot').forEach((s) => {
+    if (n === null || s.dataset.slot === String(n) || s.dataset.slot === '0') {
+      s.classList.remove('full');
+    }
+  });
+  // Its slot on the shelf: /magazin is 0, /magazin/1…5 their number; with a parameter other than tracking: none.
+  const shelfOf = (url) => {
+    const m = url.match(/^\/magazin(?:\/([1-5]))?(?:\?(.*))?$/);
+    if (!m) {
+      return null;
+    }
+    const query = (m[2] || '').split('&').filter((p) => p !== '' && !/^utm_/.test(p));
+    return query.length ? null : (m[1] ? Number(m[1]) : 0);
+  };
+
+  // ── The table and the sum ────────────────────────────────────────────────
+  function line(cells, cls) {
+    const none = rows.querySelector('.cache-empty');
+    if (none) {
+      none.remove();
+    }
+    const tr = document.createElement('tr');
+    if (cls) {
+      tr.className = cls;
+    }
+    tr.append(...cells);
+    rows.prepend(tr);
+  }
+  const show = (url, who, kind, label, ms) => {
+    line([text('td', url), text('td', who), text('td', label, kind === 'hit' ? 'text-success fw-bold' : (kind === 'refused' ? 'text-danger' : '')), text('td', fmt(ms))]);
+    seen.push({kind, ms});
+    const avg = (k) => {
+      const list = seen.filter((s) => s.kind === k).map((s) => s.ms);
+      return list.length ? fmt(list.reduce((a, b) => a + b, 0) / list.length) : '–';
+    };
+    const hits = seen.filter((s) => s.kind === 'hit').length;
+    const asked = seen.filter((s) => s.kind === 'hit' || s.kind === 'miss').length;
+    sum.textContent = w.sum.replace('%s', avg('hit')).replace('%s', avg('miss')).replace('%s', asked ? Math.round(100 * hits / asked) + ' %' : '–');
+  };
+  const purged = (what) => line([Object.assign(text('td', '↻ ' + what), {colSpan: 4})], 'table-light');
+
+  // ── The requests: one at a time, so a reader's cookie belongs to its own request ──
   let queue = Promise.resolve();
   const one = (job) => {
     queue = queue.then(job).catch(() => purged('✕'));
     return queue;
   };
-
-  const load = (url, member) => one(async () => {
-    if (member) {
-      document.cookie = 'rs-demo-member=' + members[member] + '; path=/; SameSite=Lax';
+  const load = (url, who, by) => one(async () => {
+    if (who) {
+      document.cookie = 'rs-demo-member=' + sessions[who] + '; path=/; SameSite=Lax';
     }
     const t0 = performance.now();
     try {
       const r = await fetch(url, {cache: 'no-store', credentials: 'same-origin'});
       await r.text();
-      show(url + (r.ok ? '' : ' (' + r.status + ')'), member ? w.member.replace('%s', member) : w.visitor, (r.headers.get('X-RS-Cache') || '').toLowerCase(), performance.now() - t0);
+      const ms = performance.now() - t0;
+      const cache = (r.headers.get('X-RS-Cache') || '').toLowerCase();
+      const place = shelfOf(url);
+      const kind = !r.ok ? 'refused' : (cache.startsWith('hit') ? 'hit' : (cache.startsWith('miss') && place !== null ? 'miss' : 'notkept'));
+      const label = {hit: w.hit, miss: w.miss, refused: w.refused + ' (' + r.status + ')', notkept: w.notKept}[kind];
+      show(url, by || (who === 'E' ? w.editor : (who ? w.member.replace('%s', who) : w.visitor)), kind, label, ms);
+      if ((kind === 'hit' || kind === 'miss') && place !== null) {
+        fill(roleOf(who), place);
+      }
+      play(kind, {hit: w.capHit, miss: w.capMiss, refused: w.capRefused, notkept: w.capNotKept}[kind]);
     } finally {
-      if (member) {
+      if (who) {
         document.cookie = 'rs-demo-member=; path=/; max-age=0; SameSite=Lax';
       }
     }
   });
-
-  const post = (path, body, what) => one(async () => {
+  const post = (path, body, what, after) => one(async () => {
     const r = await fetch(path, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body});
+    if (r.ok) {
+      after();
+      caption.textContent = what === '*' ? w.capClear : w.capPurge;
+    }
     purged(r.ok ? what : what + ' ✕ ' + r.status);
   });
+
+  // What scanners try on a front page: made-up parameters and articles, secrets, an injection.
+  const scan = () => [
+    '/magazin?id=' + rand(),
+    '/magazin?page=' + Math.floor(Math.random() * 9000 + 1000),
+    '/magazin/' + Math.floor(Math.random() * 90 + 6),
+    '/.env',
+    '/magazin?utm_source=bot' + rand(),
+    '/magazin?q=' + encodeURIComponent("' UNION SELECT password FROM users--"),
+    '/wp-login.php',
+  ];
 
   document.querySelector('.cache-load').addEventListener('click', () => load('/magazin/' + article.value));
   document.querySelectorAll('.cache-member').forEach((b) => b.addEventListener('click', () => load('/magazin/' + article.value, b.dataset.member)));
   document.querySelector('.cache-campaign').addEventListener('click', () => load('/magazin/' + article.value + '?utm_source=newsletter&utm_campaign=c' + Math.floor(Math.random() * 1000)));
   document.querySelector('.cache-list').addEventListener('click', () => load('/magazin'));
-  // A line in the table for a purge (what the next load of those pages will be a miss for), or a failure.
-  function purged(what) {
-    const empty = rows.querySelector('.cache-empty');
-    if (empty) {
-      empty.remove();
-    }
-    const tr = document.createElement('tr');
-    tr.className = 'table-light';
-    tr.append(Object.assign(text('td', '↻ ' + what), {colSpan: 4}));
-    rows.prepend(tr);
-  }
-  document.querySelector('.cache-publish').addEventListener('click', () => post('/__cache/publish', 'n=' + encodeURIComponent(article.value), '/magazin/' + article.value + ', /magazin'));
-  document.querySelector('.cache-clear').addEventListener('click', () => post('/__cache/clear', '', '*'));
+  document.querySelector('.cache-scan').addEventListener('click', () => scan().forEach((u) => load(u, '', w.bot)));
+  document.querySelector('.cache-publish').addEventListener('click', () => {
+    const n = article.value;
+    post('/__cache/publish', 'n=' + encodeURIComponent(n), '/magazin/' + n + ', /magazin', () => empty(Number(n)));
+  });
+  document.querySelector('.cache-clear').addEventListener('click', () => post('/__cache/clear', '', '*', () => empty(null)));
 })();

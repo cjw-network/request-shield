@@ -74,13 +74,21 @@ The parts below describe them; a card behaves the same wherever it stands.
   decides them in one request (one by one they would run into `SHOW-PACE`).
   A second website cannot be opened from this page, so nothing here is a
   real request to it.
-- **Cache** (`/cache`, its own page): the shield's HTTP cache
+- **Cache** (`/cache`, its own page) -- first a picture for people who never
+  saw a cache: four stations (visitor, doorkeeper, shelf, kitchen) and a dot
+  that travels them for every click -- green from the shelf, orange when the
+  kitchen cooks and shelves the page, red when the doorkeeper refuses -- and
+  the shelf, one slot per page and role (visitors, members, editors; as this
+  page saw it). *A bot scans the front page* sends what scanners try
+  (made-up parameters and articles, `/.env`, an SQL injection): refused, or
+  answered and never shelved. Then: the shield's HTTP cache
   ([RSF04-03](../../docs/features/RSF04-03-http-cache.md)) in front of
   `/magazin/…`, a small CMS that takes half a second a page. Each button is a
   real request, timed in the browser, with the cache's answer (`X-RS-Cache`):
   the second load a hit; *as member A / B* a cookie `rs-demo-member` for the
   one request (`http-cache-session-cookie`; the page calls `cacheContext()`)
-  -- B gets A's members' page after B's first click; *with a campaign link*
+  -- B gets A's members' page after B's first click; *as an editor* a role of
+  its own (`editor-…`), whose page members never get; *with a campaign link*
   the same hit (`cache-ignore @tracking`, proposal 0048); *Publish article*
   calls `Shield::active()?->purge()`, *Empty the cache* `purge(['*'])`. The
   showcase's own pages are never kept (`http-cache-ttl 0`: only a page with a

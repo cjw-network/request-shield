@@ -314,10 +314,12 @@ if ($path === '/cache') {
 }
 if ($path === '/magazin' || preg_match('#^/magazin/([1-5])$#', $path, $article) === 1) {
     $n = isset($article[1]) ? (int) $article[1] : 0;
-    $member = isset($_COOKIE['rs-demo-member']);
-    if ($member) {
-        // The adapter's one call: this visitor is a member, and this page is the same for every member.
-        Shield::active()?->cacheContext('member', true);
+    // A signed-in reader: a member, or an editor ("editor-…") -- each role its own page.
+    $session = is_string($_COOKIE['rs-demo-member'] ?? null) ? $_COOKIE['rs-demo-member'] : '';
+    $role = $session === '' ? null : (strncmp($session, 'editor-', 7) === 0 ? 'editor' : 'member');
+    if ($role !== null) {
+        // The adapter's one call: this visitor has the role, and this page is the same for everyone with it.
+        Shield::active()?->cacheContext($role, true);
     }
     // The magazine takes no parameter: only its plain pages take their time and may be kept -- a made-up
     // ?page=<n> or ?lang=<x> (names cache-query lets through) neither stalls the server nor fills the cache.
@@ -330,7 +332,8 @@ if ($path === '/magazin' || preg_match('#^/magazin/([1-5])$#', $path, $article) 
     header('xkey: ' . ($n > 0 ? "article-$n magazin" : 'magazin-list magazin'));     // the tags a publish purges
     $title = $n > 0 ? "Artikel $n / Article $n" : 'Magazin / Magazine';
     echo '<!doctype html><html lang="de"><head><meta charset="utf-8"><title>' . htmlspecialchars($title) . '</title></head><body><h1>'
-        . htmlspecialchars($title) . '</h1><p>Gebaut um / built at ' . gmdate('H:i:s') . ' UTC' . ($member ? ' -- für Mitglieder / for members' : '') . '</p></body></html>';
+        . htmlspecialchars($title) . '</h1><p>Gebaut um / built at ' . gmdate('H:i:s') . ' UTC'
+        . ($role === 'member' ? ' -- für Mitglieder / for members' : ($role === 'editor' ? ' -- für Redakteure, mit Bearbeiten-Links / for editors, with edit links' : '')) . '</p></body></html>';
     return;
 }
 if (($path === '/__cache/publish' || $path === '/__cache/clear') && $method === 'POST') {

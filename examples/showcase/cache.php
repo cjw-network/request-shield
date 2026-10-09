@@ -31,8 +31,11 @@ $rules = "set http-cache on\n"
     . "Shield::active()?->purge(['article-3']);\n"
     . "// for a member, while the page is made:\n"
     . "Shield::active()?->cacheContext('member', shared: true);";
-$client = ['words' => ['visitor' => $c['visitor'], 'member' => $c['member'], 'hit' => $c['hit'], 'miss' => $c['miss'], 'none' => $c['none'],
-    'empty' => $c['empty'], 'sum' => $c['sum'], 'lang' => $lang]];
+$client = ['words' => ['visitor' => $c['visitor'], 'member' => $c['member'], 'editor' => $c['editor'], 'bot' => $c['bot'], 'hit' => $c['hit'], 'miss' => $c['miss'], 'none' => $c['none'],
+    'refused' => $c['refused'], 'notKept' => $c['notKept'], 'empty' => $c['empty'], 'sum' => $c['sum'], 'lang' => $lang,
+    'capHit' => $c['capHit'], 'capMiss' => $c['capMiss'], 'capRefused' => $c['capRefused'], 'capNotKept' => $c['capNotKept'], 'capPurge' => $c['capPurge'], 'capClear' => $c['capClear']]];
+// The picture: four stations a request passes -- drawn for people who never saw a cache.
+$stations = [[80, '🙂', $c['stVisitor'], ''], [300, '🛡️', $c['stShield'], $c['stShieldSub']], [520, '🗄️', $c['stCache'], $c['stCacheSub']], [740, '🍳', $c['stApp'], $c['stAppSub']]];
 ?>
 <header id="top" class="hero learn-hero">
   <div class="container">
@@ -42,7 +45,40 @@ $client = ['words' => ['visitor' => $c['visitor'], 'member' => $c['member'], 'hi
   </div>
 </header>
 
-<section id="live" class="section">
+<section id="picture" class="section">
+  <div class="container">
+    <div class="section-head"><h2><?= $e($c['graphTitle']) ?></h2><p class="lead"><?= $e($c['graphLead']) ?></p></div>
+    <div class="learn-panel cache-picture">
+      <svg class="cache-flow" viewBox="0 0 820 190" role="img" aria-labelledby="flow-title">
+        <title id="flow-title"><?= $e($c['graphLead']) ?></title>
+        <line x1="80" y1="80" x2="740" y2="80" class="flow-line"/>
+        <?php foreach ($stations as $i => [$x, $icon, $name, $sub]): ?>
+        <g class="flow-station" data-station="<?= $i ?>">
+          <circle cx="<?= $x ?>" cy="80" r="38" class="flow-node"/>
+          <text x="<?= $x ?>" y="92" text-anchor="middle" class="flow-icon" aria-hidden="true"><?= $icon ?></text>
+          <text x="<?= $x ?>" y="144" text-anchor="middle" class="flow-name"><?= $e($name) ?></text>
+          <text x="<?= $x ?>" y="164" text-anchor="middle" class="flow-sub"><?= $e($sub) ?></text>
+        </g>
+        <?php endforeach ?>
+        <circle class="flow-dot" cx="80" cy="80" r="11"/>
+      </svg>
+      <p class="flow-caption mb-3" aria-live="polite"></p>
+      <h3 class="h6 text-uppercase learn-sub"><?= $e($c['shelf']) ?></h3>
+      <div class="table-responsive">
+        <table class="table table-sm cache-shelf align-middle mb-0">
+          <thead><tr><th scope="col"></th><th scope="col"><?= $e($c['overview']) ?></th><?php for ($i = 1; $i <= 5; $i++): ?><th scope="col"><?= $i ?></th><?php endfor ?></tr></thead>
+          <tbody>
+            <?php foreach ($c['roles'] as $role => $name): ?>
+            <tr data-role="<?= $e($role) ?>"><th scope="row"><?= $e($name) ?></th><?php for ($i = 0; $i <= 5; $i++): ?><td><span class="slot" data-slot="<?= $i ?>" aria-label="<?= $e($name) ?> <?= $i === 0 ? $e($c['overview']) : $i ?>"></span></td><?php endfor ?></tr>
+            <?php endforeach ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="live" class="section section-alt">
   <div class="container">
     <div class="learn-panel">
       <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
@@ -51,10 +87,12 @@ $client = ['words' => ['visitor' => $c['visitor'], 'member' => $c['member'], 'hi
           <?php for ($i = 1; $i <= 5; $i++): ?><option value="<?= $i ?>"><?= $e($c['article']) ?> <?= $i ?></option><?php endfor ?>
         </select>
         <button type="button" class="btn btn-accent cache-load"><i class="bi bi-arrow-down-circle" aria-hidden="true"></i> <?= $e($c['load']) ?></button>
-        <button type="button" class="btn btn-soft cache-member" data-member="A"><i class="bi bi-person"></i> <?= $e(sprintf($c['member'], 'A')) ?></button>
-        <button type="button" class="btn btn-soft cache-member" data-member="B"><i class="bi bi-person"></i> <?= $e(sprintf($c['member'], 'B')) ?></button>
+        <button type="button" class="btn btn-soft cache-member" data-member="A"><i class="bi bi-person" aria-hidden="true"></i> <?= $e(sprintf($c['member'], 'A')) ?></button>
+        <button type="button" class="btn btn-soft cache-member" data-member="B"><i class="bi bi-person" aria-hidden="true"></i> <?= $e(sprintf($c['member'], 'B')) ?></button>
+        <button type="button" class="btn btn-soft cache-member" data-member="E"><i class="bi bi-pencil-square" aria-hidden="true"></i> <?= $e($c['editor']) ?></button>
         <button type="button" class="btn btn-soft cache-campaign"><i class="bi bi-megaphone" aria-hidden="true"></i> <?= $e($c['campaign']) ?></button>
-        <button type="button" class="btn btn-soft cache-list"><i class="bi bi-list-ul" aria-hidden="true"></i> <?= $e($c['list']) ?></button>
+        <button type="button" class="btn btn-soft cache-list"><i class="bi bi-house" aria-hidden="true"></i> <?= $e($c['list']) ?></button>
+        <button type="button" class="btn btn-soft cache-scan"><i class="bi bi-bug" aria-hidden="true"></i> <?= $e($c['scan']) ?></button>
         <button type="button" class="btn btn-dark cache-publish ms-lg-auto"><i class="bi bi-send" aria-hidden="true"></i> <?= $e($c['publish']) ?></button>
         <button type="button" class="btn btn-outline-dark cache-clear"><i class="bi bi-trash" aria-hidden="true"></i> <?= $e($c['clear']) ?></button>
       </div>
@@ -69,7 +107,7 @@ $client = ['words' => ['visitor' => $c['visitor'], 'member' => $c['member'], 'hi
   </div>
 </section>
 
-<section id="notes" class="section section-alt">
+<section id="notes" class="section">
   <div class="container">
     <div class="row g-4">
       <div class="col-lg-6">
@@ -84,7 +122,7 @@ $client = ['words' => ['visitor' => $c['visitor'], 'member' => $c['member'], 'hi
   </div>
 </section>
 
-<section id="dashboard" class="section">
+<section id="dashboard" class="section section-alt">
   <div class="container">
     <div class="section-head"><h2><?= $e($c['dashTitle']) ?></h2><p class="lead"><?= $e($c['dashLead']) ?></p></div>
     <?php if ($learnHere): ?>

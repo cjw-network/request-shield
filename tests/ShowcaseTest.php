@@ -102,6 +102,15 @@ return [
             $req('GET', '/magazin/4', $b);             // member B's first page: the shield learns the role
             $page = $req('GET', '/magazin/3', $b);
             truthy($cache($page) === 'hit' && strpos($page[2], 'for members') !== false, 'member B: the members\' page member A made -- ' . $cache($page));
+            // An editor: a role of their own -- never the members' page, never theirs to members.
+            $ed = ['Cookie' => 'rs-demo-member=editor-e1'] + $host;
+            $req('GET', '/magazin/4', $ed);
+            $page = $req('GET', '/magazin/3', $ed);
+            truthy($cache($page) !== 'hit' && strpos($page[2], 'for editors') !== false, 'an editor: their own page, not the members\' -- ' . $cache($page));
+            truthy(strpos($req('GET', '/magazin/3', $b)[2], 'for editors') === false, 'a member never gets the editors\' page');
+            // A bot's scan of the front page: refused, or answered -- nothing of it kept.
+            same([404, 403], [$req('GET', '/.env', $host)[0], $req('GET', '/magazin?q=' . rawurlencode("' UNION SELECT password FROM users--"), $host)[0]], 'a secret, an injection: refused');
+            same(404, $req('GET', '/magazin?id=x1', $host)[0], 'a parameter the site does not know: 404 (query strict)');
             same(['purged' => ['article-2', 'magazin-list']], json_decode($req('POST', '/__cache/publish', ['Origin' => 'http://127.0.0.1:8090'] + $host, 'n=2')[2], true), 'publish article 2');
             truthy($cache($req('GET', '/magazin/2', $host)) === 'miss', 'article 2 made again');
             $req('GET', '/magazin/5', $host);
