@@ -362,7 +362,12 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .cache-flow .flow-dot.miss { fill: var(--rs-sun); }
 .cache-flow .flow-dot.refused { fill: var(--rs-coral); }
 .cache-flow .flow-dot.notkept { fill: #6c8ebf; }
-.flow-caption { min-height: 1.5em; font-weight: 600; color: var(--rs-ink); }
+.flow-caption { font-weight: 600; color: var(--rs-ink); }
+/* The lines around the picture keep their height whatever they say: the caption two lines, the
+   story and the technical line one -- a longer text ends in "…" (whole in its title, on hover). */
+.flow-caption, .cache-story { line-height: 1.5; height: 3em; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.flow-detail { line-height: 1.5; height: 1.5em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 768px) { .cache-story { height: 1.5em; -webkit-line-clamp: 1; } }
 .cache-shelf .slot { display: inline-block; width: 28px; height: 18px; border-radius: 5px; border: 2px dashed var(--rs-line); vertical-align: middle; transition: background .3s, border-color .3s; }
 .cache-shelf .slot.full { background: var(--rs-mint); border: 2px solid var(--rs-mint-dark); }
 .cache-shelf .slot.pop { animation: rs-slot-pop .5s ease-out; }
@@ -375,7 +380,7 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .cache-flow { max-height: 170px; }
 .cache-shelf .slot { width: 22px; }
 .cache-dock-space { height: 0; }      /* the docked dock's height, set by the script */
-.cache-story { font-weight: 800; color: var(--rs-mint-deeper); min-height: 1.5em; }
+.cache-story { font-weight: 800; color: var(--rs-mint-deeper); }
 .flow-detail { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; color: var(--rs-soft-ink); }
 @media (max-width: 767.98px) {
   .cache-dock-actions { flex-wrap: nowrap !important; overflow-x: auto; padding-bottom: 4px; }
@@ -402,7 +407,15 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
 .cache-dock-log { height: 200px; overflow: auto; border: 1px solid var(--rs-line); border-radius: 12px; background: var(--rs-paper); }
 .cache-dock-log table { font-size: .82rem; margin: 0; }
 .cache-dock-log thead th { position: sticky; top: 0; background: #f5f7fb; color: var(--rs-soft-ink); font-weight: 700; border-bottom: 1px solid var(--rs-line); white-space: nowrap; }
-.cache-dock-log td { background: transparent; border-color: var(--rs-line); vertical-align: middle; }
+.cache-dock-log td { background: transparent; border-color: var(--rs-line); vertical-align: middle; white-space: nowrap; }
+/* Columns as wide as their content; the address takes what is left, a long value ends in "…". */
+.cache-dock-log th, .cache-dock-log td { width: 1%; padding-left: .5rem; padding-right: .5rem; }
+.cache-dock-log th:nth-child(2), .cache-dock-log td.url { width: auto; }
+.cache-dock-log td.cut { overflow: hidden; text-overflow: ellipsis; }
+.cache-dock-log td.url { max-width: 30ch; }
+.cache-dock-log td.tech-col { max-width: 18ch; }
+.cache-dock-log td.num { text-align: right; }
+.cache-dock-log tr.cache-purge td { white-space: normal; }
 .cache-dock-log tbody tr:nth-child(even) td { background: rgba(31, 42, 68, .025); }
 .cache-dock-log tr.cache-purge td { background: var(--rs-sky-bg) !important; color: var(--rs-ink); font-weight: 600; }
 .cache-dock-log .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem; }

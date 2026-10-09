@@ -274,7 +274,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   page (`cacheContext()`), publishing one article (`Shield::purge()`),
   campaign links as hits (`cache-ignore @tracking`); the showcase now keeps
   the statistics with response times, so the dashboard shows hits against
-  misses (this machine only).
+  misses (this machine only). The picture keeps its height whatever a
+  request's headers say (its lines end in "…", whole on hover), and the
+  log's columns are as wide as their content -- the address takes the rest.
 - **Working with Exponential 6's own HTTP cache** (0031 step G.6, part 1;
   proposal 0048): the statistics read its `X-Exp-Cache` as they read
   `X-RS-Cache` -- `HIT` and `STALE` hits, `MISS` a miss, `BYPASS` a page it

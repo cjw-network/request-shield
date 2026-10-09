@@ -67,10 +67,15 @@
   const ROUTES = {hit: [0, 1, 2, 1, 0], miss: [0, 1, 2, 3, 2, 1, 0], notkept: [0, 1, 2, 3, 2, 1, 0], refused: [0, 1, 0]};
   const STEP = 280;
   let film = Promise.resolve();
+  // The lines below the picture keep their height: a long one ends in "…", whole on hover.
+  const say = (el, s2) => {
+    el.textContent = s2;
+    el.title = s2;
+  };
   const play = (kind, text1, text2) => {
     film = film.then(() => new Promise((done) => {
-      caption.textContent = text1;
-      detail.textContent = text2 || '';
+      say(caption, text1);
+      say(detail, text2 || '');
       if (still || !dot.animate) {
         done();
         return;
@@ -136,9 +141,11 @@
     td.append(text('span', label, 'pill pill-' + kind));
     return td;
   };
-  const techCell = (s2) => text('td', s2 || '—', 'tech-col mono');
+  // Long values (an address with a campaign, a header) end in "…" -- the whole value on hover.
+  const cut = (td) => Object.assign(td, {title: td.textContent});
+  const techCell = (s2) => cut(text('td', s2 || '—', 'tech-col mono cut'));
   const show = (url, who, kind, label, ms, t) => {
-    line([text('td', clock(), 'mono when'), text('td', url, 'mono'), text('td', who), pill(kind, label), text('td', fmt(ms), 'mono'),
+    line([text('td', clock(), 'mono when'), cut(text('td', url, 'mono url cut')), text('td', who), pill(kind, label), text('td', fmt(ms), 'mono num'),
       techCell(t.status), techCell(t.xrs), techCell(t.cache), techCell(t.cc), techCell(t.age), techCell(t.role)]);
     seen.push({kind, ms});
     const avg = (k) => {
@@ -189,8 +196,8 @@
     if (r.ok) {
       after();
       film = film.then(() => {
-        caption.textContent = words(what === '*' ? 'capClear' : 'capPurge');     // after the dot that is still on its way
-        detail.textContent = 'POST ' + path + (body ? ' ' + body : '') + ' → ' + r.status;
+        say(caption, words(what === '*' ? 'capClear' : 'capPurge'));     // after the dot that is still on its way
+        say(detail, 'POST ' + path + (body ? ' ' + body : '') + ' → ' + r.status);
       });
     }
     purged(r.ok ? what : what + ' ✕ ' + r.status);
@@ -322,7 +329,7 @@
   let round = 0;          // one run at a time: a run stopped and started again is a new round
   const wait = (ms) => new Promise((go) => setTimeout(go, ms));
   const tell = (key, n) => {
-    story.textContent = w.story[key].replace('%s', n);
+    say(story, w.story[key].replace('%s', n));
   };
   const step = async (id, key, n, job) => {
     if (!auto || id !== round) {
@@ -373,7 +380,7 @@
         }
       });
     } else {
-      story.textContent = '';
+      say(story, '');
     }
   };
   autoButton.addEventListener('click', () => setAuto(!auto));
