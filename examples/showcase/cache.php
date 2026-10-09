@@ -135,8 +135,6 @@ $both = static fn (string $plain, string $tech): string => ' data-plain="' . $e(
 </aside>
   </div>
 </section>
-<div class="cache-dock-space" aria-hidden="true"></div>
-
 <section id="notes" class="section">
   <div class="container">
     <div class="row g-4">
@@ -164,6 +162,8 @@ $both = static fn (string $plain, string $tech): string => ' data-plain="' . $e(
 
 <footer class="footer"><div class="container text-center small"><?= $e($t['footer']) ?>
   <p class="ai-note mb-0 mt-2"><i class="bi bi-stars" aria-hidden="true"></i> <?= $e($t['aiNote']) ?></p></div></footer>
+
+<div class="cache-dock-space" aria-hidden="true"></div>
 
 <script id="cache-data" type="application/json"><?= json_encode($client, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?></script>
 <script src="/assets/vendor/bootstrap/bootstrap.bundle.min.js"></script>
