@@ -70,6 +70,14 @@ query drop at /shop/**            # the same, written with "at"
   name: unknown, and scanned. A name with brackets or encoded bytes
   (`page[<x>]`) is always scanned.
 - Under `set mode monitor` nothing is left out: the mode only watches.
+- **The application has to read `$_GET`, `$_REQUEST`, `QUERY_STRING` or
+  `REQUEST_URI`.** A parameter left out (`cache-ignore`, `query drop`) is
+  still in PHP's own copy of the input, which `filter_input(INPUT_GET, …)`,
+  `filter_input_array()` and `filter_has_var()` read, and, under PHP-FPM,
+  in `getenv('QUERY_STRING')`. PHP offers no way to change them. An
+  application that reads them can make a page from a parameter the cache
+  key does not hold: name such parameters with `cache-query` (or `query`),
+  or leave `query drop` and `cache-ignore` off for it.
 
 ## Use cases
 

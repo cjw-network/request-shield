@@ -65,10 +65,10 @@ final class CacheableRule implements Rule
             return Decision::allowUncached('method');
         }
         // More parameters than PHP reads (max_input_vars): $_GET holds fewer than the query -- never kept.
-        // (Counted only past 20 "&": a usual query pays one substr_count.)
+        // (Counted only when there are that many "&": a usual query pays one substr_count.)
         if ($request->query !== '') {
             $limits = self::$limits ??= [(int) ini_get('max_input_vars'), str_replace('&', '', (string) ini_get('arg_separator.input'))];
-            if (substr_count($request->query, '&') >= 20 && $limits[0] > 0 && count($request->queryPairs()) > $limits[0]) {
+            if ($limits[0] > 0 && substr_count($request->query, '&') >= $limits[0] && count($request->queryPairs()) > $limits[0]) {
                 return Decision::allowUncached('too many parameters');
             }
             // PHP splitting on another character too (arg_separator.input "&;"): the shield's pairs are not PHP's.

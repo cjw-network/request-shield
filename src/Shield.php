@@ -356,13 +356,10 @@ final class Shield
             // the application reads exactly the query the cache key is made of.
             parse_str($query, $get);
             $_GET = $get;
-            // $_REQUEST as PHP makes it: the sources request_order names, the later winning.
+            // $_REQUEST as PHP makes it: the sources request_order names, the later winning -- arrays merged.
             $merged = [];
             foreach (str_split(strtoupper((string) (ini_get('request_order') ?: ini_get('variables_order')))) as $source) {
-                $from = $source === 'G' ? $_GET : ($source === 'P' ? $_POST : ($source === 'C' ? $_COOKIE : []));
-                foreach ($from as $k => $v) {
-                    $merged[$k] = $v;
-                }
+                $merged = self::mergeInput($merged, $source === 'G' ? $_GET : ($source === 'P' ? $_POST : ($source === 'C' ? $_COOKIE : [])));
             }
             $_REQUEST = $merged;
             /** @var array<string, mixed> $server */
@@ -376,6 +373,23 @@ final class Shield
             $_SERVER['REQUEST_SHIELD_CACHE_LOOKUP'] = $path . ($pairs === [] ? '' : '?' . implode('&', $pairs));
         }
         return $request;
+    }
+
+    /**
+     * Two input arrays as PHP merges them into $_REQUEST: the later wins, an
+     * array under the same name in both is merged the same way (?a[x]=1 and a
+     * cookie a[y]=2 are a = [x => 1, y => 2]).
+     *
+     * @param array<mixed> $into
+     * @param array<mixed> $from
+     * @return array<mixed>
+     */
+    private static function mergeInput(array $into, array $from): array
+    {
+        foreach ($from as $k => $v) {
+            $into[$k] = is_array($v) && is_array($into[$k] ?? null) ? self::mergeInput($into[$k], $v) : $v;
+        }
+        return $into;
     }
 
     /**

@@ -102,6 +102,15 @@ parameter.
 The shield only marks; the cache has to honour the mark. Adapters for
 Exponential, WordPress and Ibexa (planned) do that for their caches.
 
+- **The application has to read `$_GET`, `$_REQUEST`, `QUERY_STRING` or
+  `REQUEST_URI`.** A parameter left out (`cache-ignore`, `query drop`) is
+  still in PHP's own copy of the input, which `filter_input(INPUT_GET, …)`,
+  `filter_input_array()` and `filter_has_var()` read, and, under PHP-FPM,
+  in `getenv('QUERY_STRING')`. PHP offers no way to change them. An
+  application that reads them can make a page from a parameter the cache
+  key does not hold: name such parameters with `cache-query` (or `query`),
+  or leave `query drop` and `cache-ignore` off for it.
+
 ## Examples from the demo
 
 What the demo's rules decide for this feature -- the same lines `request-shield test` checks and the demo's front page shows (`php -S 127.0.0.1:8080 examples/demo/router.php`).

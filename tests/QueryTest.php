@@ -212,6 +212,13 @@ return [
             . '$d = (new \\CjwNetwork\\RequestShield\\Rule\\CacheableRule(null, null))->check($r, 1.0); echo $d === null ? "kept" : $d->reason;';
         same('too many parameters', trim((string) shell_exec(escapeshellarg(PHP_BINARY) . ' -d max_input_vars=25 -r ' . escapeshellarg($code) . ' 2>&1')), '30 parameters, PHP reads 25');
         same('kept', trim((string) shell_exec(escapeshellarg(PHP_BINARY) . ' -d max_input_vars=1000 -r ' . escapeshellarg($code) . ' 2>&1')), 'PHP reads them all');
+        same('too many parameters', trim((string) shell_exec(escapeshellarg(PHP_BINARY) . ' -d max_input_vars=2 -r ' . escapeshellarg(str_replace('range(1, 30)', 'range(1, 3)', $code)) . ' 2>&1')), 'a small limit too: 3 parameters, PHP reads 2');
+    },
+    'RSF04-01 $_REQUEST rebuilt as PHP merges it: the later source wins, arrays under one name merged' => function (): void {
+        $merge = new ReflectionMethod(Shield::class, 'mergeInput');
+        $merge->setAccessible(true);
+        same(['a' => ['x' => '1', 'y' => '2'], 'b' => '3', 'c' => '4'], $merge->invoke(null, ['a' => ['x' => '1'], 'b' => 'old', 'c' => '4'], ['a' => ['y' => '2'], 'b' => '3']));
+        same(['a' => 'flat'], $merge->invoke(null, ['a' => ['x' => '1']], ['a' => 'flat']), 'a value replaces an array');
     },
     'RSF02-05 without strict: nothing is refused for being unknown -- answered, not cached' => function (): void {
         $s = querySettings("cache-query page\nquery page int\n");
