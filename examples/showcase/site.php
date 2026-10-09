@@ -306,6 +306,36 @@ if ($path === '/learn') {
     require __DIR__ . '/learn.php';
     return;
 }
+// The tab "Cache": the page that shows the HTTP cache at work, and the magazine it asks for -- a
+// small CMS that takes half a second for a page, as a real one does with its database and templates.
+if ($path === '/cache') {
+    require __DIR__ . '/cache.php';
+    return;
+}
+if ($path === '/magazin' || preg_match('#^/magazin/([1-5])$#', $path, $article) === 1) {
+    $n = isset($article[1]) ? (int) $article[1] : 0;
+    $member = isset($_COOKIE['rs-demo-member']);
+    if ($member) {
+        // The adapter's one call: this visitor is a member, and this page is the same for every member.
+        Shield::active()?->cacheContext('member', true);
+    }
+    usleep(random_int(350000, 650000));
+    header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: public, max-age=300');
+    header('xkey: ' . ($n > 0 ? "article-$n magazin" : 'magazin-list magazin'));     // the tags a publish purges
+    $title = $n > 0 ? "Artikel $n / Article $n" : 'Magazin / Magazine';
+    echo '<!doctype html><html lang="de"><head><meta charset="utf-8"><title>' . htmlspecialchars($title) . '</title></head><body><h1>'
+        . htmlspecialchars($title) . '</h1><p>Gebaut um / built at ' . gmdate('H:i:s') . ' UTC' . ($member ? ' -- für Mitglieder / for members' : '') . '</p></body></html>';
+    return;
+}
+if (($path === '/__cache/publish' || $path === '/__cache/clear') && $method === 'POST') {
+    // A CMS after publishing: the shield's purge in the same process -- no PURGE request.
+    $n = (int) ($_POST['n'] ?? 0);
+    $tags = $path === '/__cache/clear' ? ['*'] : ($n >= 1 && $n <= 5 ? ["article-$n", 'magazin-list'] : []);
+    Shield::active()?->purge($tags);
+    showcaseJson(200, ['purged' => $tags]);
+    return;
+}
 if ((strncmp($path, '/__learn/', 9) === 0 && $method === 'POST') || $path === '/__learned' || $path === '/__replay') {
     if (!$learnHere || $learnStore === null) {
         showcaseJson(403, ['error' => 'only on this machine']);        // a run, and what it recorded, is this machine's

@@ -40,6 +40,7 @@ $self = $here === 'main' ? '/' : '/' . $here;
         <li class="nav-item"><a class="nav-link<?= $here === $k ? ' active' : '' ?>" href="<?= $page ? '/' . $k . '?lang=' . $lang : $e($home) . '#' . $k ?>"<?= $here === $k ? ' aria-current="page"' : '' ?>><?= $e($t['nav'][$k]) ?></a></li>
         <?php endforeach ?>
         <li class="nav-item"><a class="nav-link<?= $here === 'learn' ? ' active' : '' ?>" href="/learn?lang=<?= $lang ?>"<?= $here === 'learn' ? ' aria-current="page"' : '' ?>><i class="bi bi-magic"></i> <?= $e($t['nav']['learn']) ?></a></li>
+        <li class="nav-item"><a class="nav-link<?= $here === 'cache' ? ' active' : '' ?>" href="/cache?lang=<?= $lang ?>"<?= $here === 'cache' ? ' aria-current="page"' : '' ?>><i class="bi bi-lightning-charge"></i> <?= $e($t['nav']['cache']) ?></a></li>
         <li class="nav-item ms-lg-3"><div class="btn-group btn-group-sm" role="group" aria-label="Language">
           <a class="btn <?= $lang === 'de' ? 'btn-dark' : 'btn-outline-dark' ?>" href="<?= $self ?>?lang=de" hreflang="de">DE</a>
           <a class="btn <?= $lang === 'en' ? 'btn-dark' : 'btn-outline-dark' ?>" href="<?= $self ?>?lang=en" hreflang="en">EN</a>

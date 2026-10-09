@@ -78,6 +78,29 @@ function showcaseTriesForTest(): array
 }
 
 return [
+    'RSF04-03 showcase, the tab "Cache": the magazine kept and given out before the application; a campaign link the same page; members share theirs; publishing purges one article; the showcase\'s own pages are never kept' => function (): void {
+        withShowcase(static function (callable $req): void {
+            $host = ['Host' => '127.0.0.1:8090'];       // a name on http-cache-hosts, as a visitor of the showcase sends it
+            $cache = static fn (array $r): string => preg_match('/^X-RS-Cache: (.*)$/mi', $r[4], $m) === 1 ? trim($m[1]) : '';
+            same(200, $req('GET', '/cache', $host)[0], 'the tab');
+            $first = $req('GET', '/magazin/2', $host);
+            $second = $req('GET', '/magazin/2', $host);
+            truthy($cache($first) === 'miss' && $cache($second) === 'hit' && $second[2] === $first[2], 'the second load: from the cache, the same page');
+            truthy($cache($req('GET', '/magazin/2?utm_source=nl&utm_campaign=c7', $host)) === 'hit', 'a campaign link: the same kept page (cache-ignore @tracking)');
+            $a = ['Cookie' => 'rs-demo-member=a1'] + $host;
+            $b = ['Cookie' => 'rs-demo-member=b1'] + $host;
+            $req('GET', '/magazin/3', $a);
+            $req('GET', '/magazin/4', $b);             // member B's first page: the shield learns the role
+            $page = $req('GET', '/magazin/3', $b);
+            truthy($cache($page) === 'hit' && strpos($page[2], 'for members') !== false, 'member B: the members\' page member A made -- ' . $cache($page));
+            same(['purged' => ['article-2', 'magazin-list']], json_decode($req('POST', '/__cache/publish', ['Origin' => 'http://127.0.0.1:8090'] + $host, 'n=2')[2], true), 'publish article 2');
+            truthy($cache($req('GET', '/magazin/2', $host)) === 'miss' && $cache($req('GET', '/magazin/1', $host)) !== 'hit', 'article 2 made again');
+            $req('GET', '/magazin/5', $host);
+            truthy($cache($req('GET', '/magazin/5', $host)) === 'hit', 'another article still a hit after publishing article 2');
+            $req('GET', '/', $host);
+            truthy(strpos($req('GET', '/', $host)[4], 'X-RS-Cache: hit') === false, 'the showcase\'s own pages: never kept (http-cache-ttl 0, no max-age of theirs)');
+        });
+    },
     'RSF05-04 the showcase: request-shield test decides every try its page shows, and they all hold' => function (): void {
         exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(rsCli()) . ' test ' . escapeshellarg(dirname(__DIR__) . '/examples/showcase/showcase.rules') . ' 2>&1', $out, $code);
         same(0, $code, implode("\n", array_slice($out, -5)));

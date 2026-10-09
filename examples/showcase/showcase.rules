@@ -79,6 +79,17 @@ match /api/** {
 
 crawlers ai-training block                            # verified AI training crawlers: no
 
+# The HTTP cache (the tab "Cache"): the magazine's pages, kept and given out before the application runs.
+set         http-cache on                             # the shield's own page cache
+set         http-cache-hosts 127.0.0.1:8090 localhost:8090 ${REQUEST_SHIELD_SHOWCASE_HOST:-127.0.0.1:8090}   # the names visitors use, port and all
+set         http-cache-ttl 0                          # only a page that says so itself is kept (the magazine's max-age) -- the showcase's own pages never
+set         http-cache-cookies _ga _ga_* _gid _gat* _pk_* _fbp rsp rss rsd rs-learn   # the showcase's own cookies do not make a page someone's own
+set         http-cache-session-cookie rs-demo-member  # a member of the magazine: one page for every member
+cache-ignore @tracking                                # campaign links: one kept page for all of them
+[SHOW-CACHE]   allow POST /__cache/publish /__cache/clear   # the tab's buttons: publish an article, empty the cache
+expect GET  /magazin/1              from 198.51.100.31 answered              # (the magazine: not a card)
+set         stats requests pages times                # the statistics, with response times: hits and misses side by side (/rs/stats, this machine)
+
 # The showcase's own settings (a real site keeps the defaults).
 set         debug-header on                           # X-RS: <decision> on every answer, so the page can show it
 set         crawler-verify ranges                     # no DNS lookups from a demo

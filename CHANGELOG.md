@@ -244,6 +244,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   log (path without query, peak memory, no address). Off by default; with it
   about +2 µs a request with APCu. `CachePlugin::refusal()` says why an answer
   is not kept (keep() uses it too). Settings FORMAT 57.
+- **The showcase's tab "Cache"** (`/cache`): the HTTP cache at work in front
+  of a magazine that takes half a second a page -- every button a real
+  request, timed in the browser: hits and misses, members sharing their
+  page (`cacheContext()`), publishing one article (`Shield::purge()`),
+  campaign links as hits (`cache-ignore @tracking`); the showcase now keeps
+  the statistics with response times, so the dashboard shows hits against
+  misses (this machine only).
 - **Working with Exponential 6's own HTTP cache** (0031 step G.6, part 1;
   proposal 0048): the statistics read its `X-Exp-Cache` as they read
   `X-RS-Cache` -- `HIT` and `STALE` hits, `MISS` a miss, `BYPASS` a page it

@@ -18,6 +18,7 @@ Open http://127.0.0.1:8090/ (`?lang=de` or `?lang=en`). Four pages, one menu:
 | `/try` | every card to try, by group -- the burst, the search and sign-in that count for themselves, the API with its JSON form |
 | `/exponential` | the Exponential example: its rules section by section, every example checked on the server |
 | `/learn` | building rules: a learning run, live |
+| `/cache` | the HTTP cache at work: a slow magazine, hits and misses timed, members, publishing, campaign links |
 
 The parts below describe them; a card behaves the same wherever it stands.
 
@@ -73,6 +74,20 @@ The parts below describe them; a card behaves the same wherever it stands.
   decides them in one request (one by one they would run into `SHOW-PACE`).
   A second website cannot be opened from this page, so nothing here is a
   real request to it.
+- **Cache** (`/cache`, its own page): the shield's HTTP cache
+  ([RSF04-03](../../docs/features/RSF04-03-http-cache.md)) in front of
+  `/magazin/…`, a small CMS that takes half a second a page. Each button is a
+  real request, timed in the browser, with the cache's answer (`X-RS-Cache`):
+  the second load a hit; *as member A / B* a cookie `rs-demo-member` for the
+  one request (`http-cache-session-cookie`; the page calls `cacheContext()`)
+  -- B gets A's members' page after B's first click; *with a campaign link*
+  the same hit (`cache-ignore @tracking`, proposal 0048); *Publish article*
+  calls `Shield::active()?->purge()`, *Empty the cache* `purge(['*'])`. The
+  showcase's own pages are never kept (`http-cache-ttl 0`: only a page with a
+  max-age of its own is). `set stats requests pages times` puts the times by
+  hit and miss into the statistics (`/rs/stats`, this machine only). The cache
+  keeps what visitors send as host: `127.0.0.1:8090` and `localhost:8090`, or
+  `REQUEST_SHIELD_SHOWCASE_HOST=www.example.org` on a demo server.
 - **Build rules** (`/learn`, its own page): a learning run (proposal 0016)
   for your browser -- *Start recording* sets the cookie `rs-learn`, the
   showcase you click through in a second tab is recorded by shape (paths,
