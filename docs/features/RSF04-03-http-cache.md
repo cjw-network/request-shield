@@ -298,8 +298,11 @@ php bin/request-shield cache site.rules expired            # cron: remove what h
 **In the dashboard:** the tab *HTTP cache* (`/rs/cache`, below
 `dashboard-path`; the administrator only, while `http-cache` is on) shows
 what the cache holds against its caps -- memory (an upper bound, APCu's free
-memory beside it) and disk -- leads to the response times by hit and miss in
-the statistics, and purges by tag, below a path or everything (forms with
+memory beside it) and disk -- a bar per day for the last two weeks (from the
+cache, asked the site and kept, not to be kept, past the cache; the share of
+hits above each bar, the numbers as a table; with the statistics' part
+`times`), leads to the response times by hit and miss in the statistics,
+and purges by tag, below a path or everything (forms with
 the page's token, an HMAC of the viewer's address and the hour, as the lists'
 page has).
 

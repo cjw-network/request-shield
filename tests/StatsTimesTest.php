@@ -281,6 +281,24 @@ return [
             apcu_clear_cache();
         }
     },
+    'RSF04-03 the cache\'s page: a bar per day -- hits, misses, not kept, past the cache, from the statistics\' times; none without them' => function (): void {
+        $dir = timesDir();
+        try {
+            $s = Settings::from(['storeDir' => $dir, 'store' => 'file', 'ext' => ['stats' => ['enabled' => true, 'parts' => ['requests', 'times']], 'cache' => ['enabled' => true]]]);
+            $now = (int) strtotime('2026-09-10 12:00 UTC');
+            Stats::of($s)->count(['rt:people|hit|2', 'rt:people|hit|2', 'rt:crawlers|hit|1', 'rt:people|miss|7'], $now - 86400);
+            Stats::of($s)->count(['rt:people|nostore|6', 'rt:people|past|5', 'rn:cookie'], $now);
+            $daily = \CjwNetwork\RequestShield\Cache\CachePage::daily($s, 3, $now);
+            same(['20260908' => ['hit' => 0, 'miss' => 0, 'nostore' => 0, 'past' => 0], '20260909' => ['hit' => 3, 'miss' => 1, 'nostore' => 0, 'past' => 0],
+                '20260910' => ['hit' => 0, 'miss' => 0, 'nostore' => 1, 'past' => 1]], $daily, 'per day, every kind of visitor added up');
+            $html = \CjwNetwork\RequestShield\Cache\CachePage::render($s, ['lang' => 'en', 'now' => $now]);
+            truthy(strpos($html, '<svg class="days"') !== false && strpos($html, '75%') !== false && strpos($html, 'Sep 9 · from the cache: 3') !== false, 'the bars, the share of hits, a tooltip');
+            same(null, \CjwNetwork\RequestShield\Cache\CachePage::daily(Settings::from(['storeDir' => $dir, 'store' => 'file', 'ext' => ['stats' => ['enabled' => true, 'parts' => ['requests']]]]), 3, $now),
+                'the statistics without times: no bars');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'RSF06-03 times: the speed card\'s hours are the period\'s last 48 -- a period in the past has its curve too' => function (): void {
         $dir = timesDir();
         try {

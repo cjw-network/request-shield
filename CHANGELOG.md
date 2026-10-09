@@ -246,7 +246,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   is not kept (keep() uses it too). Settings FORMAT 57.
 - **The HTTP cache's page in the dashboard** (`/rs/cache`, proposal 0047's
   area "Cache"): memory and disk against their caps (`http-cache-memory`,
-  `http-cache-disk`), the way to the response times by hit and miss, purges
+  `http-cache-disk`), a bar per day for the last two weeks -- hits, misses,
+  not kept, past the cache, the share of hits above each (from the
+  statistics' part `times`; colours checked for colour blindness, light and
+  dark; the numbers also as a table) -- the way to the response times by
+  hit and miss, purges
   by tag, below a path or everything (forms with the page's token); a tab
   only while `http-cache` is on, for the administrator. Settings `FORMAT` 65.
 - **The showcase's tab "Cache"** (`/cache`): the HTTP cache at work in front

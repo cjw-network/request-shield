@@ -37,6 +37,9 @@ final class CachePage implements RoutePage
             'memory' => 'Memory (APCu)', 'memNone' => 'No answers in memory: %s.', 'memNoApcu' => 'APCu is not here', 'memOff' => 'http-cache-memory-object 0',
             'memUsed' => 'at most %s of %s (http-cache-memory) -- answers up to %s each; APCu has %s of %s free',
             'disk' => 'Disk', 'diskUsed' => '%s answers, %s of %s (http-cache-disk)', 'diskNoCap' => '%s answers, %s -- no cap (http-cache-disk 0)',
+            'daily' => 'Per day', 'dailyOff' => 'With the statistics and their part times (set stats requests pages times) a bar per day shows hits and misses here.',
+            'k.hit' => 'from the cache', 'k.miss' => 'asked the site, kept', 'k.nostore' => 'asked the site, not to be kept', 'k.past' => 'not for the cache',
+            'rate' => '%s %% hits', 'asTable' => 'As a table', 'day' => 'Day', 'none' => 'Nothing counted in these days yet.',
             'times' => 'Hits and misses', 'timesLink' => 'The response times by hit and miss are in the statistics', 'timesOff' => 'With the statistics and their part times (set stats requests pages times) the dashboard shows the response times by hit and miss.',
             'purge' => 'Purge', 'tags' => 'Tags', 'tagsHint' => 'c52 l2 article-3 -- what the pages carry (xkey, X-Cache-Tags …)', 'path' => 'Below a path', 'pathHint' => '/news/ -- every host',
             'all' => 'Everything', 'purgeTags' => 'Purge the tags', 'purgePath' => 'Remove below the path', 'purgeAll' => 'Empty the cache',
@@ -48,6 +51,9 @@ final class CachePage implements RoutePage
             'memory' => 'Speicher (APCu)', 'memNone' => 'Keine Antworten im Speicher: %s.', 'memNoApcu' => 'APCu ist nicht da', 'memOff' => 'http-cache-memory-object 0',
             'memUsed' => 'höchstens %s von %s (http-cache-memory) -- Antworten bis %s; APCu hat %s von %s frei',
             'disk' => 'Platte', 'diskUsed' => '%s Antworten, %s von %s (http-cache-disk)', 'diskNoCap' => '%s Antworten, %s -- ohne Grenze (http-cache-disk 0)',
+            'daily' => 'Pro Tag', 'dailyOff' => 'Mit der Statistik und ihrem Teil times (set stats requests pages times) zeigt hier ein Balken pro Tag Treffer und Miss.',
+            'k.hit' => 'aus dem Cache', 'k.miss' => 'Website gefragt, gespeichert', 'k.nostore' => 'Website gefragt, nicht speicherbar', 'k.past' => 'nicht für den Cache',
+            'rate' => '%s %% Treffer', 'asTable' => 'Als Tabelle', 'day' => 'Tag', 'none' => 'In diesen Tagen ist noch nichts gezählt.',
             'times' => 'Treffer und Miss', 'timesLink' => 'Die Antwortzeiten nach Treffer und Miss stehen in der Statistik', 'timesOff' => 'Mit der Statistik und ihrem Teil times (set stats requests pages times) zeigt das Dashboard die Antwortzeiten nach Treffer und Miss.',
             'purge' => 'Verwerfen', 'tags' => 'Tags', 'tagsHint' => 'c52 l2 article-3 -- was die Seiten tragen (xkey, X-Cache-Tags …)', 'path' => 'Unter einem Pfad', 'pathHint' => '/news/ -- jeder Host',
             'all' => 'Alles', 'purgeTags' => 'Tags verwerfen', 'purgePath' => 'Unter dem Pfad entfernen', 'purgeAll' => 'Cache leeren',
@@ -160,6 +166,13 @@ final class CachePage implements RoutePage
         $st = (new FileCache($c['dir']))->stats();
         $h .= ($c['disk'] > 0 ? self::bar($st['bytes'], $c['disk']) . '<p>' . $e(sprintf($t['diskUsed'], (string) $st['entries'], $mb($st['bytes']), $mb($c['disk']))) . '</p>'
             : '<p>' . $e(sprintf($t['diskNoCap'], (string) $st['entries'], $mb($st['bytes']))) . '</p>') . '</div></div>';
+        // Per day: what the cache did, from the statistics' counts (0046's times).
+        $h .= '<div class="card">' . Frame::h2($t['daily'], $s, 'RSF06-03', 'how-fast-the-site-answered', $lang);
+        $daily = self::daily($s, 14, is_int($o['now'] ?? null) ? $o['now'] : null);
+        $h .= $daily === null ? '<p class="note">' . $e($t['dailyOff']) . '</p>' : self::chart($daily, $t, $lang) . '</div>';
+        if ($daily === null) {
+            $h .= '</div>';
+        }
         // The times: the statistics' (0046).
         $h .= '<div class="card">' . Frame::h2($t['times'], $s, 'RSF06-03', 'how-fast-the-site-answered', $lang)
             . (isset($links['all']) ? '<p><a href="' . $e($links['all'] . '?lang=' . $lang) . '">' . $e($t['timesLink']) . ' →</a></p>' : '<p class="note">' . $e($t['timesOff']) . '</p>') . '</div>';
@@ -175,6 +188,113 @@ final class CachePage implements RoutePage
         return Frame::page($title, $lang, $h, $o, self::CSS);
     }
 
+    /** The cache kinds, bottom to top of a day's bar (the statistics' words). */
+    public const KINDS = ['hit', 'miss', 'nostore', 'past'];
+
+    /**
+     * What the cache did per day over the last $days days -- the statistics'
+     * counts of answers by cache kind (rt: … with the part times), the
+     * running hour included; null without the statistics or their times.
+     *
+     * @return array<string, array{hit: int, miss: int, nostore: int, past: int}>|null day (yyyymmdd) => counts
+     */
+    public static function daily(Settings $s, int $days = 14, ?int $now = null): ?array
+    {
+        if (!class_exists(\CjwNetwork\RequestShield\Stats\Report\StatsReport::class) || !class_exists(\CjwNetwork\RequestShield\Stats\StatsExtension::class)) {
+            return null;
+        }
+        $st = \CjwNetwork\RequestShield\Stats\StatsExtension::of($s);
+        if (!$st['enabled'] || !in_array('times', $st['parts'], true)) {
+            return null;
+        }
+        $now ??= time();
+        $out = [];
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $out[gmdate('Ymd', $now - $i * 86400)] = ['hit' => 0, 'miss' => 0, 'nostore' => 0, 'past' => 0];
+        }
+        $read = \CjwNetwork\RequestShield\Stats\Report\StatsReport::read($s, null, (string) array_key_first($out), gmdate('Ymd', $now));
+        foreach ($read['days'] as $day => $counts) {
+            if (!isset($out[$day])) {
+                continue;
+            }
+            foreach ($counts as $key => $n) {
+                if (strncmp((string) $key, 'rt:', 3) === 0) {
+                    $kind = explode('|', (string) $key)[1] ?? '';
+                    if (isset($out[$day][$kind])) {
+                        $out[$day][$kind] += $n;
+                    }
+                }
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * The days as stacked bars (one per day, the kinds bottom to top in a
+     * fixed order, 2 px apart), each with its share of hits above it, a
+     * legend, a tooltip on every part and the numbers as a table.
+     *
+     * @param array<string, array{hit: int, miss: int, nostore: int, past: int}> $daily
+     * @param array<string, string> $t
+     */
+    private static function chart(array $daily, array $t, string $lang): string
+    {
+        $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $n = static fn (int $v): string => number_format($v, 0, ',', $lang === 'de' ? '.' : ',');
+        $totals = array_map('array_sum', $daily);
+        if ($totals === [] || array_sum($totals) === 0) {
+            return '<p class="note">' . $e($t['none']) . '</p>';
+        }
+        $max = max(1, ...array_values($totals));
+        $w = 700;
+        $top = 22;
+        $plot = 150;
+        $slot = $w / count($daily);
+        $bar = min(34.0, $slot * 0.62);
+        $svg = '';
+        $i = 0;
+        foreach ($daily as $day => $c) {
+            $x = $i * $slot + ($slot - $bar) / 2;
+            $y = $top + $plot;
+            $label = date($lang === 'de' ? 'd.m.' : 'M j', (int) strtotime($day . ' UTC'));
+            foreach (self::KINDS as $k) {
+                if ($c[$k] <= 0) {
+                    continue;
+                }
+                $height = max(1.5, $plot * $c[$k] / $max);
+                $y -= $height;
+                $svg .= '<rect class="k-' . $k . '" x="' . round($x, 1) . '" y="' . round($y, 1) . '" width="' . round($bar, 1) . '" height="' . round(max(0.5, $height - 2), 1) . '" rx="3">'
+                    . '<title>' . $e($label . ' · ' . $t['k.' . $k] . ': ' . $n($c[$k])) . '</title></rect>';
+            }
+            $asked = $c['hit'] + $c['miss'];
+            if ($asked > 0) {
+                $svg .= '<text class="rate" x="' . round($x + $bar / 2, 1) . '" y="' . round($y - 5, 1) . '" text-anchor="middle">' . (int) round(100 * $c['hit'] / $asked) . '%</text>';
+            }
+            if (count($daily) <= 14 || $i % 2 === 0) {
+                $svg .= '<text class="day" x="' . round($x + $bar / 2, 1) . '" y="' . ($top + $plot + 16) . '" text-anchor="middle">' . $e($label) . '</text>';
+            }
+            $i++;
+        }
+        $legend = '';
+        foreach (self::KINDS as $k) {
+            $legend .= '<span class="key"><i class="k-' . $k . '"></i>' . $e($t['k.' . $k]) . '</span>';
+        }
+        $rows = '';
+        foreach ($daily as $day => $c) {
+            $asked = $c['hit'] + $c['miss'];
+            $rows .= '<tr><td>' . $e(date($lang === 'de' ? 'd.m.Y' : 'Y-m-d', (int) strtotime($day . ' UTC'))) . '</td>';
+            foreach (self::KINDS as $k) {
+                $rows .= '<td class="num">' . $e($n($c[$k])) . '</td>';
+            }
+            $rows .= '<td class="num">' . ($asked > 0 ? $e(sprintf($t['rate'], (string) (int) round(100 * $c['hit'] / $asked))) : '–') . '</td></tr>';
+        }
+        return '<div class="legend">' . $legend . '</div>'
+            . '<svg class="days" viewBox="0 0 ' . $w . ' ' . ($top + $plot + 24) . '" role="img" aria-label="' . $e($t['daily']) . '">'
+            . '<line class="base" x1="0" x2="' . $w . '" y1="' . ($top + $plot) . '" y2="' . ($top + $plot) . '"/>' . $svg . '</svg>'
+            . '<details><summary>' . $e($t['asTable']) . '</summary><div class="wrap"><table><thead><tr><th>' . $e($t['day']) . '</th>'
+            . implode('', array_map(static fn (string $k): string => '<th class="num">' . $e($t['k.' . $k]) . '</th>', self::KINDS)) . '<th class="num"></th></tr></thead><tbody>' . $rows . '</tbody></table></div></details>';
+    }
+
     /** A bar: how much of the cap is taken (0 to 100 %). */
     private static function bar(int $used, int $cap): string
     {
@@ -184,5 +304,13 @@ final class CachePage implements RoutePage
 
     private const CSS = '.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.grid .card{margin:0}'
         . '.bar{height:10px;border-radius:999px;background:var(--line);overflow:hidden;margin:6px 0}.bar span{display:block;height:100%;background:var(--a)}'
-        . 'form.purge{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 8px}';
+        . 'form.purge{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 8px}'
+        // The days' bars: four kinds, fixed order and colours (validated for colour blindness, light and dark).
+        . ':root{--k-hit:#1e8a52;--k-miss:#2f62c9;--k-nostore:#c07a00;--k-past:#8b5cf6}'
+        . '@media (prefers-color-scheme:dark){:root{--k-hit:#36a873;--k-miss:#5a86e6;--k-nostore:#b98228;--k-past:#9277e6}}'
+        . 'svg.days{width:100%;height:auto;display:block;margin:4px 0}svg.days .base{stroke:var(--line);stroke-width:1}'
+        . 'svg.days .day,svg.days .rate{fill:var(--m);font-size:11px}svg.days rect:hover{opacity:.8}'
+        . '.k-hit{fill:var(--k-hit);background:var(--k-hit)}.k-miss{fill:var(--k-miss);background:var(--k-miss)}.k-nostore{fill:var(--k-nostore);background:var(--k-nostore)}.k-past{fill:var(--k-past);background:var(--k-past)}'
+        . '.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--m)}.legend .key i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}'
+        . 'details summary{cursor:pointer;color:var(--a);font-size:13px}td.num,th.num{text-align:right}';
 }
