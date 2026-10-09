@@ -99,7 +99,6 @@ $both = static fn (string $plain, string $tech): string => ' data-plain="' . $e(
 <section id="actions" class="cache-dock-home">
   <div class="container">
 <aside class="cache-dock" aria-label="<?= $e($c['dock']) ?>">
-  <div class="cache-dock-grip" role="separator" aria-orientation="horizontal" aria-controls="cache-dock-body" aria-label="<?= $e($c['dockSize']) ?>" title="<?= $e($c['dockSize']) ?>" tabindex="0"></div>
   <div class="container-fluid">
     <div class="cache-dock-actions d-flex flex-wrap gap-2 align-items-center">
       <button type="button" class="btn btn-accent cache-auto" aria-pressed="false"><i class="bi bi-play-fill" aria-hidden="true"></i> <span><?= $e($c['auto']) ?></span></button>
@@ -130,6 +129,7 @@ $both = static fn (string $plain, string $tech): string => ' data-plain="' . $e(
           <tbody class="cache-rows"><tr class="cache-empty"><td colspan="11"><?= $e($c['empty']) ?></td></tr></tbody>
         </table>
       </div>
+        <div class="cache-dock-grip" role="separator" aria-orientation="horizontal" aria-controls="cache-dock-body" aria-label="<?= $e($c['dockSize']) ?>" title="<?= $e($c['dockSize']) ?>" tabindex="0"></div>
     </div>
   </div>
 </aside>

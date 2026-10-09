@@ -382,7 +382,7 @@ pre.card-paper { padding: 16px; font-size: .85rem; }
   .cache-dock-actions .btn, .cache-dock-actions .form-select { flex: 0 0 auto; }
   .cache-hero .learn-lead { display: none; }
 }
-.cache-dock-grip { height: 12px; margin-top: -10px; cursor: ns-resize; touch-action: none; display: flex; justify-content: center; align-items: center; }
+.cache-dock-grip { height: 14px; margin: 2px 0; cursor: ns-resize; touch-action: none; display: flex; justify-content: center; align-items: center; }
 .cache-dock-grip:focus-visible { outline: 2px solid var(--rs-mint); outline-offset: -2px; }
 
 /* The dock: friendly -- light, rounded, the newest line at the bottom; the technical columns only in the technical view. */

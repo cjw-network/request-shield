@@ -229,6 +229,7 @@
   const pin = document.querySelector('.cache-dock-pin');
   const docked = (on) => {
     dock.classList.toggle('docked', on);
+    log.insertAdjacentElement(on ? 'beforebegin' : 'afterend', grip);      // the grip on the log's free edge
     pin.setAttribute('aria-pressed', on ? 'true' : 'false');
     pin.querySelector('span').textContent = on ? w.dockUnpin : w.dockPin;
     pin.querySelector('i').className = 'bi ' + (on ? 'bi-arrow-up-square' : 'bi-pin-angle');
@@ -273,9 +274,11 @@
     drag = {y0: ev.clientY, h0: log.offsetHeight};
     grip.setPointerCapture(ev.pointerId);
   });
+  // The grip sits on the log's edge away from the page: below it embedded (drag down: bigger), above it docked (drag up: bigger).
+  const outward = () => (dock.classList.contains('docked') ? -1 : 1);
   grip.addEventListener('pointermove', (ev) => {
     if (drag !== null) {
-      height(drag.h0 + (drag.y0 - ev.clientY));
+      height(drag.h0 + outward() * (ev.clientY - drag.y0));
     }
   });
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((t) => grip.addEventListener(t, () => {
@@ -287,7 +290,7 @@
     }
     if (ev.key === 'ArrowUp' || ev.key === 'ArrowDown') {
       ev.preventDefault();
-      height(log.offsetHeight + (ev.key === 'ArrowUp' ? 28 : -28));       // a line more or less
+      height(log.offsetHeight + (ev.key === 'ArrowDown' ? 28 : -28) * outward());       // a line more or less, towards the grip's side
     }
   });
   if (window.ResizeObserver) {
