@@ -1176,6 +1176,11 @@ final class Cli
                 $out[] = ($settings->origin('plugins', $class) ?? 'plugins') . ": plugin $class is not there, or is no " . \CjwNetwork\RequestShield\Plugin::class . " -- it is left out";
             }
         }
+        foreach ((array) $settings->cacheableQuery as $name) {
+            if (\CjwNetwork\RequestShield\Rule\CacheableRule::ignored($name, $settings->cacheableIgnore)) {
+                $out[] = "cache-query names $name, and cache-ignore matches it -- it stays in the key (cache-query wins); narrow the cache-ignore name";
+            }
+        }
         if ($settings->cacheableUnknown === 'hit-only' && $settings->cacheableQuery === null) {
             $out[] = 'set cache-unknown-query hit-only, but no cache-query: every parameter is in the key, none is unknown -- name the parameters the pages use (cache-query page sort)';
         }

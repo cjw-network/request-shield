@@ -323,7 +323,8 @@ final class Shield
         $kept = [];
         $gone = [];
         foreach ($request->queryPairs() as [$name, $value, $raw]) {
-            if (\CjwNetwork\RequestShield\Rule\CacheableRule::ignored($name, $s->cacheableIgnore)) {
+            // A name cache-query names stays in the key, whatever a glob of cache-ignore matches (p* and page).
+            if (!in_array($name, (array) $s->cacheableQuery, true) && \CjwNetwork\RequestShield\Rule\CacheableRule::ignored($name, $s->cacheableIgnore)) {
                 $gone[Request::phpName($name)] = $value;
             } else {
                 $kept[] = [$name, $raw];
@@ -336,10 +337,16 @@ final class Shield
             $_SERVER['QUERY_STRING'] = $query;
             $_SERVER['REQUEST_URI'] = $path . ($query === '' ? '' : '?' . $query);
             $_SERVER['REQUEST_SHIELD_IGNORED'] = (string) json_encode($gone, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+            // $_REQUEST as PHP would have made it without them: from the sources request_order names, the later winning.
+            $order = strtoupper((string) (ini_get('request_order') ?: ini_get('variables_order')));
             foreach (array_keys($gone) as $name) {
-                unset($_GET[$name]);
-                if (!isset($_POST[$name]) && !isset($_COOKIE[$name])) {
-                    unset($_REQUEST[$name]);
+                unset($_GET[$name], $_REQUEST[$name]);
+                foreach (str_split($order) as $source) {
+                    if ($source === 'P' && isset($_POST[$name])) {
+                        $_REQUEST[$name] = $_POST[$name];
+                    } elseif ($source === 'C' && isset($_COOKIE[$name])) {
+                        $_REQUEST[$name] = $_COOKIE[$name];
+                    }
                 }
             }
             /** @var array<string, mixed> $server */

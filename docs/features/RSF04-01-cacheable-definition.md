@@ -70,7 +70,12 @@ set cache-unknown-query hit-only      # unknown: answered from the page without 
   therefore never carries `utm_source` in its links. The check page's resend
   keeps the whole address.
 - **Names as PHP names them:** `utm.source` and `%75tm_source` are
-  `utm_source`.
+  `utm_source`, `utm[x` is `utm_x`. `$_REQUEST` is rebuilt as PHP would
+  have made it without them (`request_order`: a cookie of the same name only
+  where it counts).
+- **`cache-query` wins:** a name it names stays in the key, whatever a
+  `cache-ignore` glob matches (`cache-ignore p*` never takes `page` out);
+  `check` names the overlap.
 - **Unknown, `hit-only`:** `$_SERVER['REQUEST_SHIELD']` stays
   `allow-uncached` (keep nothing), and
   `$_SERVER['REQUEST_SHIELD_CACHE_LOOKUP']` names the address a cache may

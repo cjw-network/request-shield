@@ -184,19 +184,24 @@ final class Request
             $kv = explode('=', $pair, 2);
             $name = urldecode($kv[0]);
             $bracket = strpos($name, '[');
-            $out[] = [$bracket === false ? $name : substr($name, 0, $bracket), urldecode($kv[1] ?? ''), $pair];
+            // As PHP: "a[b]" is "a"; a "[" with no "]" after it is no array ("a[b" is the name "a_b", phpName()).
+            $array = $bracket !== false && $bracket > 0 && strpos($name, ']', $bracket) !== false;
+            $out[] = [$array ? substr($name, 0, (int) $bracket) : $name, urldecode($kv[1] ?? ''), $pair];
         }
         return $this->pairs = $out;
     }
 
     /**
      * The name PHP gives a parameter in $_GET (0048): leading spaces left
-     * out, "." and " " as "_" -- utm.source is $_GET['utm_source'] -- of the
-     * name as queryPairs() has it (the part before "[").
+     * out, "." and " " as "_" -- utm.source is $_GET['utm_source'] -- and a
+     * "[" with no "]" after it as "_" (the first; queryPairs() keeps such a
+     * name whole) -- of the name as queryPairs() has it.
      */
     public static function phpName(string $name): string
     {
-        return strtr(ltrim($name, ' '), ['.' => '_', ' ' => '_']);
+        $name = strtr(ltrim($name, ' '), ['.' => '_', ' ' => '_']);
+        $bracket = strpos($name, '[');
+        return $bracket === false ? $name : substr_replace($name, '_', $bracket, 1);
     }
 
     /** @var list<array{0: string, 1: string, 2: string}>|null parsed once, for every rule that asks */

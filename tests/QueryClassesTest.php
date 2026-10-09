@@ -26,12 +26,12 @@ return [
         file_put_contents("$dir/docroot/index.php", '<?php
             file_put_contents(__DIR__ . "/../runs", "x", FILE_APPEND);
             header("Cache-Control: public, max-age=600");
-            echo json_encode(["get" => $_GET, "qs" => $_SERVER["QUERY_STRING"] ?? "", "uri" => $_SERVER["REQUEST_URI"] ?? "",
+            echo json_encode(["get" => $_GET, "req" => $_REQUEST, "qs" => $_SERVER["QUERY_STRING"] ?? "", "uri" => $_SERVER["REQUEST_URI"] ?? "",
                 "shield" => $_SERVER["REQUEST_SHIELD"] ?? null, "ignored" => $_SERVER["REQUEST_SHIELD_IGNORED"] ?? null,
                 "lookup" => $_SERVER["REQUEST_SHIELD_CACHE_LOOKUP"] ?? null, "t" => hrtime(true)]);');
         $port = freePort();
         file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset http-cache on\nset http-cache-hosts 127.0.0.1:$port\n"
-            . "cache-query page\ncache-ignore @tracking\nset cache-unknown-query hit-only\ninclude @attacks\nset debug-header on\n");
+            . "cache-query page\ncache-ignore @tracking pa*\nset cache-unknown-query hit-only\ninclude @attacks\nset debug-header on\n");
         // php -S prepends nothing to its router: the router loads the shield, as auto_prepend_file would.
         file_put_contents("$dir/router.php", '<?php require ' . var_export(rsEntry(), true) . '; require __DIR__ . "/docroot/index.php";');
         $web = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d apc.enable_cli=1 -S 127.0.0.1:%d %s > %s 2>&1',
@@ -40,8 +40,8 @@ return [
             usleep(100000);
         }
         try {
-            $get = static function (string $uri) use ($port): array {
-                $r = Http::get("http://127.0.0.1:$port$uri", [], 5);
+            $get = static function (string $uri, array $headers = []) use ($port): array {
+                $r = Http::get("http://127.0.0.1:$port$uri", $headers, 5);
                 $page = json_decode((string) ($r['body'] ?? ''), true);
                 return [(int) ($r['status'] ?? 0), strtolower((string) ($r['headers']['x-rs-cache'] ?? '')), is_array($page) ? $page : []];
             };
@@ -56,16 +56,27 @@ return [
             [, $cache] = $get('/news?page=2&utm_source=other&utm.medium=mail');
             truthy($cache === 'hit' && $runs() === 1, 'another campaign, utm.medium as PHP names it: the same page, from the cache (' . $cache . ')');
 
+            // A name cache-query names stays in the key, though "pa*" matches it: page 3 is not page 2.
+            [, $cache, $page] = $get('/news?page=3');
+            truthy($cache !== 'hit' && ($page['get'] ?? null) === ['page' => '3'], 'cache-query wins over a cache-ignore glob (' . $cache . ')');
+            // A cookie of the same name: $_REQUEST as PHP makes it without the parameter (request_order GP: no cookies).
+            [, , $page] = $get('/news?page=4&utm_source=nl', ['Cookie' => 'utm_source=cookie']);
+            same(['page' => '4'], $page['req'] ?? null, '$_REQUEST without the ignored parameter, though a cookie has its name');
+            // "utm[x" is PHP's utm_x: taken out of $_GET and the query alike.
+            [, , $page] = $get('/news?page=5&utm[x=1');
+            same([['page' => '5'], 'page=5'], [$page['get'] ?? null, $page['qs'] ?? null], 'a "[" without "]": the name PHP makes, ignored everywhere');
+
             // Unknown, hit-only: the page without it answers; on a miss the application runs, nothing is kept.
+            $before = $runs();
             [, $cache] = $get('/news?page=2&x=7');
-            truthy($cache === 'hit' && $runs() === 1, 'an unknown parameter: the kept page without it (' . $cache . ')');
+            truthy($cache === 'hit' && $runs() === $before, 'an unknown parameter: the kept page without it (' . $cache . ')');
             [$status, $cache, $page] = $get('/about?x=7');
             same([200, ['x' => '7'], 'allow-uncached', '/about'], [$status, $page['get'] ?? null, $page['shield'] ?? null, $page['lookup'] ?? null],
                 'a miss: the application sees the parameter, may not keep it, may answer from /about');
             [, $cache] = $get('/about');
-            truthy($cache !== 'hit' && $runs() === 3, 'nothing was kept for /about?x=7 (' . $cache . ')');
+            truthy($cache !== 'hit' && $runs() === $before + 2, 'nothing was kept for /about?x=7 (' . $cache . ')');
             [, $cache] = $get('/about?x=9');
-            truthy($cache === 'hit' && $runs() === 3, 'now /about is kept: /about?x=9 answered from it (' . $cache . ')');
+            truthy($cache === 'hit' && $runs() === $before + 2, 'now /about is kept: /about?x=9 answered from it (' . $cache . ')');
 
             // An attack in an ignored parameter: the rules saw the whole query.
             [$status] = $get('/news?utm_source=' . rawurlencode("' UNION SELECT password FROM users--"));
