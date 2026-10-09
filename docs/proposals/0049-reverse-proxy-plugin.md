@@ -113,10 +113,12 @@ shield's rule file:
 
 ## Steps (when built)
 
-1. `plugins/proxy`: words, compile-time checks (https target, no private
-   address, fixed pairs, sizes), a `Handler` that answers matching paths
-   after the rules; `Http::request()` (method, body, headers, no redirects,
-   size cap, timeout).
+1. `plugins/proxy`: words, compile-time checks (an https target, fixed
+   pairs, sizes), a `Handler` that answers matching paths after the rules;
+   `Http::request()` (method, body, headers, no redirects, a size cap, a
+   timeout) resolves the target, refuses a private, loopback or link-local
+   result unless the pair says `allow-private`, and connects to the address
+   it checked.
 2. The HTTP cache for proxied answers that may be kept.
 3. Matomo: `ip masked`, `cip` + `token_auth`, a ready rule block
    (`include @proxy-matomo` with two variables), docs with the tracking code
