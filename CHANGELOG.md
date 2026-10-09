@@ -181,6 +181,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   log (path without query, peak memory, no address). Off by default; with it
   about +2 µs a request with APCu. `CachePlugin::refusal()` says why an answer
   is not kept (keep() uses it too). Settings FORMAT 57.
+- **Proposal 0047 the admin pages: an area per plugin, and a login by
+  default** (draft): two rows of tabs -- Start, Protection, Statistics,
+  Cache, API, System, each with its pages, an area only where its plugin is
+  loaded; a login always asked (`restrict` only adds to it), the first admin
+  by `init` or a one-time setup code in the store, a password for people
+  (`password_hash()`) beside the tokens, sign out everywhere.
 - **Proposal 0046 response times in the statistics** (draft): with a new
   part `times`, the end of a request the statistics already hear gives how
   long the site took -- twelve fixed bands per hour (fine below 10 ms for the
