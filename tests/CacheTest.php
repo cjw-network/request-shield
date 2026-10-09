@@ -52,7 +52,12 @@ return [
             foreach (['/hello/?' => '/hello/', '/hello//' => '/hello/', '/h%65llo/' => '/hello/', '/hello/?b=1&a=2' => 'https://www.example.org/hello/?a=2&b=1'] as $from => $to) {
                 truthy(!$p->keep($c, cacheReq($from)->cacheKey(), 301, [...$h, "Location: $to"], ''), "$from -> $to: a redirect to itself, not kept");
             }
+            foreach (['/p?b=1&a=2' => '?a=2&b=1', '/dir/p' => 'p', '/dir/q' => './q', '/r' => '//www.example.org/r', '/s' => '/s?sid=1', '/t' => 'https://www.example.org/t?x=1'] as $from => $to) {
+                truthy(!$p->keep($c, cacheReq($from)->cacheKey(), 302, [...$h, "Location: $to"], ''), "$from -> $to: may come back here, not kept");
+            }
             truthy($p->keep($c, cacheReq('/old')->cacheKey(), 301, [...$h, 'Location: /new'], ''), 'a redirect to another address is kept');
+            truthy($p->keep($c, cacheReq('/u')->cacheKey(), 301, [...$h, 'Location: https://example.org/u'], ''), 'to another host: kept');
+            truthy($p->keep($c, Request::fromServer(['REQUEST_URI' => '/v', 'REQUEST_METHOD' => 'GET', 'HTTP_HOST' => 'www.example.org'])->cacheKey(), 301, [...$h, 'Location: https://www.example.org/v'], ''), 'http to https: kept');
             same(CachePlugin::address('/news/item?a=1&b=2'), CachePlugin::address('/n%65ws//item?b=2&a=1'), 'one address for every spelling of a path');
             same(CachePlugin::address('/caf%C3%A9'), CachePlugin::address('/caf%c3%a9'), 'hex in either case');
             foreach (['/hello/#x' => [], '/x' => ['X-Original-URL' => '/admin'], '/y' => ['X-Rewrite-URL' => '/admin']] as $uri => $headers) {

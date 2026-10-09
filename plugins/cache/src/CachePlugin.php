@@ -225,7 +225,7 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
             } elseif (($phase & PHP_OUTPUT_HANDLER_FINAL) !== 0 && $this->ending && ($this->session === null || ($this->context !== null && $this->named))) {
                 // A signed-in visitor's answer only under the role the application named in this request
                 // (a remembered role is no proof: the session may have ended), and only when shared.
-                $this->keep($cache, $this->keyFor($key), (int) http_response_code(), $this->sent ?? headers_list(), $this->body, $request->path, $now,
+                $this->keep($cache, $this->keyFor($key), (int) http_response_code(), $this->sent ?? headers_list(), $this->body, $request->matchPath(), $now,
                     $this->session !== null);
             }
             return $buffer;
@@ -317,10 +317,11 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
         if ($tags === null) {
             return false;
         }
-        $address = self::address((string) strstr($key . "\n", "\n", true));        // the address, not the role's suffix
+        $plain = (string) strstr($key . "\n", "\n", true);         // the key without the role's suffix
+        $address = self::address($plain);
         $location = self::header($headers, 'location');
-        if ($status >= 300 && $status < 400 && $location !== null && self::address($location) === $address) {
-            return false;           // a redirect to another spelling of this very address (//, %65, ?, a host's case): kept, a loop for everyone
+        if ($status >= 300 && $status < 400 && $location !== null && !self::elsewhere($plain, $location)) {
+            return false;           // a redirect that may come back here (//, %65, ?a=1, a relative one): kept, a loop for everyone
         }
         $tags[] = self::ADDRESS . $address;
         if ($role) {
@@ -766,6 +767,29 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
             }
         }
         return IpAddress::inRanges($request->clientIp, $this->o['purgers']);
+    }
+
+    /**
+     * Whether a redirect surely leads elsewhere: another scheme or host, or
+     * another path (decoded and collapsed: /news//item is /news/item). Only
+     * "/path" and "scheme://host/path" are read; a relative one (p, ?a=1,
+     * //host/p) never counts as elsewhere -- whatever the query, cache-ignore
+     * or query drop may make it this very key again.
+     */
+    private static function elsewhere(string $key, string $location): bool
+    {
+        $location = trim($location);
+        $origin = static fn (string $url): string => strtolower((string) preg_replace('/:\d+$/', '', (string) preg_replace('#^([a-z][a-z0-9+.-]*://[^/?\#]*).*$#is', '$1', $url)));
+        if (preg_match('#^[a-z][a-z0-9+.-]*://#i', $location) === 1) {
+            if ($origin($location) !== $origin($key)) {
+                return true;                // http to https, example.org to www.example.org: another key
+            }
+            $location = (string) preg_replace('#^[a-z][a-z0-9+.-]*://[^/?\#]*#i', '', $location);
+        } elseif (strncmp($location, '/', 1) !== 0 || strncmp($location, '//', 2) === 0) {
+            return false;
+        }
+        $path = static fn (string $uri): string => Request::fromServer(['REQUEST_URI' => (string) strtok($uri === '' ? '/' : $uri, '?#'), 'HTTP_HOST' => 'h'])->matchPath();
+        return $path($location) !== $path((string) preg_replace('#^[a-z][a-z0-9+.-]*://[^/?]*#i', '', $key));
     }
 
     /**

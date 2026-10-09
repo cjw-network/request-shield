@@ -340,10 +340,11 @@ literally: `--path=/news` takes `/newsletter` too.
   decoded and sorted; an address with a name PHP reads twice or folds
   (`page=1&page=2`, ` page`) is not kept, nor one sent with a `#` or a
   whole URL as its target, nor a request with `X-Original-URL` or
-  `X-Rewrite-URL` (some frameworks route by them). A redirect to another
-  spelling of its own address (`/news/?` to `/news/`, `//` to `/`) is never
-  kept: it would be a loop for everyone. A purge by address reaches every
-  spelling (it names the decoded path); so does a purge by tag.
+  `X-Rewrite-URL` (some frameworks route by them). A redirect is kept only
+  when it surely leads elsewhere -- another scheme or host, or another path
+  (`/news/?` to `/news/`, `//` to `/` or a relative `Location` are not kept:
+  each could be a loop for everyone). A purge by address, by path and by
+  tag reaches every spelling (they name the decoded path).
 - **Every spelling is its own entry:** made-up spellings of a page fill
   the cache like made-up addresses do -- `http-cache-disk` caps them.
 - **Redirects are kept for everyone:** a 301 or 308 that sends visitors to
