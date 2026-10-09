@@ -161,8 +161,17 @@ sequenceDiagram
   `ez-user-context-hash` (roles changed) asks again. Every session of a
   role shares the role's pages.
 - **Where it asks:** `on` -- the site itself, at the address the visitor
-  used (scheme and host); or the address given (`set http-cache-user-context
-  http://127.0.0.1:8080`, the host sent as `Host`). 2 seconds at most.
+  used (scheme, host and port); or the address given (`set
+  http-cache-user-context http://127.0.0.1:8080`, the visitor's host sent as
+  `Host`; the address's path is kept as written). 2 seconds at most; a
+  redirect is not followed (it is no hash). **Prefer an address of the
+  application server itself:** behind a CDN or a proxy, `on` goes out and
+  back in through it.
+- **The answering server** is the shield in front of the application, with
+  the **same secret and the same `http-cache-session-cookie`**: it knows the
+  question by its `X-RS-Lookup` (a MAC of the session cookie), only as
+  `GET /_fos_user_context_hash` without a hash header. Several servers:
+  share the secret (`set secret …` or the same store).
 - **The header:** `X-User-Context-Hash` (Ibexa, the default) or
   `set http-cache-user-hash-header X-User-Hash` (Exponential Platform). The
   application gets it in the request, as from a Varnish, and its pages
@@ -171,11 +180,22 @@ sequenceDiagram
   cookie: the shield lets it through to the application. A visitor that
   asks for a hash (that `Accept`) or sends one gets `400`, as the Varnish
   configurations answer.
-- **Fail safe:** no hash (an error, a timeout, an answer without the
-  header) -- the cache is skipped for this request and nobody is asked for
-  60 seconds. The question is a request to the site: rules that refuse or
-  check a request from the server's own address to
-  `/_fos_user_context_hash` switch the roles off.
+- **Fail safe:** no hash -- the cache is skipped for this request, the
+  application answers. The application not answering (no answer, a
+  timeout, 5xx): nobody is asked for 60 seconds. An answer without a hash
+  (4xx, a redirect, no header): that session is not asked for 60 seconds.
+- **Never a cost a visitor can multiply:** a session cookie a browser could
+  not send (a space, a quote, a comma, over 512 bytes) is not asked with;
+  new sessions from one address get at most 30 questions a minute; at most
+  2 questions wait at a time (each holds a PHP worker while it waits for
+  another) -- past either, the cache is skipped, the application answers.
+- **The question is a request to the site:** rules that refuse or check a
+  request from the server's own address to `/_fos_user_context_hash`
+  switch the roles off; let that address in (`exempt 127.0.0.1 ::1` when
+  the shield asks there).
+- **A remembered hash counts as the application's own** for its `max-age`:
+  a role changed in the CMS without purging `ez-user-context-hash` keeps
+  the old role's pages until then (as behind a Varnish).
 - **Needs APCu and an HTTP client** (`allow_url_fopen` or curl); `check`
   says when one is missing, and when no `http-cache-session-cookie` is set.
 
@@ -254,14 +274,18 @@ literally: `--path=/news` takes `/newsletter` too.
   private`.
 - **Concurrent misses** each run the application; the last one written is
   kept.
+- **The user hash costs a second request** for a new session (and after its
+  `max-age`): with `on` and one small PHP-FPM pool, the question waits for a
+  free worker of the same pool -- under load it times out after 2 seconds
+  and roles pause for a minute. Ask another pool or the application server
+  directly (`set http-cache-user-context http://127.0.0.1:8080`).
 - **One header callback:** PHP allows one `header_register_callback()` per
   request. An application that registers its own replaces the cache's: its
   tag headers then reach the visitor and its `X-LiteSpeed-Purge` is not
   followed (the tags are still kept with the answer; purges by request
   work).
 - **Not yet:** `BAN` with patterns, a soft purge that serves the stale page
-  while one request renews it, the role from FOSHttpCache's user hash
-  without an adapter, answers in APCu -- the
+  while one request renews it, answers in APCu -- the
   further parts of [proposal 0039](../proposals/0039-cache-compatible.md).
 - **Pages that differ by language or device** (`Vary: Accept-Language`,
   `Vary: Cookie`) are not kept: one address, one answer.

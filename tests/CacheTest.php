@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use CjwNetwork\RequestShield\Cache\CacheExtension;
 use CjwNetwork\RequestShield\Cache\CachePlugin;
 use CjwNetwork\RequestShield\Cache\FileCache;
 use CjwNetwork\RequestShield\Cache\Tags;
 use CjwNetwork\RequestShield\Decision;
+use CjwNetwork\RequestShield\Http;
 use CjwNetwork\RequestShield\Request;
 use CjwNetwork\RequestShield\Rules\RuleFile;
 use CjwNetwork\RequestShield\Settings;
@@ -401,6 +403,22 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF04-03 http-cache-user-context: on, off, or an address -- its scheme and host in small letters, its path as given' => function (): void {
+        $dir = cacheDir();
+        try {
+            $of = static fn (string $v): string => CacheExtension::of(cacheSettings($dir, "set http-cache on\nset http-cache-user-context $v\n"))['userContext'];
+            same(['on', '', 'http://backend.example:8080/Shop/App'], [$of('ON'), $of('Off'), $of('HTTP://Backend.Example:8080/Shop/App/')]);
+            $bad = null;
+            try {
+                $of('ftp://backend.example');
+            } catch (\Throwable $e) {
+                $bad = $e->getMessage();
+            }
+            truthy(is_string($bad) && strpos($bad, 'http-cache-user-context is on, off or the address') !== false, 'another scheme: refused -- ' . var_export($bad, true));
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'RSF04-03 end to end, the role from FOSHttpCache\'s user hash (0039, http-cache-user-context): asked once per session as a Varnish asks it, the application sees the hash, sessions of a role share its page; a purge of the hash\'s tag asks again; a client asking for or sending a hash gets 400' => function (): void {
         $fpm = fpmBinary();
         if (!function_exists('proc_open') || $fpm === null) {
@@ -417,9 +435,14 @@ return [
             if (strtok($_SERVER["REQUEST_URI"], "?") === "/_fos_user_context_hash") {
                 if (($_SERVER["HTTP_ACCEPT"] ?? "") !== "application/vnd.fos.user-context-hash") { http_response_code(406); return; }
                 file_put_contents(__DIR__ . "/../lookups", "x", FILE_APPEND);
-                header("X-User-Hash: " . (strncmp($login, "ed", 2) === 0 ? "hash-editors" : "hash-authors"));
+                $kind = substr($login, 0, 2);
+                if ($kind === "er") { http_response_code(500); return; }
+                if ($kind === "rd" && !isset($_GET["to"])) { header("Location: /_fos_user_context_hash?to=1", true, 302); return; }
+                if ($kind !== "nh") {
+                    header("X-User-Hash: " . ($kind === "rd" ? "hash-redirected" : ($kind === "m0" ? "hash-m0" : ($kind === "ed" ? "hash-editors" : "hash-authors"))));
+                }
                 header("Content-Type: application/vnd.fos.user-context-hash");
-                header("Cache-Control: max-age=600");
+                header("Cache-Control: max-age=" . ($kind === "m0" ? 0 : 600));
                 header("Vary: Cookie");
                 header("xkey: ez-user-context-hash");
                 return;
@@ -442,17 +465,17 @@ return [
             usleep(100000);
         }
         try {
-            $send = static function (string $method, string $uri, array $headers = []) use ($port, $dir): array {
+            $send = static function (string $method, string $uri, array $headers = [], string $addr = '127.0.0.1') use ($port, $dir): array {
                 $params = ['REQUEST_METHOD' => $method, 'REQUEST_URI' => $uri, 'QUERY_STRING' => (string) parse_url($uri, PHP_URL_QUERY),
                     'SCRIPT_FILENAME' => "$dir/docroot/index.php", 'SCRIPT_NAME' => '/index.php', 'DOCUMENT_ROOT' => "$dir/docroot", 'SERVER_PROTOCOL' => 'HTTP/1.1',
-                    'SERVER_NAME' => 'www.example.org', 'SERVER_PORT' => '80', 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_HOST' => 'www.example.org',
+                    'SERVER_NAME' => 'www.example.org', 'SERVER_PORT' => '80', 'REMOTE_ADDR' => $addr, 'HTTP_HOST' => 'www.example.org',
                     'REQUEST_SHIELD_CONFIG' => "$dir/site.rules", 'PHP_VALUE' => 'auto_prepend_file=' . rsEntry()];
                 foreach ($headers as $k => $v) {
                     $params['HTTP_' . strtoupper(str_replace('-', '_', $k))] = $v;
                 }
                 return fcgi($port, $params);
             };
-            $as = static fn (string $login, array $more = []): array => $send('GET', '/index.php', ['Cookie' => "eZSESSID98=$login; _ga=1"] + $more);
+            $as = static fn (string $login, array $more = [], string $addr = '127.0.0.1'): array => $send('GET', '/index.php', ['Cookie' => "eZSESSID98=$login; _ga=1"] + $more, $addr);
             $hit = static fn (array $r): bool => strpos($r[1], 'X-RS-Cache: hit') !== false;
             $count = static fn (string $f): int => strlen((string) @file_get_contents("$dir/$f"));
             $r = $as('ed-1');
@@ -470,14 +493,101 @@ return [
             same(400, $as('ed-1', ['X-User-Hash' => 'hash-editors'])[0], 'a client sending a hash: 400');
             same(400, $send('GET', '/_fos_user_context_hash', ['Cookie' => 'eZSESSID98=ed-1', 'Accept' => 'application/vnd.fos.user-context-hash', 'X-RS-Lookup' => str_repeat('0', 64)])[0],
                 'a forged X-RS-Lookup: 400');
+            // The shield's own MAC, but not its lookup: another path, another method, a hash sent along -- 400 as any other.
+            $set = Settings::from(RuleFile::read(["$dir/site.rules"])['config']);
+            $key = \CjwNetwork\RequestShield\Challenge\Secret::resolve($set->challenge->secret, $set->storeDir);
+            $mac = hash_hmac('sha256', 'lookup|' . hash_hmac('sha256', 'session|eZSESSID98=ed-1', $key), $key);
+            $own = ['Cookie' => 'eZSESSID98=ed-1', 'Accept' => 'application/vnd.fos.user-context-hash', 'X-RS-Lookup' => $mac];
+            same(200, $send('GET', '/_fos_user_context_hash', $own)[0], 'the shield\'s own lookup: the application answers');
+            same([400, 400, 400], [$send('GET', '/index.php', $own)[0], $send('POST', '/_fos_user_context_hash', $own)[0], $send('GET', '/_fos_user_context_hash', $own + ['X-User-Hash' => 'x'])[0]],
+                'its MAC on another path, with POST, with a hash: 400');
             same(200, $send('PURGE', '/', ['key' => 'ez-user-context-hash'])[0], 'PURGE + key: ez-user-context-hash (roles changed in the CMS)');
             $before = $count('lookups');
             truthy($hit($as('ed-1')) && $count('lookups') === $before + 1, 'the hashes purged: asked again (the page itself still the editors\')');
+            // No hash in the answer: the cache skipped, that session not asked again for a while -- the others are.
+            $before = $count('lookups');
+            $r = $as('nh-1');
+            truthy(!$hit($r) && strpos($r[2], 'page for nobody') === 0 && $count('lookups') === $before + 1, 'an answer without a hash: the application runs without one');
+            $as('nh-1');
+            truthy($count('lookups') === $before + 1, 'the same session: not asked again at once');
+            truthy($hit($as('ed-3')) && $count('lookups') === $before + 2, 'another session: asked -- one session\'s answer pauses nobody else');
+            // A redirect is no hash: not followed (it could lead anywhere, the session cookie with it).
+            $before = $count('lookups');
+            $r = $as('rd-1');
+            truthy(strpos($r[2], 'page for nobody') === 0 && $count('lookups') === $before + 1, 'a redirect: not followed, no hash -- ' . $r[2]);
+            // max-age=0: the hash holds for this request only.
+            $before = $count('lookups');
+            $as('m0-1');
+            $r = $as('m0-1');
+            truthy(strpos($r[2], 'page for hash-m0') === 0 && $count('lookups') === $before + 2, 'max-age=0: asked for every request -- ' . $r[2]);
+            // A cookie value no browser sends (a quote): never put into a request of the shield's.
+            $before = $count('lookups');
+            $r = $as('ed"x');
+            truthy(!$hit($r) && $count('lookups') === $before, 'an odd session cookie: not asked');
+            // Made-up sessions from one address: at most 30 lookups a minute, then the cache is skipped.
+            $before = $count('lookups');
+            for ($i = 0; $i < 32; $i++) {
+                $as("au-flood-$i", [], '198.51.100.9');
+            }
+            same(30, $count('lookups') - $before, 'one address, 32 new sessions: 30 asked');
+            truthy($hit($as('au-other', [], '198.51.100.10')) && $count('lookups') === $before + 31, 'another address: still asked');
+            // The application fails (5xx): nobody is asked for a while, the site answers without the cache.
+            $before = $count('lookups');
+            $r = $as('er-1');
+            truthy(!$hit($r) && strpos($r[2], 'page for nobody') === 0 && $count('lookups') === $before + 1, 'a 5xx: no hash');
+            $r = $as('ed-4');
+            truthy(!$hit($r) && strpos($r[2], 'page for nobody') === 0 && $count('lookups') === $before + 1, 'after a 5xx: a new session is not asked (the pause), the application answers');
         } finally {
             proc_terminate($web);
             proc_close($web);
             proc_terminate($proc);
             proc_close($proc);
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
+    'RSF04-03 end to end, http-cache-user-context on: the shield asks the site itself, at the address the visitor used' => function (): void {
+        if (!function_exists('proc_open') || PHP_OS_FAMILY !== 'Linux') {
+            skip('no proc_open, or no PHP_CLI_SERVER_WORKERS (Linux only)');
+        }
+        if (!extension_loaded('apcu')) {
+            skip('no APCu: roles stay off without it');
+        }
+        $dir = cacheDir();
+        mkdir("$dir/docroot");
+        file_put_contents("$dir/docroot/index.php", '<?php
+            if (strtok($_SERVER["REQUEST_URI"], "?") === "/_fos_user_context_hash") {
+                file_put_contents(__DIR__ . "/../lookups", "x", FILE_APPEND);
+                header("X-User-Context-Hash: hash-" . substr($_COOKIE["PHPSESSID"] ?? "", 0, 2));
+                header("Cache-Control: max-age=600");
+                return;
+            }
+            header("Vary: X-User-Context-Hash");
+            header("Cache-Control: public, s-maxage=600");
+            echo "page for " . ($_SERVER["HTTP_X_USER_CONTEXT_HASH"] ?? "nobody") . " " . hrtime(true);');
+        $port = freePort();
+        file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset http-cache on\ncache-query x\nset http-cache-hosts 127.0.0.1:$port\n"
+            . "set http-cache-session-cookie PHPSESSID\nset http-cache-user-context on\n");
+        // php -S prepends nothing to its router: the router loads the shield, as auto_prepend_file would.
+        file_put_contents("$dir/router.php", '<?php require ' . var_export(rsEntry(), true) . '; require __DIR__ . "/docroot/index.php";');
+        // Several workers: the lookup is a second request to the same server while the first waits.
+        $web = proc_open(sprintf('PHP_CLI_SERVER_WORKERS=3 REQUEST_SHIELD_CONFIG=%s exec %s -d apc.enable_cli=1 -S 127.0.0.1:%d %s > %s 2>&1',
+            escapeshellarg("$dir/site.rules"), serverPhp(), $port, escapeshellarg("$dir/router.php"), escapeshellarg("$dir/web.log")), [], $pipes);
+        for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
+            usleep(100000);
+        }
+        try {
+            $get = static function (string $session) use ($port): array {
+                $r = Http::get("http://127.0.0.1:$port/", ['Cookie' => "PHPSESSID=$session"], 5);
+                return [$r['status'] ?? 0, implode("\n", array_map(static fn ($k, $v): string => "$k: $v", array_keys($r['headers'] ?? []), $r['headers'] ?? [])), $r['body'] ?? ''];
+            };
+            $count = static fn (): int => strlen((string) @file_get_contents("$dir/lookups"));
+            $r = $get('ed-1');
+            truthy(strpos($r[2], 'page for hash-ed') === 0 && $count() === 1, 'asked at http://127.0.0.1:<port> itself: ' . $r[2] . @file_get_contents("$dir/web.log"));
+            $r = $get('ed-2');
+            truthy(strpos($r[1], 'x-rs-cache: hit') !== false && $count() === 2, 'another session of the role: the role\'s page from the cache -- ' . $r[1]);
+        } finally {
+            proc_terminate($web);
+            proc_close($web);
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },

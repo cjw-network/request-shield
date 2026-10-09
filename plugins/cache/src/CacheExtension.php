@@ -94,9 +94,12 @@ final class CacheExtension implements Extension, ApiProvider
         $v->set('http-cache-session-cookie', 'words', 'the session cookies a page per role is kept for (wordpress_logged_in_* eZSESSID* PHPSESSID); the application names the role with Shield::active()?->cacheContext() (default: none, no pages per role)', null, 'sessionCookies');
         $v->set('http-cache-context-ttl', 'seconds', 'how long a session\'s role is remembered after the application last named it (default 10m)', null, 'contextTtl');
         $v->set('http-cache-user-context', 'string', 'the role of a visitor with a session from FOSHttpCache\'s user hash: on (asks the site itself, /_fos_user_context_hash) or the address to ask (http://127.0.0.1:8080); off by default', static function ($value, string $at): string {
-            $s = is_scalar($value) ? strtolower(trim((string) $value)) : '';
-            if ($s === 'off' || $s === 'on' || preg_match('~^https?://[a-z0-9.:\[\]-]+(/[^\s?#]*)?$~', $s) === 1) {
-                return $s === 'off' ? '' : rtrim($s, '/');
+            $s = is_scalar($value) ? trim((string) $value) : '';
+            if (in_array(strtolower($s), ['off', 'on'], true)) {
+                return strtolower($s) === 'off' ? '' : 'on';
+            }
+            if (preg_match('~^(https?://[a-z0-9.:\[\]-]+)(/[^\s?#]*)?$~i', $s, $m) === 1) {
+                return strtolower($m[1]) . rtrim($m[2] ?? '', '/');      // the scheme and host in small letters, the path as given
             }
             throw new RuleFileException("$at: http-cache-user-context is on, off or the address to ask (http://127.0.0.1:8080), not \"$s\"");
         }, 'userContext');
@@ -129,7 +132,7 @@ final class CacheExtension implements Extension, ApiProvider
         $contextTtl = $raw['contextTtl'] ?? 600;
         $userContext = $raw['userContext'] ?? '';
         $hashHeader = $raw['hashHeader'] ?? 'x-user-context-hash';
-        if (!is_string($userContext) || ($userContext !== '' && $userContext !== 'on' && preg_match('~^https?://[a-z0-9.:\[\]-]+(/[^\s?#]*)?$~', $userContext) !== 1)
+        if (!is_string($userContext) || ($userContext !== '' && $userContext !== 'on' && preg_match('~^https?://[a-z0-9.:\[\]-]+(/[^\s?#]*)?$~D', $userContext) !== 1)
             || !in_array($hashHeader, ['x-user-context-hash', 'x-user-hash'], true)) {
             throw Settings::wrong('ext.cache.userContext', 'userContext "", "on" or an http(s) address; hashHeader x-user-context-hash or x-user-hash');
         }

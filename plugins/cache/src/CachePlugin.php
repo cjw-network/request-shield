@@ -72,8 +72,20 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
 
     private const LOOKUP_ACCEPT = 'application/vnd.fos.user-context-hash';
 
-    /** After a lookup that failed: no lookup for this long (the application is not asked on every request). */
+    /**
+     * After a lookup that failed: no lookup for this long -- for every session when the application
+     * did not answer (no answer, a timeout, 5xx), for that session when it answered without a hash.
+     */
     private const LOOKUP_PAUSE = 60;
+
+    /** At most this many lookups a minute for new sessions from one address (made-up session cookies cost one request, not two). */
+    private const LOOKUP_BUDGET = 30;
+
+    /** A cookie as RFC 6265 has it (no space, quote, comma, semicolon or backslash in its value), at most 512 bytes of value. */
+    private const COOKIE_PAIR = '[!#-+\-.\/0-9:<-\[\]-~]+=[!#-+\-.\/0-9:<-\[\]-~]{1,512}';
+
+    /** At most this many lookups at the same time: each holds a worker while it waits for another. */
+    private const LOOKUP_PARALLEL = 2;
 
     /** The tag every answer has for its address (path and query, any host): PURGE <address> purges it. */
     private const ADDRESS = 'rs-url:';
@@ -131,7 +143,8 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
             // The shield's own lookup (a MAC of the session): the application answers it. Anyone else
             // asking for a hash, or sending one, is refused -- as the Varnish configurations do.
             $asks = stripos((string) $request->header('accept'), self::LOOKUP_ACCEPT) !== false;
-            if ($request->header('x-rs-lookup') !== null && $this->isLookup($request)) {
+            if ($request->header('x-rs-lookup') !== null && $request->path === self::LOOKUP_PATH && $request->method === 'GET' && $this->isLookup($request)
+                && $request->header('x-user-hash') === null && $request->header('x-user-context-hash') === null) {
                 return null;
             }
             if ($asks || $request->header('x-user-hash') !== null || $request->header('x-user-context-hash') !== null) {
@@ -490,32 +503,59 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
      * FOSHttpCache's user hash for a session, asked of the application as a
      * Varnish asks it: GET /_fos_user_context_hash, Accept
      * application/vnd.fos.user-context-hash, only the session cookies, and
-     * X-RS-Lookup (a MAC of the session: the shield knows its own request).
-     * Kept in APCu for the hash's max-age (at most an hour) with the tags of
-     * its answer. No hash (an error, a timeout, a page without the header):
-     * null, and no lookup for LOOKUP_PAUSE seconds.
+     * X-RS-Lookup (a MAC of the session: the shield knows its own request);
+     * no redirect followed. Kept in APCu for the hash's max-age (at most an
+     * hour) with the tags of its answer, from the time before it was asked
+     * (a purge while it is asked is not missed). No hash: null -- and no
+     * lookup for LOOKUP_PAUSE seconds, for every session when the application
+     * did not answer (no answer, a timeout, 5xx), else for this session. Not
+     * asked at all for a cookie or host a request could not carry, past the
+     * address's LOOKUP_BUDGET, or while LOOKUP_PARALLEL others wait.
      *
      * @return array{0: string, 1: bool}|null
      */
     private function lookup(Request $request, string $session): ?array
     {
-        $pause = 'rshield:hc:' . substr(md5($this->o['dir']), 0, 12) . ':lookup-pause';
-        if (apcu_fetch($pause) !== false) {
+        $prefix = 'rshield:hc:' . substr(md5($this->o['dir']), 0, 12) . ':lookup';
+        $cookie = implode('; ', $this->sessionPairs($request));
+        $host = self::sentHost($request);     // on http-cache-hosts (ownHost), with its port
+        if (apcu_fetch("$prefix-pause") !== false || apcu_fetch($this->contextKey($session) . ':none') !== false
+            || preg_match('/^(?:' . self::COOKIE_PAIR . '(?:; |$))+$/D', $cookie) !== 1
+            || preg_match('/^[a-z0-9.-]+(?::\d{1,5})?$/D', $host) !== 1) {
             return null;
         }
-        $base = $this->o['userContext'] === 'on' ? strtolower($request->scheme . '://' . $request->host) : $this->o['userContext'];
-        $got = Http::get($base . self::LOOKUP_PATH, ['Accept' => self::LOOKUP_ACCEPT, 'Host' => $request->host, 'Cookie' => implode('; ', $this->sessionPairs($request)),
-            'X-RS-Lookup' => $this->lookupMac($session)], 2, 4096);
-        $hash = $got !== null && $got['status'] === 200 ? trim($got['headers'][$this->o['hashHeader']] ?? '') : '';
-        if ($hash === '' || strlen($hash) > 200) {
-            apcu_store($pause, 1, self::LOOKUP_PAUSE);
+        $budget = "$prefix-n:" . IpAddress::bucket($request->clientIp, $this->settings->ipv6Prefix);
+        apcu_add($budget, 0, 60);
+        if (apcu_inc($budget, 1, $ok, 60) > self::LOOKUP_BUDGET) {
+            return null;
+        }
+        apcu_add("$prefix-running", 0, 10);
+        if (apcu_inc("$prefix-running", 1, $ok, 10) > self::LOOKUP_PARALLEL) {
+            apcu_dec("$prefix-running");
+            return null;
+        }
+        $asked = microtime(true);
+        try {
+            $base = $this->o['userContext'] === 'on' ? strtolower($request->scheme) . '://' . $host : $this->o['userContext'];
+            $got = Http::get($base . self::LOOKUP_PATH, ['Accept' => self::LOOKUP_ACCEPT, 'Host' => $host, 'Cookie' => $cookie,
+                'X-RS-Lookup' => $this->lookupMac($session)], 2, 4096, 'request-shield', false);
+        } finally {
+            apcu_dec("$prefix-running");
+        }
+        if ($got === null || $got['status'] >= 500) {
+            apcu_store("$prefix-pause", 1, self::LOOKUP_PAUSE);
+            return null;
+        }
+        $hash = $got['status'] === 200 ? trim($got['headers'][$this->o['hashHeader']] ?? '') : '';
+        if (preg_match('/^[!-~]{1,200}$/D', $hash) !== 1) {
+            apcu_store($this->contextKey($session) . ':none', 1, self::LOOKUP_PAUSE);
             return null;
         }
         $cc = strtolower($got['headers']['cache-control'] ?? '');
         $ttl = preg_match('/\bmax-age=(\d+)/', $cc, $m) === 1 ? min((int) $m[1], 3600) : $this->o['contextTtl'];
         if ($ttl > 0) {
             $tags = $this->tagsOf(array_map(static fn (string $k, string $v): string => "$k: $v", array_keys($got['headers']), $got['headers'])) ?? [];
-            apcu_store($this->contextKey($session), [microtime(true), $hash, true, $tags], $ttl);
+            apcu_store($this->contextKey($session), [$asked, $hash, true, $tags], $ttl);
         }
         return [$hash, true];
     }
@@ -709,9 +749,15 @@ final class CachePlugin implements Plugin, Handler, MethodHandler, ContextHandle
      */
     private function ownHost(Request $request): bool
     {
+        return in_array(self::sentHost($request), $this->o['hosts'], true);
+    }
+
+    /** The host name as the visitor sent it, with its port, in small letters. */
+    private static function sentHost(Request $request): string
+    {
         $raw = $request->viaTrustedProxy && $request->header('x-forwarded-host') !== null
             ? explode(',', (string) $request->header('x-forwarded-host'))[0] : (string) $request->header('host');
-        return in_array(strtolower(trim($raw)), $this->o['hosts'], true);
+        return strtolower(trim($raw));
     }
 
     /**

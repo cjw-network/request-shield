@@ -86,8 +86,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `ez-user-context-hash` asks again); the application gets the hash as from
   a Varnish, and every session of a role shares its pages. No adapter
   needed. A visitor that asks for a hash or sends one gets 400. No hash --
-  the cache is skipped for the request, no question for 60 s. Settings
-  `FORMAT` 61. ([the HTTP cache](docs/features/RSF04-03-http-cache.md#the-role-from-foshttpcaches-user-hash-ibexa-exponential-platform))
+  the cache is skipped for the request; the application not answering
+  (no answer, a timeout, 5xx) pauses every question for 60 s, an answer
+  without a hash only that session's. No redirect is followed; a session
+  cookie a browser could not send, or a host not on `http-cache-hosts`, is
+  never asked with; at most 30 questions a minute for new sessions from one
+  address and 2 at a time. `on` asks at the host and port the visitor used.
+  Settings `FORMAT` 61. ([the HTTP cache](docs/features/RSF04-03-http-cache.md#the-role-from-foshttpcaches-user-hash-ibexa-exponential-platform))
 - **The HTTP cache keeps one page per role** (0031 step G.4, part 2;
   proposal 0039): the application names the visitor's role with
   `Shield::active()?->cacheContext($role, shared: true)` (a new plugin
