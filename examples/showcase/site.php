@@ -287,10 +287,10 @@ function showcaseAnswer(int $status, string $title, string $text): void
 
 $path = (string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
 $method = (string) ($_SERVER['REQUEST_METHOD'] ?? 'GET');
-/** The Exponential example: next to this file in a standalone copy (build/showcase.php), the repository's otherwise. */
+/** The Exponential example: in lib/ in a standalone copy (build/showcase.php), the repository's otherwise. */
 function showcaseExponential(): string
 {
-    return is_dir(__DIR__ . '/exponential') ? __DIR__ . '/exponential' : dirname(__DIR__) . '/exponential';
+    return is_dir(__DIR__ . '/lib/exponential') ? __DIR__ . '/lib/exponential' : dirname(__DIR__) . '/exponential';
 }
 
 $tries = showcaseTries(__DIR__ . '/showcase.rules');
@@ -301,7 +301,12 @@ $tries = showcaseTries(__DIR__ . '/showcase.rules');
 // local web server in front would otherwise make everyone "this machine".
 $learnShield = Shield::active();
 $learnClient = $learnShield !== null ? \CjwNetwork\RequestShield\Request::fromServer($_SERVER, $learnShield->settings->trustedProxies)->clientIp : '';
-$learnHere = in_array($learnClient, ['127.0.0.1', '::1'], true) || getenv('REQUEST_SHIELD_SHOWCASE_LEARN') === 'on';
+// A standalone copy for a public host (build/showcase.php) says who that is instead: lib/public.php,
+// the --admin addresses -- there "this machine" may be the hoster's proxy in front of everyone.
+$public = is_file(__DIR__ . '/lib/public.php') ? (array) require __DIR__ . '/lib/public.php' : null;
+$learnHere = ($public === null ? in_array($learnClient, ['127.0.0.1', '::1'], true)
+    : \CjwNetwork\RequestShield\IpAddress::inRanges($learnClient, array_values(array_map('strval', (array) ($public['admin'] ?? [])))))
+    || getenv('REQUEST_SHIELD_SHOWCASE_LEARN') === 'on';
 $learnStore = $learnShield !== null ? $learnShield->settings->storeDir : null;
 if ($path === '/try' || $path === '/exponential') {
     $view = substr($path, 1);         // a page of its own: everything to try, the Exponential example
@@ -525,6 +530,11 @@ if ($path === '/account/login' && $method === 'POST') {
     }
     Shield::active()?->consume('logins', null, null, true);
     showcaseJson(200, ['ok' => false]);
+    return;
+}
+if ($path === '/__log' && $public !== null && !$learnHere) {
+    // On a public host the log holds other visitors' addresses as they asked for them: for --admin only.
+    showcaseJson(403, ['error' => 'the log is for the showcase\'s admin addresses (build/showcase.php --admin)']);
     return;
 }
 if ($path === '/__log') {

@@ -159,18 +159,32 @@ Bootstrap 5.3.8 and Bootstrap Icons 1.13.1 are in `assets/vendor/` (MIT, their
 licences beside them): the page loads nothing from another host. The store
 goes to `var/` next to `showcase.rules` (`REQUEST_SHIELD_SHOWCASE_VAR`).
 
-**On a shared host (open_basedir):** `php build/showcase.php
---out=showcase-site --host=showcase.example.org --admin=203.0.113.7` makes
-one directory that runs on its own -- the page, the Exponential example,
-the library in `lib/`, and `var/` for what the shield keeps; nothing outside
-it is read or written. Upload it, point a (sub)domain's document root at it
-(Apache with mod_rewrite: `.htaccess` sends every address to `index.php`;
-`lib/` and `var/` are never served). `--host` is the address visitors use
-(the HTTP cache keeps pages only for it); the shield's own pages (`/rs/**`)
-are for `--admin`'s addresses only -- without it, for nobody: on a public
-host, "this machine" may be the hoster's proxy in front of every visitor.
+**On a public host, shared hosting with open_basedir too:** `php
+build/showcase.php --out=showcase-site --host=showcase.example.org
+--admin=203.0.113.7` makes one directory that runs on its own -- the page,
+the library and the Exponential example in `lib/`, `var/` for what the
+shield keeps; nothing outside it is read or written.
 
-**For your own machine only:** the rules trust `127.0.0.1` as a proxy so the
+- **The host:** Apache that reads `.htaccess` (AllowOverride) with
+  mod_rewrite, a (sub)domain whose document root is the directory (not a
+  folder below a site), and PHP allowed to write in it (`var/` and the
+  compiled settings in `.request-shield/`). `.htaccess` sends every address
+  to `index.php`; `lib/`, `var/` and `.request-shield/` are never served.
+  **After the upload, check** that `https://showcase.example.org/var/secret`
+  is not served (403, or the showcase's "not here") -- a server that skips
+  `.htaccess` (nginx, AllowOverride None) would hand out the secret.
+- **`--host`** is the address visitors use: the HTTP cache keeps pages only
+  for it.
+- **`--admin`** names who may see what the showcase keeps for "this
+  machine" -- the shield's own pages (`/rs/**`), the log (`/__log`, it holds
+  the addresses other visitors asked for) and the learning run; without it,
+  nobody. The copy trusts no proxy: on a public host "this machine" may be
+  the hoster's proxy in front of every visitor. Behind such a proxy that
+  hides the visitors' addresses, every visitor counts as one: the budgets
+  of the tries are then shared.
+
+**For your own machine only** (the repository's copy, not a built one):
+the rules trust `127.0.0.1` as a proxy so the
 page can play visitors; on a public server anyone could then name their own
 address. The technical demo with one example per feature is
 [examples/demo](../demo/README.md).

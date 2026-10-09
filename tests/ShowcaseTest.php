@@ -88,10 +88,14 @@ return [
         exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/build/showcase.php') . ' ' . escapeshellarg("--out=$out") . ' ' . escapeshellarg("--host=127.0.0.1:$port") . ' 2>&1', $said, $code);
         same(0, $code, implode("\n", $said));
         try {
-            foreach (['index.php', 'lib/bootstrap.php', 'lib/src/Shield.php', 'lib/rules/attacks.rules', 'exponential/demo.rules', '.htaccess', 'lib/.htaccess', 'var/.htaccess'] as $f) {
+            foreach (['index.php', 'lib/bootstrap.php', 'lib/src/Shield.php', 'lib/rules/attacks.rules', 'lib/exponential/demo.rules', 'lib/public.php', '.htaccess', 'lib/.htaccess', 'var/.htaccess', '.request-shield/.htaccess'] as $f) {
                 truthy(is_file("$out/$f"), "the bundle holds $f");
             }
-            truthy(strpos((string) file_get_contents("$out/showcase.rules"), "127.0.0.1:$port") !== false, '--host is in http-cache-hosts');
+            // A folder named like a page would be Apache's (/exponential -> /exponential/, a 404): only these.
+            same(['.request-shield', 'assets', 'lib', 'var'], array_values(array_filter(scandir($out) ?: [], static fn (string $n): bool => $n !== '.' && $n !== '..' && is_dir("$out/$n"))), 'the folders at the top');
+            $rules = (string) file_get_contents("$out/showcase.rules");
+            truthy(strpos($rules, "127.0.0.1:$port") !== false, '--host is in http-cache-hosts');
+            truthy(preg_match('/^trust\s/m', $rules) !== 1, 'no proxy trusted on a public host');
             $web = proc_open(sprintf('cd %s && exec %s -d open_basedir=%s -d error_reporting=-1 -d display_errors=0 -d log_errors=1 -S 127.0.0.1:%d router.php > %s 2>&1',
                 escapeshellarg($out), escapeshellarg(PHP_BINARY), escapeshellarg($out), $port, escapeshellarg("$out.log")), [], $pipes);
             for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) {
@@ -100,6 +104,7 @@ return [
             try {
                 $get = static fn (string $uri): array => \CjwNetwork\RequestShield\Http::get("http://127.0.0.1:$port$uri", [], 10, 0, 'request-shield', false) ?? [];
                 same(403, (int) ($get('/rs/stats')['status'] ?? 0), 'the shield\'s own pages: closed without --admin');
+                same(403, (int) ($get('/__log')['status'] ?? 0), 'the log: closed without --admin');
                 foreach (['/', '/cache', '/exponential', '/learn'] as $page) {
                     same(200, (int) ($get($page)['status'] ?? 0), "$page answers");
                 }
@@ -114,8 +119,11 @@ return [
             }
             $log = (string) @file_get_contents("$out.log");
             truthy(stripos($log, 'open_basedir') === false && stripos($log, 'warning') === false, 'no file outside the directory, no warning: ' . substr($log, 0, 500));
+            // A wrong --admin is refused at the build, not by a site that switches the shield off.
+            exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/build/showcase.php') . ' ' . escapeshellarg("--out=$out-bad") . ' --admin=1.2.3.4/99 2>&1', $bad, $code);
+            truthy($code === 1 && !file_exists("$out-bad") && !file_exists("$out-bad.part-" . getmypid()), 'a wrong --admin: refused, nothing left: ' . implode(' ', $bad));
         } finally {
-            exec('rm -rf ' . escapeshellarg($out) . ' ' . escapeshellarg("$out.log"));
+            exec('rm -rf ' . escapeshellarg($out) . ' ' . escapeshellarg("$out.log") . ' ' . escapeshellarg("$out-bad"));
         }
     },
     'RSF04-03 showcase, the tab "Cache": the magazine kept and given out before the application; a campaign link the same page; members share theirs; publishing purges one article; the showcase\'s own pages are never kept' => function (): void {
