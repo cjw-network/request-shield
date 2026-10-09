@@ -329,16 +329,17 @@ final class Shield
         // glob of cache-ignore matches (p* and page); one query drop left out goes whatever cache-query says
         // (page=2' is no page).
         $goes = [];
-        foreach ($request->queryPairs() as [$name]) {
+        foreach ($request->queryPairs() as [$name, , $raw]) {
             if (isset($dropped[$name]) || (!in_array($name, (array) $s->cacheableQuery, true) && \CjwNetwork\RequestShield\Rule\CacheableRule::ignored($name, $s->cacheableIgnore))) {
-                $goes[Request::phpName($name)] = true;
+                $goes[Request::phpKey($raw)] = true;
             }
         }
-        // ... and every pair PHP puts under that name goes with it (" page", "page%00x" are $_GET['page']):
-        // what the application reads, the query and the cache key stay one and the same.
+        // ... and every pair PHP puts under that key goes with it (" page", "items[per[page" are $_GET['page'],
+        // $_GET['items_per_page']): what the application reads, the query and the cache key stay one and the same.
         foreach ($request->queryPairs() as [$name, $value, $raw]) {
-            if (isset($goes[Request::phpName($name)])) {
-                $gone[Request::phpName($name)] = $value;
+            $key = Request::phpKey($raw);
+            if (isset($goes[$key])) {
+                $gone[$key] = $value;
             } else {
                 $kept[] = [$name, $raw];
             }

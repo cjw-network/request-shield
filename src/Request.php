@@ -202,6 +202,10 @@ final class Request
             }
             $kv = explode('=', $pair, 2);
             $name = urldecode($kv[0]);
+            $nul = strpos($name, "\0");
+            if ($nul !== false) {
+                $name = substr($name, 0, $nul);         // as PHP: the name ends at a NUL byte (page%00x is page), before any "["
+            }
             $bracket = strpos($name, '[');
             // As PHP: "a[b]" is "a"; a "[" with no "]" after it is no array ("a[b" is the name "a_b", phpName()).
             $array = $bracket !== false && $bracket > 0 && strpos($name, ']', $bracket) !== false;
@@ -211,21 +215,28 @@ final class Request
     }
 
     /**
-     * The name PHP gives a parameter in $_GET (0048): cut at a NUL byte
-     * (page%00x is $_GET['page']), leading spaces left out, "." and " " as
-     * "_" -- utm.source is $_GET['utm_source'] -- and a "[" with no "]" after
-     * it as "_" (the first; queryPairs() keeps such a name whole) -- of the
-     * name as queryPairs() has it.
+     * The name PHP gives a parameter in $_GET (0048) -- utm.source is
+     * $_GET['utm_source'], items[per[page is items_per_page, page%00x is
+     * page -- of the name as queryPairs() has it (decoded). Asked of PHP's
+     * own parser, not rebuilt: its rules have corners (every "[" after an
+     * unclosed one, a NUL byte, leading spaces), and a name taken out under
+     * one spelling while PHP keeps it under another would let the
+     * application and a cache key disagree. "" for a name PHP drops ([x]).
      */
     public static function phpName(string $name): string
     {
-        $nul = strpos($name, "\0");
-        if ($nul !== false) {
-            $name = substr($name, 0, $nul);
-        }
-        $name = strtr(ltrim($name, ' '), ['.' => '_', ' ' => '_']);
-        $bracket = strpos($name, '[');
-        return $bracket === false ? $name : substr_replace($name, '_', $bracket, 1);
+        return self::phpKey(rawurlencode($name));
+    }
+
+    /**
+     * The key PHP gives a raw pair of the query in $_GET ("items%5Bper%5Bpage=1"
+     * is items_per_page; "page[]=1" is page) -- PHP's own parser on the name
+     * alone; "" for a name it drops.
+     */
+    public static function phpKey(string $raw): string
+    {
+        parse_str(explode('=', $raw, 2)[0] . '=', $parsed);
+        return (string) array_key_first($parsed);
     }
 
     /** @var list<array{0: string, 1: string, 2: string}>|null parsed once, for every rule that asks */

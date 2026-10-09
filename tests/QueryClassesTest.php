@@ -102,7 +102,7 @@ return [
             echo json_encode(["get" => $_GET, "qs" => $_SERVER["QUERY_STRING"] ?? "", "uri" => $_SERVER["REQUEST_URI"] ?? "", "ignored" => $_SERVER["REQUEST_SHIELD_IGNORED"] ?? null]);');
         $port = freePort();
         file_put_contents("$dir/site.rules", "set store file\nset store-dir $dir/store\nset http-cache on\nset http-cache-hosts 127.0.0.1:$port\n"
-            . "query page int\nquery strict\nmatch /magazin/** {\n  query drop\n}\ncache-query page\ninclude @attacks\nset debug-header on\n");
+            . "query page int   items_per_page int\nquery strict\nmatch /magazin/** {\n  query drop\n}\ncache-query page items_per_page\ninclude @attacks\nset debug-header on\n");
         file_put_contents("$dir/router.php", '<?php require ' . var_export(rsEntry(), true) . '; require __DIR__ . "/docroot/index.php";');
         $web = proc_open(sprintf('REQUEST_SHIELD_CONFIG=%s exec %s -d apc.enable_cli=1 -S 127.0.0.1:%d %s > %s 2>&1',
             escapeshellarg("$dir/site.rules"), serverPhp(), $port, escapeshellarg("$dir/router.php"), escapeshellarg("$dir/web.log")), [], $pipes);
@@ -135,6 +135,11 @@ return [
             same([[], '', '/magazin/2'], [$page['get'] ?? null, $page['qs'] ?? null, $page['uri'] ?? null], '" page": page goes as a whole');
             [, $cache, $page] = $get('/magazin/2?page=2');
             truthy($cache !== 'hit' && ($page['get'] ?? null) === ['page' => '2'], 'page 2 is its own, not what the tricks left (' . $cache . ')');
+            // A spelling PHP folds further: items[per[page is $_GET['items_per_page'].
+            [, , $page] = $get('/magazin/3?items_per_page=10&items[per[page=999');
+            same([[], ''], [$page['get'] ?? null, $page['qs'] ?? null], 'items[per[page: items_per_page goes as a whole');
+            [, $cache, $page] = $get('/magazin/3?items_per_page=10');
+            truthy(($page['get'] ?? null) === ['items_per_page' => '10'], 'items_per_page=10 is its own (' . $cache . ')');
         } finally {
             proc_terminate($web);
             proc_close($web);

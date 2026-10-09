@@ -166,10 +166,38 @@ return [
         $lines = array_values(array_filter($out, static fn (string $l): bool => strpos($l, 'query drop at') !== false));
         truthy(count($lines) === 2 && strpos($lines[0], 'MAG-DROP') !== false && strpos($lines[1], 'SHOP-DROP') !== false, 'each area with its own line: ' . implode(' / ', $lines));
     },
-    'RSF02-05 the name PHP gives a parameter: cut at a NUL byte, leading spaces off, "." and " " as "_"' => function (): void {
-        same(['page', 'page', 'a_b', 'q', 'utm_source'], array_map([Request::class, 'phpName'], ["page\0x", ' page', 'a.b', 'q', 'utm source']));
-        parse_str('page%00x=1&%20page=2&a.b=3', $php);
-        same(['page', 'a_b'], array_keys($php), 'as PHP itself reads them');
+    'RSF02-05 the name PHP gives a parameter is PHP\'s own, for every spelling: brackets, dots, spaces, NUL bytes' => function (): void {
+        same(['page', 'page', 'a_b', 'q', 'utm_source', 'items_per_page'], array_map([Request::class, 'phpName'], ["page\0x", ' page', 'a.b', 'q', 'utm source', 'items[per[page']));
+        // Every short name of these characters: the key the shield takes out is the one PHP fills, from the raw pair and from queryPairs().
+        $chars = ['a', 'b', '[', ']', '.', ' ', '%00', '+', '_'];
+        $names = [''];
+        for ($len = 1; $len <= 4; $len++) {
+            $next = [];
+            foreach ($names as $n) {
+                foreach ($chars as $c) {
+                    $next[] = $n . $c;
+                }
+            }
+            $names = $next;
+            foreach ($names as $n) {
+                parse_str($n . '=1', $php);
+                $want = (string) array_key_first($php);
+                $r = Request::fromServer(['REQUEST_URI' => '/x?' . $n . '=1', 'REQUEST_METHOD' => 'GET', 'HTTP_HOST' => 'www.example.org', 'REMOTE_ADDR' => '203.0.113.7']);
+                foreach ($r->queryPairs() as [$name, , $raw]) {
+                    same($want, Request::phpKey($raw), "phpKey of \"$n\"");
+                    if (strpos($n, ']') === false) {        // an array name's brackets are queryPairs()' to cut
+                        same($want, Request::phpName($name), "phpName of \"$n\"");
+                    }
+                }
+            }
+        }
+    },
+    'RSF04-01 more parameters than PHP reads (max_input_vars): never kept -- $_GET would hold fewer than the query' => function (): void {
+        $code = 'require ' . var_export(rsEntry(), true) . ';'
+            . '$r = \\CjwNetwork\\RequestShield\\Request::fromServer(["REQUEST_URI" => "/x?" . implode("&", array_map(static fn ($i) => "p$i=1", range(1, 30))), "REQUEST_METHOD" => "GET", "HTTP_HOST" => "www.example.org", "REMOTE_ADDR" => "203.0.113.7"]);'
+            . '$d = (new \\CjwNetwork\\RequestShield\\Rule\\CacheableRule(null, null))->check($r, 1.0); echo $d === null ? "kept" : $d->reason;';
+        same('too many parameters', trim((string) shell_exec(escapeshellarg(PHP_BINARY) . ' -d max_input_vars=25 -r ' . escapeshellarg($code) . ' 2>&1')), '30 parameters, PHP reads 25');
+        same('kept', trim((string) shell_exec(escapeshellarg(PHP_BINARY) . ' -d max_input_vars=1000 -r ' . escapeshellarg($code) . ' 2>&1')), 'PHP reads them all');
     },
     'RSF02-05 without strict: nothing is refused for being unknown -- answered, not cached' => function (): void {
         $s = querySettings("cache-query page\nquery page int\n");

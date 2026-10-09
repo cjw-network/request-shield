@@ -61,6 +61,15 @@ final class CacheableRule implements Rule
         if ($request->method !== 'GET' && $request->method !== 'HEAD') {
             return Decision::allowUncached('method');
         }
+        // More parameters than PHP reads (max_input_vars): $_GET holds fewer than the query -- never kept.
+        // (Counted only past 20 "&": a usual query pays one substr_count.)
+        if (substr_count($request->query, '&') >= 20) {
+            $count = count($request->queryPairs());
+            $max = (int) ini_get('max_input_vars');
+            if ($max > 0 && $count > $max) {
+                return Decision::allowUncached('too many parameters');
+            }
+        }
         if ($this->query !== null) {
             foreach ($request->queryNames() as $name) {
                 if (!in_array($name, $this->query, true) && !self::ignored($name, $this->ignore) && !isset($request->dropped()[$name])) {

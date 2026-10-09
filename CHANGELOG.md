@@ -104,10 +104,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   from the HTTP cache when kept. Still scanned: an attack in it is refused.
   Next to `query strict` it wins where both apply (GET and HEAD; another
   method keeps `strict`); `set mode monitor` leaves nothing out. A name
-  goes as a whole, as PHP reads it (`page%00x` and ` page` are
-  `$_GET['page']`), so the application, the query and the cache key never
-  disagree -- `cache-ignore` too: a name cut at a NUL byte by PHP is now
-  matched as PHP has it. Settings `FORMAT` 66. The showcase's magazine uses
+  goes as a whole, as PHP's own parser reads it (`page%00x` and ` page`
+  are `$_GET['page']`, `items[per[page` is `items_per_page`), so the
+  application, the query and the cache key never disagree -- `cache-ignore`
+  too, which before matched some of these spellings under another name. A
+  request with more parameters than PHP reads (`max_input_vars`) is never
+  kept by a cache. Settings `FORMAT` 66. The showcase's magazine uses
   it: a bot's made-up parameters get the kept page.
 - **Every plugin is a Composer package of its own** (0031 step H.1):
   `plugins/api`, `plugins/waf`, `plugins/stats` and `plugins/cache` each
