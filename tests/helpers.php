@@ -42,6 +42,17 @@ function serverPhp(): string
 }
 
 /**
+ * Whether the servers a test starts (php -S, PHP-FPM) have APCu: the
+ * extension loaded (they do not need apc.enable_cli), and not switched off
+ * by TESTS_HOSTING=minimal. The HTTP cache's roles (0039) need it; without
+ * it they stay off and a session's page is the visitor's own.
+ */
+function serverApcu(): bool
+{
+    return extension_loaded('apcu') && getenv('TESTS_HOSTING') !== 'minimal';
+}
+
+/**
  * The built single file the suite runs against (REQUEST_SHIELD_ENTRY, 0031
  * E.3), or null: the source tree (bootstrap.php, bin/request-shield).
  */

@@ -394,6 +394,19 @@ return [
             [, , $anon] = $send('GET', '/index.php');
             $r = $send('GET', '/index.php');
             truthy($hit($r) && $r[2] === $anon, 'anonymous: kept as before');
+            if (!serverApcu()) {
+                // Without APCu roles stay off (0039): a session's page is the visitor's own -- the
+                // application makes it every time, nothing is kept for it, anonymous visitors keep theirs.
+                $runs = strlen((string) file_get_contents("$dir/runs"));
+                $first = $as('ed-1');
+                $again = $as('ed-1');
+                truthy(!$hit($first) && !$hit($again) && strpos($again[2], 'page for editor') === 0 && $again[2] !== $first[2]
+                    && strlen((string) file_get_contents("$dir/runs")) === $runs + 2, 'no APCu: a session\'s page from the application, each time -- ' . $again[1]);
+                truthy(stripos($first[1], 'X-RS-Cache: miss') === false, 'no APCu: nothing kept for a session (no miss that a later request could hit) -- ' . $first[1]);
+                $r = $send('GET', '/index.php');
+                truthy($hit($r) && $r[2] === $anon, 'no APCu: anonymous visitors still get their kept page, never a session\'s');
+                return;
+            }
             if (strpos($as('ed-1')[1], 'X-RS-Cache: miss') === false) {
                 throw new TestFailure('a session the shield does not know yet: the application runs');
             }
