@@ -902,7 +902,7 @@ final class RuleFile
                 $this->deny(['ips' => $ips, 'until' => $until, 'rule' => $this->rid]);
                 return;
             case 'ban':
-                $this->ban($args, $at);
+                $this->ban($args, $at, $file);
                 return;
             case 'feed':
                 $this->feed($args, $at, $file);
@@ -1009,7 +1009,7 @@ final class RuleFile
                 }
                 return;
             case 'limit':
-                $this->limit($args, $at);
+                $this->limit($args, $at, $file);
                 return;
             case 'no-limit':
                 if (count($args) !== 1) {
@@ -1407,13 +1407,23 @@ final class RuleFile
      * these signals within <time> gets nothing but 429 for a while. Signals:
      * limits (past a limit), refusals (blocked paths, attack patterns), checks
      * (a check page shown again and again), or the name of a budget the site
-     * counts itself (consume('logins')).
+     * counts itself (consume('logins')). Inside a match block (proposal 0050)
+     * it is the area's: only its signals there count, and it refuses only there.
      *
      * @param list<string> $args
      */
-    private function ban(array $args, string $at): void
+    private function ban(array $args, string $at, string $file): void
     {
         $usage = 'ban after <n> <limits|refusals|checks|budget> in <time> for <time>';
+        // "at <paths>" is what a match block writes (inBlock()); no word of ban outside one.
+        $paths = [];
+        $block = end($this->blocks);
+        if (count($args) > 8 && $args[7] === 'at' && $block !== false && $block['file'] === $file) {
+            foreach ($this->compile(array_slice($args, 8), $at, false) as $pattern => $origin) {
+                $paths[] = $pattern . 'i';
+            }
+            $args = array_slice($args, 0, 7);
+        }
         if (count($args) !== 7 || $args[0] !== 'after' || $args[3] !== 'in' || $args[5] !== 'for' || !preg_match('/^[1-9]\d*$/', $args[1])
             || !preg_match('/^[A-Za-z0-9_-]+$/', $args[2])) {
             throw new RuleFileException("$at: $usage");
@@ -1424,7 +1434,7 @@ final class RuleFile
             throw new RuleFileException("$at: $usage -- both times at least a second");
         }
         $list = (array) $this->get('bans');
-        $list[] = ['after' => (int) $args[1], 'signal' => strtolower($args[2]), 'in' => $window, 'for' => $for, 'rule' => $this->rid];
+        $list[] = ['after' => (int) $args[1], 'signal' => strtolower($args[2]), 'in' => $window, 'for' => $for, 'rule' => $this->rid] + ($paths !== [] ? ['paths' => $paths] : []);
         $this->put('bans', $list);
     }
 
@@ -1595,6 +1605,11 @@ final class RuleFile
                     throw new RuleFileException("$at: inside match: limit <name> <n>/<unit> ... -- the block is where");
                 }
                 return array_merge($args, ['at'], $path);   // counted in the area only
+            case 'ban':
+                if (in_array('at', $args, true)) {
+                    throw new RuleFileException("$at: inside match: ban after <n> <signal> in <time> for <time> -- the block is where");
+                }
+                return array_merge($args, ['at'], $path);   // counted and banned in the area only (0050)
             case 'cache-query':
             case 'cache-ignore':
                 throw new RuleFileException("$at: $keyword per area is not there yet (proposal 0008) -- put it outside the block");
@@ -2289,7 +2304,7 @@ final class RuleFile
     }
 
     /** @param list<string> $args  <name> <n>/<sec|min|hour|day> [challenge-at <n>] [on-demand] */
-    private function limit(array $args, string $at): void
+    private function limit(array $args, string $at, string $file): void
     {
         $usage = 'limit <name> <n>/<sec|min|hour|day> [challenge-at <n>] [on-demand] [on-exceeded challenge|throttle] [at <paths>]';
         // at <paths>: an area's budget -- only requests there count (also what a match block writes).
@@ -2326,6 +2341,12 @@ final class RuleFile
             } else {
                 throw new RuleFileException("$at: \"$a\" -- $usage");
             }
+        }
+        $block = end($this->blocks);
+        if ($budget['onDemand'] && $paths !== [] && $block !== false && $block['file'] === $file) {
+            // On demand, inside a match block (0050): once spent, the area's next requests wait too,
+            // and past its limit it is a "limits" signal for the area's bans. Not with "at <paths>": as before.
+            $budget['refuseSpent'] = true;
         }
         if ($this->siteOpen !== null) {
             // Written in a site block: counted on that website only (base budgets count across all).

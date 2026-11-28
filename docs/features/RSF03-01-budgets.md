@@ -92,6 +92,26 @@ match /search/** {
   results is counted, one reading the news is not.
 - `on-demand` works too: `consume('carts')` from the site counts only for a
   request inside the area.
+- **On demand inside a `match` block, a spent budget holds the area**
+  ([proposal 0050](../proposals/0050-area-bans-and-spent-budgets.md)): once
+  `consume()` has taken it past its limit, the area's next requests wait too
+  -- 429 with `Retry-After` (JSON on an `api-path`), whatever they are, until
+  the count falls back within the window; the rest of the site passes. Its
+  overrun is also a `limits` signal for a `ban` of the same block. Failed
+  sign-ins to an API then lock its area, not the website:
+
+  ```text
+  match /api/** {
+    api-path
+    [API-AUTH] limit api-auth 10/min on-demand     # consume('api-auth') where a token was wrong
+    [API-BAN]  ban after 3 limits in 15m for 30m   # banned from /api/** only
+  }
+  ```
+
+  Written with `at <paths>` (outside a block) an on-demand budget keeps its
+  0.4.0 behaviour: only `consume()` looks at it. PHP settings:
+  `'refuseSpent' => true` (with `onDemand` and `paths`). Cost: one pattern
+  match per such budget on every request, a store lookup (no count) on its paths.
 - In a `site` block: that website, that area. `monitor limit …` inside a block
   is watched as any other.
 - **One name, one budget:** an area's budget needs a name of its own. Calling

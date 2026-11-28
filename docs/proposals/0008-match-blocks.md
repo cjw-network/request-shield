@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Implemented** 2026-09-29, first step (see [rule files](../features/RSF05-01-rule-files.md#match-blocks-the-rules-of-an-area-in-one-place)); `limit` per area 2026-10-02 ([budgets](../features/RSF03-01-budgets.md#a-budget-for-one-area)); `cache-query` per area: open |
+| Status | **Implemented** 2026-09-29, first step (see [rule files](../features/RSF05-01-rule-files.md#match-blocks-the-rules-of-an-area-in-one-place)); `limit` per area 2026-10-02 ([budgets](../features/RSF03-01-budgets.md#a-budget-for-one-area)); `ban` per area 2026-11-28 ([0050](0050-area-bans-and-spent-budgets.md)); `cache-query` per area: open |
 | Proposed | 2026-09-29 |
 | Affects | rule files (syntax only, and two optional new abilities), the active rules page |
 

@@ -155,10 +155,10 @@ final class ListsPage implements \CjwNetwork\RequestShield\RoutePage
             foreach ($bans as $key => $until) {
                 $bucket = substr($key, 4);
                 $times = (int) round($store->peek('bans:' . $bucket, 86400, (float) $now));
-                $address = $bucket;                                 // IPv4 as it is, IPv6 its /64 (IpAddress::bucket())
+                $address = (string) strtok($bucket, '@');           // IPv4 as it is, IPv6 its /64 (IpAddress::bucket()); "@<rule>": an area's ban (0050)
                 $again = $times >= 3 && $action !== '' ? ' <a href="' . $e($action . (strpos($action, '?') === false ? '?' : '&') . http_build_query(['address' => $address, 'for' => 'good', 'note' => sprintf($t['again'], $times)])) . '">'
                     . $e(sprintf($t['again'], $times)) . '</a>' : '';
-                $h .= '<tr><td class="mono">' . $e($address) . '</td><td>' . $e(ListsChanges::date($until, $lang)) . '</td><td>' . $again . '</td>'
+                $h .= '<tr><td class="mono">' . $e($bucket) . '</td><td>' . $e(ListsChanges::date($until, $lang)) . '</td><td>' . $again . '</td>'
                     . '<td><form method="post" action="' . $e($action) . '">' . $hidden('lift', ['bucket' => $bucket]) . '<button>' . $e($t['lift']) . '</button></form></td></tr>';
             }
             $h .= '</tbody></table></div>';

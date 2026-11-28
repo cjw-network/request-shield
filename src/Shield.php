@@ -133,7 +133,17 @@ final class Shield
             if ($s->banKeep === 'file' && $this->store instanceof ApcuStore) {
                 self::restoreBans($s, $this->store);
             }
-            $this->rules[] = new BanRule($this->store, $s->exemptIps, $s->ipv6Prefix);
+            // The site's bans: one lookup; an area's (inside a match block, 0050): only on its paths.
+            $site = false;
+            $areas = [];
+            foreach ($s->bans as $b) {
+                if (isset($b['paths'])) {
+                    $areas[] = [$b['rule'], $b['paths']];
+                } else {
+                    $site = true;
+                }
+            }
+            $this->rules[] = new BanRule($this->store, $s->exemptIps, $s->ipv6Prefix, $site, $areas);
         }
         $this->rules[] = new MethodRule($s->methods);
         $this->rules[] = new LimitsRule($s->maxUri, $s->maxQueryParameters, $s->maxHeaderBytes);
@@ -174,6 +184,9 @@ final class Shield
         foreach ($s->budgets as $budget) {
             if (!$budget->onDemand) {
                 $this->rules[] = $this->budgetRule($budget);
+            } elseif ($budget->refuseSpent) {
+                // On demand, inside a match block (0050): counted by consume(); once spent, the area's next requests wait.
+                $this->rules[] = $this->budgetRule($budget, true);
             }
         }
         if (($s->hooks['ruleProvider'] ?? []) !== []) {
@@ -848,9 +861,13 @@ final class Shield
     /**
      * One signal: counted for every ban that names it; past its number, the
      * ban (or, watched, a line in the log). $unasked: a refusal a page asked
-     * for by itself (unasked()), on its own counter.
+     * for by itself (unasked()), on its own counter. An area's ban (0050)
+     * counts only a request on its paths; $area: only for the bans of that
+     * area (an area's on-demand budget past its limit).
+     *
+     * @param list<string>|null $area
      */
-    private function signal(string $name, Request $request, float $now, bool $unasked = false): void
+    private function signal(string $name, Request $request, float $now, bool $unasked = false, ?array $area = null): void
     {
         $s = $this->settings;
         $enforced = $s->mode === 'monitor' ? [] : $s->bans;
@@ -864,11 +881,30 @@ final class Shield
         }
         foreach ([[$enforced, false], [$watched, true]] as [$bans, $watch]) {
             foreach ($bans as $b) {
-                if ($b['signal'] === $name) {
+                if ($b['signal'] === $name && ($area === null ? self::banCovers($b, $request) : ($b['paths'] ?? null) === $area)) {
                     $this->countBan($b, $request, $now, $watch, $unasked);
                 }
             }
         }
+    }
+
+    /**
+     * Whether a ban counts a signal from this request: the site's always, an
+     * area's (0050) only on its paths.
+     *
+     * @param array{after: int, signal: string, in: int, for: int, rule: string, paths?: list<string>} $b
+     */
+    private static function banCovers(array $b, Request $request): bool
+    {
+        if (!isset($b['paths'])) {
+            return true;
+        }
+        foreach ($b['paths'] as $p) {
+            if (preg_match($p, $request->matchPath()) === 1) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -877,7 +913,7 @@ final class Shield
      * Never an address let in (exempt), a trusted proxy or a verified crawler.
      * $unasked: on a counter of its own, past UNASKED_REFUSALS times the number.
      *
-     * @param array{after: int, signal: string, in: int, for: int, rule: string} $b
+     * @param array{after: int, signal: string, in: int, for: int, rule: string, paths?: list<string>} $b
      */
     private function countBan(array $b, Request $request, float $now, bool $watch, bool $unasked = false): void
     {
@@ -907,15 +943,17 @@ final class Shield
             Log::note($s, $request, Decision::throttle('banned', $b['for']), $b['rule'], $now, true);
             return;
         }
-        $offences = (int) round($this->store->hit('bans:' . $bucket, 86400, $now));
+        // An area's ban (0050): its own mark and growth, "<client>@<rule>" -- BanRule looks there on its paths only.
+        $banned = isset($b['paths']) ? $bucket . '@' . $b['rule'] : $bucket;
+        $offences = (int) round($this->store->hit('bans:' . $banned, 86400, $now));
         $duration = (int) min($s->banMax, $b['for'] * $s->banGrowth ** max(0, min($offences - 1, 30)));
         $until = (int) $now + $duration;
-        if ($this->store->marked('ban:' . $bucket, $now) >= $until) {
+        if ($this->store->marked('ban:' . $banned, $now) >= $until) {
             return;                                         // banned longer already
         }
-        $this->store->mark('ban:' . $bucket, $until, $now);
+        $this->store->mark('ban:' . $banned, $until, $now);
         if ($s->banKeep === 'file' && !$this->store instanceof FileStore) {
-            (new FileStore($s->storeDir))->mark('ban:' . $bucket, $until, $now);     // survives a restart of APCu
+            (new FileStore($s->storeDir))->mark('ban:' . $banned, $until, $now);     // survives a restart of APCu
         }
         Log::note($s, $request, Decision::throttle('banned', $duration), $b['rule'], $now);
     }
@@ -940,18 +978,27 @@ final class Shield
 
     /**
      * Lifts a ban at once, wherever it is kept: the store and, with
-     * ban-keep file, its file. False when the address is not banned.
+     * ban-keep file, its file -- the areas' bans of the address too (0050).
+     * False when the address is not banned.
      */
     public static function liftBan(Settings $s, Store $store, string $bucket, ?float $now = null): bool
     {
         $now ??= microtime(true);
-        $key = 'ban:' . $bucket;
-        $was = $store->marked($key, $now) > 0;
-        $store->mark($key, 0, $now);
-        if ($s->banKeep === 'file' && !$store instanceof FileStore) {
-            $file = new FileStore($s->storeDir);
-            $was = $was || $file->marked($key, $now) > 0;
-            $file->mark($key, 0, $now);
+        $keys = ['ban:' . $bucket];
+        foreach ($s->bans as $b) {
+            if (isset($b['paths'])) {
+                $keys[] = 'ban:' . $bucket . '@' . $b['rule'];
+            }
+        }
+        $file = $s->banKeep === 'file' && !$store instanceof FileStore ? new FileStore($s->storeDir) : null;
+        $was = false;
+        foreach (array_unique($keys) as $key) {
+            $was = $store->marked($key, $now) > 0 || $was;
+            $store->mark($key, 0, $now);
+            if ($file !== null) {
+                $was = $file->marked($key, $now) > 0 || $was;
+                $file->mark($key, 0, $now);
+            }
         }
         return $was;
     }
@@ -1615,6 +1662,9 @@ final class Shield
         $d = $this->budgetRule($b)->check($request, $now, $times) ?? Decision::allow();
         if (!$d->passes()) {
             $this->signal($budget, $request, $now);              // ban after 10 logins in 15m
+            if ($b->refuseSpent) {
+                $this->signal('limits', $request, $now, false, $b->paths);     // past an area's limit: for the area's bans (0050)
+            }
         }
         if ($this->settings->mode === 'monitor') {
             if (!$d->passes()) {
@@ -1670,10 +1720,11 @@ final class Shield
         }
     }
 
-    private function budgetRule(Budget $b): BudgetRule
+    /** @param bool $peek only look whether the budget is spent, count nothing (an area's on-demand budget in decide()) */
+    private function budgetRule(Budget $b, bool $peek = false): BudgetRule
     {
         return new BudgetRule($this->store, $b->name, $b->limit, $b->window, $b->challengeAt,
-            $this->settings->exemptIps, $this->settings->ipv6Prefix, $b->earnBack, $b->counter(), $b->paths);
+            $this->settings->exemptIps, $this->settings->ipv6Prefix, $b->earnBack, $b->counter(), $b->paths, $peek);
     }
 
     private function gate(): Gate

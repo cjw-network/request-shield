@@ -36,6 +36,8 @@ final class BudgetRule implements Rule
         private ?string $counter = null,
         /** @var list<string> the area: only requests there count; [] everywhere */
         private array $paths = [],
+        /** only look whether the budget is spent, count nothing: an area's on-demand budget in decide() (0050) */
+        private bool $peek = false,
     ) {
     }
 
@@ -65,6 +67,15 @@ final class BudgetRule implements Rule
             }
         }
         $key = ($this->counter ?? $this->name) . ':' . IpAddress::bucket($request->clientIp, $this->ipv6Prefix);
+        if ($this->peek) {
+            // Counted by consume(); past the limit there, the area's next requests wait too.
+            $count = $this->store->peek($key, $this->window, $now);
+            if ($count <= $this->limit) {
+                return null;
+            }
+            $wait = (int) ceil($this->window * ($count - $this->limit) / $this->limit);
+            return $this->earnBack ? Decision::spent($this->name, $wait) : Decision::throttle($this->name, $wait);
+        }
         $count = $this->store->hit($key, $this->window, $now);
         for ($i = 1; $i < $times; $i++) {
             $count = $this->store->hit($key, $this->window, $now);

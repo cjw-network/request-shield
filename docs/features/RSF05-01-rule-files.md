@@ -63,7 +63,7 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `cache-path <paths>` | `cacheable.paths` | what a cache may keep; `any`: every path (default) |
 | `cache-query <names>` | `cacheable.query` | parameters a cached URL may have; `any` (default), `none` |
 | `cache-ignore <names>` / `cache-ignore @tracking` | `cacheable.ignore` | parameters no cache key holds (`utm_*`, `gclid`; `@tracking`: the names of the shipped set): taken out before a cache and the application run, the page kept without them; names as PHP names them ([the cacheable definition](RSF04-01-cacheable-definition.md#query-parameters-in-the-key-ignored-unknown)) |
-| `limit <name> <n>/<unit> [challenge-at <n>] [on-demand] [on-exceeded challenge] [at <paths>]` | `budgets` | units `s`, `sec`, `min`, `hour`, `day`, also `20/10s`; `on-exceeded challenge`: past the limit the check that frees the counter instead of a pause ([budgets](RSF03-01-budgets.md#past-the-limit-a-pause-or-earn-it-back)); `at <paths>` (or inside a `match` block): only requests there count ([an area's budget](RSF03-01-budgets.md#a-budget-for-one-area)) |
+| `limit <name> <n>/<unit> [challenge-at <n>] [on-demand] [on-exceeded challenge] [at <paths>]` | `budgets` | units `s`, `sec`, `min`, `hour`, `day`, also `20/10s`; `on-exceeded challenge`: past the limit the check that frees the counter instead of a pause ([budgets](RSF03-01-budgets.md#past-the-limit-a-pause-or-earn-it-back)); `at <paths>` (or inside a `match` block): only requests there count; `on-demand` inside a block: once spent, the area's next requests wait ([an area's budget](RSF03-01-budgets.md#a-budget-for-one-area)) |
 | `post-origin same [missing check\|allow\|refuse] [except <paths>]` / `post-origin except <paths>` | `postOrigin` | forms (POST, PUT, PATCH, DELETE) only from the website's own pages: `Origin`, else `Referer`; another website 403, neither the browser check ([forms from the website](RSF02-04-forms-from-the-website.md)) |
 | `backend <paths>` | `backend` | the editors' area: its forms counted apart in the statistics, one entry per area ([forms in the statistics](RSF06-03-statistics.md#forms-sent-from-where-how-they-ended)); inside a `match` block without paths |
 | `api-path <paths>` | `challenge.apiPaths` | the site's API: a check there is JSON with a header, not a page |
@@ -77,7 +77,7 @@ comment at the start of a line or after a space; `\#` is a literal `#`.
 | `exempt <addresses or ranges> [until <day>[T<hh:mm>]]` | `exempt.ips` | never counted and never checked, still refused for blocked paths and attack patterns ([IP lists](RSF01-02-ip-lists.md)) |
 | `deny <addresses or ranges> [until <day>[T<hh:mm>]]` | `deny` | kept out: 403 before every other check ([IP lists](RSF01-02-ip-lists.md)) |
 | `feed <name> [<https-url> \| from <file>] deny\|check\|count\|ban-signal <n> [at <paths>] [format <f>] [wide-ok]` | `feeds` | a public blocklist, fetched by `request-shield feeds … update`; above the site blocks ([feeds](RSF01-03-blocklist-feeds.md)) |
-| `ban after <n> <signal> in <time> for <time>` | `bans` | a client past `<n>` signals (`limits`, `refusals`, `checks`, a budget's name) is answered only 429 for a while; above the site blocks ([IP lists](RSF01-02-ip-lists.md#bans)) |
+| `ban after <n> <signal> in <time> for <time>` | `bans` | a client past `<n>` signals (`limits`, `refusals`, `checks`, a budget's name) is answered only 429 for a while; above the site blocks; inside a `match` block only that area's signals count and only there it refuses ([IP lists](RSF01-02-ip-lists.md#bans)) |
 | `crawlers <kind> allow\|check\|block` / `crawler <ID> allow\|check\|block` | `crawlerPolicy` | what the site does with verified crawlers, by kind (`search`, `ai-search`, `ai-user`, `ai-training`) or one by one ([known crawlers](RSF01-04-known-crawlers.md)) |
 | `crawler <kind> ua /<pattern>/ [dns <suffixes>] [ranges <lists>]` | `crawlers` | a crawler of the site's own, verified by DNS or an address list (`ranges ./ours.json`) |
 | `expect <METHOD> <address> <outcome> [by <ID>] [from <address>] [with pass] [times <n>]` | — | an example of what the rules decide, below the rule it is about; decided by `request-shield test`, never by a request ([examples](RSF05-04-rule-examples.md)) |
@@ -163,6 +163,7 @@ match regex ^/api/ {
   `cache-path`, `block` (the whole area), `unblock [<ID>] [for <addresses>]`
   (an exception there), `query <name> <type> …`, `limit <name> <rate> …`
   (a budget that counts this area only, [budgets](RSF03-01-budgets.md#a-budget-for-one-area)),
+  `ban after …` (a ban from this area only, [bans](RSF01-02-ip-lists.md#bans)),
   and `replace [ID] <one of these>`.
 - A block is exactly the rules written out with the path — the same settings,
   the same cost per request; the rules page shows each rule's area.
