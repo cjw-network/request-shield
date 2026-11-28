@@ -36,6 +36,14 @@ final class Budget
          * @var list<string>
          */
         public array $paths = [],
+        /**
+         * An on-demand budget written inside a match block (0050): once spent, decide()
+         * refuses the area's next requests too, and its overrun is a "limits" signal
+         * for the area's bans.
+         *
+         * @readonly
+         */
+        public bool $refuseSpent = false,
     ) {
     }
 
@@ -71,6 +79,7 @@ final class Budget
         if ($strict && ($challengeAt === null || $challengeAt <= 0)) {
             $challengeAt = max(1, intdiv($limit, 4));
         }
+        $paths = self::paths($b, $name);
         return new self(
             $name,
             $limit,
@@ -79,8 +88,22 @@ final class Budget
             Settings::bool($b, 'onDemand', "budgets.$name.onDemand"),
             self::onExceeded($b, $name),
             is_string($b['site'] ?? null) ? $b['site'] : null,
-            self::paths($b, $name),
+            $paths,
+            self::refuseSpent($b, $name, $paths),
         );
+    }
+
+    /**
+     * @param array<mixed> $b
+     * @param list<string> $paths
+     */
+    private static function refuseSpent(array $b, string $name, array $paths): bool
+    {
+        $v = Settings::bool($b, 'refuseSpent', "budgets.$name.refuseSpent");
+        if ($v && ($paths === [] || !Settings::bool($b, 'onDemand', "budgets.$name.onDemand"))) {
+            throw Settings::wrong("budgets.$name.refuseSpent", 'only for an on-demand budget of an area (onDemand and paths)');
+        }
+        return $v;
     }
 
     /**

@@ -142,6 +142,29 @@ set ban-max 1d        # at most (default 1d)
 - **One ban for every website:** `ban` belongs above the site blocks (an error
   inside one). A client banned for scanning one website is banned on all of
   them.
+- **A ban for one area:** written inside a `match` block, a ban is the area's
+  ([proposal 0050](../proposals/0050-area-bans-and-spent-budgets.md)). It
+  counts only the signals of requests to the block's paths and refuses only
+  there -- the rest of the site keeps answering the client:
+
+  ```text
+  match regex ^/mcp(?:/.*)?$ {
+    api-path
+    [MCP-RATE] limit mcp 120/min
+    [MCP-AUTH] limit mcp-auth 10/min on-demand     # the endpoint counts failed sign-ins: consume('mcp-auth')
+    [MCP-BAN]  ban after 3 limits in 15m for 30m   # banned from /mcp only
+  }
+  ```
+
+  An on-demand budget of the same block past its limit is a `limits` signal
+  for it (and once spent, the area's next requests wait, [budgets](RSF03-01-budgets.md#a-budget-for-one-area)).
+  The area's ban grows and ends like any other, on its own counter; lifting an
+  address (dashboard, `unlist`) lifts its areas' bans too. It is kept as
+  `ban:<client>@<rule>` (the lists page shows `203.0.113.9@MCP-BAN`), so a ban
+  inside a block needs an ID to be read easily. A ban outside any block works
+  as before. PHP settings: `'bans' => [['after' => 3, 'signal' => 'limits', 'in' => 900, 'for' => 1800, 'paths' => ['#^/mcp(?:/.*)?$#i']]]`.
+  Cost: one pattern match per area's ban on every request, the store lookup
+  only on its paths.
 - **Watch first:** `[SITE-SCAN] monitor ban after …` bans nobody and writes the
   line it would have written (`monitor-throttle 429 "banned"`). In `set mode
   monitor` no ban is enforced at all.

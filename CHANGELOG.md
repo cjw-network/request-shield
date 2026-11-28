@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **A ban and an on-demand budget for one area** ([proposal 0050](docs/proposals/0050-area-bans-and-spent-budgets.md)):
+  written inside a `match` block, `ban after …` counts only the signals of
+  requests to the block's paths and refuses only there -- the client still
+  reaches the rest of the site; an on-demand budget (`limit … on-demand`),
+  once `consume()` took it past its limit, makes the area's next requests
+  wait (429, `Retry-After`, JSON on an `api-path`); and its overrun is a
+  `limits` signal for the block's bans. An API or MCP endpoint can lock out
+  token guessing without banning anyone from the website. No new word; a
+  ban or on-demand budget outside any block (also `limit … on-demand at
+  <paths>`) works as before. An area's ban is kept as `ban:<client>@<rule>`
+  ([ADR 0015](docs/adr/0015-area-bans-keyed-by-rule.md)); lifting an address
+  lifts it too. PHP settings: `bans[].paths`, `budgets.<name>.refuseSpent`.
+  The compiled settings are format 68: they are rebuilt once after the update.
+
 ## [0.4.0] — 2026-11-10
 
 The firewall grew from a rule file into a small WAF with plugins: known

@@ -157,7 +157,7 @@ final class Settings
         public int $listsUntil = 0,
         /** @readonly where the list files are (allow.rules, deny.rules); null: none */
         public ?string $listsDir = null,
-        /** @var list<array{after: int, signal: string, in: int, for: int, rule: string}> @readonly automatic, temporary bans */
+        /** @var list<array{after: int, signal: string, in: int, for: int, rule: string, paths?: list<string>}> @readonly automatic, temporary bans; paths: an area's (0050) */
         public array $bans = [],
         /** @readonly a ban within a day of the last lasts this many times longer */
         public int $banGrowth = 2,
@@ -679,7 +679,7 @@ final class Settings
      *
      * @param array<mixed> $c
      * @param array<string, Budget> $budgets
-     * @return array{0: list<array{ips: list<string>, until: ?int, rule: string}>, 1: array{4: string, 6: string, ids: string, dir?: string}|array{}, 2: int, 3: int, 4: ?string, 5: list<array{after: int, signal: string, in: int, for: int, rule: string}>, 6: int, 7: int}
+     * @return array{0: list<array{ips: list<string>, until: ?int, rule: string}>, 1: array{4: string, 6: string, ids: string, dir?: string}|array{}, 2: int, 3: int, 4: ?string, 5: list<array{after: int, signal: string, in: int, for: int, rule: string, paths?: list<string>}>, 6: int, 7: int}
      */
     private static function lists(array $c, array $budgets): array
     {
@@ -727,7 +727,21 @@ final class Settings
             if (!in_array($b['signal'], ['limits', 'refusals', 'checks'], true) && !isset($budgets[$b['signal']])) {
                 throw self::wrong("bans[$i].signal", "limits, refusals, checks or a budget's name -- there is no budget \"{$b['signal']}\"");
             }
-            $bans[] = ['after' => $b['after'], 'signal' => $b['signal'], 'in' => $b['in'], 'for' => $b['for'], 'rule' => is_string($b['rule'] ?? null) ? $b['rule'] : "bans[$i]"];
+            $ban = ['after' => $b['after'], 'signal' => $b['signal'], 'in' => $b['in'], 'for' => $b['for'], 'rule' => is_string($b['rule'] ?? null) ? $b['rule'] : "bans[$i]"];
+            // An area's ban (written inside a match block, 0050): counted and enforced on these paths only.
+            if (isset($b['paths'])) {
+                $paths = [];
+                foreach (is_array($b['paths']) ? $b['paths'] : [null] as $p) {
+                    if (!is_string($p) || @preg_match($p, '') === false) {
+                        throw self::wrong("bans[$i].paths", 'a list of regular expressions (#^/api(?:/.*)?$#i)');
+                    }
+                    $paths[] = $p;
+                }
+                if ($paths !== []) {
+                    $ban['paths'] = $paths;
+                }
+            }
+            $bans[] = $ban;
         }
         $growth = $c['banGrowth'] ?? 2;
         $max = $c['banMax'] ?? 86400;
@@ -800,9 +814,9 @@ final class Settings
      * The lists with the feeds' next end: the settings are built again when a
      * fetched list grows too old (as when a list entry ends).
      *
-     * @param array{0: list<array{ips: list<string>, until: ?int, rule: string}>, 1: array{4: string, 6: string, ids: string, dir?: string}|array{}, 2: int, 3: int, 4: ?string, 5: list<array{after: int, signal: string, in: int, for: int, rule: string}>, 6: int, 7: int} $lists
+     * @param array{0: list<array{ips: list<string>, until: ?int, rule: string}>, 1: array{4: string, 6: string, ids: string, dir?: string}|array{}, 2: int, 3: int, 4: ?string, 5: list<array{after: int, signal: string, in: int, for: int, rule: string, paths?: list<string>}>, 6: int, 7: int} $lists
      * @param array{0: list<mixed>, 1: array<string, mixed>, 2: list<mixed>, 3: array<string, int>, 4: int, 5: int} $feeds
-     * @return array{0: list<array{ips: list<string>, until: ?int, rule: string}>, 1: array{4: string, 6: string, ids: string, dir?: string}|array{}, 2: int, 3: int, 4: ?string, 5: list<array{after: int, signal: string, in: int, for: int, rule: string}>, 6: int, 7: int}
+     * @return array{0: list<array{ips: list<string>, until: ?int, rule: string}>, 1: array{4: string, 6: string, ids: string, dir?: string}|array{}, 2: int, 3: int, 4: ?string, 5: list<array{after: int, signal: string, in: int, for: int, rule: string, paths?: list<string>}>, 6: int, 7: int}
      */
     private static function withFeeds(array $lists, array $feeds, int $more = 0): array
     {
@@ -1424,7 +1438,7 @@ final class Settings
     /** The capabilities a Plugin may have: hook name => its interface (recorded by compiledExt()). */
     private const HOOKS = ['ruleCounts' => RuleCounts::class, 'sink' => Sink::class, 'pages' => Pages::class, 'ruleProvider' => RuleProvider::class, 'handler' => Handler::class, 'methodHandler' => MethodHandler::class, 'contextHandler' => ContextHandler::class, 'purger' => Purger::class];
 
-    private const FORMAT = 67;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats; 43: routes compiled, stats path in ext.stats; 44: dashboardAccess, dashboardSession (stats-group in ext.stats); 45: hooks recorded; 46: the sink hook; 47: the pages hook; 48: the ruleProvider hook; 49: the handler hook; 50: pluginFiles; 51: routeBases; 52: docsUrl; 53: errorPages; 54: the WAF's pages are a plugin (routes with ext waf); 55: challenge.alwaysMethods; 56: learn; 57: ext.stats.slow (0046); 58: fileMode, dirMode; 59: the methodHandler hook, the cache's purge settings; 60: the contextHandler hook, the cache's role settings; 61: the cache's user hash lookup; 62: the cache's memory and disk cap; 63: the purger hook; 64: cacheableIgnore, cacheableUnknown (0048); 65: ext.cache.page; 66: store-dir, lists-dir relative to the rule file; 67: queryDrop
+    private const FORMAT = 68;       // 3: rule files, several sources, origins; 4: restricted, methodPaths, log; 5: blockExceptions; 6: challenge.language; 7: appChallenge; 8: challenge.home; 9: contentRules; 10: blockedIndex; 11: contentHints; 12: widget; 13: earnBack, apiPaths; 14: dnsLookups; 15: queryParams; 16: queryIndex; 17: mode, uncachedWeight, monitor, challenge.alwaysMaxAge; 18: crawlers; 19: stats, crawlerLog; 20: statsParts, statsFlush; 21: statsMonths; 22: challenge.logo; 23: dashboardPath; 24: statsDepth; 25: origins.queryParams; 26: plugins; 27: sites, site, siteFrom; 28: budget.site; 29: deny, lists, bans; 30: denyTable, denyCount; 31: liveEnabled, liveKeep, banKeep; 32: feeds, feedTables, feedsAt, feedWeights, feedsMaxAge; 33: statsHosts; 34: statsSkip, statsGroups; 36: statsPath; 37: statsAccess, statsSession; 38: budget.paths; 39: postOrigin; 40: backend, statsParts.forms; 41: ext, hooks, routes; 42: stats in ext.stats; 43: routes compiled, stats path in ext.stats; 44: dashboardAccess, dashboardSession (stats-group in ext.stats); 45: hooks recorded; 46: the sink hook; 47: the pages hook; 48: the ruleProvider hook; 49: the handler hook; 50: pluginFiles; 51: routeBases; 52: docsUrl; 53: errorPages; 54: the WAF's pages are a plugin (routes with ext waf); 55: challenge.alwaysMethods; 56: learn; 57: ext.stats.slow (0046); 58: fileMode, dirMode; 59: the methodHandler hook, the cache's purge settings; 60: the contextHandler hook, the cache's role settings; 61: the cache's user hash lookup; 62: the cache's memory and disk cap; 63: the purger hook; 64: cacheableIgnore, cacheableUnknown (0048); 65: ext.cache.page; 66: store-dir, lists-dir relative to the rule file; 67: queryDrop; 68: bans.paths, budget.refuseSpent (0050)
 
     public const MODES = ['off', 'monitor', 'enforce', 'strict'];
 

@@ -112,7 +112,8 @@
   [0046 response times in the statistics](proposals/0046-response-times.md) (draft; steps 1 to 3 built) ·
   [0047 the admin pages: an area per plugin, and a login by default](proposals/0047-admin-areas-and-login.md) (draft) ·
   [0048 query parameters and the PHP caches: fewer keys, more hits](proposals/0048-query-parameters-and-php-caches.md) (draft) ·
-  [0049 a reverse proxy plugin: first-party addresses for other services](proposals/0049-reverse-proxy-plugin.md) (draft)
+  [0049 a reverse proxy plugin: first-party addresses for other services](proposals/0049-reverse-proxy-plugin.md) (draft) ·
+  [0050 a ban and an on-demand budget for one area](proposals/0050-area-bans-and-spent-budgets.md) (accepted, implemented for 0.5.0)
   (0007 is unused)
 - **Roadmap for 0012–0016** (the reasons in [0012](proposals/0012-dashboard.md#roadmap-for-00120016)):
   counters and crawler statistics first (they answer "did GPTBot crawl the
@@ -135,6 +136,8 @@
   [0011 one source for reference, demos and tests](adr/0011-one-source-for-reference-demos-and-tests.md) ·
   [0012 one repository with split mirrors, signed releases](adr/0012-repository-structure-and-release-signing.md) ·
   [0013 hosting tiers](adr/0013-hosting-tiers.md) ·
-  [0014 every byte counts: the `rs` prefix](adr/0014-wire-bytes-and-the-rs-prefix.md)
+  [0014 every byte counts: the `rs` prefix](adr/0014-wire-bytes-and-the-rs-prefix.md) ·
+  with 0050:
+  [0015 an area's ban is kept under its rule](adr/0015-area-bans-keyed-by-rule.md)
 
 New proposals: copy the shape of 0001, next number, status **Draft**.
