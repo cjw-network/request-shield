@@ -128,6 +128,10 @@ server and PHP slots, just very briefly.
   ([docs](docs/features/RSF01-03-blocklist-feeds.md)); the dashboard's
   firewall pages, an HTTP API and an HTTP cache (a page per role) as plugins;
   one file to deploy, with `init`, `verify` and `self-update`.
+- **0.5.0:** a ban and an on-demand budget for one area — written inside a
+  `match` block they count and refuse only there, so an API or MCP endpoint
+  locks out token guessing without banning anyone from the website
+  ([docs](docs/features/RSF03-01-budgets.md)).
 - **Next:** adapters for
   Exponential, WordPress and Ibexa; exporting the rules to nginx, Apache and
   Varnish.
