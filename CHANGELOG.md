@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-11-28
+
+A ban and an on-demand budget can belong to one area of the site: written
+inside a `match` block, they count and refuse only there. An API or MCP
+endpoint can now lock out token guessing without banning anyone from the
+website.
+
+### Upgrading from 0.4.0
+
+- Nothing to change in rule files: a ban or an on-demand budget outside any
+  `match` block (also `limit … on-demand at <paths>`) works as before.
+- A `ban after …` inside a `match` block was an error in 0.4.0; it is now the
+  block's ban.
+- The compiled settings are format 68: they are rebuilt once after the update.
+
 ### Added
 
 - **A ban and an on-demand budget for one area** ([proposal 0050](docs/proposals/0050-area-bans-and-spent-budgets.md)):
@@ -1896,7 +1911,8 @@ release's `request-shield.php`), `init`, `verify`, `self-update`,
   `Shield::consume()`, APCu, file and memory stores, `bootstrap.php` for
   `auto_prepend_file`.
 
-[Unreleased]: https://github.com/cjw-network/request-shield/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/cjw-network/request-shield/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/cjw-network/request-shield/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/cjw-network/request-shield/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/cjw-network/request-shield/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/cjw-network/request-shield/compare/v0.1.0...v0.2.0
