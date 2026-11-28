@@ -812,16 +812,29 @@ final class Shield
     public function signals(Decision $d, Request $request, float $now): void
     {
         if ($d->action === Decision::THROTTLE && $d->reason !== 'banned') {
-            $this->signal('limits', $request, $now);
+            $this->signal('limits', $request, $now, false, $this->spentArea($d));
         } elseif ($d->action === Decision::CHALLENGE) {
             $this->signal('checks', $request, $now);
             if ($d->spent) {
-                $this->signal('limits', $request, $now);
+                $this->signal('limits', $request, $now, false, $this->spentArea($d));
             }
         } elseif ($d->action === Decision::REJECT && ($d->reason === 'blocked path' || $d->reason === 'attack')
             && !self::wellKnown($d, $request)) {
             $this->signal('refusals', $request, $now, self::unasked($request));
         }
+    }
+
+    /**
+     * A refusal by a block's spent on-demand budget (0050): its area's paths --
+     * the "limits" signal is then for the bans of that block only, as at its
+     * overrun in consume(); null for any other refusal.
+     *
+     * @return list<string>|null
+     */
+    private function spentArea(Decision $d): ?array
+    {
+        $b = $this->settings->budgets[$d->reason] ?? null;
+        return $b !== null && $b->refuseSpent ? $b->paths : null;
     }
 
     /**

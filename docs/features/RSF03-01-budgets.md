@@ -97,7 +97,8 @@ match /search/** {
   `consume()` has taken it past its limit, the area's next requests wait too
   -- 429 with `Retry-After` (JSON on an `api-path`), whatever they are, until
   the count falls back within the window; the rest of the site passes. Its
-  overrun is also a `limits` signal for a `ban` of the same block. Failed
+  overrun, and each request it refuses, is a `limits` signal for a `ban` of
+  the same block -- and only for those: a ban outside the block does not count them. Failed
   sign-ins to an API then lock its area, not the website:
 
   ```text

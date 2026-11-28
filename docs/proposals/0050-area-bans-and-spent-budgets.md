@@ -46,8 +46,8 @@ match /api/** {
   With `on-exceeded challenge` the check that frees the counter, as for any
   spent budget.
 - (c) **An on-demand overrun is a `limits` signal** for the bans of the same
-  block (only those: a ban outside the block, or of another block, does not
-  count it).
+  block, and so is each request (b) refuses -- only for those: a ban outside
+  the block, or of another block, counts neither.
 
 Outside any block, a `ban` and an on-demand budget behave as in 0.4.0. That
 includes an on-demand budget written with `at <paths>` (the sign-in use

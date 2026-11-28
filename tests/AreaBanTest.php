@@ -214,6 +214,28 @@ return [
             exec('rm -rf ' . escapeshellarg($dir));
         }
     },
+    'RSF01-02 the area\'s spent budget refusing in decide() is a "limits" signal for the block\'s bans only -- a ban outside any block does not count it' => function (): void {
+        $dir = areaDir();
+        try {
+            $s = areaSettings($dir, "[B-ALL] ban after 2 limits in 15m for 1h\nmatch /api/** {\n  [API-AUTH] limit auth 2/min on-demand\n  [API-BAN] ban after 4 limits in 15m for 10m\n}\n");
+            $store = new MemoryStore();
+            $shield = new Shield($s, $store);
+            $ip = '203.0.113.9';
+            foreach ([1, 2, 3] as $i) {
+                $shield->consume('auth', areaReq('/api/login', $ip), 1000.0 + $i);       // the third: the overrun (one signal)
+            }
+            same(['throttle', 'auth'], areaWhat(areaRun($shield, areaReq('/api/x', $ip), 1004.0)), 'spent: refused (the second signal)');
+            areaRun($shield, areaReq('/api/x', $ip), 1005.0);                              // the third
+            same(0, $store->marked("ban:$ip", 1006.0), 'the ban outside the block counted none of them');
+            same(0, $store->marked("ban:$ip@API-BAN", 1006.0), 'the block\'s: three of four');
+            areaRun($shield, areaReq('/api/x', $ip), 1006.0);                              // the fourth
+            truthy($store->marked("ban:$ip@API-BAN", 1007.0) > 0, 'the block\'s ban counted them all');
+            same(0, $store->marked("ban:$ip", 1007.0), 'still no ban of the whole site');
+            same(['allow', ''], areaWhat($shield->decide(areaReq('/', $ip), 1007.0)), 'the rest of the site passes');
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    },
     'RSF01-02 the real path: failed sign-ins on an API path spend its budget -- then 429 there with Retry-After as JSON, then the area\'s ban; the rest of the site answers' => function (): void {
         if (!function_exists('proc_open')) {
             skip('no proc_open');
